@@ -283,10 +283,14 @@ class BonsaiInference extends ChangeNotifier {
 
   Future<void> remove(BonsaiModel model) async {
     await _unloadModel(model.tier);
-    final file = await _modelFile(model);
-    final partial = File('${file.path}.part');
-    if (await file.exists()) await file.delete();
-    if (await partial.exists()) await partial.delete();
+    try {
+      final file = await _modelFile(model);
+      final partial = File('${file.path}.part');
+      if (await file.exists()) await file.delete();
+      if (await partial.exists()) await partial.delete();
+    } catch (e) {
+      debugPrint('Model file removal skipped: $e');
+    }
     _verifiedModels.remove(model.tier);
     _setStatus(InferencePhase.idle, 'Model removed');
   }

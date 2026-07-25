@@ -6,7 +6,9 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 import '../ads/ad_service.dart';
 import '../ads/banner_ad_widget.dart';
+import '../app_state_store.dart';
 import '../conversations/conversation_store.dart';
+import '../flux_app.dart';
 import '../inference/bonsai_inference.dart';
 import '../privacy/ad_consent_service.dart';
 import '../theme/flux_theme.dart';
@@ -179,20 +181,37 @@ class _SettingsPageState extends State<SettingsPage> {
             onPressed: () async {
               Navigator.of(dialogContext).pop();
               setState(() => _deletingAllData = true);
-              await ConversationStore.instance.deleteStorageFiles();
-              await BonsaiInference.instance.removeAllModels();
+              final result = await AppStateStore.instance.deleteAllData();
               await _loadSettingsData();
               if (mounted) {
                 setState(() => _deletingAllData = false);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Text('All local data and downloaded models erased.'),
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                if (result.isSuccess) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text('All local data deleted. Returning to onboarding.'),
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
-                  ),
-                );
+                  );
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute<void>(builder: (_) => const FinnBootstrap()),
+                    (route) => false,
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Partial deletion failure: Failed to delete ${result.failedItems.join(', ')}.',
+                      ),
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  );
+                }
               }
             },
             child: Text(
