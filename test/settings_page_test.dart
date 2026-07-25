@@ -6,15 +6,15 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('SettingsPage', () {
-    testWidgets('renders title and visible content', (WidgetTester tester) async {
+    testWidgets('renders title and visible content', (
+      WidgetTester tester,
+    ) async {
       tester.view.physicalSize = const Size(390, 844);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
-      await tester.pumpWidget(
-        MaterialApp(home: SettingsPage(onBack: () {})),
-      );
+      await tester.pumpWidget(MaterialApp(home: SettingsPage(onBack: () {})));
       // One pump so the first frame is laid out; don't pumpAndSettle because
       // inspectModels() performs async file I/O that never resolves in tests.
       await tester.pump();
@@ -24,7 +24,9 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('back callback fires on back control tap', (WidgetTester tester) async {
+    testWidgets('back callback fires on back control tap', (
+      WidgetTester tester,
+    ) async {
       tester.view.physicalSize = const Size(390, 844);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);

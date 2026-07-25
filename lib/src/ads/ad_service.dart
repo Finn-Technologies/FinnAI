@@ -48,7 +48,9 @@ class AdService {
       return;
     }
     if (!AdConsentService.instance.canRequestAds && !kDebugMode) {
-      debugPrint('MobileAds initialization skipped: Privacy consent not granted.');
+      debugPrint(
+        'MobileAds initialization skipped: Privacy consent not granted.',
+      );
       return;
     }
     try {

@@ -282,12 +282,7 @@ class _FloatingArrowState extends State<_FloatingArrow>
   late final Animation<double> _animation = Tween<double>(
     begin: 0,
     end: -6,
-  ).animate(
-    CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeInOutSine,
-    ),
-  );
+  ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOutSine));
 
   @override
   void initState() {
@@ -601,10 +596,7 @@ class _AutomaticInstallPanel extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 10),
-            Text(
-              model.name,
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
+            Text(model.name, style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 4),
             Text(
               ready
@@ -723,7 +715,10 @@ class _Precautions extends StatelessWidget {
                         child: Text(
                           '${i + 1}',
                           style: Theme.of(context).textTheme.labelMedium
-                              ?.copyWith(color: FluxColors.canvasOf(context), fontSize: 13),
+                              ?.copyWith(
+                                color: FluxColors.canvasOf(context),
+                                fontSize: 13,
+                              ),
                         ),
                       ),
                     ),

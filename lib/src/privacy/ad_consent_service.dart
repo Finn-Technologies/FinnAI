@@ -46,7 +46,8 @@ class AdConsentService extends ChangeNotifier {
         params,
         () async {
           try {
-            final isFormAvailable = await ConsentInformation.instance.isConsentFormAvailable();
+            final isFormAvailable = await ConsentInformation.instance
+                .isConsentFormAvailable();
             if (isFormAvailable) {
               await _loadAndShowFormIfRequired();
             } else {
@@ -88,7 +89,9 @@ class AdConsentService extends ChangeNotifier {
   Future<void> _loadAndShowFormIfRequired() async {
     final completer = Completer<void>();
     try {
-      ConsentForm.loadAndShowConsentFormIfRequired((FormError? formError) async {
+      ConsentForm.loadAndShowConsentFormIfRequired((
+        FormError? formError,
+      ) async {
         if (formError != null) {
           debugPrint('Consent form error: ${formError.message}');
           _consentError = formError.message;
@@ -115,8 +118,10 @@ class AdConsentService extends ChangeNotifier {
   Future<void> _updateConsentState() async {
     try {
       _canRequestAds = await ConsentInformation.instance.canRequestAds();
-      final status = await ConsentInformation.instance.getPrivacyOptionsRequirementStatus();
-      _isPrivacyOptionsRequired = (status == PrivacyOptionsRequirementStatus.required);
+      final status = await ConsentInformation.instance
+          .getPrivacyOptionsRequirementStatus();
+      _isPrivacyOptionsRequired =
+          (status == PrivacyOptionsRequirementStatus.required);
 
       if (_canRequestAds) {
         await AdService.instance.initialize();
