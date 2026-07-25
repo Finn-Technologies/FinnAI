@@ -35,8 +35,21 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
   }
 
   void _onConsentChanged() {
-    if (mounted && !_adLoaded && !_isLoading) {
-      _loadAdIfAllowed();
+    if (!mounted) return;
+    if (AdConsentService.instance.canRequestAds) {
+      if (!_adLoaded && !_isLoading) {
+        _loadAdIfAllowed();
+      }
+    } else {
+      _bannerAd?.dispose();
+      _bannerAd = null;
+      if (_adLoaded || _isLoading) {
+        setState(() {
+          _adLoaded = false;
+          _isLoading = false;
+        });
+        widget.onAdLoadedStateChanged?.call(false);
+      }
     }
   }
 
