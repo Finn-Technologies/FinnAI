@@ -19,7 +19,7 @@ class AdConsentService extends ChangeNotifier {
   bool get isRequestingConsent => _isRequestingConsent;
   String? get consentError => _consentError;
 
-  /// Requests UMP consent update without blocking local AI execution.
+  /// Requests UMP consent update with guaranteed Completer completion.
   Future<void> initializeConsentAndAds({bool isDebug = false}) async {
     if (!AdService.instance.isSupportedPlatform) {
       _canRequestAds = false;
@@ -39,46 +39,77 @@ class AdConsentService extends ChangeNotifier {
           : null,
     );
 
+    final completer = Completer<void>();
+
     try {
       ConsentInformation.instance.requestConsentInfoUpdate(
         params,
         () async {
-          final isFormAvailable = await ConsentInformation.instance.isConsentFormAvailable();
-          if (isFormAvailable) {
-            await _loadAndShowFormIfRequired();
-          } else {
+          try {
+            final isFormAvailable = await ConsentInformation.instance.isConsentFormAvailable();
+            if (isFormAvailable) {
+              await _loadAndShowFormIfRequired();
+            } else {
+              await _updateConsentState();
+            }
+          } catch (e) {
+            _consentError = e.toString();
             await _updateConsentState();
+          } finally {
+            if (!completer.isCompleted) completer.complete();
           }
         },
-        (FormError error) {
+        (FormError error) async {
           debugPrint('Consent info update failed: ${error.message}');
           _consentError = error.message;
-          _updateConsentState();
+          await _updateConsentState();
+          if (!completer.isCompleted) completer.complete();
         },
       );
     } catch (e) {
       debugPrint('AdConsentService error: $e');
       _consentError = e.toString();
       await _updateConsentState();
-    } finally {
-      _isRequestingConsent = false;
-      notifyListeners();
+      if (!completer.isCompleted) completer.complete();
     }
+
+    await completer.future.timeout(
+      const Duration(seconds: 15),
+      onTimeout: () async {
+        _consentError = 'Consent request timed out.';
+        await _updateConsentState();
+      },
+    );
+
+    _isRequestingConsent = false;
+    notifyListeners();
   }
 
   Future<void> _loadAndShowFormIfRequired() async {
+    final completer = Completer<void>();
     try {
-      ConsentForm.loadAndShowConsentFormIfRequired((FormError? formError) {
+      ConsentForm.loadAndShowConsentFormIfRequired((FormError? formError) async {
         if (formError != null) {
           debugPrint('Consent form error: ${formError.message}');
           _consentError = formError.message;
         }
-        _updateConsentState();
+        await _updateConsentState();
+        if (!completer.isCompleted) completer.complete();
       });
     } catch (e) {
       debugPrint('Error loading consent form: $e');
+      _consentError = e.toString();
       await _updateConsentState();
+      if (!completer.isCompleted) completer.complete();
     }
+
+    await completer.future.timeout(
+      const Duration(seconds: 15),
+      onTimeout: () async {
+        _consentError = 'Form load timed out.';
+        await _updateConsentState();
+      },
+    );
   }
 
   Future<void> _updateConsentState() async {
@@ -103,20 +134,23 @@ class AdConsentService extends ChangeNotifier {
     if (!AdService.instance.isSupportedPlatform) return false;
     final completer = Completer<bool>();
     try {
-      ConsentForm.showPrivacyOptionsForm((FormError? formError) {
+      ConsentForm.showPrivacyOptionsForm((FormError? formError) async {
         if (formError != null) {
           debugPrint('Privacy options error: ${formError.message}');
           _consentError = formError.message;
-          completer.complete(false);
+          if (!completer.isCompleted) completer.complete(false);
         } else {
-          _updateConsentState();
-          completer.complete(true);
+          await _updateConsentState();
+          if (!completer.isCompleted) completer.complete(true);
         }
       });
     } catch (e) {
       debugPrint('Exception in showPrivacyOptionsForm: $e');
-      completer.complete(false);
+      if (!completer.isCompleted) completer.complete(false);
     }
-    return completer.future;
+    return completer.future.timeout(
+      const Duration(seconds: 15),
+      onTimeout: () => false,
+    );
   }
 }
