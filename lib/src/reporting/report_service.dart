@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
@@ -22,7 +23,10 @@ enum ReportSubmitStatus {
   success,
   unconfigured,
   networkError,
-  invalidPayload,
+  badRequest,
+  rateLimited,
+  serverError,
+  invalidEndpoint,
 }
 
 class ReportPayload {
@@ -47,53 +51,62 @@ class ReportPayload {
   final String? additionalDetails;
 
   Map<String, dynamic> toJson() => {
-        'reportId': reportId,
-        'category': category.name,
-        'categoryLabel': category.displayName,
-        'assistantResponse': assistantResponse,
-        'timestamp': timestamp.toIso8601String(),
-        'appVersion': appVersion,
-        'modelTier': modelTier,
-        if (userPrompt != null && userPrompt!.isNotEmpty) 'userPrompt': userPrompt,
-        if (additionalDetails != null && additionalDetails!.isNotEmpty)
-          'additionalDetails': additionalDetails,
-      };
+    'reportId': reportId,
+    'category': category.name,
+    'assistantResponse': assistantResponse,
+    'timestamp': timestamp.toIso8601String(),
+    'appVersion': appVersion,
+    'modelTier': modelTier,
+    if (userPrompt != null && userPrompt!.isNotEmpty) 'userPrompt': userPrompt,
+    if (additionalDetails != null && additionalDetails!.isNotEmpty)
+      'additionalDetails': additionalDetails,
+  };
 }
 
 class ReportService {
-  ReportService({http.Client? client}) : _client = client ?? http.Client();
+  ReportService({
+    String? endpoint,
+    http.Client? client,
+    this._isReleaseModeOverride,
+  }) : _customEndpoint = endpoint,
+       _client = client ?? http.Client();
 
   static final ReportService instance = ReportService();
+  final String? _customEndpoint;
   final http.Client _client;
+  final bool? _isReleaseModeOverride;
 
-  static const String endpointConfig = String.fromEnvironment(
-    'FINN_REPORT_ENDPOINT',
-    defaultValue: '',
-  );
+  String get endpoint =>
+      _customEndpoint?.trim() ??
+      const String.fromEnvironment(
+        'FINN_REPORT_ENDPOINT',
+        defaultValue: '',
+      ).trim();
 
-  bool get isConfigured => endpointConfig.trim().isNotEmpty;
+  bool get isConfigured => endpoint.isNotEmpty;
 
   /// Submits an in-app AI response report.
   Future<ReportSubmitStatus> submitReport(ReportPayload payload) async {
-    final endpoint = endpointConfig.trim();
+    final ep = endpoint;
 
-    if (endpoint.isEmpty) {
+    if (ep.isEmpty) {
       return ReportSubmitStatus.unconfigured;
     }
 
-    final uri = Uri.tryParse(endpoint);
-    if (uri == null || (!uri.isScheme('HTTPS') && !uri.isScheme('http'))) {
-      return ReportSubmitStatus.invalidPayload;
+    final uri = Uri.tryParse(ep);
+    if (uri == null || (!uri.isScheme('https') && !uri.isScheme('http'))) {
+      return ReportSubmitStatus.invalidEndpoint;
     }
 
-    if (kReleaseMode && !uri.isScheme('HTTPS')) {
-      return ReportSubmitStatus.invalidPayload;
+    final isRelease = _isReleaseModeOverride ?? kReleaseMode;
+    if (isRelease && !uri.isScheme('https')) {
+      return ReportSubmitStatus.invalidEndpoint;
     }
 
     try {
       final body = jsonEncode(payload.toJson());
       if (body.length > 64 * 1024) {
-        return ReportSubmitStatus.invalidPayload;
+        return ReportSubmitStatus.badRequest;
       }
 
       final response = await _client
@@ -109,7 +122,15 @@ class ReportService {
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         return ReportSubmitStatus.success;
+      } else if (response.statusCode == 400) {
+        return ReportSubmitStatus.badRequest;
+      } else if (response.statusCode == 429) {
+        return ReportSubmitStatus.rateLimited;
+      } else if (response.statusCode >= 500) {
+        return ReportSubmitStatus.serverError;
       }
+      return ReportSubmitStatus.networkError;
+    } on TimeoutException {
       return ReportSubmitStatus.networkError;
     } catch (_) {
       return ReportSubmitStatus.networkError;

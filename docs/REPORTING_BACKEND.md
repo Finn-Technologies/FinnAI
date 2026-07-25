@@ -1,45 +1,56 @@
 # FinnAI In-App AI Response Reporting Backend Specification
 
 ## Overview
-FinnAI includes an in-app reporting flow for flagged AI assistant outputs to comply with Google Play Store policies for generative AI apps. Users can report responses directly within the application.
+FinnAI includes an in-app reporting flow for flagged AI assistant outputs to comply with Google Play Store policies for generative AI apps.
+
+---
 
 ## API Endpoint Specification
 
 - **Route**: `POST /v1/reports`
 - **Protocol**: HTTPS required in production
 - **Header**: `Content-Type: application/json`
-- **Authentication**: Optional Bearer / API token when `FINN_REPORT_TOKEN` is supplied at build time.
 
 ### Request Body Schema
 ```json
 {
-  "reportId": "string",
+  "reportId": "string (alphanumeric/underscores/dashes, max 100 chars)",
   "category": "harmfulOrDangerous | hateOrHarassment | sexualContent | childSafety | selfHarm | illegalOrDeceptive | falseOrMisleading | other",
-  "categoryLabel": "string",
-  "assistantResponse": "string",
+  "assistantResponse": "string (max 4000 chars)",
   "timestamp": "ISO-8601 string",
-  "appVersion": "string",
-  "modelTier": "string",
-  "userPrompt": "string (optional, included only with explicit user opt-in)",
-  "additionalDetails": "string (optional)"
+  "appVersion": "string (max 50 chars)",
+  "modelTier": "string (max 100 chars)",
+  "userPrompt": "string (optional, max 2000 chars)",
+  "additionalDetails": "string (optional, max 1000 chars)"
 }
 ```
 
-### Privacy & Data Safety
+### Strict Server Validation & Unknown Field Rejection
+- Unknown fields are strictly rejected with HTTP 400 (`{"error": "Unknown field '...' in report payload"}`).
+- Missing required fields or invalid timestamps return HTTP 400.
+- Missing `REPORTS_KV` or `RATE_LIMIT_SALT` configuration returns HTTP 503.
+
+### Data Retention & Privacy
+- **Retention TTL**: All report records stored in `REPORTS_KV` expire automatically after **30 days** (`expirationTtl: 2592000` seconds).
 - No Advertising ID, Android ID, hardware serial, or user account identity is attached to report payloads.
-- IP addresses are processed in memory for rate limiting (max 10 requests / hour per IP) and are not stored in report KV/database records.
+- Client IP addresses are hashed with `RATE_LIMIT_SALT` for hourly rate limiting (max 10 requests / hour per IP) and are **never** persisted to storage.
 
-## Deployment Guide
+---
 
-### Cloudflare Workers Deployment
+## Cloudflare Workers Deployment
+
 1. Install Wrangler CLI: `npm install -g wrangler`
 2. Authenticate: `wrangler login`
 3. Create KV Namespace: `wrangler kv:namespace create REPORTS_KV`
-4. Deploy worker: `wrangler deploy`
-5. Configure the production endpoint URL in Flutter build:
+4. Set Secret Salt: `wrangler secret put RATE_LIMIT_SALT`
+5. Deploy worker: `wrangler deploy`
+6. Configure the production endpoint URL during Flutter release compilation:
    ```bash
-   flutter build appbundle --release --dart-define=FINN_REPORT_ENDPOINT="https://reports.finnai.app/v1/reports"
+   flutter build appbundle --release \
+     --dart-define=FINN_REPORT_ENDPOINT="https://reports.finnai.app/v1/reports"
    ```
 
-## Remaining Manual Action
-Deploy `reporting-service/` to your cloud provider (Cloudflare Workers, AWS Lambda, Firebase Functions, or Vercel) and provide `FINN_REPORT_ENDPOINT` during release compilation.
+---
+
+## Operational Status
+When no production reporting endpoint is deployed, reporting is marked `BLOCKED / NOT DEPLOYED` and the in-app dialog informs the user that reporting is currently unconfigured.

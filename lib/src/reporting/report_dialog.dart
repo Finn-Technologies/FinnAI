@@ -83,7 +83,9 @@ class _ReportDialogState extends State<ReportDialog> {
       _errorMessage = null;
     });
 
-    final randomId = (DateTime.now().microsecondsSinceEpoch ^ Random().nextInt(1000000)).toString();
+    final randomId =
+        (DateTime.now().microsecondsSinceEpoch ^ Random().nextInt(1000000))
+            .toString();
     final payload = ReportPayload(
       reportId: randomId,
       category: _category,
@@ -121,9 +123,13 @@ class _ReportDialogState extends State<ReportDialog> {
         });
         break;
       case ReportSubmitStatus.networkError:
-      case ReportSubmitStatus.invalidPayload:
+      case ReportSubmitStatus.badRequest:
+      case ReportSubmitStatus.rateLimited:
+      case ReportSubmitStatus.serverError:
+      case ReportSubmitStatus.invalidEndpoint:
         setState(() {
-          _errorMessage = 'The report could not be submitted. Please try again later.';
+          _errorMessage =
+              'The report could not be submitted. Please try again later.';
         });
         break;
     }
@@ -136,18 +142,14 @@ class _ReportDialogState extends State<ReportDialog> {
     final isConfigured = ReportService.instance.isConfigured;
 
     return AlertDialog(
-      backgroundColor: isDark ? const Color(0xFF1F1F23) : const Color(0xFFF7F8F4),
+      backgroundColor: isDark
+          ? const Color(0xFF1F1F23)
+          : const Color(0xFFF7F8F4),
       surfaceTintColor: Colors.transparent,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(22),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
       title: Row(
         children: [
-          Icon(
-            Icons.flag_outlined,
-            color: FluxColors.inkOf(context),
-            size: 24,
-          ),
+          Icon(Icons.flag_outlined, color: FluxColors.inkOf(context), size: 24),
           const SizedBox(width: 10),
           Text(
             'Report AI Response',
@@ -164,18 +166,26 @@ class _ReportDialogState extends State<ReportDialog> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: isDark ? const Color(0x33F59E0B) : const Color(0x22F59E0B),
+                  color: isDark
+                      ? const Color(0x33F59E0B)
+                      : const Color(0x22F59E0B),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.info_outline, size: 16, color: Color(0xFFF59E0B)),
+                    const Icon(
+                      Icons.info_outline,
+                      size: 16,
+                      color: Color(0xFFF59E0B),
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'Reporting is temporarily unavailable.',
                         style: textTheme.bodySmall?.copyWith(
-                          color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
+                          color: isDark
+                              ? const Color(0xFFFBBF24)
+                              : const Color(0xFFD97706),
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -194,7 +204,9 @@ class _ReportDialogState extends State<ReportDialog> {
             const SizedBox(height: 14),
             Text(
               'Reason for report',
-              style: textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600),
+              style: textTheme.labelMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
             ),
             const SizedBox(height: 6),
             Container(
@@ -207,7 +219,9 @@ class _ReportDialogState extends State<ReportDialog> {
                 child: DropdownButton<ReportCategory>(
                   value: _category,
                   isExpanded: true,
-                  dropdownColor: isDark ? const Color(0xFF27272A) : Colors.white,
+                  dropdownColor: isDark
+                      ? const Color(0xFF27272A)
+                      : Colors.white,
                   items: ReportCategory.values.map((cat) {
                     return DropdownMenuItem(
                       value: cat,
@@ -225,7 +239,9 @@ class _ReportDialogState extends State<ReportDialog> {
             const SizedBox(height: 14),
             Text(
               'Reported response preview',
-              style: textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600),
+              style: textTheme.labelMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
             ),
             const SizedBox(height: 6),
             Container(
@@ -233,7 +249,9 @@ class _ReportDialogState extends State<ReportDialog> {
               padding: const EdgeInsets.all(10),
               constraints: const BoxConstraints(maxHeight: 90),
               decoration: BoxDecoration(
-                color: isDark ? const Color(0x33000000) : const Color(0x11000000),
+                color: isDark
+                    ? const Color(0x33000000)
+                    : const Color(0x11000000),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: FluxColors.lineOf(context)),
               ),
@@ -255,7 +273,8 @@ class _ReportDialogState extends State<ReportDialog> {
                 ),
                 value: _includePrompt,
                 activeColor: FluxColors.inkOf(context),
-                onChanged: (val) => setState(() => _includePrompt = val ?? false),
+                onChanged: (val) =>
+                    setState(() => _includePrompt = val ?? false),
               ),
             ],
             const SizedBox(height: 8),
@@ -265,7 +284,9 @@ class _ReportDialogState extends State<ReportDialog> {
               style: textTheme.bodySmall,
               decoration: InputDecoration(
                 hintText: 'Optional additional details...',
-                hintStyle: textTheme.bodySmall?.copyWith(color: FluxColors.mutedOf(context)),
+                hintStyle: textTheme.bodySmall?.copyWith(
+                  color: FluxColors.mutedOf(context),
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
                   borderSide: BorderSide(color: FluxColors.lineOf(context)),
@@ -278,7 +299,9 @@ class _ReportDialogState extends State<ReportDialog> {
               Text(
                 _errorMessage!,
                 style: textTheme.bodySmall?.copyWith(
-                  color: isDark ? const Color(0xFFFF6B6B) : const Color(0xFFD32F2F),
+                  color: isDark
+                      ? const Color(0xFFFF6B6B)
+                      : const Color(0xFFD32F2F),
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -309,7 +332,10 @@ class _ReportDialogState extends State<ReportDialog> {
               ? const SizedBox(
                   width: 16,
                   height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
                 )
               : const Text('Submit Report'),
         ),

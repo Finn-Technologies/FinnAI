@@ -14,10 +14,22 @@ const ALLOWED_CATEGORIES = new Set([
   'other',
 ]);
 
+const ALLOWED_FIELDS = new Set([
+  'reportId',
+  'category',
+  'assistantResponse',
+  'timestamp',
+  'appVersion',
+  'modelTier',
+  'userPrompt',
+  'additionalDetails',
+]);
+
 const MAX_ASSISTANT_RESPONSE_LENGTH = 4000;
 const MAX_USER_PROMPT_LENGTH = 2000;
 const MAX_ADDITIONAL_DETAILS_LENGTH = 1000;
 const MAX_REPORTS_PER_HOUR = 10;
+const REPORT_RETENTION_TTL_SECONDS = 30 * 24 * 3600; // 30 days retention
 
 async function hashKey(ip, salt) {
   const hour = new Date().toISOString().substring(0, 13); // YYYY-MM-DDTHH
@@ -40,10 +52,10 @@ export default {
       });
     }
 
-    // MANDATORY KV BINDING VERIFICATION: Return HTTP 503 if REPORTS_KV binding is missing
-    if (!env || !env.REPORTS_KV) {
+    // MANDATORY BINDING & SALT VERIFICATION: Return HTTP 503 if REPORTS_KV or RATE_LIMIT_SALT is missing
+    if (!env || !env.REPORTS_KV || !env.RATE_LIMIT_SALT || typeof env.RATE_LIMIT_SALT !== 'string' || !env.RATE_LIMIT_SALT.trim()) {
       return new Response(
-        JSON.stringify({ error: 'Reporting service storage unconfigured' }),
+        JSON.stringify({ error: 'Reporting service configuration incomplete (REPORTS_KV or RATE_LIMIT_SALT missing)' }),
         {
           status: 503,
           headers: { 'Content-Type': 'application/json' },
@@ -68,8 +80,7 @@ export default {
       request.headers.get('cf-connecting-ip') ||
       request.headers.get('x-forwarded-for') ||
       '127.0.0.1';
-    const serverSalt = env.RATE_LIMIT_SALT || 'finn_ai_default_salt_2026';
-    const rateLimitHash = await hashKey(clientIp, serverSalt);
+    const rateLimitHash = await hashKey(clientIp, env.RATE_LIMIT_SALT);
     const rateLimitKey = `ratelimit:${rateLimitHash}`;
 
     const currentCountStr = await env.REPORTS_KV.get(rateLimitKey);
@@ -87,6 +98,26 @@ export default {
 
     try {
       const body = await request.json();
+      if (!body || typeof body !== 'object' || Array.isArray(body)) {
+        return new Response(JSON.stringify({ error: 'Payload must be a JSON object' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Reject unknown fields
+      for (const key of Object.keys(body)) {
+        if (!ALLOWED_FIELDS.has(key)) {
+          return new Response(
+            JSON.stringify({ error: `Unknown field '${key}' in report payload` }),
+            {
+              status: 400,
+              headers: { 'Content-Type': 'application/json' },
+            }
+          );
+        }
+      }
+
       const {
         reportId,
         category,
@@ -98,16 +129,28 @@ export default {
         additionalDetails,
       } = body;
 
-      // Validate required fields
+      // Validate reportId format
+      if (!reportId || typeof reportId !== 'string' || reportId.length > 100 || !/^[a-zA-Z0-9_-]+$/.test(reportId)) {
+        return new Response(JSON.stringify({ error: 'Invalid or missing reportId' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Validate timestamp
+      if (!timestamp || typeof timestamp !== 'string' || isNaN(Date.parse(timestamp))) {
+        return new Response(JSON.stringify({ error: 'Invalid or missing timestamp' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Validate types and lengths of required fields
       if (
-        !reportId ||
-        typeof reportId !== 'string' ||
-        !category ||
-        !assistantResponse ||
-        typeof assistantResponse !== 'string' ||
-        !timestamp ||
-        !appVersion ||
-        !modelTier
+        !category || typeof category !== 'string' ||
+        !assistantResponse || typeof assistantResponse !== 'string' ||
+        !appVersion || typeof appVersion !== 'string' || appVersion.length > 50 ||
+        !modelTier || typeof modelTier !== 'string' || modelTier.length > 100
       ) {
         return new Response(
           JSON.stringify({ error: 'Missing or invalid required report fields' }),
@@ -129,8 +172,8 @@ export default {
       // Enforce payload length limits
       if (
         assistantResponse.length > MAX_ASSISTANT_RESPONSE_LENGTH ||
-        (userPrompt && userPrompt.length > MAX_USER_PROMPT_LENGTH) ||
-        (additionalDetails && additionalDetails.length > MAX_ADDITIONAL_DETAILS_LENGTH)
+        (userPrompt && (typeof userPrompt !== 'string' || userPrompt.length > MAX_USER_PROMPT_LENGTH)) ||
+        (additionalDetails && (typeof additionalDetails !== 'string' || additionalDetails.length > MAX_ADDITIONAL_DETAILS_LENGTH))
       ) {
         return new Response(
           JSON.stringify({ error: 'Report content exceeds character limits' }),
@@ -159,8 +202,10 @@ export default {
         additionalDetails: additionalDetails || null,
       };
 
-      // Store in Cloudflare KV
-      await env.REPORTS_KV.put(`report:${reportId}`, JSON.stringify(reportRecord));
+      // Store in Cloudflare KV with 30-day retention TTL
+      await env.REPORTS_KV.put(`report:${reportId}`, JSON.stringify(reportRecord), {
+        expirationTtl: REPORT_RETENTION_TTL_SECONDS,
+      });
 
       return new Response(JSON.stringify({ success: true, reportId }), {
         status: 201,
