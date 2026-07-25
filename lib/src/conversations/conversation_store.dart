@@ -348,51 +348,81 @@ class ConversationStore extends ChangeNotifier {
       }
 
       final plaintextStr = await legacyFile.readAsString();
+      // Step 1: Parse and fully validate every field of the legacy schema BEFORE
+      // touching the encrypted file or deleting the plaintext. If any field is
+      // malformed, a FormatException/TypeError is thrown here and the plaintext
+      // is preserved.
       final parsedData = (jsonDecode(plaintextStr) as Map<Object?, Object?>)
-          .cast<String, Object?>(); // Validate JSON format
+          .cast<String, Object?>();
 
-      // 1. Write encrypted data to temporary file
+      // Validate activeId type (null or String)
+      final rawActiveId = parsedData['activeId'];
+      if (rawActiveId != null && rawActiveId is! String) {
+        throw FormatException(
+          'Legacy schema: activeId must be String or null, got ${rawActiveId.runtimeType}',
+        );
+      }
+      final validatedActiveId = rawActiveId as String?;
+
+      // Validate every conversation and every message completely.
+      final rawConversations = parsedData['conversations'];
+      if (rawConversations is! List<Object?>) {
+        throw FormatException(
+          'Legacy schema: conversations must be a List, got ${rawConversations.runtimeType}',
+        );
+      }
+      final validatedConversations = <FinnConversation>[];
+      for (final item in rawConversations) {
+        if (item is! Map<Object?, Object?>) {
+          throw FormatException(
+            'Legacy schema: conversation item must be a Map, got ${item.runtimeType}',
+          );
+        }
+        // FinnConversation.fromJson performs full field validation; any missing
+        // or wrongly-typed field will throw before we write any encrypted data.
+        validatedConversations.add(
+          FinnConversation.fromJson(item.cast<String, Object?>()),
+        );
+      }
+
+      // Step 2: Write encrypted data to temporary file
       final envelope = await ConversationCipher.encrypt(key, plaintextStr);
       await tempFile.writeAsString(jsonEncode(envelope), flush: true);
 
-      // 2. Read and decrypt temporary file while it is still temporary
+      // Step 3: Read and decrypt temporary file while it is still temporary
       final tmpStr = await tempFile.readAsString();
       final tmpEnv = (jsonDecode(tmpStr) as Map<Object?, Object?>)
           .cast<String, Object?>();
       final tmpDecrypted = await ConversationCipher.decrypt(key, tmpEnv);
 
-      // 3. Verify decrypted content equals source plaintext
+      // Step 4: Verify decrypted content equals source plaintext
       if (tmpDecrypted != plaintextStr) {
         throw StateError('Temporary file decryption verification failed.');
       }
 
-      // 4. Atomically rename to final path
+      // Step 5: Atomically rename to final path
       await tempFile.rename(encFile.path);
 
-      // 5. Read final file and confirm it decrypts correctly before deleting plaintext
+      // Step 6: Read final file and confirm it decrypts correctly before deleting plaintext
       final finalStr = await encFile.readAsString();
       final finalEnv = (jsonDecode(finalStr) as Map<Object?, Object?>)
           .cast<String, Object?>();
       final finalDecrypted = await ConversationCipher.decrypt(key, finalEnv);
 
-      if (finalDecrypted == plaintextStr) {
-        await legacyFile.delete();
-
-        // Immediately load migrated conversations into memory so they are visible and not overwritten
-        _masterKey = key;
-        _activeId = parsedData['activeId'] as String?;
-        _conversations
-          ..clear()
-          ..addAll(
-            (parsedData['conversations'] as List<Object?>).map(
-              (item) => FinnConversation.fromJson(
-                (item as Map<Object?, Object?>).cast<String, Object?>(),
-              ),
-            ),
-          );
-      } else {
+      if (finalDecrypted != plaintextStr) {
         throw StateError('Final file decryption verification failed.');
       }
+
+      // Step 7: All validation and verification passed — safe to delete plaintext
+      await legacyFile.delete();
+
+      // Immediately load the pre-validated model objects so they are visible and
+      // cannot be overwritten by a new conversation on the same launch.
+      _masterKey = key;
+      _activeId = validatedActiveId;
+      _conversations
+        ..clear()
+        ..addAll(validatedConversations);
     } catch (e) {
       debugPrint('Legacy migration aborted cleanly: $e');
       if (await tempFile.exists()) {

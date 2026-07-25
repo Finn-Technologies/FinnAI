@@ -420,5 +420,49 @@ void main() {
 
       expect(store2.conversations.first.messages.first.modelTier, 'Bonsai 4B');
     });
+
+    test(
+      'Malformed legacy schema preserves plaintext file and does not leave user with neither copy',
+      () async {
+        // A conversation with a message missing the required "role" field.
+        const malformedPayload =
+            '{"activeId":"c1","conversations":[{"id":"c1","title":"Bad Chat",'
+            '"createdAt":"2026-07-25T12:00:00.000Z","updatedAt":"2026-07-25T12:00:00.000Z",'
+            '"messages":[{"id":"m1","text":"Hello","createdAt":"2026-07-25T12:00:00.000Z",'
+            '"modelTier":"Finn AI"}]}]}';
+
+        final legacyFile = File(
+          '${tempDir.path}${Platform.pathSeparator}conversations.json',
+        );
+        await legacyFile.writeAsString(malformedPayload);
+
+        final keyStore = FakeKeyStorage();
+        final store = ConversationStore(
+          keyStorage: keyStore,
+          directoryProvider: () async => tempDir,
+        );
+
+        await store.initialize();
+
+        // Migration must have failed — the store should be in storage error.
+        expect(store.storageError, isTrue);
+
+        // The plaintext file must still exist so the user retains their data.
+        expect(await legacyFile.exists(), isTrue);
+
+        // The encrypted file must NOT have been created (or must be deleted on
+        // failure), so the user is not left with neither copy.
+        final encFile = File(
+          '${tempDir.path}${Platform.pathSeparator}conversations.v2.enc',
+        );
+        expect(await encFile.exists(), isFalse);
+
+        // Any temporary file must have been cleaned up.
+        final tmpFile = File(
+          '${tempDir.path}${Platform.pathSeparator}conversations.v2.enc.tmp',
+        );
+        expect(await tmpFile.exists(), isFalse);
+      },
+    );
   });
 }
