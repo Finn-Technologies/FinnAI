@@ -35,9 +35,7 @@ abstract final class FluxIcons {
 }
 
 abstract final class FigmaAssets {
-  static const _root =
-      'designs/figma/flux_app_20260722-145813/'
-      'flux_app_20260722-145813.assets';
+  static const _root = 'assets/runtime';
 
   static const back = '$_root/icon_144_180.svg';
   static const welcomeArrow = '$_root/icon_144_170.svg';
