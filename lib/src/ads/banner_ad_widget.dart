@@ -7,10 +7,16 @@ import 'ad_service.dart';
 
 /// Container widget displaying a native AdMob Banner Ad when user consent is granted.
 class BannerAdWidget extends StatefulWidget {
-  const BannerAdWidget({super.key, this.margin, this.adUnitId});
+  const BannerAdWidget({
+    super.key,
+    this.margin,
+    this.adUnitId,
+    this.onAdLoadedStateChanged,
+  });
 
   final EdgeInsetsGeometry? margin;
   final String? adUnitId;
+  final ValueChanged<bool>? onAdLoadedStateChanged;
 
   @override
   State<BannerAdWidget> createState() => _BannerAdWidgetState();
@@ -59,6 +65,7 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
               _adLoaded = true;
               _isLoading = false;
             });
+            widget.onAdLoadedStateChanged?.call(true);
           },
           onAdFailedToLoad: (ad, error) {
             debugPrint('BannerAd failed to load: $error');
@@ -69,6 +76,7 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
                 _adLoaded = false;
                 _isLoading = false;
               });
+              widget.onAdLoadedStateChanged?.call(false);
             }
           },
         ),
@@ -81,6 +89,7 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
         setState(() {
           _isLoading = false;
         });
+        widget.onAdLoadedStateChanged?.call(false);
       }
     }
   }

@@ -571,7 +571,8 @@ class _Conversation extends StatelessWidget {
                 )
               : _CompleteReply(
                   text: message.text,
-                  userPrompt: (visibleMessages.length - index - 1 >= 0 &&
+                  userPrompt:
+                      (visibleMessages.length - index - 1 >= 0 &&
                           visibleMessages[visibleMessages.length - index - 1]
                                   .role ==
                               ConversationRole.user)
@@ -944,6 +945,7 @@ class _Sidebar extends StatefulWidget {
 class _SidebarState extends State<_Sidebar> {
   late final ScrollController _scrollController = ScrollController();
   final ValueNotifier<double> _scrollOffset = ValueNotifier<double>(0.0);
+  bool _adLoaded = false;
 
   @override
   void initState() {
@@ -993,10 +995,10 @@ class _SidebarState extends State<_Sidebar> {
           final double adBannerTop = enableCreations
               ? (buttonsBottom + 10 * sy)
               : (buttonsBottom + 12 * sy);
-          // A standard AdMob banner is 320 × 50 logical pixels.
-          const double adBannerHeight = 50.0;
-          final double initialTitleTop =
-              adBannerTop + adBannerHeight + (16 * sy);
+          final double adBannerHeight = _adLoaded ? 50.0 : 0.0;
+          final double initialTitleTop = _adLoaded
+              ? (adBannerTop + adBannerHeight + (16 * sy))
+              : (adBannerTop + (4 * sy));
           final double pinnedTitleTop = headerTop;
           const double titleHeight = 24;
           final double historyTopAtRest = initialTitleTop + titleHeight + 12;
@@ -1239,10 +1241,8 @@ class _SidebarState extends State<_Sidebar> {
                       final double shift = pullDown * 0.45;
                       final double scrollUp = math.max(0.0, offset);
                       final double opacity =
-                          (1.0 - (scrollUp / (titleTravelDistance * 0.7))).clamp(
-                            0.0,
-                            1.0,
-                          );
+                          (1.0 - (scrollUp / (titleTravelDistance * 0.7)))
+                              .clamp(0.0, 1.0);
 
                       return IgnorePointer(
                         ignoring: opacity < 0.5,
@@ -1285,7 +1285,14 @@ class _SidebarState extends State<_Sidebar> {
                       child: child,
                     );
                   },
-                  child: const BannerAdWidget(margin: EdgeInsets.zero),
+                  child: BannerAdWidget(
+                    margin: EdgeInsets.zero,
+                    onAdLoadedStateChanged: (loaded) {
+                      if (mounted && _adLoaded != loaded) {
+                        setState(() => _adLoaded = loaded);
+                      }
+                    },
+                  ),
                 ),
               ),
 
