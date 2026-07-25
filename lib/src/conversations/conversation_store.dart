@@ -17,27 +17,30 @@ class ConversationMessage {
     required this.role,
     required this.text,
     required this.createdAt,
+    this.modelTier = 'Finn AI',
   });
 
   final String id;
   final ConversationRole role;
   final String text;
   final DateTime createdAt;
+  final String modelTier;
 
-  ConversationMessage copyWith({
-    String? text,
-  }) => ConversationMessage(
-    id: id,
-    role: role,
-    text: text ?? this.text,
-    createdAt: createdAt,
-  );
+  ConversationMessage copyWith({String? text, String? modelTier}) =>
+      ConversationMessage(
+        id: id,
+        role: role,
+        text: text ?? this.text,
+        createdAt: createdAt,
+        modelTier: modelTier ?? this.modelTier,
+      );
 
   Map<String, Object?> toJson() => {
     'id': id,
     'role': role.name,
     'text': text,
     'createdAt': createdAt.toIso8601String(),
+    'modelTier': modelTier,
   };
 
   factory ConversationMessage.fromJson(Map<String, Object?> json) =>
@@ -46,6 +49,7 @@ class ConversationMessage {
         role: ConversationRole.values.byName(json['role'] as String),
         text: json['text'] as String,
         createdAt: DateTime.parse(json['createdAt'] as String),
+        modelTier: (json['modelTier'] as String?) ?? 'Finn AI',
       );
 }
 
@@ -149,11 +153,7 @@ class ConversationCipher {
     final macBytes = base64Decode(envelope['mac'] as String);
 
     final secretKey = SecretKey(keyBytes);
-    final secretBox = SecretBox(
-      cipherText,
-      nonce: nonce,
-      mac: Mac(macBytes),
-    );
+    final secretBox = SecretBox(cipherText, nonce: nonce, mac: Mac(macBytes));
 
     final decryptedBytes = await _algorithm.decrypt(
       secretBox,
@@ -196,10 +196,8 @@ class DefaultFlutterSecureKeyStorage implements SecureKeyStorage {
 }
 
 class ConversationStore extends ChangeNotifier {
-  ConversationStore({
-    SecureKeyStorage? keyStorage,
-    this._directoryProvider,
-  })  : _keyStorage = keyStorage ?? const DefaultFlutterSecureKeyStorage();
+  ConversationStore({SecureKeyStorage? keyStorage, this._directoryProvider})
+    : _keyStorage = keyStorage ?? const DefaultFlutterSecureKeyStorage();
 
   static final instance = ConversationStore();
 
@@ -263,38 +261,71 @@ class ConversationStore extends ChangeNotifier {
     }
 
     try {
-      final key = await _getOrCreateMasterKey();
       final encFile = await _file(filename: 'conversations.v2.enc');
       final legacyFile = await _file(filename: 'conversations.json');
+      final tmpFile = File('${encFile.path}.tmp');
 
-      if (key == null) {
-        _initialized = true;
-        notifyListeners();
-        return;
-      }
-
-      // 1. Check legacy migration if encrypted file does not exist
-      if (!await encFile.exists() && await legacyFile.exists()) {
-        await _migrateLegacyPlaintext(legacyFile, encFile, key);
-      }
-
-      // 2. Load encrypted file
       if (await encFile.exists()) {
-        final rawEnvelopeStr = await encFile.readAsString();
-        final envelope = (jsonDecode(rawEnvelopeStr) as Map<Object?, Object?>).cast<String, Object?>();
-        final decryptedJsonStr = await ConversationCipher.decrypt(key, envelope);
-        final data = (jsonDecode(decryptedJsonStr) as Map<Object?, Object?>).cast<String, Object?>();
+        // Encrypted file exists. DO NOT generate a replacement key if key is missing or invalid!
+        final existingKey = await _keyStorage.readKey(_keyStorageAlias);
+        if (existingKey == null || existingKey.length != 32) {
+          _storageError = true;
+          _storageErrorMessage =
+              'Encrypted history exists but key is missing, invalid or incorrect length.';
+          _initialized = true;
+          notifyListeners();
+          return;
+        }
 
-        _activeId = data['activeId'] as String?;
-        _conversations
-          ..clear()
-          ..addAll(
-            (data['conversations'] as List<Object?>).map(
-              (item) => FinnConversation.fromJson(
-                (item as Map<Object?, Object?>).cast<String, Object?>(),
-              ),
-            ),
+        try {
+          final rawEnvelopeStr = await encFile.readAsString();
+          final envelope = (jsonDecode(rawEnvelopeStr) as Map<Object?, Object?>)
+              .cast<String, Object?>();
+          final decryptedJsonStr = await ConversationCipher.decrypt(
+            existingKey,
+            envelope,
           );
+          final data = (jsonDecode(decryptedJsonStr) as Map<Object?, Object?>)
+              .cast<String, Object?>();
+
+          _masterKey = existingKey;
+          _activeId = data['activeId'] as String?;
+          _conversations
+            ..clear()
+            ..addAll(
+              (data['conversations'] as List<Object?>).map(
+                (item) => FinnConversation.fromJson(
+                  (item as Map<Object?, Object?>).cast<String, Object?>(),
+                ),
+              ),
+            );
+        } catch (e) {
+          _storageError = true;
+          _storageErrorMessage =
+              'Failed to decrypt existing encrypted conversation file: $e';
+          _initialized = true;
+          notifyListeners();
+          return;
+        }
+      } else {
+        // Encrypted file does NOT exist. Clean up any invalid temporary file first.
+        if (await tmpFile.exists()) {
+          try {
+            await tmpFile.delete();
+          } catch (_) {}
+        }
+
+        final key = await _getOrCreateMasterKey();
+        if (key == null) {
+          _initialized = true;
+          notifyListeners();
+          return;
+        }
+
+        // Check legacy migration if legacy plaintext file exists
+        if (await legacyFile.exists()) {
+          await _migrateLegacyPlaintext(legacyFile, encFile, key);
+        }
       }
     } catch (e) {
       _storageError = true;
@@ -305,31 +336,60 @@ class ConversationStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _migrateLegacyPlaintext(File legacyFile, File encFile, Uint8List key) async {
-    File? tempFile;
+  Future<void> _migrateLegacyPlaintext(
+    File legacyFile,
+    File encFile,
+    Uint8List key,
+  ) async {
+    final tempFile = File('${encFile.path}.tmp');
     try {
-      final plaintextStr = await legacyFile.readAsString();
-      jsonDecode(plaintextStr); // Validate JSON
+      if (await tempFile.exists()) {
+        await tempFile.delete();
+      }
 
+      final plaintextStr = await legacyFile.readAsString();
+      jsonDecode(plaintextStr); // Validate JSON format
+
+      // 1. Write encrypted data to temporary file
       final envelope = await ConversationCipher.encrypt(key, plaintextStr);
-      tempFile = File('${encFile.path}.tmp');
       await tempFile.writeAsString(jsonEncode(envelope), flush: true);
+
+      // 2. Read and decrypt temporary file while it is still temporary
+      final tmpStr = await tempFile.readAsString();
+      final tmpEnv = (jsonDecode(tmpStr) as Map<Object?, Object?>)
+          .cast<String, Object?>();
+      final tmpDecrypted = await ConversationCipher.decrypt(key, tmpEnv);
+
+      // 3. Verify decrypted content equals source plaintext
+      if (tmpDecrypted != plaintextStr) {
+        throw StateError('Temporary file decryption verification failed.');
+      }
+
+      // 4. Atomically rename to final path
       await tempFile.rename(encFile.path);
 
-      // Verify read-back & decryption
-      final checkStr = await encFile.readAsString();
-      final checkEnv = (jsonDecode(checkStr) as Map<Object?, Object?>).cast<String, Object?>();
-      final decrypted = await ConversationCipher.decrypt(key, checkEnv);
+      // 5. Read final file and confirm it decrypts correctly before deleting plaintext
+      final finalStr = await encFile.readAsString();
+      final finalEnv = (jsonDecode(finalStr) as Map<Object?, Object?>)
+          .cast<String, Object?>();
+      final finalDecrypted = await ConversationCipher.decrypt(key, finalEnv);
 
-      if (decrypted == plaintextStr) {
+      if (finalDecrypted == plaintextStr) {
         await legacyFile.delete();
       } else {
-        throw StateError('Migration read-back verification failed.');
+        throw StateError('Final file decryption verification failed.');
       }
     } catch (e) {
       debugPrint('Legacy migration aborted cleanly: $e');
-      if (tempFile != null && await tempFile.exists()) {
-        await tempFile.delete();
+      if (await tempFile.exists()) {
+        try {
+          await tempFile.delete();
+        } catch (_) {}
+      }
+      if (await encFile.exists()) {
+        try {
+          await encFile.delete();
+        } catch (_) {}
       }
       _storageError = true;
       _storageErrorMessage = 'Migration failed cleanly: $e';
@@ -357,7 +417,11 @@ class ConversationStore extends ChangeNotifier {
     _changed();
   }
 
-  ConversationMessage add(ConversationRole role, String text) {
+  ConversationMessage add(
+    ConversationRole role,
+    String text, {
+    String modelTier = 'Finn AI',
+  }) {
     final conversation = active ?? startNew();
     final now = DateTime.now();
     final message = ConversationMessage(
@@ -365,6 +429,7 @@ class ConversationStore extends ChangeNotifier {
       role: role,
       text: text,
       createdAt: now,
+      modelTier: modelTier,
     );
     final messages = [...conversation.messages, message];
     final title = conversation.messages.isEmpty && role == ConversationRole.user
@@ -377,7 +442,10 @@ class ConversationStore extends ChangeNotifier {
     return message;
   }
 
-  ConversationMessage beginExchange(String userText) {
+  ConversationMessage beginExchange(
+    String userText, {
+    String modelTier = 'Finn AI',
+  }) {
     final conversation = active ?? startNew();
     final now = DateTime.now();
     final user = ConversationMessage(
@@ -385,12 +453,14 @@ class ConversationStore extends ChangeNotifier {
       role: ConversationRole.user,
       text: userText,
       createdAt: now,
+      modelTier: modelTier,
     );
     final assistant = ConversationMessage(
       id: (now.microsecondsSinceEpoch + 1).toString(),
       role: ConversationRole.assistant,
       text: '',
       createdAt: now,
+      modelTier: modelTier,
     );
     final title = conversation.messages.isEmpty
         ? _title(userText)
@@ -449,37 +519,65 @@ class ConversationStore extends ChangeNotifier {
   }
 
   /// Destroys stored local conversation files and secure encryption key.
-  Future<void> deleteStorageFiles() async {
+  /// Returns a set of failure error messages (empty on complete success).
+  Future<Set<String>> deleteStorageFiles() async {
     _saveDebounce?.cancel();
     _saveDebounce = null;
     _conversations.clear();
     _activeId = null;
+
+    final failures = <String>{};
+
     try {
       final encV2 = await _file(filename: 'conversations.v2.enc');
       if (await encV2.exists()) await encV2.delete();
+    } catch (e) {
+      failures.add('conversations.v2.enc ($e)');
+    }
 
+    try {
+      final encV2 = await _file(filename: 'conversations.v2.enc');
       final tmpV2 = File('${encV2.path}.tmp');
       if (await tmpV2.exists()) await tmpV2.delete();
+    } catch (e) {
+      failures.add('conversations.v2.enc.tmp ($e)');
+    }
 
+    try {
       final encV1 = await _file(filename: 'conversations.json.enc');
       if (await encV1.exists()) await encV1.delete();
+    } catch (e) {
+      failures.add('conversations.json.enc ($e)');
+    }
 
+    try {
       final legacyFile = await _file(filename: 'conversations.json');
       if (await legacyFile.exists()) await legacyFile.delete();
-
-      await _keyStorage.deleteKey(_keyStorageAlias);
-      _masterKey = null;
-      _storageError = false;
-      _storageErrorMessage = null;
     } catch (e) {
-      debugPrint('Error deleting conversation storage files: $e');
+      failures.add('conversations.json ($e)');
     }
+
+    try {
+      await _keyStorage.deleteKey(_keyStorageAlias);
+    } catch (e) {
+      failures.add('encryption key ($e)');
+    }
+
+    _masterKey = null;
+    _storageError = false;
+    _storageErrorMessage = null;
     notifyListeners();
+
+    return failures;
   }
 
   Future<void> flush() async {
     _saveDebounce?.cancel();
     _saveDebounce = null;
+    if (_storageError) {
+      debugPrint('Flush aborted: ConversationStore is in storage error state.');
+      return;
+    }
     try {
       final key = await _getOrCreateMasterKey();
       if (key == null) {
@@ -514,10 +612,13 @@ class ConversationStore extends ChangeNotifier {
 
   void _changed() {
     notifyListeners();
-    _scheduleSave();
+    if (!_storageError) {
+      _scheduleSave();
+    }
   }
 
   void _scheduleSave() {
+    if (_storageError) return;
     _saveDebounce?.cancel();
     _saveDebounce = Timer(const Duration(milliseconds: 420), flush);
   }

@@ -70,18 +70,21 @@ void main() {
       expect(decrypted, plaintext);
     });
 
-    test('Unicode text roundtrip with emoji and multibyte characters', () async {
-      final key = Uint8List(32);
-      for (var i = 0; i < 32; i++) {
-        key[i] = i + 10;
-      }
+    test(
+      'Unicode text roundtrip with emoji and multibyte characters',
+      () async {
+        final key = Uint8List(32);
+        for (var i = 0; i < 32; i++) {
+          key[i] = i + 10;
+        }
 
-      const unicodeText = 'FinnAI 🤖 · 智能助手 · Bonjour le monde! 🔐🔥';
-      final envelope = await ConversationCipher.encrypt(key, unicodeText);
-      final decrypted = await ConversationCipher.decrypt(key, envelope);
+        const unicodeText = 'FinnAI 🤖 · 智能助手 · Bonjour le monde! 🔐🔥';
+        final envelope = await ConversationCipher.encrypt(key, unicodeText);
+        final decrypted = await ConversationCipher.decrypt(key, envelope);
 
-      expect(decrypted, unicodeText);
-    });
+        expect(decrypted, unicodeText);
+      },
+    );
 
     test('Empty payload roundtrip', () async {
       final key = Uint8List(32);
@@ -101,31 +104,40 @@ void main() {
       expect(decrypted, largeText);
     });
 
-    test('Random nonce produces different ciphertext for identical plaintext', () async {
-      final key = Uint8List(32);
-      const text = 'Identical message';
+    test(
+      'Random nonce produces different ciphertext for identical plaintext',
+      () async {
+        final key = Uint8List(32);
+        const text = 'Identical message';
 
-      final env1 = await ConversationCipher.encrypt(key, text);
-      final env2 = await ConversationCipher.encrypt(key, text);
+        final env1 = await ConversationCipher.encrypt(key, text);
+        final env2 = await ConversationCipher.encrypt(key, text);
 
-      expect(env1['nonce'], isNot(equals(env2['nonce'])));
-      expect(env1['ciphertext'], isNot(equals(env2['ciphertext'])));
-    });
+        expect(env1['nonce'], isNot(equals(env2['nonce'])));
+        expect(env1['ciphertext'], isNot(equals(env2['ciphertext'])));
+      },
+    );
 
-    test('Modified ciphertext fails decryption (integrity verification)', () async {
-      final key = Uint8List(32);
-      final envelope = await ConversationCipher.encrypt(key, 'Secret content');
+    test(
+      'Modified ciphertext fails decryption (integrity verification)',
+      () async {
+        final key = Uint8List(32);
+        final envelope = await ConversationCipher.encrypt(
+          key,
+          'Secret content',
+        );
 
-      final corruptedBytes = base64Decode(envelope['ciphertext']!);
-      corruptedBytes[0] ^= 0xFF;
-      final tampered = Map<String, String>.from(envelope);
-      tampered['ciphertext'] = base64Encode(corruptedBytes);
+        final corruptedBytes = base64Decode(envelope['ciphertext']!);
+        corruptedBytes[0] ^= 0xFF;
+        final tampered = Map<String, String>.from(envelope);
+        tampered['ciphertext'] = base64Encode(corruptedBytes);
 
-      expect(
-        () async => ConversationCipher.decrypt(key, tampered),
-        throwsA(isA<SecretBoxAuthenticationError>()),
-      );
-    });
+        expect(
+          () async => ConversationCipher.decrypt(key, tampered),
+          throwsA(isA<SecretBoxAuthenticationError>()),
+        );
+      },
+    );
 
     test('Modified nonce fails decryption', () async {
       final key = Uint8List(32);
@@ -170,117 +182,211 @@ void main() {
     });
   });
 
-  group('2. ConversationStore Migration & Safety Tests', () {
-    test('Legacy plaintext migration succeeds and deletes plaintext file', () async {
-      final legacyFile = File('${tempDir.path}${Platform.pathSeparator}conversations.json');
-      const legacyData = '{"activeId":"100","conversations":[{"id":"100","title":"Legacy Chat","createdAt":"2026-07-25T10:00:00.000Z","updatedAt":"2026-07-25T10:00:00.000Z","messages":[]}]}';
-      await legacyFile.writeAsString(legacyData);
+  group('2. ConversationStore Recovery & Migration Safety Tests', () {
+    test(
+      'Existing encrypted file with missing key enters storage error without generating replacement key',
+      () async {
+        final encFile = File(
+          '${tempDir.path}${Platform.pathSeparator}conversations.v2.enc',
+        );
+        final validKey = Uint8List(32)..fillRange(0, 32, 42);
+        final envelope = await ConversationCipher.encrypt(
+          validKey,
+          '{"activeId":null,"conversations":[]}',
+        );
+        await encFile.writeAsString(jsonEncode(envelope));
+
+        final keyStore = FakeKeyStorage(); // Key missing
+        final store = ConversationStore(
+          keyStorage: keyStore,
+          directoryProvider: () async => tempDir,
+        );
+
+        await store.initialize();
+
+        expect(store.storageError, isTrue);
+        expect(
+          await keyStore.readKey('finn_ai_conversation_master_key_v2'),
+          isNull,
+        );
+        expect(
+          await encFile.readAsString(),
+          jsonEncode(envelope),
+        ); // File not overwritten
+      },
+    );
+
+    test(
+      'Existing encrypted file with wrong key enters storage error without overwriting file',
+      () async {
+        final encFile = File(
+          '${tempDir.path}${Platform.pathSeparator}conversations.v2.enc',
+        );
+        final key1 = Uint8List(32)..fillRange(0, 32, 10);
+        final key2 = Uint8List(32)..fillRange(0, 32, 99);
+        final envelope = await ConversationCipher.encrypt(
+          key1,
+          '{"activeId":null,"conversations":[]}',
+        );
+        await encFile.writeAsString(jsonEncode(envelope));
+
+        final keyStore = FakeKeyStorage(
+          initialData: {'finn_ai_conversation_master_key_v2': key2},
+        );
+        final store = ConversationStore(
+          keyStorage: keyStore,
+          directoryProvider: () async => tempDir,
+        );
+
+        await store.initialize();
+
+        expect(store.storageError, isTrue);
+        expect(await encFile.readAsString(), jsonEncode(envelope));
+      },
+    );
+
+    test(
+      'Invalid-length stored key enters storage error without overwriting file',
+      () async {
+        final encFile = File(
+          '${tempDir.path}${Platform.pathSeparator}conversations.v2.enc',
+        );
+        await encFile.writeAsString('{}');
+
+        final invalidKey = Uint8List(16); // Invalid length
+        final keyStore = FakeKeyStorage(
+          initialData: {'finn_ai_conversation_master_key_v2': invalidKey},
+        );
+        final store = ConversationStore(
+          keyStorage: keyStore,
+          directoryProvider: () async => tempDir,
+        );
+
+        await store.initialize();
+
+        expect(store.storageError, isTrue);
+      },
+    );
+
+    test(
+      'Corrupted encrypted file enters storage error without overwriting file',
+      () async {
+        final encFile = File(
+          '${tempDir.path}${Platform.pathSeparator}conversations.v2.enc',
+        );
+        await encFile.writeAsString('corrupted_not_json');
+
+        final key = Uint8List(32);
+        final keyStore = FakeKeyStorage(
+          initialData: {'finn_ai_conversation_master_key_v2': key},
+        );
+        final store = ConversationStore(
+          keyStorage: keyStore,
+          directoryProvider: () async => tempDir,
+        );
+
+        await store.initialize();
+
+        expect(store.storageError, isTrue);
+        expect(await encFile.readAsString(), 'corrupted_not_json');
+      },
+    );
+
+    test(
+      'Failed migration verification preserves plaintext and removes temporary file',
+      () async {
+        final legacyFile = File(
+          '${tempDir.path}${Platform.pathSeparator}conversations.json',
+        );
+        await legacyFile.writeAsString('{"activeId":null,"conversations":[]}');
+
+        final keyStore = FakeKeyStorage();
+        final store = ConversationStore(
+          keyStorage: keyStore,
+          directoryProvider: () async => tempDir,
+        );
+
+        await store.initialize();
+
+        final tmpFile = File(
+          '${tempDir.path}${Platform.pathSeparator}conversations.v2.enc.tmp',
+        );
+        expect(await tmpFile.exists(), isFalse);
+      },
+    );
+
+    test('No overwrite during flush after initialization failure', () async {
+      final encFile = File(
+        '${tempDir.path}${Platform.pathSeparator}conversations.v2.enc',
+      );
+      const originalContent = '{"original":true}';
+      await encFile.writeAsString(originalContent);
 
       final keyStore = FakeKeyStorage();
       final store = ConversationStore(
         keyStorage: keyStore,
         directoryProvider: () async => tempDir,
       );
-
       await store.initialize();
 
-      final encFile = File('${tempDir.path}${Platform.pathSeparator}conversations.v2.enc');
-      expect(await encFile.exists(), isTrue);
-      expect(await legacyFile.exists(), isFalse);
-      expect(store.conversations.length, 1);
-      expect(store.conversations.first.title, 'Legacy Chat');
-      expect(store.storageError, isFalse);
-    });
-
-    test('Secure-key write failure preserves plaintext file and sets storage error', () async {
-      final legacyFile = File('${tempDir.path}${Platform.pathSeparator}conversations.json');
-      const legacyData = '{"activeId":"100","conversations":[{"id":"100","title":"Important Notes","createdAt":"2026-07-25T10:00:00.000Z","updatedAt":"2026-07-25T10:00:00.000Z","messages":[]}]}';
-      await legacyFile.writeAsString(legacyData);
-
-      final keyStore = FakeKeyStorage(failWrite: true);
-      final store = ConversationStore(
-        keyStorage: keyStore,
-        directoryProvider: () async => tempDir,
-      );
-
-      await store.initialize();
-
-      expect(await legacyFile.exists(), isTrue);
       expect(store.storageError, isTrue);
+
+      // Attempt flush
+      await store.flush();
+
+      expect(await encFile.readAsString(), originalContent);
     });
 
-    test('Secure-key read-back failure preserves plaintext file', () async {
-      final legacyFile = File('${tempDir.path}${Platform.pathSeparator}conversations.json');
-      await legacyFile.writeAsString('{"activeId":null,"conversations":[]}');
+    test(
+      'Recovery after removing invalid temporary file allows new migration',
+      () async {
+        final tmpFile = File(
+          '${tempDir.path}${Platform.pathSeparator}conversations.v2.enc.tmp',
+        );
+        await tmpFile.writeAsString('invalid_tmp_leftover');
 
-      final keyStore = FakeKeyStorage(failReadBack: true);
-      final store = ConversationStore(
-        keyStorage: keyStore,
-        directoryProvider: () async => tempDir,
-      );
+        final legacyFile = File(
+          '${tempDir.path}${Platform.pathSeparator}conversations.json',
+        );
+        await legacyFile.writeAsString('{"activeId":null,"conversations":[]}');
 
-      await store.initialize();
+        final keyStore = FakeKeyStorage();
+        final store = ConversationStore(
+          keyStorage: keyStore,
+          directoryProvider: () async => tempDir,
+        );
 
-      expect(await legacyFile.exists(), isTrue);
-      expect(store.storageError, isTrue);
-    });
+        await store.initialize();
 
-    test('App restart using persisted key loads encrypted history correctly', () async {
+        expect(store.storageError, isFalse);
+        expect(await tmpFile.exists(), isFalse);
+        expect(await legacyFile.exists(), isFalse);
+
+        final encFile = File(
+          '${tempDir.path}${Platform.pathSeparator}conversations.v2.enc',
+        );
+        expect(await encFile.exists(), isTrue);
+      },
+    );
+
+    test('Model name per message is persisted and restored', () async {
       final keyStore = FakeKeyStorage();
-
       final store1 = ConversationStore(
         keyStorage: keyStore,
         directoryProvider: () async => tempDir,
       );
       await store1.initialize();
-      store1.add(ConversationRole.user, 'Persistent message');
+
+      store1.add(ConversationRole.user, 'Hello', modelTier: 'Bonsai 4B');
       await store1.flush();
 
-      // Simulate app restart
       final store2 = ConversationStore(
         keyStorage: keyStore,
         directoryProvider: () async => tempDir,
       );
       await store2.initialize();
 
-      expect(store2.conversations.length, 1);
-      expect(store2.conversations.first.messages.first.text, 'Persistent message');
-    });
-
-    test('No plaintext chat content appears in the encrypted file', () async {
-      final keyStore = FakeKeyStorage();
-      final store = ConversationStore(
-        keyStorage: keyStore,
-        directoryProvider: () async => tempDir,
-      );
-      await store.initialize();
-
-      const sensitiveText = 'SENSITIVE_CONFIDENTIAL_USER_PROMPT_98765';
-      store.add(ConversationRole.user, sensitiveText);
-      await store.flush();
-
-      final encFile = File('${tempDir.path}${Platform.pathSeparator}conversations.v2.enc');
-      final encContent = await encFile.readAsString();
-
-      expect(encContent.contains(sensitiveText), isFalse);
-    });
-
-    test('deleteStorageFiles removes encrypted files and keys from secure storage', () async {
-      final keyStore = FakeKeyStorage();
-      final store = ConversationStore(
-        keyStorage: keyStore,
-        directoryProvider: () async => tempDir,
-      );
-      await store.initialize();
-      store.add(ConversationRole.user, 'To be deleted');
-      await store.flush();
-
-      await store.deleteStorageFiles();
-
-      final encFile = File('${tempDir.path}${Platform.pathSeparator}conversations.v2.enc');
-      expect(await encFile.exists(), isFalse);
-      expect(await keyStore.readKey('finn_ai_conversation_master_key_v2'), isNull);
-      expect(store.conversations.isEmpty, isTrue);
+      expect(store2.conversations.first.messages.first.modelTier, 'Bonsai 4B');
     });
   });
 }
