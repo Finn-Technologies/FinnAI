@@ -31,6 +31,7 @@ abstract final class FluxIcons {
   static const refresh = HugeIcons.strokeRoundedRefresh01;
   static const loading = HugeIcons.strokeRoundedLoading03;
   static const check = HugeIcons.strokeRoundedCheckmarkCircle02;
+  static const flag = HugeIcons.strokeRoundedFlag01;
 }
 
 abstract final class FigmaAssets {

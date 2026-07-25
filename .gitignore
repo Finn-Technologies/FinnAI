@@ -44,3 +44,15 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 /android/build/
+
+# Android signing secrets & keys
+**/key.properties
+*.jks
+*.keystore
+*.p12
+*.pem
+.env*
+
+# Test artifacts
+test/failures/
+

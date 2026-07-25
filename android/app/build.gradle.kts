@@ -1,12 +1,30 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+val keystorePropertiesFile = rootProject.file("key.properties")
+val keystoreProperties = Properties()
+var hasReleaseSigning = false
+
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+    hasReleaseSigning = true
+} else if (System.getenv("KEYSTORE_PATH") != null) {
+    keystoreProperties["storeFile"] = System.getenv("KEYSTORE_PATH")
+    keystoreProperties["storePassword"] = System.getenv("KEYSTORE_PASSWORD")
+    keystoreProperties["keyAlias"] = System.getenv("KEY_ALIAS")
+    keystoreProperties["keyPassword"] = System.getenv("KEY_PASSWORD")
+    hasReleaseSigning = true
+}
+
 android {
-    namespace = "com.example.flux_local"
-    compileSdk = 35
+    namespace = "com.abhiflex.finnai"
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -15,28 +33,48 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.flux_local"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
-        // Native llama.cpp package requires Android 8.0 for modern NDK APIs
-        // and 16 KB page-size-safe binaries.
+        applicationId = "com.abhiflex.finnai"
         minSdk = 26
-        targetSdk = flutter.targetSdkVersion
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
 
         ndk {
-            // Bonsai's optimized mobile kernels currently target 64-bit ARM.
+            // Bonsai's optimized mobile kernels target 64-bit ARM.
             abiFilters += listOf("arm64-v8a")
+        }
+    }
+
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+                storeFile = file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String
+            }
         }
     }
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            } else {
+                // Ensure release build never falls back quietly to debug signing certificate.
+                signingConfig = null
+            }
+        }
+    }
+}
+
+gradle.taskGraph.whenReady {
+    if (hasTask(":app:assembleRelease") || hasTask(":app:bundleRelease")) {
+        if (!hasReleaseSigning) {
+            throw GradleException(
+                "Release signing configuration is missing! " +
+                "Please populate 'android/key.properties' or set KEYSTORE_PATH, KEYSTORE_PASSWORD, KEY_ALIAS, and KEY_PASSWORD environment variables."
+            )
         }
     }
 }

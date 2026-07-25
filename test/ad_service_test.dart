@@ -1,24 +1,25 @@
+import 'package:finn_ai/src/ads/ad_service.dart';
+import 'package:finn_ai/src/ads/banner_ad_widget.dart';
+import 'package:finn_ai/src/privacy/ad_consent_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flux_local/src/ads/ad_service.dart';
-import 'package:flux_local/src/ads/banner_ad_widget.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  group('Ad Service & AdMob Component Tests', () {
-    test('AdService initializes without throwing', () async {
-      final adService = AdService.instance;
-      await adService.initialize();
-      expect(adService.isInitialized, true);
+  group('Ad Service & AdMob Consent Tests', () {
+    test('AdConsentService provides default initial state', () {
+      final consentService = AdConsentService.instance;
+      expect(consentService.canRequestAds, false);
+      expect(consentService.isPrivacyOptionsRequired, false);
     });
 
-    test('AdService provides test unit IDs', () {
+    test('AdService provides environment-aware banner unit IDs', () {
       expect(AdService.bannerAdUnitId, isA<String>());
-      expect(AdService.interstitialAdUnitId, isA<String>());
+      expect(AdService.settingsBannerAdUnitId, isA<String>());
     });
 
-    testWidgets('BannerAdWidget renders cleanly', (WidgetTester tester) async {
+    testWidgets('BannerAdWidget collapses cleanly when consent is not granted', (WidgetTester tester) async {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
@@ -29,6 +30,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(BannerAdWidget), findsOneWidget);
+      // When ad consent is not granted, height/width are collapsed (SizedBox.shrink)
+      final size = tester.getSize(find.byType(BannerAdWidget));
+      expect(size.width, 0);
+      expect(size.height, 0);
     });
   });
 }

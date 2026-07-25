@@ -576,190 +576,108 @@ class _AutomaticInstallPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final inference = BonsaiInference.instance;
-    final profile = inference.deviceProfile;
-    final plan = inference.plan;
     final model = models.last;
-    final ram = profile?.totalRamBytes;
-    final ramLabel = ram == null
-        ? 'Device memory'
-        : '${(ram / 1000000000).toStringAsFixed(1)} GB RAM';
     final reduced = MediaQuery.disableAnimationsOf(context);
     final effectiveProgress = ready ? 1.0 : progress.clamp(.02, .98);
-
     final isDark = FluxColors.isDark(context);
-    final cardBg = ready
-        ? (isDark ? const Color(0xFF1E2E1E) : const Color(0xFFE7F3E4))
-        : (isDark ? const Color(0xFF18181B) : const Color(0xFFF0F3EF));
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Container(
-          height: 146,
-          padding: const EdgeInsets.fromLTRB(15, 14, 15, 13),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(30),
-            color: cardBg,
-            border: Border.all(color: FluxColors.lineOf(context)),
-          ),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  SizedBox.square(
-                    dimension: 50,
-                    child: Stack(
-                      alignment: Alignment.center,
+    return FluxGlass(
+      radius: 24,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 22),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnimatedSwitcher(
+              duration: reduced
+                  ? Duration.zero
+                  : const Duration(milliseconds: 360),
+              transitionBuilder: (child, animation) =>
+                  ScaleTransition(scale: animation, child: child),
+              child: FluxIcon(
+                key: ValueKey('${ready}_icon'),
+                icon: ready ? FluxIcons.check : FluxIcons.chip,
+                size: 28,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              model.name,
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              ready
+                  ? 'Installed on this device'
+                  : '${model.parameterLabel} · ${model.sizeLabel}',
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: FluxColors.mutedOf(context),
+              ),
+            ),
+            const SizedBox(height: 12),
+            AnimatedSwitcher(
+              duration: reduced
+                  ? Duration.zero
+                  : const Duration(milliseconds: 320),
+              switchInCurve: Curves.easeOutCubic,
+              child: error != null
+                  ? Row(
+                      key: const ValueKey('error'),
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        CircularProgressIndicator(
-                          value: effectiveProgress,
-                          strokeWidth: 3,
-                          strokeCap: StrokeCap.round,
-                          backgroundColor: isDark
-                              ? Colors.white.withValues(alpha: .07)
-                              : Colors.black.withValues(alpha: .07),
-                          color: isDark ? FluxColors.darkInk : FluxColors.ink,
+                        Flexible(
+                          child: Text(
+                            error!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.labelMedium
+                                ?.copyWith(color: FluxColors.mutedOf(context)),
+                          ),
                         ),
-                        AnimatedSwitcher(
-                          duration: reduced
-                              ? Duration.zero
-                              : const Duration(milliseconds: 360),
-                          transitionBuilder: (child, animation) =>
-                              ScaleTransition(scale: animation, child: child),
-                          child: FluxIcon(
-                            key: ValueKey(ready),
-                            icon: ready ? FluxIcons.check : FluxIcons.chip,
-                            size: 21,
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: onRetry,
+                          child: Text(
+                            'Retry',
+                            style: Theme.of(context).textTheme.labelMedium
+                                ?.copyWith(color: FluxColors.inkOf(context)),
                           ),
                         ),
                       ],
-                    ),
-                  ),
-                  const SizedBox(width: 13),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          model.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          ready
-                              ? 'Installed and verified on this device'
-                              : 'Best match for this device · ${model.sizeLabel}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.labelMedium
-                              ?.copyWith(color: FluxColors.mutedOf(context)),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const Spacer(),
-              Row(
-                children: [
-                  _InstallFact(label: profile?.processorLabel ?? 'Processor'),
-                  const SizedBox(width: 6),
-                  _InstallFact(label: ramLabel),
-                  const SizedBox(width: 6),
-                  _InstallFact(label: '${plan?.contextSize ?? 2048} ctx'),
-                ],
-              ),
-              const SizedBox(height: 11),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(99),
-                child: LinearProgressIndicator(
-                  value: effectiveProgress,
-                  minHeight: 5,
-                  color: isDark ? FluxColors.darkInk : FluxColors.ink,
-                  backgroundColor: isDark
-                      ? Colors.white.withValues(alpha: .18)
-                      : Colors.white.withValues(alpha: .72),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 10),
-        SizedBox(
-          height: 42,
-          child: AnimatedSwitcher(
-            duration: reduced
-                ? Duration.zero
-                : const Duration(milliseconds: 320),
-            switchInCurve: Curves.easeOutCubic,
-            child: error != null
-                ? Row(
-                    key: const ValueKey('error'),
-                    children: [
-                      Expanded(
-                        child: Text(
-                          error!,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.labelMedium
-                              ?.copyWith(color: FluxColors.mutedOf(context)),
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: onRetry,
-                        child: const Text('Retry'),
-                      ),
-                    ],
-                  )
-                : Align(
-                    key: ValueKey(ready),
-                    alignment: Alignment.topCenter,
-                    child: Text(
+                    )
+                  : Text(
+                      key: ValueKey(ready),
                       ready
-                          ? 'Ready to continue'
+                          ? 'Model ready'
                           : started
                           ? '$status · ${(effectiveProgress * 100).round()}%'
                           : 'Finding the best model for this device…',
-                      maxLines: 2,
+                      maxLines: 1,
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.labelMedium?.copyWith(
                         color: FluxColors.mutedOf(context),
                       ),
                     ),
-                  ),
-          ),
+            ),
+            if (!ready && started) ...[
+              const SizedBox(height: 14),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(99),
+                child: LinearProgressIndicator(
+                  value: effectiveProgress,
+                  minHeight: 4,
+                  color: isDark ? FluxColors.darkInk : FluxColors.ink,
+                  backgroundColor: isDark
+                      ? Colors.white.withValues(alpha: .12)
+                      : Colors.black.withValues(alpha: .08),
+                ),
+              ),
+            ],
+          ],
         ),
-      ],
+      ),
     );
   }
-}
-
-class _InstallFact extends StatelessWidget {
-  const _InstallFact({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) => Expanded(
-    child: Container(
-      height: 24,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: .7),
-        borderRadius: BorderRadius.circular(99),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 7),
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(label, style: Theme.of(context).textTheme.labelMedium),
-        ),
-      ),
-    ),
-  );
 }
 
 class _Precautions extends StatelessWidget {
@@ -768,10 +686,10 @@ class _Precautions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = const [
-      'No data leaves your phone',
-      'Works completely offline',
+      'On-device AI prompt processing',
+      'Offline chat after model download',
+      'Encrypted conversation storage',
       'Designed for battery efficiency',
-      'Encrypted local storage',
     ];
     return LayoutBuilder(
       builder: (context, constraints) {

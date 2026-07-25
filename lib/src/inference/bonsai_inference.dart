@@ -291,6 +291,12 @@ class BonsaiInference extends ChangeNotifier {
     _setStatus(InferencePhase.idle, 'Model removed');
   }
 
+  Future<void> removeAllModels() async {
+    for (final model in bonsaiModels) {
+      await remove(model);
+    }
+  }
+
   Stream<String> generateReply(
     String prompt, {
     required String conversationId,

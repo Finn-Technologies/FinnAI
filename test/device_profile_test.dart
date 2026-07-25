@@ -1,5 +1,5 @@
-import 'package:flux_local/src/inference/bonsai_inference.dart';
-import 'package:flux_local/src/inference/device_profile.dart';
+import 'package:finn_ai/src/inference/bonsai_inference.dart';
+import 'package:finn_ai/src/inference/device_profile.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

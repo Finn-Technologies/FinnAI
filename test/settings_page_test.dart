@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flux_local/src/settings/settings_page.dart';
+import 'package:finn_ai/src/settings/settings_page.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

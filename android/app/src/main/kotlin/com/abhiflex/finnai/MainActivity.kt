@@ -1,4 +1,4 @@
-package com.example.flux_local
+package com.abhiflex.finnai
 
 import android.app.ActivityManager
 import android.content.Context
