@@ -1,11 +1,14 @@
-// Integration test: model routing + persistence + report payload
+// Tests: model-tier persistence and report metadata propagation
 //
-// Proves that:
-// 1. When a routed generation sets lastGeneratingModel to the *target* model,
-//    updateMessage() stamps the correct modelTier on the assistant message.
-// 2. After flush() + reload, the persisted modelTier survives a cold start.
-// 3. The ReportDialog receives the actual generating model, not the default
-//    'Finn AI' string or whichever model is currently selected.
+// These tests operate entirely through ConversationStore (updateMessage +
+// flush + reload). They do NOT invoke BonsaiInference.generateReply or any
+// real on-device model. They verify that:
+//   1. updateMessage() stamps the caller-supplied modelTier on the assistant
+//      message and that value is distinct from the default 'Finn AI'.
+//   2. The stamped modelTier survives flush() → cold reload from the encrypted
+//      store.
+//   3. The reloaded modelTier (the value that ReportDialog receives) equals the
+//      value set at generation time, not the currently selected model.
 import 'dart:io';
 
 import 'package:finn_ai/src/conversations/conversation_store.dart';
@@ -45,9 +48,9 @@ void main() {
     }
   });
 
-  group('Model Routing Integration Tests', () {
+  group('Model-tier persistence and report metadata propagation', () {
     test(
-      'Routed generation stamps the target model tier — not default or selected model — on the assistant message',
+      'updateMessage stamps the specified modelTier — not default or previously selected — on the assistant message',
       () async {
         final store = ConversationStore(
           keyStorage: keyStore,
@@ -106,7 +109,7 @@ void main() {
     );
 
     test(
-      'Lite-model (no routing) stamps Lite tier on the assistant message',
+      'Lite-tier stamp (Bonsai 4B) is persisted and distinct from Pro-tier (Bonsai 8B)',
       () async {
         final store = ConversationStore(
           keyStorage: keyStore,
@@ -133,7 +136,7 @@ void main() {
     );
 
     test(
-      'Report dialog modelTier comes from the stored message, not currently selected model',
+      'After cold reload, reloaded modelTier is used as report metadata — not the currently selected model',
       () async {
         // Write a conversation with a known Pro-tier assistant message directly.
         final store = ConversationStore(
