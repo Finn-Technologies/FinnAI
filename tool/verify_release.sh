@@ -6,34 +6,57 @@ echo "   FinnAI Release Readiness Verification Script      "
 echo "======================================================"
 
 BLOCKER_COUNT=0
+
+# Files/directories created by this script and removed during cleanup.
+# KEY_PROPS_BAK is intentionally NOT added here — it is managed separately
+# in the cleanup function so that restoration happens in the right order
+# before the backup itself is removed.
 CREATED_FILES=()
 
-# ── Unique backup so we never collide with a pre-existing .bak file ──────────
+# ── key.properties lifecycle tracking ────────────────────────────────────────
 KEY_PROPS="android/key.properties"
-KEY_PROPS_BAK=""   # filled in only if we actually back up
 
+# Path to the unique backup of the original key.properties (set only when a
+# pre-existing key.properties was found at startup).
+KEY_PROPS_BAK=""
+
+# True when this script wrote a temporary key.properties that did not exist
+# before; false when the file already existed (and was merely backed up).
+SCRIPT_CREATED_KEY_PROPS=false
+
+# ── cleanup ───────────────────────────────────────────────────────────────────
 cleanup() {
   echo "Performing verification cleanup..."
-  if [ ${#CREATED_FILES[@]} -gt 0 ]; then
-    for file in "${CREATED_FILES[@]}"; do
-      if [ -e "$file" ]; then
-        rm -rf "$file"
-      fi
-    done
+
+  # 1. Remove the temporary key.properties that this script generated
+  #    (only when this script created it; never touch a pre-existing file here).
+  if [ "$SCRIPT_CREATED_KEY_PROPS" = "true" ] && [ -f "$KEY_PROPS" ]; then
+    rm -f "$KEY_PROPS"
   fi
-  # Restore original key.properties from our unique backup
+
+  # 2. Restore the original key.properties from its unique backup.
   if [ -n "$KEY_PROPS_BAK" ] && [ -f "$KEY_PROPS_BAK" ]; then
     mv "$KEY_PROPS_BAK" "$KEY_PROPS"
+    echo "Restored original android/key.properties."
   fi
+
+  # 3. Remove other files/directories created during this run
+  #    (temp JKS, extracted APK dirs, etc.).
+  for file in "${CREATED_FILES[@]}"; do
+    if [ -e "$file" ]; then
+      rm -rf "$file"
+    fi
+  done
 }
 trap cleanup EXIT
 
-# Backup existing key.properties with a unique name so we never overwrite
-# a pre-existing .bak file created by another process or a prior run.
+# ── Backup pre-existing key.properties with a unique name ────────────────────
 if [ -f "$KEY_PROPS" ]; then
+  # mktemp guarantees uniqueness — no collision with a pre-existing .bak file.
   KEY_PROPS_BAK=$(mktemp "${KEY_PROPS}.bak.XXXXXX")
   cp "$KEY_PROPS" "$KEY_PROPS_BAK"
-  CREATED_FILES+=("$KEY_PROPS_BAK")
+  # KEY_PROPS_BAK is removed only AFTER successful restoration (inside cleanup).
+  echo "Backed up existing android/key.properties to $KEY_PROPS_BAK"
 fi
 
 # 1. Format verification
@@ -79,8 +102,8 @@ FINN_TERMS_URL="${FINN_TERMS_URL:-}"
 FINN_SUPPORT_EMAIL="${FINN_SUPPORT_EMAIL:-}"
 FINN_REPORT_ENDPOINT="${FINN_REPORT_ENDPOINT:-}"
 
-# Build both APK and AAB passing configuration values via --dart-define so the
-# compiled binary actually contains them rather than empty defaults.
+# All four production values are passed as --dart-define flags so the compiled
+# binary contains them rather than empty defaults.
 DART_DEFINES=(
   "--dart-define=FINN_PRIVACY_POLICY_URL=${FINN_PRIVACY_POLICY_URL}"
   "--dart-define=FINN_TERMS_URL=${FINN_TERMS_URL}"
@@ -89,19 +112,23 @@ DART_DEFINES=(
 )
 
 if [ "$PROD_BUILD" = "true" ]; then
-  if [ -z "$FINN_PRIVACY_POLICY_URL" ] || [ -z "$FINN_TERMS_URL" ] || \
-     [ -z "$FINN_SUPPORT_EMAIL" ] || [ -z "$FINN_REPORT_ENDPOINT" ]; then
+  MISSING=()
+  [ -z "$FINN_PRIVACY_POLICY_URL" ] && MISSING+=("FINN_PRIVACY_POLICY_URL")
+  [ -z "$FINN_TERMS_URL" ]          && MISSING+=("FINN_TERMS_URL")
+  [ -z "$FINN_SUPPORT_EMAIL" ]      && MISSING+=("FINN_SUPPORT_EMAIL")
+  [ -z "$FINN_REPORT_ENDPOINT" ]    && MISSING+=("FINN_REPORT_ENDPOINT")
+
+  if [ "${#MISSING[@]}" -gt 0 ]; then
     echo "FAIL: Production build missing required configuration variables:"
-    echo "  FINN_PRIVACY_POLICY_URL: ${FINN_PRIVACY_POLICY_URL:-MISSING}"
-    echo "  FINN_TERMS_URL: ${FINN_TERMS_URL:-MISSING}"
-    echo "  FINN_SUPPORT_EMAIL: ${FINN_SUPPORT_EMAIL:-MISSING}"
-    echo "  FINN_REPORT_ENDPOINT: ${FINN_REPORT_ENDPOINT:-MISSING}"
+    for var in "${MISSING[@]}"; do
+      echo "  $var: MISSING"
+    done
     BLOCKER_COUNT=$((BLOCKER_COUNT + 1))
     exit 1
   fi
 fi
 
-# 6. Generate Temporary CI Release Signing Key and Build Release Artifacts
+# 6. Generate Temporary CI Signing Key and Build Release Artifacts
 echo "[6/8] Creating temporary CI signing key and building Release APK & AAB..."
 
 KEYTOOL_BIN="keytool"
@@ -109,15 +136,21 @@ if [ -f "/Applications/Android Studio.app/Contents/jbr/Contents/Home/bin/keytool
   KEYTOOL_BIN="/Applications/Android Studio.app/Contents/jbr/Contents/Home/bin/keytool"
 fi
 
-# Create unique temp keystore inside android/app/ so storeFile relative path resolves correctly
+# Unique keystore inside android/app/ so the storeFile relative path resolves.
 TEMP_JKS=$(mktemp "android/app/release-temp-verify.XXXXXX.jks")
-CREATED_FILES+=("$TEMP_JKS" "$KEY_PROPS")
+CREATED_FILES+=("$TEMP_JKS")
 TEMP_JKS_BASENAME=$(basename "$TEMP_JKS")
 
 "$KEYTOOL_BIN" -genkey -v -keystore "$TEMP_JKS" \
   -keyalg RSA -keysize 2048 -validity 1 \
   -alias finn_ci_verify -dname "CN=CI, OU=FinnAI, O=FinnAI, L=SF, S=CA, C=US" \
   -storepass verifypass -keypass verifypass >/dev/null 2>&1
+
+# Write a temporary key.properties. Track whether this script created it so
+# cleanup knows whether to remove it before restoring the backup.
+if [ ! -f "$KEY_PROPS" ]; then
+  SCRIPT_CREATED_KEY_PROPS=true
+fi
 
 cat <<EOF > "$KEY_PROPS"
 storePassword=verifypass
@@ -144,18 +177,38 @@ if ! flutter build appbundle --release "${DART_DEFINES[@]}"; then
 fi
 echo "PASSED: Release App Bundle (AAB) built successfully."
 
-# Verify dart-defines actually reached the compiled APK by checking the values
-# are embedded as UTF-8 strings. Only run when non-empty so this is meaningful.
-if [ -n "$FINN_PRIVACY_POLICY_URL" ]; then
-  if strings "$RELEASE_APK" 2>/dev/null | grep -qF "$FINN_PRIVACY_POLICY_URL"; then
-    echo "PASSED: FINN_PRIVACY_POLICY_URL found embedded in release APK."
-  else
-    echo "FAIL: FINN_PRIVACY_POLICY_URL NOT found in release APK — dart-define may not have been passed correctly."
-    BLOCKER_COUNT=$((BLOCKER_COUNT + 1))
-  fi
-fi
+# Verify ALL FOUR dart-define values are embedded in the release APK.
+# Only check values that were actually set (a CI job may omit them when
+# running in non-production mode; that is not a blocker in itself).
+DEFINE_NAMES=(
+  "FINN_PRIVACY_POLICY_URL"
+  "FINN_TERMS_URL"
+  "FINN_SUPPORT_EMAIL"
+  "FINN_REPORT_ENDPOINT"
+)
+DEFINE_VALUES=(
+  "$FINN_PRIVACY_POLICY_URL"
+  "$FINN_TERMS_URL"
+  "$FINN_SUPPORT_EMAIL"
+  "$FINN_REPORT_ENDPOINT"
+)
 
-# 7. zipalign — missing binary is a failure, not a notice
+for i in "${!DEFINE_NAMES[@]}"; do
+  name="${DEFINE_NAMES[$i]}"
+  val="${DEFINE_VALUES[$i]}"
+  if [ -n "$val" ]; then
+    if strings "$RELEASE_APK" 2>/dev/null | grep -qF "$val"; then
+      echo "PASSED: $name found embedded in release APK."
+    else
+      echo "FAIL: $name NOT found in release APK — dart-define was not passed correctly."
+      BLOCKER_COUNT=$((BLOCKER_COUNT + 1))
+    fi
+  else
+    echo "SKIP: $name is empty; embedding check skipped."
+  fi
+done
+
+# 7. zipalign — missing binary is a hard failure, not a notice
 echo "[7/8] Verifying APK zipalign 16 KB boundary..."
 
 ZIPALIGN_BIN=""
@@ -180,8 +233,7 @@ else
   BLOCKER_COUNT=$((BLOCKER_COUNT + 1))
 fi
 
-# 8. Python ELF parser — run against EVERY .so in the packaged APK lib/arm64-v8a/
-# (not only the source AAR). This catches any additional bundled libraries.
+# 8. Python ELF parser — ALL .so files in the packaged release APK
 echo "[8/8] Verifying 16 KB page alignment of ALL packaged native libraries..."
 
 APK_UNZIP_TMP=$(mktemp -d)
@@ -214,12 +266,12 @@ for so_path in sorted(so_files):
             has_blocker = True
             continue
 
-        e_phoff    = struct.unpack('<Q', header[32:40])[0]
+        e_phoff     = struct.unpack('<Q', header[32:40])[0]
         e_phentsize = struct.unpack('<H', header[54:56])[0]
-        e_phnum    = struct.unpack('<H', header[56:58])[0]
+        e_phnum     = struct.unpack('<H', header[56:58])[0]
 
         f.seek(e_phoff)
-        min_align = None
+        min_align  = None
         load_count = 0
         for _ in range(e_phnum):
             ph = f.read(e_phentsize)
