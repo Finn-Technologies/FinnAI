@@ -348,7 +348,8 @@ class ConversationStore extends ChangeNotifier {
       }
 
       final plaintextStr = await legacyFile.readAsString();
-      jsonDecode(plaintextStr); // Validate JSON format
+      final parsedData = (jsonDecode(plaintextStr) as Map<Object?, Object?>)
+          .cast<String, Object?>(); // Validate JSON format
 
       // 1. Write encrypted data to temporary file
       final envelope = await ConversationCipher.encrypt(key, plaintextStr);
@@ -376,6 +377,19 @@ class ConversationStore extends ChangeNotifier {
 
       if (finalDecrypted == plaintextStr) {
         await legacyFile.delete();
+
+        // Immediately load migrated conversations into memory so they are visible and not overwritten
+        _masterKey = key;
+        _activeId = parsedData['activeId'] as String?;
+        _conversations
+          ..clear()
+          ..addAll(
+            (parsedData['conversations'] as List<Object?>).map(
+              (item) => FinnConversation.fromJson(
+                (item as Map<Object?, Object?>).cast<String, Object?>(),
+              ),
+            ),
+          );
       } else {
         throw StateError('Final file decryption verification failed.');
       }
@@ -479,6 +493,7 @@ class ConversationStore extends ChangeNotifier {
   void updateMessage(
     String id,
     String text, {
+    String? modelTier,
     bool persistSoon = false,
     bool notify = true,
   }) {
@@ -487,7 +502,10 @@ class ConversationStore extends ChangeNotifier {
     final index = conversation.messages.indexWhere((item) => item.id == id);
     if (index < 0) return;
     final messages = [...conversation.messages];
-    messages[index] = messages[index].copyWith(text: text);
+    messages[index] = messages[index].copyWith(
+      text: text,
+      modelTier: modelTier ?? messages[index].modelTier,
+    );
     _replace(
       conversation.copyWith(updatedAt: DateTime.now(), messages: messages),
     );

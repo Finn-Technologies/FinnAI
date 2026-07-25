@@ -369,6 +369,38 @@ void main() {
       },
     );
 
+    test(
+      'Migrated conversations are visible immediately after initialize() and preserved during same launch edits',
+      () async {
+        final legacyFile = File(
+          '${tempDir.path}${Platform.pathSeparator}conversations.json',
+        );
+        const legacyPayload =
+            '{"activeId":"conv_1","conversations":[{"id":"conv_1","title":"Migrated Chat","createdAt":"2026-07-25T12:00:00.000Z","updatedAt":"2026-07-25T12:00:00.000Z","messages":[{"id":"m1","role":"user","text":"Hello","createdAt":"2026-07-25T12:00:00.000Z","modelTier":"Finn AI"}]}]}';
+        await legacyFile.writeAsString(legacyPayload);
+
+        final keyStore = FakeKeyStorage();
+        final store = ConversationStore(
+          keyStorage: keyStore,
+          directoryProvider: () async => tempDir,
+        );
+
+        await store.initialize();
+
+        expect(store.conversations.length, 1);
+        expect(store.conversations.first.title, 'Migrated Chat');
+        expect(store.active?.id, 'conv_1');
+
+        // Adding a message appends to migrated conversation rather than overwriting
+        store.add(ConversationRole.user, 'New message', modelTier: 'Bonsai 4B');
+        await store.flush();
+
+        expect(store.conversations.first.messages.length, 2);
+        expect(store.conversations.first.messages.first.text, 'Hello');
+        expect(store.conversations.first.messages.last.text, 'New message');
+      },
+    );
+
     test('Model name per message is persisted and restored', () async {
       final keyStore = FakeKeyStorage();
       final store1 = ConversationStore(
