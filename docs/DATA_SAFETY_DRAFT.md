@@ -1,17 +1,17 @@
 # Google Play Data Safety Section Draft
 
-Use these exact answers when completing the **Data Safety** questionnaire in Google Play Console.
+Use these answers when completing the **Data Safety** questionnaire in Google Play Console.
 
 ---
 
 ## 1. Data Collection and Security Overview
 
 - **Does your app collect or share any of the required user data types?**
-  - **Yes** (App collects advertising IDs via Google Mobile Ads SDK / UMP consent SDK, and user-submitted reports if submitted).
+  - **Yes** (App collects advertising IDs via Google Mobile Ads SDK / UMP consent SDK, and optional user-submitted reports when a production endpoint is configured).
 - **Is all of the user data collected by your app encrypted in transit?**
   - **Yes** (All network traffic uses HTTPS/TLS 1.3).
 - **Do you provide a way for users to request that their data be deleted?**
-  - **Yes** (In-app "Delete All Local Data" button in Settings immediately purges all encrypted local databases, keys, models, and cache files).
+  - **Yes** (In-app "Delete All Local Data" feature in Settings attempts to purge local databases, encryption keys, downloaded models, and cache files, returning detailed results).
 
 ---
 
@@ -27,8 +27,8 @@ Use these exact answers when completing the **Data Safety** questionnaire in Goo
 
 ### C. App Activity & User Reports (App Info & Performance)
 - **Data Type**: App Interactions / User Reports (Optional)
-- **Collected**: **Yes** (Only when user explicitly taps "Report response" in chat).
-- **Shared**: No (Sent directly to developer report endpoint).
+- **Collected**: **Yes** (Only when user explicitly taps "Report response" in chat and a reporting endpoint is configured).
+- **Shared**: No.
 - **Ephemeral**: No.
 - **Required or Optional**: **Optional** (User-initiated).
 - **Purposes**: Developer Communications, App Functionality, Fraud Prevention & Safety.
@@ -45,6 +45,6 @@ Use these exact answers when completing the **Data Safety** questionnaire in Goo
 
 ## 3. Privacy Policy URL
 ```text
-https://abhiflex.github.io/finnai/legal/PRIVACY_POLICY.html
+Configured via compile-time argument: FINN_PRIVACY_POLICY_URL
 ```
-*(Replace with your live hosted GitHub Pages / domain URL before publishing).*
+*(Provide hosted HTTPS URL to Google Play Console prior to production submission).*

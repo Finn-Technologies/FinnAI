@@ -19,12 +19,13 @@ You agree not to use FinnAI to:
 - Generate malicious code, malware, or cyber-attack vectors.
 - Engage in fraudulent schemes, impersonation, or credential theft.
 
-## 4. Intellectually Property & Licences
+## 4. Intellectual Property & Licences
 - FinnAI application software is protected by intellectual property laws.
 - Third-party components, native inference engines (`llama.cpp`, `llama_cpp_dart`), and AI models (Prism ML Bonsai) are licensed under their respective open-source licenses. See **Open-Source Licences** in app Settings or `THIRD_PARTY_NOTICES.md`.
 
 ## 5. Limitation of Liability
 To the maximum extent permitted by law, FinnAI shall not be liable for any indirect, incidental, special, or consequential damages resulting from your use of the application or reliance on AI-generated outputs.
 
-## 6. Contact
-For support or inquiries regarding these Terms, contact `support@finnai.app`.
+## 6. Contact & Terms Availability
+- **Public Terms URL**: These terms are published at `FINN_TERMS_URL` when configured by the app provider.
+- **Support Contact**: Contact support via `FINN_SUPPORT_EMAIL` when configured by the app provider.

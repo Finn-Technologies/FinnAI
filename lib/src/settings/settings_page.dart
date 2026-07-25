@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../ads/ad_service.dart';
 import '../ads/banner_ad_widget.dart';
@@ -189,7 +190,9 @@ class _SettingsPageState extends State<SettingsPage> {
                 if (result.isSuccess) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: const Text('All local data deleted. Returning to onboarding.'),
+                      content: const Text(
+                        'All local data deleted. Returning to onboarding.',
+                      ),
                       behavior: SnackBarBehavior.floating,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -197,7 +200,9 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
                   );
                   Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute<void>(builder: (_) => const FinnBootstrap()),
+                    MaterialPageRoute<void>(
+                      builder: (_) => const FinnBootstrap(),
+                    ),
                     (route) => false,
                   );
                 } else {
@@ -260,7 +265,6 @@ class _SettingsPageState extends State<SettingsPage> {
 
             const double pageHorizontalInset = 20;
             const double headerHeight = 34;
-            const double adBannerHeight = 50;
             final double headerTop = 71 * sy;
             final double initialTitleTop = headerTop + headerHeight + 10 * sy;
             final double pinnedTitleTop = headerTop;
@@ -312,19 +316,12 @@ class _SettingsPageState extends State<SettingsPage> {
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: pageHorizontalInset,
                                   ),
-                                  child: SizedBox(
-                                    height: adBannerHeight,
-                                    child: BannerAdWidget(
-                                      margin: EdgeInsets.zero,
-                                      adUnitId:
-                                          AdService.settingsBannerAdUnitId,
-                                    ),
+                                  child: BannerAdWidget(
+                                    margin: EdgeInsets.zero,
+                                    adUnitId: AdService.settingsBannerAdUnitId,
                                   ),
                                 ),
                               ),
-                            ),
-                            SliverToBoxAdapter(
-                              child: const SizedBox(height: 14),
                             ),
 
                             // ── AI MODELS section ──
@@ -359,8 +356,8 @@ class _SettingsPageState extends State<SettingsPage> {
                                                     height: 20,
                                                     child:
                                                         CircularProgressIndicator(
-                                                      strokeWidth: 2,
-                                                    ),
+                                                          strokeWidth: 2,
+                                                        ),
                                                   ),
                                                 ),
                                               )
@@ -376,8 +373,8 @@ class _SettingsPageState extends State<SettingsPage> {
                                                         height: 1,
                                                         color:
                                                             FluxColors.lineOf(
-                                                          context,
-                                                        ),
+                                                              context,
+                                                            ),
                                                       ),
                                                     _ModelRow(
                                                       state: states[i],
@@ -499,7 +496,9 @@ class _SettingsPageState extends State<SettingsPage> {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      const _SectionHeader(label: 'PRIVACY & LEGAL'),
+                                      const _SectionHeader(
+                                        label: 'PRIVACY & LEGAL',
+                                      ),
                                       const SizedBox(height: 10),
                                       FluxGlass(
                                         radius: 16,
@@ -510,27 +509,57 @@ class _SettingsPageState extends State<SettingsPage> {
                                                 icon: FluxIcons.security,
                                                 label: 'Privacy choices',
                                                 onTap: () {
-                                                  AdConsentService.instance.showPrivacyOptionsForm();
+                                                  AdConsentService.instance
+                                                      .showPrivacyOptionsForm();
                                                 },
                                               ),
                                               Divider(
                                                 height: 1,
-                                                color: FluxColors.lineOf(context),
+                                                color: FluxColors.lineOf(
+                                                  context,
+                                                ),
                                               ),
                                             ],
                                             _ActionRow(
                                               icon: FluxIcons.lock,
                                               label: 'Privacy Policy',
-                                              onTap: () {
-                                                _showPolicyDialog(
-                                                  context,
-                                                  title: 'Privacy Policy',
-                                                  content:
-                                                      'FinnAI processes prompts locally on your device. '
-                                                      'Conversations are stored using AES-256 authenticated encryption. '
-                                                      'Internet access is used strictly for model downloads, permitted advertising, and optional user reports.\n\n'
-                                                      'URL: ${LegalConfig.resolvedPrivacyPolicyUrl}',
-                                                );
+                                              onTap: () async {
+                                                if (LegalConfig
+                                                    .hasPrivacyPolicyUrl) {
+                                                  final uri = Uri.parse(
+                                                    LegalConfig
+                                                        .privacyPolicyUrl,
+                                                  );
+                                                  if (await canLaunchUrl(uri)) {
+                                                    await launchUrl(
+                                                      uri,
+                                                      mode: LaunchMode
+                                                          .externalApplication,
+                                                    );
+                                                  } else {
+                                                    if (context.mounted) {
+                                                      ScaffoldMessenger.of(
+                                                        context,
+                                                      ).showSnackBar(
+                                                        SnackBar(
+                                                          content: Text(
+                                                            'Could not launch ${LegalConfig.privacyPolicyUrl}',
+                                                          ),
+                                                        ),
+                                                      );
+                                                    }
+                                                  }
+                                                } else {
+                                                  ScaffoldMessenger.of(
+                                                    context,
+                                                  ).showSnackBar(
+                                                    const SnackBar(
+                                                      content: Text(
+                                                        'Privacy Policy URL is unconfigured (set FINN_PRIVACY_POLICY_URL).',
+                                                      ),
+                                                    ),
+                                                  );
+                                                }
                                               },
                                             ),
                                             Divider(
@@ -540,16 +569,41 @@ class _SettingsPageState extends State<SettingsPage> {
                                             _ActionRow(
                                               icon: FluxIcons.security,
                                               label: 'Terms of Use',
-                                              onTap: () {
-                                                _showPolicyDialog(
-                                                  context,
-                                                  title: 'Terms of Use',
-                                                  content:
-                                                      'FinnAI generates text locally. AI model outputs may be inaccurate or incomplete. '
-                                                      'Do not rely on generated text for medical, legal, or financial advice. '
-                                                      'You agree not to use FinnAI for illegal or harmful purposes.\n\n'
-                                                      'URL: ${LegalConfig.resolvedTermsUrl}',
-                                                );
+                                              onTap: () async {
+                                                if (LegalConfig.hasTermsUrl) {
+                                                  final uri = Uri.parse(
+                                                    LegalConfig.termsUrl,
+                                                  );
+                                                  if (await canLaunchUrl(uri)) {
+                                                    await launchUrl(
+                                                      uri,
+                                                      mode: LaunchMode
+                                                          .externalApplication,
+                                                    );
+                                                  } else {
+                                                    if (context.mounted) {
+                                                      ScaffoldMessenger.of(
+                                                        context,
+                                                      ).showSnackBar(
+                                                        SnackBar(
+                                                          content: Text(
+                                                            'Could not launch ${LegalConfig.termsUrl}',
+                                                          ),
+                                                        ),
+                                                      );
+                                                    }
+                                                  }
+                                                } else {
+                                                  ScaffoldMessenger.of(
+                                                    context,
+                                                  ).showSnackBar(
+                                                    const SnackBar(
+                                                      content: Text(
+                                                        'Terms of Use URL is unconfigured (set FINN_TERMS_URL).',
+                                                      ),
+                                                    ),
+                                                  );
+                                                }
                                               },
                                             ),
                                             Divider(
@@ -559,14 +613,38 @@ class _SettingsPageState extends State<SettingsPage> {
                                             _ActionRow(
                                               icon: FluxIcons.security,
                                               label: 'Support Contact',
-                                              onTap: () {
-                                                _showPolicyDialog(
-                                                  context,
-                                                  title: 'Support Contact',
-                                                  content:
-                                                      'Contact support for assistance with FinnAI.\n\n'
-                                                      'Support Email: ${LegalConfig.resolvedSupportEmail}',
-                                                );
+                                              onTap: () async {
+                                                if (LegalConfig
+                                                    .hasSupportEmail) {
+                                                  final uri = Uri.parse(
+                                                    'mailto:${LegalConfig.supportEmail}',
+                                                  );
+                                                  if (await canLaunchUrl(uri)) {
+                                                    await launchUrl(uri);
+                                                  } else {
+                                                    if (context.mounted) {
+                                                      ScaffoldMessenger.of(
+                                                        context,
+                                                      ).showSnackBar(
+                                                        SnackBar(
+                                                          content: Text(
+                                                            'Support email: ${LegalConfig.supportEmail}',
+                                                          ),
+                                                        ),
+                                                      );
+                                                    }
+                                                  }
+                                                } else {
+                                                  ScaffoldMessenger.of(
+                                                    context,
+                                                  ).showSnackBar(
+                                                    const SnackBar(
+                                                      content: Text(
+                                                        'Support email is unconfigured (set FINN_SUPPORT_EMAIL).',
+                                                      ),
+                                                    ),
+                                                  );
+                                                }
                                               },
                                             ),
                                             Divider(
@@ -580,7 +658,8 @@ class _SettingsPageState extends State<SettingsPage> {
                                                 showLicensePage(
                                                   context: context,
                                                   applicationName: 'FinnAI',
-                                                  applicationVersion: _appVersion,
+                                                  applicationVersion:
+                                                      _appVersion,
                                                   applicationLegalese:
                                                       'Created using Bonsai models by Prism ML.\n'
                                                       'Powered by llama.cpp and Flutter.',
@@ -805,23 +884,6 @@ class _SettingsPageState extends State<SettingsPage> {
             );
           },
         ),
-      ),
-    );
-  }
-
-  void _showPolicyDialog(BuildContext context, {required String title, required String content}) {
-    showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(title),
-        content: SingleChildScrollView(child: Text(content)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
-          ),
-        ],
       ),
     );
   }

@@ -1,6 +1,8 @@
 # Third-Party Licences & Notices
 
-FinnAI relies on open-source software and model weights. This document contains third-party notices and license terms for all direct and transitive dependencies.
+FinnAI relies on open-source software and model weights. This document contains third-party notices and license terms for primary components.
+
+*Note: Complete license texts for all transitive Flutter packages can be viewed in-app via `showLicensePage()` in app Settings under Open-Source Licences.*
 
 ---
 
@@ -17,7 +19,7 @@ of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights
 to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to do so, subject to the following conditions:
+furnished to do so, subject to the following conditions:
 
 The above copyright notice and this permission notice shall be included in all
 copies or substantial portions of the Software.
@@ -67,6 +69,7 @@ limitations under the License.
 - **flutter_secure_storage**: BSD 3-Clause License
 - **package_info_plus**: BSD 3-Clause License
 - **path_provider**: BSD 3-Clause License
+- **url_launcher**: BSD 3-Clause License
 - **http**: BSD 3-Clause License
 - **crypto**: BSD 3-Clause License
 - **flutter_svg**: MIT License

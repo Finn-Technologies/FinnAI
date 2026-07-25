@@ -20,11 +20,13 @@ class LegalConfig {
   static bool get hasPrivacyPolicyUrl => privacyPolicyUrl.trim().isNotEmpty;
   static bool get hasTermsUrl => termsUrl.trim().isNotEmpty;
 
-  static String get resolvedSupportEmail =>
-      hasSupportEmail ? supportEmail.trim() : 'Unconfigured (set FINN_SUPPORT_EMAIL)';
+  static String get resolvedSupportEmail => hasSupportEmail
+      ? supportEmail.trim()
+      : 'Unconfigured (set FINN_SUPPORT_EMAIL)';
 
-  static String get resolvedPrivacyPolicyUrl =>
-      hasPrivacyPolicyUrl ? privacyPolicyUrl.trim() : 'Unconfigured (set FINN_PRIVACY_POLICY_URL)';
+  static String get resolvedPrivacyPolicyUrl => hasPrivacyPolicyUrl
+      ? privacyPolicyUrl.trim()
+      : 'Unconfigured (set FINN_PRIVACY_POLICY_URL)';
 
   static String get resolvedTermsUrl =>
       hasTermsUrl ? termsUrl.trim() : 'Unconfigured (set FINN_TERMS_URL)';
