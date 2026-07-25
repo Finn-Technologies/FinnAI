@@ -7,6 +7,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import '../ads/ad_service.dart';
 import '../ads/banner_ad_widget.dart';
 import '../app_state_store.dart';
+import '../config/legal_config.dart';
 import '../conversations/conversation_store.dart';
 import '../flux_app.dart';
 import '../inference/bonsai_inference.dart';
@@ -527,7 +528,8 @@ class _SettingsPageState extends State<SettingsPage> {
                                                   content:
                                                       'FinnAI processes prompts locally on your device. '
                                                       'Conversations are stored using AES-256 authenticated encryption. '
-                                                      'Internet access is used strictly for model downloads, permitted advertising, and optional user reports.',
+                                                      'Internet access is used strictly for model downloads, permitted advertising, and optional user reports.\n\n'
+                                                      'URL: ${LegalConfig.resolvedPrivacyPolicyUrl}',
                                                 );
                                               },
                                             ),
@@ -545,7 +547,25 @@ class _SettingsPageState extends State<SettingsPage> {
                                                   content:
                                                       'FinnAI generates text locally. AI model outputs may be inaccurate or incomplete. '
                                                       'Do not rely on generated text for medical, legal, or financial advice. '
-                                                      'You agree not to use FinnAI for illegal or harmful purposes.',
+                                                      'You agree not to use FinnAI for illegal or harmful purposes.\n\n'
+                                                      'URL: ${LegalConfig.resolvedTermsUrl}',
+                                                );
+                                              },
+                                            ),
+                                            Divider(
+                                              height: 1,
+                                              color: FluxColors.lineOf(context),
+                                            ),
+                                            _ActionRow(
+                                              icon: FluxIcons.security,
+                                              label: 'Support Contact',
+                                              onTap: () {
+                                                _showPolicyDialog(
+                                                  context,
+                                                  title: 'Support Contact',
+                                                  content:
+                                                      'Contact support for assistance with FinnAI.\n\n'
+                                                      'Support Email: ${LegalConfig.resolvedSupportEmail}',
                                                 );
                                               },
                                             ),
