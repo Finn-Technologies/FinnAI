@@ -578,9 +578,8 @@ class _Conversation extends StatelessWidget {
                       ? visibleMessages[visibleMessages.length - index - 1].text
                       : null,
                   modelTier: BonsaiInference.instance.selected.name,
-                  appVersion: '1.0.0',
-                  showActions: index == 1,
-                  selectable: index == 1,
+                  showActions: true,
+                  selectable: true,
                 ),
         );
       },
@@ -708,7 +707,6 @@ class _CompleteReply extends StatelessWidget {
     required this.text,
     this.userPrompt,
     this.modelTier = 'Finn AI',
-    this.appVersion = '1.0.0',
     this.showActions = true,
     this.selectable = true,
   });
@@ -716,7 +714,6 @@ class _CompleteReply extends StatelessWidget {
   final String text;
   final String? userPrompt;
   final String modelTier;
-  final String appVersion;
   final bool showActions;
   final bool selectable;
 
@@ -759,7 +756,6 @@ class _CompleteReply extends StatelessWidget {
                   assistantResponse: text,
                   userPrompt: userPrompt,
                   modelTier: modelTier,
-                  appVersion: appVersion,
                 );
               },
             ),

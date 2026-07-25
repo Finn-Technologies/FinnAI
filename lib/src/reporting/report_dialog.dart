@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../theme/flux_theme.dart';
 import 'report_service.dart';
@@ -10,20 +11,20 @@ class ReportDialog extends StatefulWidget {
     required this.assistantResponse,
     this.userPrompt,
     required this.modelTier,
-    required this.appVersion,
+    this.appVersion,
   });
 
   final String assistantResponse;
   final String? userPrompt;
   final String modelTier;
-  final String appVersion;
+  final String? appVersion;
 
   static Future<void> show(
     BuildContext context, {
     required String assistantResponse,
     String? userPrompt,
     required String modelTier,
-    required String appVersion,
+    String? appVersion,
   }) async {
     await showDialog<void>(
       context: context,
@@ -46,6 +47,29 @@ class _ReportDialogState extends State<ReportDialog> {
   bool _includePrompt = false;
   final TextEditingController _detailsController = TextEditingController();
   bool _isSubmitting = false;
+  String? _errorMessage;
+  String _resolvedVersion = '1.0.0';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadVersion();
+  }
+
+  Future<void> _loadVersion() async {
+    if (widget.appVersion != null && widget.appVersion!.isNotEmpty) {
+      _resolvedVersion = widget.appVersion!;
+      return;
+    }
+    try {
+      final info = await PackageInfo.fromPlatform();
+      if (mounted) {
+        setState(() {
+          _resolvedVersion = '${info.version}+${info.buildNumber}';
+        });
+      }
+    } catch (_) {}
+  }
 
   @override
   void dispose() {
@@ -56,6 +80,7 @@ class _ReportDialogState extends State<ReportDialog> {
   Future<void> _submitReport() async {
     setState(() {
       _isSubmitting = true;
+      _errorMessage = null;
     });
 
     final randomId = (DateTime.now().microsecondsSinceEpoch ^ Random().nextInt(1000000)).toString();
@@ -64,35 +89,51 @@ class _ReportDialogState extends State<ReportDialog> {
       category: _category,
       assistantResponse: widget.assistantResponse,
       timestamp: DateTime.now(),
-      appVersion: widget.appVersion,
+      appVersion: _resolvedVersion,
       modelTier: widget.modelTier,
       userPrompt: _includePrompt ? widget.userPrompt : null,
       additionalDetails: _detailsController.text.trim(),
     );
 
-    final success = await ReportService.instance.submitReport(payload);
+    final status = await ReportService.instance.submitReport(payload);
 
     if (!mounted) return;
-    Navigator.of(context).pop();
 
-    ScaffoldMessenger.of(context)
-      ..clearSnackBars()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(
-            success
-                ? 'Thank you. Your report has been submitted.'
-                : 'Report logged locally. Dedicated report endpoint pending configuration.',
-          ),
-          duration: const Duration(seconds: 3),
-        ),
-      );
+    setState(() {
+      _isSubmitting = false;
+    });
+
+    switch (status) {
+      case ReportSubmitStatus.success:
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context)
+          ..clearSnackBars()
+          ..showSnackBar(
+            const SnackBar(
+              content: Text('Thank you. Your report was submitted.'),
+              duration: Duration(seconds: 3),
+            ),
+          );
+        break;
+      case ReportSubmitStatus.unconfigured:
+        setState(() {
+          _errorMessage = 'Reporting is temporarily unavailable.';
+        });
+        break;
+      case ReportSubmitStatus.networkError:
+      case ReportSubmitStatus.invalidPayload:
+        setState(() {
+          _errorMessage = 'The report could not be submitted. Please try again later.';
+        });
+        break;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = FluxColors.isDark(context);
     final textTheme = Theme.of(context).textTheme;
+    final isConfigured = ReportService.instance.isConfigured;
 
     return AlertDialog(
       backgroundColor: isDark ? const Color(0xFF1F1F23) : const Color(0xFFF7F8F4),
@@ -119,6 +160,31 @@ class _ReportDialogState extends State<ReportDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (!isConfigured) ...[
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0x33F59E0B) : const Color(0x22F59E0B),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.info_outline, size: 16, color: Color(0xFFF59E0B)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Reporting is temporarily unavailable.',
+                        style: textTheme.bodySmall?.copyWith(
+                          color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
             Text(
               'Help us maintain safe and accurate AI responses. Reports are reviewed to improve FinnAI safeguards.',
               style: textTheme.bodySmall?.copyWith(
@@ -207,9 +273,19 @@ class _ReportDialogState extends State<ReportDialog> {
                 contentPadding: const EdgeInsets.all(10),
               ),
             ),
+            if (_errorMessage != null) ...[
+              const SizedBox(height: 10),
+              Text(
+                _errorMessage!,
+                style: textTheme.bodySmall?.copyWith(
+                  color: isDark ? const Color(0xFFFF6B6B) : const Color(0xFFD32F2F),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
             const SizedBox(height: 12),
             Text(
-              'Notice: Submitting sends the reported text and category to FinnAI. No personal account or device IDs are included.',
+              'Notice: Pressing Submit sends the reported text, category, and model metadata to FinnAI over HTTPS.',
               style: textTheme.labelSmall?.copyWith(
                 fontSize: 10,
                 color: FluxColors.mutedOf(context),
@@ -224,7 +300,7 @@ class _ReportDialogState extends State<ReportDialog> {
           child: const Text('Cancel'),
         ),
         FilledButton(
-          onPressed: _isSubmitting ? null : _submitReport,
+          onPressed: (_isSubmitting || !isConfigured) ? null : _submitReport,
           style: FilledButton.styleFrom(
             backgroundColor: FluxColors.inkOf(context),
             foregroundColor: FluxColors.canvasOf(context),
