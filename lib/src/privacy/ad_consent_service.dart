@@ -158,4 +158,30 @@ class AdConsentService extends ChangeNotifier {
       onTimeout: () => false,
     );
   }
+
+  // ── Test-only helpers ───────────────────────────────────────────────────────
+  // These methods are ONLY for widget and unit tests. They must never be called
+  // from production code paths.
+
+  /// Grants ad consent without invoking the UMP SDK. Test use only.
+  @visibleForTesting
+  void testGrantConsent() {
+    assert(
+      !kReleaseMode,
+      'testGrantConsent must not be called in release mode',
+    );
+    _canRequestAds = true;
+    notifyListeners();
+  }
+
+  /// Revokes ad consent without invoking the UMP SDK. Test use only.
+  @visibleForTesting
+  void testRevokeConsent() {
+    assert(
+      !kReleaseMode,
+      'testRevokeConsent must not be called in release mode',
+    );
+    _canRequestAds = false;
+    notifyListeners();
+  }
 }
