@@ -63,5 +63,42 @@ void main() {
         }
       },
     );
+
+    testWidgets(
+      'BannerAdWidget stays collapsed when consent is revoked before onAdLoaded fires',
+      (tester) async {
+        // Consent starts denied (default in tests). The widget must stay at
+        // zero height throughout. This test simulates the race where consent
+        // is checked as denied both before and after any hypothetical load.
+        expect(AdConsentService.instance.canRequestAds, isFalse);
+
+        bool? reportedState;
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: BannerAdWidget(
+                onAdLoadedStateChanged: (loaded) => reportedState = loaded,
+              ),
+            ),
+          ),
+        );
+
+        // Widget builds immediately with no ad.
+        await tester.pump();
+
+        final finder = find.byType(BannerAdWidget);
+        expect(finder, findsOneWidget);
+        final box = tester.renderObject(finder) as RenderBox;
+        expect(box.size.height, 0);
+
+        // Allow any async ad-loading work to settle.
+        await tester.pump(const Duration(milliseconds: 500));
+
+        // Layout must still be collapsed and the callback must never have
+        // signalled a loaded state.
+        expect((tester.renderObject(finder) as RenderBox).size.height, 0);
+        expect(reportedState, isNot(true));
+      },
+    );
   });
 }

@@ -24,6 +24,9 @@ class BannerAdWidget extends StatefulWidget {
 
 class _BannerAdWidgetState extends State<BannerAdWidget> {
   BannerAd? _bannerAd;
+  // The ad object currently being loaded (not yet confirmed). Tracked so we can
+  // dispose it if consent is revoked while the ad request is in flight.
+  BannerAd? _pendingAd;
   bool _adLoaded = false;
   bool _isLoading = false;
 
@@ -41,6 +44,9 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
         _loadAdIfAllowed();
       }
     } else {
+      // Consent revoked: dispose any in-flight pending ad immediately.
+      _pendingAd?.dispose();
+      _pendingAd = null;
       _bannerAd?.dispose();
       _bannerAd = null;
       if (_adLoaded || _isLoading) {
@@ -69,8 +75,18 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
         request: const AdRequest(),
         listener: BannerAdListener(
           onAdLoaded: (ad) {
-            if (!mounted) {
+            _pendingAd = null;
+            // Recheck consent at the moment the callback fires; the user may
+            // have revoked it while the network request was in flight.
+            if (!mounted || !AdConsentService.instance.canRequestAds) {
               ad.dispose();
+              if (mounted) {
+                setState(() {
+                  _adLoaded = false;
+                  _isLoading = false;
+                });
+                widget.onAdLoadedStateChanged?.call(false);
+              }
               return;
             }
             setState(() {
@@ -82,6 +98,7 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
           },
           onAdFailedToLoad: (ad, error) {
             debugPrint('BannerAd failed to load: $error');
+            _pendingAd = null;
             ad.dispose();
             if (mounted) {
               setState(() {
@@ -95,9 +112,13 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
         ),
       );
 
+      // Track the pending ad before calling load() so _onConsentChanged can
+      // dispose it immediately if consent is revoked before onAdLoaded fires.
+      _pendingAd = ad;
       await ad.load();
     } catch (e) {
       debugPrint('BannerAdWidget error: $e');
+      _pendingAd = null;
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -110,6 +131,7 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
   @override
   void dispose() {
     AdConsentService.instance.removeListener(_onConsentChanged);
+    _pendingAd?.dispose();
     _bannerAd?.dispose();
     super.dispose();
   }
