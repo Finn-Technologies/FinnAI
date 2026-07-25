@@ -28,7 +28,7 @@ jobs:
       - name: Setup Flutter SDK
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.27.0'
+          flutter-version: '3.44.7'
           channel: 'stable'
           cache: true
 
@@ -72,7 +72,7 @@ jobs:
       - name: Setup Flutter SDK
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.27.0'
+          flutter-version: '3.44.7'
           channel: 'stable'
           cache: true
 
@@ -81,7 +81,7 @@ jobs:
 
       - name: Generate Temporary Release Signing Configuration for CI
         run: |
-          keytool -genkey -v -keystore android/release-ci.jks \
+          keytool -genkey -v -keystore android/app/release-ci.jks \
             -keyalg RSA -keysize 2048 -validity 1 \
             -alias finn_ci_alias -dname "CN=CI, OU=FinnAI, O=FinnAI, L=SF, S=CA, C=US" \
             -storepass cipassword -keypass cipassword
@@ -106,19 +106,35 @@ jobs:
 
       - name: Verify 16 KB Page Alignment of Native Libraries (Fail on 4 KB)
         run: |
-          sudo apt-get update && sudo apt-get install -y binutils-aarch64-linux-gnu unzip
+          sudo apt-get update && sudo apt-get install -y python3 unzip
           unzip -q android/app/libs/llama-cpp-dart.aar -d /tmp/aar_extract
-          for file in /tmp/aar_extract/jni/arm64-v8a/*.so; do
-            echo "Checking $file..."
-            align=$(aarch64-linux-gnu-readelf -l "$file" | grep LOAD | head -n 1 | awk '{print $NF}')
-            echo "Library $file alignment: $align"
-            if [ "$align" != "0x4000" ] && [ "$align" != "4000" ] && [ "$align" != "0x10000" ]; then
-              echo "BLOCKER: $file has 4 KB alignment ($align). Android 15 requires 16 KB (0x4000)."
-              exit 1
-            fi
-          done
+          python3 - /tmp/aar_extract/jni/arm64-v8a << 'PYEOF'
+          import sys, glob, struct, os
+          so_files = glob.glob(os.path.join(sys.argv[1], "*.so"))
+          has_blocker = False
+          for so in so_files:
+              with open(so, 'rb') as f:
+                  data = f.read(64)
+                  e_phoff = struct.unpack('<Q', data[32:40])[0]
+                  e_phentsize = struct.unpack('<H', data[54:56])[0]
+                  e_phnum = struct.unpack('<H', data[56:58])[0]
+                  f.seek(e_phoff)
+                  min_align = float('inf')
+                  for _ in range(e_phnum):
+                      ph = f.read(e_phentsize)
+                      if len(ph) < e_phentsize: break
+                      p_type = struct.unpack('<I', ph[0:4])[0]
+                      p_align = struct.unpack('<Q', ph[48:56])[0]
+                      if p_type == 1:
+                          if p_align < min_align: min_align = p_align
+                  print(f"Library {os.path.basename(so)}: Min alignment = 0x{min_align:x}")
+                  if min_align < 0x4000:
+                      print(f"BLOCKER: {os.path.basename(so)} alignment 0x{min_align:x} < 16 KB (0x4000)")
+                      has_blocker = True
+          if has_blocker: sys.exit(1)
+          PYEOF
 
       - name: Cleanup Temporary Signing Keys
         if: always()
         run: |
-          rm -rf android/release-ci.jks android/key.properties
+          rm -rf android/app/release-ci.jks android/key.properties
