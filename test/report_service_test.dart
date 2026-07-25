@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:finn_ai/src/reporting/report_service.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -109,6 +110,37 @@ void main() {
 
         final status = await service.submitReport(testPayload);
         expect(status, ReportSubmitStatus.invalidEndpoint);
+      },
+    );
+
+    test(
+      'Report payload uses exact generating model tier rather than default or currently selected model',
+      () async {
+        late String transmittedModelTier;
+        final mockClient = MockClient((request) async {
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          transmittedModelTier = body['modelTier'] as String;
+          return http.Response('{"success": true}', 201);
+        });
+
+        final service = ReportService(
+          endpoint: 'https://reports.finnai.app/v1/reports',
+          client: mockClient,
+        );
+
+        final routedPayload = ReportPayload(
+          reportId: 'rep_routed_999',
+          category: ReportCategory.other,
+          assistantResponse: 'Answer from Pro tier',
+          timestamp: DateTime.now(),
+          appVersion: '1.0.0',
+          modelTier: 'Bonsai 8B',
+        );
+
+        await service.submitReport(routedPayload);
+
+        expect(transmittedModelTier, 'Bonsai 8B');
+        expect(transmittedModelTier, isNot(equals('Finn AI')));
       },
     );
   });

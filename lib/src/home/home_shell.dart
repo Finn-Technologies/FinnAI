@@ -259,6 +259,7 @@ class _HomeShellState extends State<HomeShell>
   }
 
   void _flushTokenPaint({bool persist = false}) {
+    final generatingTier = _inference.lastGeneratingModel.name;
     if (_pendingTokens.isEmpty) {
       if (persist) {
         final id = _assistantMessageId;
@@ -266,6 +267,7 @@ class _HomeShellState extends State<HomeShell>
           _conversations.updateMessage(
             id,
             _answer,
+            modelTier: generatingTier,
             persistSoon: true,
             notify: false,
           );
@@ -285,6 +287,7 @@ class _HomeShellState extends State<HomeShell>
       _conversations.updateMessage(
         id,
         _answer,
+        modelTier: generatingTier,
         persistSoon: true,
         notify: false,
       );
@@ -578,7 +581,7 @@ class _Conversation extends StatelessWidget {
                               ConversationRole.user)
                       ? visibleMessages[visibleMessages.length - index - 1].text
                       : null,
-                  modelTier: BonsaiInference.instance.selected.name,
+                  modelTier: message.modelTier,
                   showActions: true,
                   selectable: true,
                 ),

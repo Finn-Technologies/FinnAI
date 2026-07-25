@@ -317,6 +317,9 @@ class BonsaiInference extends ChangeNotifier {
     return failures;
   }
 
+  BonsaiModel? _lastGeneratingModel;
+  BonsaiModel get lastGeneratingModel => _lastGeneratingModel ?? selected;
+
   Stream<String> generateReply(
     String prompt, {
     required String conversationId,
@@ -327,6 +330,8 @@ class BonsaiInference extends ChangeNotifier {
 
     final models = requiredModels;
     final lite = models.first;
+    _lastGeneratingModel = lite;
+
     if (models.length == 1) {
       yield* _cleanModelStream(
         _generateForModel(
@@ -384,6 +389,7 @@ class BonsaiInference extends ChangeNotifier {
     }
 
     final target = models.firstWhere((model) => model.tier == route);
+    _lastGeneratingModel = target;
     final targetOutput = StringBuffer();
     await for (final token in _cleanModelStream(
       _generateForModel(
