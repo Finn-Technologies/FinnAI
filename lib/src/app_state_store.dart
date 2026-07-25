@@ -21,9 +21,7 @@ class DeletionResult {
 }
 
 class AppStateStore extends ChangeNotifier {
-  AppStateStore({
-    this._directoryProvider,
-  });
+  AppStateStore({this._directoryProvider});
 
   static final instance = AppStateStore();
 
@@ -75,19 +73,27 @@ class AppStateStore extends ChangeNotifier {
     // 2. Delete conversations and secure encryption key
     try {
       final targetStore = conversationStore ?? ConversationStore.instance;
-      await targetStore.deleteStorageFiles();
-      deleted.add('Encrypted conversation history & keys');
+      final convFailures = await targetStore.deleteStorageFiles();
+      if (convFailures.isNotEmpty) {
+        failed.addAll(convFailures);
+      } else {
+        deleted.add('Encrypted conversation history & keys');
+      }
     } catch (e) {
-      failed.add('Encrypted conversation history & keys');
+      failed.add('Encrypted conversation history & keys ($e)');
     }
 
     // 3. Delete downloaded AI models and partial downloads
     try {
       final targetInference = bonsaiInference ?? BonsaiInference.instance;
-      await targetInference.removeAllModels();
-      deleted.add('Downloaded AI model weights');
+      final modelFailures = await targetInference.removeAllModels();
+      if (modelFailures.isNotEmpty) {
+        failed.addAll(modelFailures);
+      } else {
+        deleted.add('Downloaded AI model weights');
+      }
     } catch (e) {
-      failed.add('Downloaded AI model weights');
+      failed.add('Downloaded AI model weights ($e)');
     }
 
     notifyListeners();

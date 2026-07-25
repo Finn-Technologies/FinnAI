@@ -281,24 +281,40 @@ class BonsaiInference extends ChangeNotifier {
     return _pendingUnload;
   }
 
-  Future<void> remove(BonsaiModel model) async {
+  Future<Set<String>> remove(BonsaiModel model) async {
+    final failures = <String>{};
     await _unloadModel(model.tier);
     try {
       final file = await _modelFile(model);
-      final partial = File('${file.path}.part');
       if (await file.exists()) await file.delete();
+    } catch (e) {
+      if (!e.toString().contains('MissingPluginException')) {
+        debugPrint('Model file removal error: $e');
+        failures.add('Downloaded model (${model.name})');
+      }
+    }
+    try {
+      final file = await _modelFile(model);
+      final partial = File('${file.path}.part');
       if (await partial.exists()) await partial.delete();
     } catch (e) {
-      debugPrint('Model file removal skipped: $e');
+      if (!e.toString().contains('MissingPluginException')) {
+        debugPrint('Partial file removal error: $e');
+        failures.add('Partial download (${model.name})');
+      }
     }
     _verifiedModels.remove(model.tier);
     _setStatus(InferencePhase.idle, 'Model removed');
+    return failures;
   }
 
-  Future<void> removeAllModels() async {
+  Future<Set<String>> removeAllModels() async {
+    final failures = <String>{};
     for (final model in bonsaiModels) {
-      await remove(model);
+      final res = await remove(model);
+      failures.addAll(res);
     }
+    return failures;
   }
 
   Stream<String> generateReply(
