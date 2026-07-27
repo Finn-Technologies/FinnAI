@@ -216,7 +216,7 @@ echo "[8/8] Verifying 16 KB page alignment of ALL packaged native libraries..."
 APK_UNZIP_TMP=$(mktemp -d)
 CREATED_FILES+=("$APK_UNZIP_TMP")
 
-unzip -q "$RELEASE_APK" -d "$APK_UNZIP_TMP"
+unzip -oq "$RELEASE_APK" -d "$APK_UNZIP_TMP"
 
 # ── Dart-define embedding verification ───────────────────────────────────────
 # Run against the extracted APK tree (classes.dex + compiled assets) so we
