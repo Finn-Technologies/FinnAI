@@ -41,7 +41,7 @@ cleanup() {
   fi
 
   # 3. Remove other files/directories created during this run
-  #    (temp JKS, extracted APK dirs, etc.).
+  #    (temp keystore dir, extracted APK dirs, etc.).
   for file in "${CREATED_FILES[@]}"; do
     if [ -e "$file" ]; then
       rm -rf "$file"
@@ -136,10 +136,15 @@ if [ -f "/Applications/Android Studio.app/Contents/jbr/Contents/Home/bin/keytool
   KEYTOOL_BIN="/Applications/Android Studio.app/Contents/jbr/Contents/Home/bin/keytool"
 fi
 
-# Unique keystore inside android/app/ so the storeFile relative path resolves.
-TEMP_JKS=$(mktemp "android/app/release-temp-verify.XXXXXX.jks")
-CREATED_FILES+=("$TEMP_JKS")
-TEMP_JKS_BASENAME=$(basename "$TEMP_JKS")
+# Create a unique temp directory inside android/app/ so the storeFile path
+# is correct relative to android/app/. We place the keystore INSIDE this
+# directory so mktemp never pre-creates the .jks file — keytool requires the
+# keystore path to not already exist (or to be non-empty).
+TEMP_JKS_DIR=$(mktemp -d "android/app/verify-ci.XXXXXX")
+CREATED_FILES+=("$TEMP_JKS_DIR")
+TEMP_JKS="${TEMP_JKS_DIR}/release-ci.jks"
+# storeFile in key.properties is a path relative to android/app/.
+TEMP_JKS_REL="$(basename "$TEMP_JKS_DIR")/release-ci.jks"
 
 "$KEYTOOL_BIN" -genkey -v -keystore "$TEMP_JKS" \
   -keyalg RSA -keysize 2048 -validity 1 \
@@ -156,7 +161,7 @@ cat <<EOF > "$KEY_PROPS"
 storePassword=verifypass
 keyPassword=verifypass
 keyAlias=finn_ci_verify
-storeFile=${TEMP_JKS_BASENAME}
+storeFile=${TEMP_JKS_REL}
 EOF
 
 RELEASE_APK="build/app/outputs/flutter-apk/app-release.apk"
@@ -176,37 +181,6 @@ if ! flutter build appbundle --release "${DART_DEFINES[@]}"; then
   exit 1
 fi
 echo "PASSED: Release App Bundle (AAB) built successfully."
-
-# Verify ALL FOUR dart-define values are embedded in the release APK.
-# Only check values that were actually set (a CI job may omit them when
-# running in non-production mode; that is not a blocker in itself).
-DEFINE_NAMES=(
-  "FINN_PRIVACY_POLICY_URL"
-  "FINN_TERMS_URL"
-  "FINN_SUPPORT_EMAIL"
-  "FINN_REPORT_ENDPOINT"
-)
-DEFINE_VALUES=(
-  "$FINN_PRIVACY_POLICY_URL"
-  "$FINN_TERMS_URL"
-  "$FINN_SUPPORT_EMAIL"
-  "$FINN_REPORT_ENDPOINT"
-)
-
-for i in "${!DEFINE_NAMES[@]}"; do
-  name="${DEFINE_NAMES[$i]}"
-  val="${DEFINE_VALUES[$i]}"
-  if [ -n "$val" ]; then
-    if strings "$RELEASE_APK" 2>/dev/null | grep -qF "$val"; then
-      echo "PASSED: $name found embedded in release APK."
-    else
-      echo "FAIL: $name NOT found in release APK — dart-define was not passed correctly."
-      BLOCKER_COUNT=$((BLOCKER_COUNT + 1))
-    fi
-  else
-    echo "SKIP: $name is empty; embedding check skipped."
-  fi
-done
 
 # 7. zipalign — missing binary is a hard failure, not a notice
 echo "[7/8] Verifying APK zipalign 16 KB boundary..."
@@ -233,7 +207,10 @@ else
   BLOCKER_COUNT=$((BLOCKER_COUNT + 1))
 fi
 
-# 8. Python ELF parser — ALL .so files in the packaged release APK
+# 8. Python ELF parser — ALL .so files in the packaged release APK.
+#    Dart-define verification also runs here, against the extracted APK
+#    contents, which is the authoritative source of truth for what the
+#    compiled binary actually contains.
 echo "[8/8] Verifying 16 KB page alignment of ALL packaged native libraries..."
 
 APK_UNZIP_TMP=$(mktemp -d)
@@ -241,6 +218,41 @@ CREATED_FILES+=("$APK_UNZIP_TMP")
 
 unzip -q "$RELEASE_APK" -d "$APK_UNZIP_TMP"
 
+# ── Dart-define embedding verification ───────────────────────────────────────
+# Run against the extracted APK tree (classes.dex + compiled assets) so we
+# are searching the actual binary content rather than the compressed ZIP.
+echo "Verifying dart-define values are embedded in the extracted release APK..."
+
+DEFINE_NAMES=(
+  "FINN_PRIVACY_POLICY_URL"
+  "FINN_TERMS_URL"
+  "FINN_SUPPORT_EMAIL"
+  "FINN_REPORT_ENDPOINT"
+)
+DEFINE_VALUES=(
+  "$FINN_PRIVACY_POLICY_URL"
+  "$FINN_TERMS_URL"
+  "$FINN_SUPPORT_EMAIL"
+  "$FINN_REPORT_ENDPOINT"
+)
+
+for i in "${!DEFINE_NAMES[@]}"; do
+  name="${DEFINE_NAMES[$i]}"
+  val="${DEFINE_VALUES[$i]}"
+  if [ -n "$val" ]; then
+    # Search across all extracted files (dex, assets, libs).
+    if grep -rqF "$val" "$APK_UNZIP_TMP" 2>/dev/null; then
+      echo "PASSED: $name found embedded in extracted APK contents."
+    else
+      echo "FAIL: $name NOT found in extracted APK — dart-define was not passed correctly."
+      BLOCKER_COUNT=$((BLOCKER_COUNT + 1))
+    fi
+  else
+    echo "SKIP: $name is empty; embedding check skipped."
+  fi
+done
+
+# ── ELF alignment check ───────────────────────────────────────────────────────
 APK_SO_DIR="$APK_UNZIP_TMP/lib/arm64-v8a"
 if [ ! -d "$APK_SO_DIR" ]; then
   echo "FAIL: No lib/arm64-v8a directory found in release APK."

@@ -166,10 +166,9 @@ class AdConsentService extends ChangeNotifier {
   /// Grants ad consent without invoking the UMP SDK. Test use only.
   @visibleForTesting
   void testGrantConsent() {
-    assert(
-      !kReleaseMode,
-      'testGrantConsent must not be called in release mode',
-    );
+    if (kReleaseMode) {
+      throw StateError('testGrantConsent must not be called in release mode.');
+    }
     _canRequestAds = true;
     notifyListeners();
   }
@@ -177,10 +176,9 @@ class AdConsentService extends ChangeNotifier {
   /// Revokes ad consent without invoking the UMP SDK. Test use only.
   @visibleForTesting
   void testRevokeConsent() {
-    assert(
-      !kReleaseMode,
-      'testRevokeConsent must not be called in release mode',
-    );
+    if (kReleaseMode) {
+      throw StateError('testRevokeConsent must not be called in release mode.');
+    }
     _canRequestAds = false;
     notifyListeners();
   }
