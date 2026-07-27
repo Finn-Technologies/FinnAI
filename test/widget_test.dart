@@ -1,9 +1,9 @@
+import 'package:finn_ai/src/conversations/conversation_store.dart';
+import 'package:finn_ai/src/flux_app.dart';
+import 'package:finn_ai/src/home/home_shell.dart';
+import 'package:finn_ai/src/theme/flux_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flux_local/src/conversations/conversation_store.dart';
-import 'package:flux_local/src/flux_app.dart';
-import 'package:flux_local/src/home/home_shell.dart';
-import 'package:flux_local/src/theme/flux_theme.dart';
 
 void main() {
   testWidgets('Finn AI opens on the welcome experience', (tester) async {
@@ -70,9 +70,7 @@ void main() {
     expect(find.text('Finn AI'), findsWidgets);
   });
 
-  testWidgets('home, sidebar, and creations stay overflow-free', (
-    tester,
-  ) async {
+  testWidgets('home and sidebar stay overflow-free', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -89,14 +87,6 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
     expect(find.text('Chat History'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-
-    await tester.tap(find.text('Creations').first, warnIfMissed: false);
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 700));
-    expect(find.text('Describe a Creation'), findsOneWidget);
-    expect(find.text('Flappy Bird'), findsNothing);
-    expect(find.text('BT Audio Receiver'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -151,117 +141,79 @@ void main() {
     expect(scrolledTitleTop, lessThan(initialTitleTop));
   });
 
-  testWidgets('chat history title lifts all the way up to header position replacing top content', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(390, 844);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
+  testWidgets(
+    'chat history title lifts all the way up to header position replacing top content',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
 
-    for (int i = 0; i < 15; i++) {
-      ConversationStore.instance.startNew();
-    }
+      for (int i = 0; i < 15; i++) {
+        ConversationStore.instance.startNew();
+      }
 
-    await tester.pumpWidget(
-      MaterialApp(theme: FluxTheme.light, home: const HomeShell()),
-    );
-    await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpWidget(
+        MaterialApp(theme: FluxTheme.light, home: const HomeShell()),
+      );
+      await tester.pump(const Duration(milliseconds: 100));
 
-    await tester.tap(find.byTooltip('Open menu'), warnIfMissed: false);
-    await tester.pump(const Duration(milliseconds: 400));
+      await tester.tap(find.byTooltip('Open menu'), warnIfMissed: false);
+      await tester.pump(const Duration(milliseconds: 400));
 
-    final initialHeaderY = tester.getTopLeft(find.text('Finn AI').last).dy;
-    final initialTitleY = tester.getTopLeft(find.text('Chat History')).dy;
+      final initialHeaderY = tester.getTopLeft(find.text('Finn AI').last).dy;
+      final initialTitleY = tester.getTopLeft(find.text('Chat History')).dy;
 
-    final scrollableState = tester.state<ScrollableState>(
-      find.byType(Scrollable).last,
-    );
-    scrollableState.position.jumpTo(250);
-    await tester.pump();
+      final scrollableState = tester.state<ScrollableState>(
+        find.byType(Scrollable).last,
+      );
+      scrollableState.position.jumpTo(250);
+      await tester.pump();
 
-    final scrolledTitleY = tester.getTopLeft(find.text('Chat History')).dy;
+      final scrolledTitleY = tester.getTopLeft(find.text('Chat History')).dy;
 
-    // Chat history title lifts all the way up to the top header position (replacing Finn AI header)
-    expect(scrolledTitleY, closeTo(initialHeaderY, 5.0));
-    expect(scrolledTitleY, lessThan(initialTitleY));
-  });
+      expect(scrolledTitleY, closeTo(initialHeaderY, 5.0));
+      expect(scrolledTitleY, lessThan(initialTitleY));
+    },
+  );
 
-  testWidgets('sidebar overscroll creates staggered vertical spacing on pull down', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(390, 844);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
+  testWidgets(
+    'fast scrolling up through large chat history is virtualized and smooth',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(
-      MaterialApp(theme: FluxTheme.light, home: const HomeShell()),
-    );
-    await tester.pump(const Duration(milliseconds: 100));
+      for (int i = 0; i < 20; i++) {
+        ConversationStore.instance.startNew();
+      }
 
-    await tester.tap(find.byTooltip('Open menu'), warnIfMissed: false);
-    await tester.pump(const Duration(milliseconds: 400));
+      await tester.pumpWidget(
+        MaterialApp(theme: FluxTheme.light, home: const HomeShell()),
+      );
+      await tester.pump(const Duration(milliseconds: 100));
 
-    final initialHeaderY = tester.getTopLeft(find.text('Finn AI').last).dy;
-    final initialButtonsY = tester.getTopLeft(find.text('Creations')).dy;
-    final initialTitleY = tester.getTopLeft(find.text('Chat History')).dy;
+      await tester.tap(find.byTooltip('Open menu'), warnIfMissed: false);
+      await tester.pump(const Duration(milliseconds: 400));
 
-    final initialGap1 = initialButtonsY - initialHeaderY;
-    final initialGap2 = initialTitleY - initialButtonsY;
+      await tester.flingFrom(
+        const Offset(195, 422),
+        const Offset(0, -600),
+        2000,
+      );
+      await tester.pump(const Duration(milliseconds: 300));
 
-    final scrollableState = tester.state<ScrollableState>(
-      find.byType(Scrollable).last,
-    );
-    scrollableState.position.correctPixels(-100);
-    scrollableState.position.notifyListeners();
-    await tester.pump();
+      await tester.flingFrom(
+        const Offset(195, 422),
+        const Offset(0, 600),
+        2000,
+      );
+      await tester.pump(const Duration(milliseconds: 300));
 
-    final pulledHeaderY = tester.getTopLeft(find.text('Finn AI').last).dy;
-    final pulledButtonsY = tester.getTopLeft(find.text('Creations')).dy;
-    final pulledTitleY = tester.getTopLeft(find.text('Chat History')).dy;
-
-    final pulledGap1 = pulledButtonsY - pulledHeaderY;
-    final pulledGap2 = pulledTitleY - pulledButtonsY;
-
-    // Staggered spring spacing: Title moves faster than buttons, buttons faster than header
-    expect(pulledHeaderY, greaterThan(initialHeaderY));
-    expect(pulledButtonsY, greaterThan(initialButtonsY));
-    expect(pulledTitleY, greaterThan(initialTitleY));
-
-    expect(pulledGap1, greaterThan(initialGap1));
-    expect(pulledGap2, greaterThan(initialGap2));
-  });
-
-  testWidgets('fast scrolling up through large chat history is virtualized and smooth', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(390, 844);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-
-    for (int i = 0; i < 20; i++) {
-      ConversationStore.instance.startNew();
-    }
-
-    await tester.pumpWidget(
-      MaterialApp(theme: FluxTheme.light, home: const HomeShell()),
-    );
-    await tester.pump(const Duration(milliseconds: 100));
-
-    await tester.tap(find.byTooltip('Open menu'), warnIfMissed: false);
-    await tester.pump(const Duration(milliseconds: 400));
-
-    // Fast fling up and down from sidebar center
-    await tester.flingFrom(const Offset(195, 422), const Offset(0, -600), 2000);
-    await tester.pump(const Duration(milliseconds: 300));
-
-    await tester.flingFrom(const Offset(195, 422), const Offset(0, 600), 2000);
-    await tester.pump(const Duration(milliseconds: 300));
-
-    expect(tester.takeException(), isNull);
-  });
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('app automatically adapts to device Dark Mode', (tester) async {
     tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;

@@ -1,0 +1,140 @@
+name: FinnAI CI & Release Verification
+
+on:
+  push:
+    branches:
+      - main
+      - 'release/**'
+  pull_request:
+    branches:
+      - main
+      - 'release/**'
+
+jobs:
+  analyze_and_test:
+    name: Flutter Format, Analyze & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.7'
+          channel: 'stable'
+          cache: true
+
+      - name: Verify Environment
+        run: |
+          flutter --version
+          dart --version
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Verify Formatting
+        run: dart format --output=none --set-exit-if-changed .
+
+      - name: Run Static Analysis
+        run: flutter analyze
+
+      - name: Run Unit & Widget Tests
+        run: flutter test
+
+      - name: Inspect Packaged Runtime Assets
+        run: |
+          ls -la assets/runtime/*.svg
+          test $(ls -1 assets/runtime/*.svg | wc -l) -ge 20
+
+  verify_release_build:
+    name: Verify Release APK, AAB & 16 KB Native Alignment Gate
+    runs-on: ubuntu-latest
+    needs: analyze_and_test
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.7'
+          channel: 'stable'
+          cache: true
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Generate Temporary Release Signing Configuration for CI
+        run: |
+          keytool -genkey -v -keystore android/app/release-ci.jks \
+            -keyalg RSA -keysize 2048 -validity 1 \
+            -alias finn_ci_alias -dname "CN=CI, OU=FinnAI, O=FinnAI, L=SF, S=CA, C=US" \
+            -storepass cipassword -keypass cipassword
+
+          cat <<EOF > android/key.properties
+          storePassword=cipassword
+          keyPassword=cipassword
+          keyAlias=finn_ci_alias
+          storeFile=release-ci.jks
+          EOF
+
+      - name: Build Release APK
+        run: flutter build apk --release
+
+      - name: Build Release Android App Bundle (AAB)
+        run: flutter build appbundle --release
+
+      - name: Verify zipalign 16 KB Boundary on Release APK
+        run: |
+          sudo apt-get update && sudo apt-get install -y zipalign
+          zipalign -c -P 16 -v 4 build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Verify 16 KB Page Alignment of Native Libraries (Fail on 4 KB)
+        run: |
+          sudo apt-get update && sudo apt-get install -y python3 unzip
+          unzip -q android/app/libs/llama-cpp-dart.aar -d /tmp/aar_extract
+          python3 - /tmp/aar_extract/jni/arm64-v8a << 'PYEOF'
+          import sys, glob, struct, os
+          so_files = glob.glob(os.path.join(sys.argv[1], "*.so"))
+          has_blocker = False
+          for so in so_files:
+              with open(so, 'rb') as f:
+                  data = f.read(64)
+                  e_phoff = struct.unpack('<Q', data[32:40])[0]
+                  e_phentsize = struct.unpack('<H', data[54:56])[0]
+                  e_phnum = struct.unpack('<H', data[56:58])[0]
+                  f.seek(e_phoff)
+                  min_align = float('inf')
+                  for _ in range(e_phnum):
+                      ph = f.read(e_phentsize)
+                      if len(ph) < e_phentsize: break
+                      p_type = struct.unpack('<I', ph[0:4])[0]
+                      p_align = struct.unpack('<Q', ph[48:56])[0]
+                      if p_type == 1:
+                          if p_align < min_align: min_align = p_align
+                  print(f"Library {os.path.basename(so)}: Min alignment = 0x{min_align:x}")
+                  if min_align < 0x4000:
+                      print(f"BLOCKER: {os.path.basename(so)} alignment 0x{min_align:x} < 16 KB (0x4000)")
+                      has_blocker = True
+          if has_blocker: sys.exit(1)
+          PYEOF
+
+      - name: Cleanup Temporary Signing Keys
+        if: always()
+        run: |
+          rm -rf android/app/release-ci.jks android/key.properties

@@ -1,0 +1,8 @@
+# FinnAI Android Release Signing Configuration Example
+# Copy this file to `android/key.properties` and populate with your production upload key credentials.
+# WARNING: NEVER commit `key.properties` or keystore files (.jks / .keystore) to git!
+
+storePassword=YOUR_KEYSTORE_PASSWORD
+keyPassword=YOUR_KEY_PASSWORD
+keyAlias=YOUR_KEY_ALIAS
+storeFile=/path/to/your/upload-key.jks

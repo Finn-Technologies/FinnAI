@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flux_local/src/flux_app.dart';
+import 'package:finn_ai/src/flux_app.dart';
 
 void main() {
   testWidgets('welcome screen matches the mobile baseline', (tester) async {

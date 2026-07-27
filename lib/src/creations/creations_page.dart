@@ -355,9 +355,9 @@ class _CreationComposerState extends State<_CreationComposer> {
                 style: Theme.of(context).textTheme.bodyMedium,
                 decoration: InputDecoration.collapsed(
                   hintText: 'Describe a Creation',
-                  hintStyle: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.copyWith(color: FluxColors.mutedOf(context)),
+                  hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: FluxColors.mutedOf(context),
+                  ),
                 ),
               ),
             ),
@@ -423,7 +423,9 @@ class _AskingDetails extends StatelessWidget {
                   (kind) => Padding(
                     padding: const EdgeInsets.only(bottom: 10),
                     child: Material(
-                      color: FluxColors.surfaceOf(context).withValues(alpha: .84),
+                      color: FluxColors.surfaceOf(
+                        context,
+                      ).withValues(alpha: .84),
                       borderRadius: BorderRadius.circular(99),
                       child: InkWell(
                         onTap: () => onSelected(kind),

@@ -2,29 +2,22 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../ads/ad_service.dart';
 import '../ads/banner_ad_widget.dart';
+import '../app_state_store.dart';
+import '../config/legal_config.dart';
 import '../conversations/conversation_store.dart';
+import '../flux_app.dart';
 import '../inference/bonsai_inference.dart';
+import '../privacy/ad_consent_service.dart';
 import '../theme/flux_theme.dart';
 import '../widgets/ambient_background.dart';
 import '../widgets/flux_controls.dart';
 
 /// Full-screen Settings page for Finn AI.
-///
-/// Scroll mechanics mirror the sidebar:
-///   • BouncingScrollPhysics for both overscroll directions.
-///   • BackControl fades & parallaxes at 0.20× on pull-down and pull-up.
-///   • "Settings" title travels up to pin at header on normal scroll and
-///     parallaxes at 0.70× on both overscroll directions.
-///   • The three sections (AI MODELS / STORAGE & DATA / ABOUT) each have their
-///     own parallax multiplier so they fan apart on both overscroll ends:
-///       - Pull-down: AI=0.20, STORAGE=0.45, ABOUT=0.70
-///         (lower sections move further down → gaps widen downward)
-///       - Pull-up:   AI=0.70, STORAGE=0.45, ABOUT=0.20
-///         (upper sections move further up → gaps widen upward)
-///     This creates a symmetric "accordion" separation on both ends.
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key, required this.onBack});
 
@@ -36,6 +29,8 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   bool _clearingMemory = false;
+  bool _deletingAllData = false;
+  String _appVersion = '1.0.0 (1)';
 
   late final ScrollController _scrollController = ScrollController();
   final ValueNotifier<double> _scrollOffset = ValueNotifier<double>(0.0);
@@ -46,7 +41,7 @@ class _SettingsPageState extends State<SettingsPage> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-    _loadStorageStates();
+    _loadSettingsData();
   }
 
   void _onScroll() {
@@ -55,8 +50,16 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
-  Future<void> _loadStorageStates() async {
+  Future<void> _loadSettingsData() async {
     final states = await BonsaiInference.instance.inspectModels();
+    try {
+      final info = await PackageInfo.fromPlatform();
+      if (mounted) {
+        setState(() {
+          _appVersion = '${info.version}+${info.buildNumber}';
+        });
+      }
+    } catch (_) {}
     if (mounted) setState(() => _storageStates = states);
   }
 
@@ -162,24 +165,90 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  /// Pull-up overscroll amount — positive only when past the bottom.
+  void _confirmDeleteAllData() {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Delete All Local Data?'),
+        content: const Text(
+          'This will permanently delete ALL encrypted conversations, encryption keys, downloaded AI models, and cached state. The app will return to a clean first-run state.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(dialogContext).pop();
+              setState(() => _deletingAllData = true);
+              final result = await AppStateStore.instance.deleteAllData();
+              await _loadSettingsData();
+              if (mounted) {
+                setState(() => _deletingAllData = false);
+                if (result.isSuccess) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text(
+                        'All local data deleted. Returning to onboarding.',
+                      ),
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  );
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const FinnBootstrap(),
+                    ),
+                    (route) => false,
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Partial deletion failure: Failed to delete ${result.failedItems.join(', ')}.',
+                      ),
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  );
+                }
+              }
+            },
+            child: Text(
+              'Delete Everything',
+              style: TextStyle(
+                color: FluxColors.isDark(context)
+                    ? const Color(0xFFFF6B6B)
+                    : const Color(0xFFD32F2F),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   double _pullUp(double offset) {
     if (!_scrollController.hasClients) return 0;
     if (!_scrollController.position.hasContentDimensions) return 0;
     return math.max(0.0, offset - _scrollController.position.maxScrollExtent);
   }
 
-  /// Extra shift for a section during overscroll.
-  ///   [downMultiplier] — applied on pull-down (positive = moves further down).
-  ///   [upMultiplier]   — applied on pull-up   (positive = moves further up).
   double _shiftFor(
     double offset, {
     required double downMultiplier,
     required double upMultiplier,
   }) {
-    if (offset < 0) return (-offset) * downMultiplier; // pull-down
+    if (offset < 0) return (-offset) * downMultiplier;
     final up = _pullUp(offset);
-    if (up > 0) return -up * upMultiplier; // pull-up
+    if (up > 0) return -up * upMultiplier;
     return 0.0;
   }
 
@@ -194,10 +263,8 @@ class _SettingsPageState extends State<SettingsPage> {
             final double sy = (constraints.maxHeight / 844).clamp(0.7, 1.3);
             final double safeBottom = MediaQuery.paddingOf(context).bottom;
 
-            // ── Layout geometry ────────────────────────────────────────────
             const double pageHorizontalInset = 20;
             const double headerHeight = 34;
-            const double adBannerHeight = 50;
             final double headerTop = 71 * sy;
             final double initialTitleTop = headerTop + headerHeight + 10 * sy;
             final double pinnedTitleTop = headerTop;
@@ -212,12 +279,12 @@ class _SettingsPageState extends State<SettingsPage> {
               },
               child: Stack(
                 children: [
-                  // ── 1. Scrollable content ──────────────────────────────
                   Positioned.fill(
                     child: ListenableBuilder(
                       listenable: Listenable.merge([
                         ConversationStore.instance,
                         BonsaiInference.instance,
+                        AdConsentService.instance,
                       ]),
                       builder: (context, _) {
                         final totalChats =
@@ -225,6 +292,8 @@ class _SettingsPageState extends State<SettingsPage> {
                         final states = _storageStates;
                         final selectedTier =
                             BonsaiInference.instance.selected.tier;
+                        final isPrivacyOptionsNeeded =
+                            AdConsentService.instance.isPrivacyOptionsRequired;
 
                         return CustomScrollView(
                           controller: _scrollController,
@@ -232,12 +301,9 @@ class _SettingsPageState extends State<SettingsPage> {
                             parent: AlwaysScrollableScrollPhysics(),
                           ),
                           slivers: [
-                            // Top padding — reserves space for header + title
                             SliverToBoxAdapter(
                               child: SizedBox(height: contentTop),
                             ),
-
-                            // ── Banner ad — leads the section spring sequence ──
                             SliverToBoxAdapter(
                               child: _SpringSection(
                                 scrollOffset: _scrollOffset,
@@ -250,23 +316,15 @@ class _SettingsPageState extends State<SettingsPage> {
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: pageHorizontalInset,
                                   ),
-                                  child: SizedBox(
-                                    height: adBannerHeight,
-                                    child: BannerAdWidget(
-                                      margin: EdgeInsets.zero,
-                                      adUnitId:
-                                          AdService.settingsBannerAdUnitId,
-                                    ),
+                                  child: BannerAdWidget(
+                                    margin: EdgeInsets.zero,
+                                    adUnitId: AdService.settingsBannerAdUnitId,
                                   ),
                                 ),
                               ),
                             ),
 
-                            SliverToBoxAdapter(
-                              child: const SizedBox(height: 14),
-                            ),
-
-                            // ── AI MODELS section (0.20 down / 0.70 up) ──
+                            // ── AI MODELS section ──
                             SliverToBoxAdapter(
                               child: _SpringSection(
                                 scrollOffset: _scrollOffset,
@@ -340,7 +398,7 @@ class _SettingsPageState extends State<SettingsPage> {
                               child: const SizedBox(height: 28),
                             ),
 
-                            // ── STORAGE & DATA (0.45 down / 0.45 up) ─────
+                            // ── STORAGE & DATA section ──
                             SliverToBoxAdapter(
                               child: _SpringSection(
                                 scrollOffset: _scrollOffset,
@@ -369,8 +427,8 @@ class _SettingsPageState extends State<SettingsPage> {
                                               icon: FluxIcons.settings,
                                               label: 'Saved Conversations',
                                               value: totalChats == 1
-                                                  ? '1 chat'
-                                                  : '$totalChats chats',
+                                                  ? '1 chat (Encrypted)'
+                                                  : '$totalChats chats (Encrypted)',
                                             ),
                                             Divider(
                                               height: 1,
@@ -395,6 +453,19 @@ class _SettingsPageState extends State<SettingsPage> {
                                               enabled: totalChats > 0,
                                               onTap: _confirmClearAllChats,
                                             ),
+                                            Divider(
+                                              height: 1,
+                                              color: FluxColors.lineOf(context),
+                                            ),
+                                            _DestructiveRow(
+                                              icon: FluxIcons.security,
+                                              label: _deletingAllData
+                                                  ? 'Deleting All Local Data…'
+                                                  : 'Delete All Local Data',
+                                              enabled: !_deletingAllData,
+                                              loading: _deletingAllData,
+                                              onTap: _confirmDeleteAllData,
+                                            ),
                                           ],
                                         ),
                                       ),
@@ -408,7 +479,207 @@ class _SettingsPageState extends State<SettingsPage> {
                               child: const SizedBox(height: 28),
                             ),
 
-                            // ── ABOUT (0.70 down / 0.20 up) ──────────────
+                            // ── PRIVACY & LEGAL section ──
+                            SliverToBoxAdapter(
+                              child: _SpringSection(
+                                scrollOffset: _scrollOffset,
+                                shiftFn: (offset) => _shiftFor(
+                                  offset,
+                                  downMultiplier: 0.25,
+                                  upMultiplier: 0.15,
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: pageHorizontalInset,
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const _SectionHeader(
+                                        label: 'PRIVACY & LEGAL',
+                                      ),
+                                      const SizedBox(height: 10),
+                                      FluxGlass(
+                                        radius: 16,
+                                        child: Column(
+                                          children: [
+                                            if (isPrivacyOptionsNeeded) ...[
+                                              _ActionRow(
+                                                icon: FluxIcons.security,
+                                                label: 'Privacy choices',
+                                                onTap: () {
+                                                  AdConsentService.instance
+                                                      .showPrivacyOptionsForm();
+                                                },
+                                              ),
+                                              Divider(
+                                                height: 1,
+                                                color: FluxColors.lineOf(
+                                                  context,
+                                                ),
+                                              ),
+                                            ],
+                                            _ActionRow(
+                                              icon: FluxIcons.lock,
+                                              label: 'Privacy Policy',
+                                              onTap: () async {
+                                                if (LegalConfig
+                                                    .hasPrivacyPolicyUrl) {
+                                                  final uri = Uri.parse(
+                                                    LegalConfig
+                                                        .privacyPolicyUrl,
+                                                  );
+                                                  if (await canLaunchUrl(uri)) {
+                                                    await launchUrl(
+                                                      uri,
+                                                      mode: LaunchMode
+                                                          .externalApplication,
+                                                    );
+                                                  } else {
+                                                    if (context.mounted) {
+                                                      ScaffoldMessenger.of(
+                                                        context,
+                                                      ).showSnackBar(
+                                                        SnackBar(
+                                                          content: Text(
+                                                            'Could not launch ${LegalConfig.privacyPolicyUrl}',
+                                                          ),
+                                                        ),
+                                                      );
+                                                    }
+                                                  }
+                                                } else {
+                                                  ScaffoldMessenger.of(
+                                                    context,
+                                                  ).showSnackBar(
+                                                    const SnackBar(
+                                                      content: Text(
+                                                        'Privacy Policy URL is unconfigured (set FINN_PRIVACY_POLICY_URL).',
+                                                      ),
+                                                    ),
+                                                  );
+                                                }
+                                              },
+                                            ),
+                                            Divider(
+                                              height: 1,
+                                              color: FluxColors.lineOf(context),
+                                            ),
+                                            _ActionRow(
+                                              icon: FluxIcons.security,
+                                              label: 'Terms of Use',
+                                              onTap: () async {
+                                                if (LegalConfig.hasTermsUrl) {
+                                                  final uri = Uri.parse(
+                                                    LegalConfig.termsUrl,
+                                                  );
+                                                  if (await canLaunchUrl(uri)) {
+                                                    await launchUrl(
+                                                      uri,
+                                                      mode: LaunchMode
+                                                          .externalApplication,
+                                                    );
+                                                  } else {
+                                                    if (context.mounted) {
+                                                      ScaffoldMessenger.of(
+                                                        context,
+                                                      ).showSnackBar(
+                                                        SnackBar(
+                                                          content: Text(
+                                                            'Could not launch ${LegalConfig.termsUrl}',
+                                                          ),
+                                                        ),
+                                                      );
+                                                    }
+                                                  }
+                                                } else {
+                                                  ScaffoldMessenger.of(
+                                                    context,
+                                                  ).showSnackBar(
+                                                    const SnackBar(
+                                                      content: Text(
+                                                        'Terms of Use URL is unconfigured (set FINN_TERMS_URL).',
+                                                      ),
+                                                    ),
+                                                  );
+                                                }
+                                              },
+                                            ),
+                                            Divider(
+                                              height: 1,
+                                              color: FluxColors.lineOf(context),
+                                            ),
+                                            _ActionRow(
+                                              icon: FluxIcons.security,
+                                              label: 'Support Contact',
+                                              onTap: () async {
+                                                if (LegalConfig
+                                                    .hasSupportEmail) {
+                                                  final uri = Uri.parse(
+                                                    'mailto:${LegalConfig.supportEmail}',
+                                                  );
+                                                  if (await canLaunchUrl(uri)) {
+                                                    await launchUrl(uri);
+                                                  } else {
+                                                    if (context.mounted) {
+                                                      ScaffoldMessenger.of(
+                                                        context,
+                                                      ).showSnackBar(
+                                                        SnackBar(
+                                                          content: Text(
+                                                            'Support email: ${LegalConfig.supportEmail}',
+                                                          ),
+                                                        ),
+                                                      );
+                                                    }
+                                                  }
+                                                } else {
+                                                  ScaffoldMessenger.of(
+                                                    context,
+                                                  ).showSnackBar(
+                                                    const SnackBar(
+                                                      content: Text(
+                                                        'Support email is unconfigured (set FINN_SUPPORT_EMAIL).',
+                                                      ),
+                                                    ),
+                                                  );
+                                                }
+                                              },
+                                            ),
+                                            Divider(
+                                              height: 1,
+                                              color: FluxColors.lineOf(context),
+                                            ),
+                                            _ActionRow(
+                                              icon: FluxIcons.leaf,
+                                              label: 'Open-Source Licences',
+                                              onTap: () {
+                                                showLicensePage(
+                                                  context: context,
+                                                  applicationName: 'FinnAI',
+                                                  applicationVersion:
+                                                      _appVersion,
+                                                  applicationLegalese:
+                                                      'Created using Bonsai models by Prism ML.\n'
+                                                      'Powered by llama.cpp and Flutter.',
+                                                );
+                                              },
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                            SliverToBoxAdapter(
+                              child: const SizedBox(height: 28),
+                            ),
+
+                            // ── ABOUT section ──
                             SliverToBoxAdapter(
                               child: _SpringSection(
                                 scrollOffset: _scrollOffset,
@@ -434,7 +705,7 @@ class _SettingsPageState extends State<SettingsPage> {
                                             _InfoRow(
                                               icon: FluxIcons.magic,
                                               label: 'App Version',
-                                              value: '1.0.0',
+                                              value: _appVersion,
                                             ),
                                             Divider(
                                               height: 1,
@@ -452,7 +723,16 @@ class _SettingsPageState extends State<SettingsPage> {
                                             _InfoRow(
                                               icon: FluxIcons.security,
                                               label: 'Privacy Mode',
-                                              value: 'Full On-Device',
+                                              value: 'Encrypted On-Device',
+                                            ),
+                                            Divider(
+                                              height: 1,
+                                              color: FluxColors.lineOf(context),
+                                            ),
+                                            _InfoRow(
+                                              icon: FluxIcons.leaf,
+                                              label: 'Model Attribution',
+                                              value: 'Bonsai by Prism ML',
                                             ),
                                           ],
                                         ),
@@ -472,7 +752,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
                   ),
 
-                  // ── 2. Progressive blur mask ───────────────────────────
+                  // ── Progressive blur mask ──
                   ValueListenableBuilder<double>(
                     valueListenable: _scrollOffset,
                     builder: (context, offset, _) {
@@ -528,7 +808,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     },
                   ),
 
-                  // ── 3. BackControl — parallax 0.20× ───────────────────
+                  // ── BackControl ──
                   Positioned(
                     left: pageHorizontalInset,
                     right: pageHorizontalInset,
@@ -565,7 +845,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
                   ),
 
-                  // ── 4. "Settings" title — travels up, parallax 0.70× ──
+                  // ── "Settings" title ──
                   Positioned(
                     left: pageHorizontalInset,
                     right: pageHorizontalInset,
@@ -609,10 +889,6 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 }
 
-// ── Spring Section wrapper ─────────────────────────────────────────────────────
-// Wraps its child in a Transform.translate driven by the scroll offset,
-// using the caller-supplied shift function for both overscroll directions.
-
 class _SpringSection extends StatelessWidget {
   const _SpringSection({
     required this.scrollOffset,
@@ -635,8 +911,6 @@ class _SpringSection extends StatelessWidget {
     );
   }
 }
-
-// ── Model Row ──────────────────────────────────────────────────────────────────
 
 class _ModelRow extends StatelessWidget {
   const _ModelRow({required this.state, required this.isActive});
@@ -716,8 +990,6 @@ class _ModelRow extends StatelessWidget {
   }
 }
 
-// ── Section Header ─────────────────────────────────────────────────────────────
-
 class _SectionHeader extends StatelessWidget {
   const _SectionHeader({required this.label});
 
@@ -735,8 +1007,6 @@ class _SectionHeader extends StatelessWidget {
     );
   }
 }
-
-// ── Info Row ───────────────────────────────────────────────────────────────────
 
 class _InfoRow extends StatelessWidget {
   const _InfoRow({
@@ -777,7 +1047,46 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
-// ── Destructive Row ────────────────────────────────────────────────────────────
+class _ActionRow extends StatelessWidget {
+  const _ActionRow({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final List<List<dynamic>> icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          children: [
+            FluxIcon(icon: icon, size: 18, color: FluxColors.inkOf(context)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                label,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
+              ),
+            ),
+            Icon(
+              Icons.chevron_right,
+              size: 18,
+              color: FluxColors.mutedOf(context),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 class _DestructiveRow extends StatelessWidget {
   const _DestructiveRow({

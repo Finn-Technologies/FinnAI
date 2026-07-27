@@ -31,12 +31,11 @@ abstract final class FluxIcons {
   static const refresh = HugeIcons.strokeRoundedRefresh01;
   static const loading = HugeIcons.strokeRoundedLoading03;
   static const check = HugeIcons.strokeRoundedCheckmarkCircle02;
+  static const flag = HugeIcons.strokeRoundedFlag01;
 }
 
 abstract final class FigmaAssets {
-  static const _root =
-      'designs/figma/flux_app_20260722-145813/'
-      'flux_app_20260722-145813.assets';
+  static const _root = 'assets/runtime';
 
   static const back = '$_root/icon_144_180.svg';
   static const welcomeArrow = '$_root/icon_144_170.svg';
@@ -79,10 +78,26 @@ class FigmaSvg extends StatelessWidget {
   final bool isNavTile;
 
   static const List<double> _darkNavTileMatrix = <double>[
-    -1.082, 0,      0,      0, 310,
-    0,      -1.082, 0,      0, 310,
-    0,      0,      -1.082, 0, 310,
-    0,      0,      0,      1,   0,
+    -1.082,
+    0,
+    0,
+    0,
+    310,
+    0,
+    -1.082,
+    0,
+    0,
+    310,
+    0,
+    0,
+    -1.082,
+    0,
+    310,
+    0,
+    0,
+    0,
+    1,
+    0,
   ];
 
   @override
@@ -128,7 +143,10 @@ class FluxIcon extends StatelessWidget {
   Widget build(BuildContext context) => HugeIcon(
     icon: icon,
     size: size,
-    color: color ?? DefaultTextStyle.of(context).style.color ?? FluxColors.inkOf(context),
+    color:
+        color ??
+        DefaultTextStyle.of(context).style.color ??
+        FluxColors.inkOf(context),
     strokeWidth: strokeWidth,
   );
 }
@@ -152,7 +170,9 @@ class FluxIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bgColor = dark ? FluxColors.inkOf(context) : Colors.transparent;
-    final fgColor = dark ? FluxColors.canvasOf(context) : FluxColors.inkOf(context);
+    final fgColor = dark
+        ? FluxColors.canvasOf(context)
+        : FluxColors.inkOf(context);
 
     final button = Material(
       color: bgColor,
@@ -163,11 +183,7 @@ class FluxIconButton extends StatelessWidget {
         child: SizedBox.square(
           dimension: size,
           child: Center(
-            child: FluxIcon(
-              icon: icon,
-              size: size * .56,
-              color: fgColor,
-            ),
+            child: FluxIcon(icon: icon, size: size * .56, color: fgColor),
           ),
         ),
       ),
@@ -292,11 +308,13 @@ class FluxGlass extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final effectiveColor = color ??
+    final effectiveColor =
+        color ??
         (FluxColors.isDark(context)
             ? const Color(0xCC18181B)
             : const Color(0xD9FFFFFF));
-    final effectiveBorder = borderColor ??
+    final effectiveBorder =
+        borderColor ??
         (FluxColors.isDark(context)
             ? const Color(0x28FFFFFF)
             : const Color(0x18FFFFFF));

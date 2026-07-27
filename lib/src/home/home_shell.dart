@@ -7,8 +7,9 @@ import 'package:flutter/services.dart';
 import '../ads/banner_ad_widget.dart';
 import '../conversations/conversation_store.dart';
 import '../creations/creations_page.dart';
-import '../settings/settings_page.dart';
 import '../inference/bonsai_inference.dart';
+import '../reporting/report_dialog.dart';
+import '../settings/settings_page.dart';
 import '../theme/flux_theme.dart';
 import '../widgets/ambient_background.dart';
 import '../widgets/flux_controls.dart';
@@ -192,10 +193,7 @@ class _HomeShellState extends State<HomeShell>
     final conversation = _conversations.active ?? _conversations.startNew();
     final history = [
       for (final message in conversation.messages)
-        LocalChatTurn(
-          role: message.role.name,
-          content: message.text,
-        ),
+        LocalChatTurn(role: message.role.name, content: message.text),
     ];
 
     final assistant = _conversations.beginExchange(value);
@@ -210,11 +208,7 @@ class _HomeShellState extends State<HomeShell>
     });
 
     _replySubscription = _inference
-        .generateReply(
-          value,
-          conversationId: conversation.id,
-          history: history,
-        )
+        .generateReply(value, conversationId: conversation.id, history: history)
         .listen(
           (token) {
             if (!mounted) return;
@@ -265,6 +259,7 @@ class _HomeShellState extends State<HomeShell>
   }
 
   void _flushTokenPaint({bool persist = false}) {
+    final generatingTier = _inference.lastGeneratingModel.name;
     if (_pendingTokens.isEmpty) {
       if (persist) {
         final id = _assistantMessageId;
@@ -272,6 +267,7 @@ class _HomeShellState extends State<HomeShell>
           _conversations.updateMessage(
             id,
             _answer,
+            modelTier: generatingTier,
             persistSoon: true,
             notify: false,
           );
@@ -291,6 +287,7 @@ class _HomeShellState extends State<HomeShell>
       _conversations.updateMessage(
         id,
         _answer,
+        modelTier: generatingTier,
         persistSoon: true,
         notify: false,
       );
@@ -331,11 +328,11 @@ class _HomeShellState extends State<HomeShell>
 
   void _openSettings() {
     _setSidebar(false);
-    Navigator.of(context).push(_FinnPageRoute(
-      child: SettingsPage(
-        onBack: () => Navigator.of(context).pop(),
+    Navigator.of(context).push(
+      _FinnPageRoute(
+        child: SettingsPage(onBack: () => Navigator.of(context).pop()),
       ),
-    ));
+    );
   }
 
   void _setSidebar(bool open) {
@@ -418,10 +415,7 @@ class _HomeShellState extends State<HomeShell>
                 children: [
                   Transform.translate(
                     offset: Offset(constraints.maxWidth * .14 * motion, 0),
-                    child: Transform.scale(
-                      scale: scale,
-                      child: homeLayer,
-                    ),
+                    child: Transform.scale(scale: scale, child: homeLayer),
                   ),
                   IgnorePointer(
                     ignoring: !_sidebar,
@@ -580,8 +574,16 @@ class _Conversation extends StatelessWidget {
                 )
               : _CompleteReply(
                   text: message.text,
-                  showActions: index == 1,
-                  selectable: index == 1,
+                  userPrompt:
+                      (visibleMessages.length - index - 1 >= 0 &&
+                          visibleMessages[visibleMessages.length - index - 1]
+                                  .role ==
+                              ConversationRole.user)
+                      ? visibleMessages[visibleMessages.length - index - 1].text
+                      : null,
+                  modelTier: message.modelTier,
+                  showActions: true,
+                  selectable: true,
                 ),
         );
       },
@@ -599,7 +601,9 @@ class _Bubble extends StatelessWidget {
     final isDark = FluxColors.isDark(context);
     final bgColor = user
         ? FluxColors.surfaceOf(context)
-        : (isDark ? const Color(0xCC222226) : Colors.white.withValues(alpha: .66));
+        : (isDark
+              ? const Color(0xCC222226)
+              : Colors.white.withValues(alpha: .66));
     final borderColor = isDark
         ? const Color(0x28FFFFFF)
         : Colors.white.withValues(alpha: .42);
@@ -705,11 +709,15 @@ class _ModelResponseLoaderState extends State<_ModelResponseLoader>
 class _CompleteReply extends StatelessWidget {
   const _CompleteReply({
     required this.text,
+    this.userPrompt,
+    this.modelTier = 'Finn AI',
     this.showActions = true,
     this.selectable = true,
   });
 
   final String text;
+  final String? userPrompt;
+  final String modelTier;
   final bool showActions;
   final bool selectable;
 
@@ -739,6 +747,20 @@ class _CompleteReply extends StatelessWidget {
                       duration: Duration(milliseconds: 900),
                     ),
                   );
+              },
+            ),
+            const SizedBox(width: 8),
+            FluxIconButton(
+              icon: FluxIcons.flag,
+              size: 32,
+              tooltip: 'Report response',
+              onTap: () {
+                ReportDialog.show(
+                  context,
+                  assistantResponse: text,
+                  userPrompt: userPrompt,
+                  modelTier: modelTier,
+                );
               },
             ),
           ],
@@ -846,65 +868,57 @@ class _ComposerState extends State<_Composer> {
   Widget build(BuildContext context) {
     final canSend = _hasText && !widget.blocked;
     return FluxGlass(
-          radius: 15,
-          color: FluxColors.isDark(context)
-              ? const Color(0xCC18181B)
-              : Colors.white.withValues(alpha: .82),
-          borderColor: FluxColors.inkOf(context)
-              .withValues(alpha: _focused ? .18 : .045),
-          child: SizedBox(
-            height: 50,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: widget.controller,
-                      focusNode: widget.focusNode,
-                      enabled: !widget.blocked,
-                      textInputAction: TextInputAction.send,
-                      onSubmitted: (_) => canSend ? widget.onSend() : null,
-                      style: Theme.of(context).textTheme.bodyMedium,
-                      decoration: InputDecoration.collapsed(
-                        hintText: widget.blocked
-                            ? 'Finn AI is responding…'
-                            : 'Ask anything',
-                        hintStyle: Theme.of(
-                          context,
-                        ).textTheme.bodyMedium?.copyWith(
-                              color: FluxColors.mutedOf(context),
-                            ),
-                      ),
+      radius: 15,
+      color: FluxColors.isDark(context)
+          ? const Color(0xCC18181B)
+          : Colors.white.withValues(alpha: .82),
+      borderColor: FluxColors.inkOf(
+        context,
+      ).withValues(alpha: _focused ? .18 : .045),
+      child: SizedBox(
+        height: 50,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: widget.controller,
+                  focusNode: widget.focusNode,
+                  enabled: !widget.blocked,
+                  textInputAction: TextInputAction.send,
+                  onSubmitted: (_) => canSend ? widget.onSend() : null,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                  decoration: InputDecoration.collapsed(
+                    hintText: widget.blocked
+                        ? 'Finn AI is responding…'
+                        : 'Ask anything',
+                    hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: FluxColors.mutedOf(context),
                     ),
                   ),
-                  const FigmaSvg(
-                    asset: FigmaAssets.microphone,
-                    width: 30,
-                    height: 30,
-                  ),
-                  const SizedBox(width: 10),
-                  AnimatedScale(
-                    scale: canSend ? 1 : .94,
-                    duration: const Duration(milliseconds: 220),
-                    curve: Curves.easeOutBack,
-                    child: InkWell(
-                      onTap: canSend ? widget.onSend : null,
-                      borderRadius: BorderRadius.circular(17),
-                      child: FigmaSvg(
-                        asset: canSend
-                            ? FigmaAssets.activeSend
-                            : FigmaAssets.send,
-                        width: 34,
-                        height: 34,
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
+              const SizedBox(width: 8),
+              AnimatedScale(
+                scale: canSend ? 1 : .94,
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOutBack,
+                child: InkWell(
+                  onTap: canSend ? widget.onSend : null,
+                  borderRadius: BorderRadius.circular(17),
+                  child: FigmaSvg(
+                    asset: canSend ? FigmaAssets.activeSend : FigmaAssets.send,
+                    width: 34,
+                    height: 34,
+                  ),
+                ),
+              ),
+            ],
           ),
-        );
+        ),
+      ),
+    );
   }
 }
 
@@ -934,6 +948,7 @@ class _Sidebar extends StatefulWidget {
 class _SidebarState extends State<_Sidebar> {
   late final ScrollController _scrollController = ScrollController();
   final ValueNotifier<double> _scrollOffset = ValueNotifier<double>(0.0);
+  bool _adLoaded = false;
 
   @override
   void initState() {
@@ -968,13 +983,25 @@ class _SidebarState extends State<_Sidebar> {
           final double headerHeight = 34;
           final double gap1 = 14 * sy;
           final double buttonsTop = headerTop + headerHeight + gap1;
-          final double navSize =
-              ((constraints.maxWidth - 80) / 3).clamp(52.0, 62.0);
-          final double buttonsHeight = navSize + 20;
-          final double buttonsBottom = buttonsTop + buttonsHeight;
-          final double adBannerTop = buttonsBottom + 10 * sy;
-          const double adBannerHeight = 46.0;
-          final double initialTitleTop = adBannerTop + adBannerHeight + (16 * sy);
+          final double navSize = ((constraints.maxWidth - 80) / 3).clamp(
+            52.0,
+            62.0,
+          );
+          final bool enableCreations = const bool.fromEnvironment(
+            'FINN_ENABLE_EXPERIMENTS',
+            defaultValue: false,
+          );
+          final double buttonsHeight = enableCreations ? (navSize + 20) : 0;
+          final double buttonsBottom = enableCreations
+              ? (buttonsTop + buttonsHeight)
+              : (headerTop + headerHeight);
+          final double adBannerTop = enableCreations
+              ? (buttonsBottom + 10 * sy)
+              : (buttonsBottom + 12 * sy);
+          final double adBannerHeight = _adLoaded ? 50.0 : 0.0;
+          final double initialTitleTop = _adLoaded
+              ? (adBannerTop + adBannerHeight + (16 * sy))
+              : (adBannerTop + (4 * sy));
           final double pinnedTitleTop = headerTop;
           const double titleHeight = 24;
           final double historyTopAtRest = initialTitleTop + titleHeight + 12;
@@ -1005,8 +1032,9 @@ class _SidebarState extends State<_Sidebar> {
                         sliver: widget.conversations.isEmpty
                             ? SliverToBoxAdapter(
                                 child: Padding(
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 40),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 40,
+                                  ),
                                   child: Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
@@ -1022,7 +1050,9 @@ class _SidebarState extends State<_Sidebar> {
                                             .textTheme
                                             .labelMedium
                                             ?.copyWith(
-                                              color: FluxColors.mutedOf(context),
+                                              color: FluxColors.mutedOf(
+                                                context,
+                                              ),
                                               fontSize: 10,
                                             ),
                                       ),
@@ -1038,11 +1068,11 @@ class _SidebarState extends State<_Sidebar> {
                                   return _SidebarConversationTile(
                                     key: ValueKey(conversation.id),
                                     conversation: conversation,
-                                    selected: conversation.id ==
+                                    selected:
+                                        conversation.id ==
                                         widget.activeConversationId,
-                                    onTap: () => widget.onConversation(
-                                      conversation.id,
-                                    ),
+                                    onTap: () =>
+                                        widget.onConversation(conversation.id),
                                   );
                                 },
                               ),
@@ -1058,8 +1088,9 @@ class _SidebarState extends State<_Sidebar> {
                 builder: (context, offset, _) {
                   final double scrollUp = math.max(0.0, offset);
                   final double blurProgress = (scrollUp / 24.0).clamp(0.0, 1.0);
-                  final double blurHeight =
-                      blurProgress <= 0 ? 0.0 : (pinnedTitleTop + titleHeight + 14 * sy);
+                  final double blurHeight = blurProgress <= 0
+                      ? 0.0
+                      : (pinnedTitleTop + titleHeight + 14 * sy);
 
                   return Positioned(
                     left: 0,
@@ -1091,9 +1122,9 @@ class _SidebarState extends State<_Sidebar> {
                                       sigmaY: 10 * blurProgress,
                                     ),
                                     child: ColoredBox(
-                                      color: FluxColors.canvasOf(context).withValues(
-                                        alpha: .86 * blurProgress,
-                                      ),
+                                      color: FluxColors.canvasOf(
+                                        context,
+                                      ).withValues(alpha: .86 * blurProgress),
                                     ),
                                   ),
                                 ),
@@ -1104,217 +1135,205 @@ class _SidebarState extends State<_Sidebar> {
                 },
               ),
 
-            // 3. Header (Finn AI title + actions) - fades out on scroll up as title replaces it, spring overscroll on pull down
-            Positioned(
-              left: 25,
-              right: 20,
-              top: headerTop,
-              height: headerHeight,
-              child: ValueListenableBuilder<double>(
-                valueListenable: _scrollOffset,
-                builder: (context, offset, child) {
-                  final double pullDown = offset < 0 ? -offset : 0.0;
-                  final double shift = pullDown * 0.20;
-                  final double scrollUp = math.max(0.0, offset);
-                  final double opacity = (1.0 - (scrollUp / (titleTravelDistance * 0.5))).clamp(0.0, 1.0);
+              // 3. Header (Finn AI title + actions) - fades out on scroll up as title replaces it, spring overscroll on pull down
+              Positioned(
+                left: 25,
+                right: 20,
+                top: headerTop,
+                height: headerHeight,
+                child: ValueListenableBuilder<double>(
+                  valueListenable: _scrollOffset,
+                  builder: (context, offset, child) {
+                    final double pullDown = offset < 0 ? -offset : 0.0;
+                    final double shift = pullDown * 0.20;
+                    final double scrollUp = math.max(0.0, offset);
+                    final double opacity =
+                        (1.0 - (scrollUp / (titleTravelDistance * 0.5))).clamp(
+                          0.0,
+                          1.0,
+                        );
 
-                  return IgnorePointer(
-                    ignoring: opacity < 0.5,
-                    child: Opacity(
-                      opacity: opacity,
-                      child: Transform.translate(
-                        offset: Offset(0, shift),
-                        child: child,
-                      ),
-                    ),
-                  );
-                },
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: 70,
-                      height: 34,
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'Finn AI',
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleLarge
-                              ?.copyWith(fontWeight: FontWeight.w400),
+                    return IgnorePointer(
+                      ignoring: opacity < 0.5,
+                      child: Opacity(
+                        opacity: opacity,
+                        child: Transform.translate(
+                          offset: Offset(0, shift),
+                          child: child,
                         ),
                       ),
-                    ),
-                    const Spacer(),
-                    SizedBox(
-                      width: 78,
-                      height: 34,
-                      child: Stack(
-                        children: [
-                          // Underlying SVG showing both icons
-                          const FigmaSvg(
-                            asset: FigmaAssets.sidebarActions,
-                            width: 78,
-                            height: 34,
+                    );
+                  },
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 70,
+                        height: 34,
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'Finn AI',
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(fontWeight: FontWeight.w400),
                           ),
-                          // Left half → Settings
-                          Positioned(
-                            left: 0,
-                            top: 0,
-                            width: 39,
-                            bottom: 0,
-                            child: Tooltip(
-                              message: 'Settings',
-                              child: InkWell(
-                                onTap: widget.onSettings,
-                                borderRadius: const BorderRadius.horizontal(
-                                  left: Radius.circular(17),
+                        ),
+                      ),
+                      const Spacer(),
+                      SizedBox(
+                        width: 78,
+                        height: 34,
+                        child: Stack(
+                          children: [
+                            // Underlying SVG showing both icons
+                            const FigmaSvg(
+                              asset: FigmaAssets.sidebarActions,
+                              width: 78,
+                              height: 34,
+                            ),
+                            // Left half → Settings
+                            Positioned(
+                              left: 0,
+                              top: 0,
+                              width: 39,
+                              bottom: 0,
+                              child: Tooltip(
+                                message: 'Settings',
+                                child: InkWell(
+                                  onTap: widget.onSettings,
+                                  borderRadius: const BorderRadius.horizontal(
+                                    left: Radius.circular(17),
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                          // Right half → New Conversation
-                          Positioned(
-                            left: 39,
-                            top: 0,
-                            right: 0,
-                            bottom: 0,
-                            child: Tooltip(
-                              message: 'New chat',
-                              child: InkWell(
-                                onTap: widget.onNewConversation,
-                                borderRadius: const BorderRadius.horizontal(
-                                  right: Radius.circular(17),
+                            // Right half → New Conversation
+                            Positioned(
+                              left: 39,
+                              top: 0,
+                              right: 0,
+                              bottom: 0,
+                              child: Tooltip(
+                                message: 'New chat',
+                                child: InkWell(
+                                  onTap: widget.onNewConversation,
+                                  borderRadius: const BorderRadius.horizontal(
+                                    right: Radius.circular(17),
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            // 4. 3 Nav Buttons (Creations, You, Skills) - fades out on scroll up as title replaces it, spring overscroll on pull down
-            Positioned(
-              left: 25,
-              right: 25,
-              top: buttonsTop,
-              height: buttonsHeight,
-              child: ValueListenableBuilder<double>(
-                valueListenable: _scrollOffset,
-                builder: (context, offset, child) {
-                  final double pullDown = offset < 0 ? -offset : 0.0;
-                  final double shift = pullDown * 0.45;
-                  final double scrollUp = math.max(0.0, offset);
-                  final double opacity = (1.0 - (scrollUp / (titleTravelDistance * 0.7))).clamp(0.0, 1.0);
-
-                  return IgnorePointer(
-                    ignoring: opacity < 0.5,
-                    child: Opacity(
-                      opacity: opacity,
-                      child: Transform.translate(
-                        offset: Offset(0, shift),
-                        child: child,
-                      ),
-                    ),
-                  );
-                },
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    _NavTile(
-                      asset: FigmaAssets.sidebarCreations,
-                      label: 'Creations',
-                      onTap: widget.onCreations,
-                      size: navSize,
-                    ),
-                    _NavTile(
-                      asset: FigmaAssets.sidebarYou,
-                      label: 'You',
-                      onTap: widget.onClose,
-                      size: navSize,
-                    ),
-                    _NavTile(
-                      asset: FigmaAssets.sidebarSkills,
-                      label: 'Skills',
-                      onTap: widget.onClose,
-                      size: navSize,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            // 4.5. Banner Ad between 3 Nav Buttons and Chat History Title
-            Positioned(
-              left: 20,
-              right: 20,
-              top: adBannerTop,
-              height: adBannerHeight,
-              child: ValueListenableBuilder<double>(
-                valueListenable: _scrollOffset,
-                builder: (context, offset, child) {
-                  final double pullDown = offset < 0 ? -offset : 0.0;
-                  final double shift = pullDown * 0.55;
-                  final double scrollUp = math.max(0.0, offset);
-                  final double opacity =
-                      (1.0 - (scrollUp / (titleTravelDistance * 0.7)))
-                          .clamp(0.0, 1.0);
-
-                  return IgnorePointer(
-                    ignoring: opacity < 0.5,
-                    child: Opacity(
-                      opacity: opacity,
-                      child: Transform.translate(
-                        offset: Offset(0, shift),
-                        child: child,
-                      ),
-                    ),
-                  );
-                },
-                child: const BannerAdWidget(
-                  margin: EdgeInsets.zero,
-                ),
-              ),
-            ),
-
-            // 5. Chat History Title - lifts up on scroll all the way to headerTop replacing content beneath, spring overscroll on pull down
-            Positioned(
-              left: 25,
-              right: 25,
-              top: initialTitleTop,
-              height: titleHeight,
-              child: ValueListenableBuilder<double>(
-                valueListenable: _scrollOffset,
-                builder: (context, offset, child) {
-                  double shift;
-                  if (offset < 0) {
-                    final double pullDown = -offset;
-                    shift = pullDown * 0.70;
-                  } else {
-                    shift = -math.min(titleTravelDistance, offset);
-                  }
-                  return Transform.translate(
-                    offset: Offset(0, shift),
-                    child: child,
-                  );
-                },
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Chat History',
-                    style: Theme.of(context).textTheme.bodyMedium,
+                    ],
                   ),
                 ),
               ),
-            ),
-          ],
-        );
-      },
-    ),
-  );
+
+              // 4. Creations experimental feature button (gated by FINN_ENABLE_EXPERIMENTS)
+              if (enableCreations)
+                Positioned(
+                  left: 25,
+                  right: 25,
+                  top: buttonsTop,
+                  height: buttonsHeight,
+                  child: ValueListenableBuilder<double>(
+                    valueListenable: _scrollOffset,
+                    builder: (context, offset, child) {
+                      final double pullDown = offset < 0 ? -offset : 0.0;
+                      final double shift = pullDown * 0.45;
+                      final double scrollUp = math.max(0.0, offset);
+                      final double opacity =
+                          (1.0 - (scrollUp / (titleTravelDistance * 0.7)))
+                              .clamp(0.0, 1.0);
+
+                      return IgnorePointer(
+                        ignoring: opacity < 0.5,
+                        child: Opacity(
+                          opacity: opacity,
+                          child: Transform.translate(
+                            offset: Offset(0, shift),
+                            child: child,
+                          ),
+                        ),
+                      );
+                    },
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                        _NavTile(
+                          asset: FigmaAssets.sidebarCreations,
+                          label: 'Creations',
+                          onTap: widget.onCreations,
+                          size: navSize,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              // 4.5. Banner Ad between 3 Nav Buttons and Chat History Title
+              Positioned(
+                left: 20,
+                right: 20,
+                top: adBannerTop,
+                height: adBannerHeight,
+                child: ValueListenableBuilder<double>(
+                  valueListenable: _scrollOffset,
+                  builder: (context, offset, child) {
+                    final double pullDown = offset < 0 ? -offset : 0.0;
+                    final double shift = pullDown * 0.55;
+
+                    return Transform.translate(
+                      offset: Offset(0, shift),
+                      child: child,
+                    );
+                  },
+                  child: BannerAdWidget(
+                    margin: EdgeInsets.zero,
+                    onAdLoadedStateChanged: (loaded) {
+                      if (mounted && _adLoaded != loaded) {
+                        setState(() => _adLoaded = loaded);
+                      }
+                    },
+                  ),
+                ),
+              ),
+
+              // 5. Chat History Title - lifts up on scroll all the way to headerTop replacing content beneath, spring overscroll on pull down
+              Positioned(
+                left: 25,
+                right: 25,
+                top: initialTitleTop,
+                height: titleHeight,
+                child: ValueListenableBuilder<double>(
+                  valueListenable: _scrollOffset,
+                  builder: (context, offset, child) {
+                    double shift;
+                    if (offset < 0) {
+                      final double pullDown = -offset;
+                      shift = pullDown * 0.70;
+                    } else {
+                      shift = -math.min(titleTravelDistance, offset);
+                    }
+                    return Transform.translate(
+                      offset: Offset(0, shift),
+                      child: child,
+                    );
+                  },
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Chat History',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
   }
 }
 
@@ -1438,12 +1457,13 @@ class _SidebarConversationTile extends StatelessWidget {
         content: TextField(
           controller: controller,
           autofocus: true,
-          decoration: const InputDecoration(
-            hintText: 'Enter chat title',
-          ),
+          decoration: const InputDecoration(hintText: 'Enter chat title'),
           onSubmitted: (text) {
             Navigator.of(dialogContext).pop();
-            ConversationStore.instance.renameConversation(conversation.id, text);
+            ConversationStore.instance.renameConversation(
+              conversation.id,
+              text,
+            );
           },
         ),
         actions: [
@@ -1454,8 +1474,10 @@ class _SidebarConversationTile extends StatelessWidget {
           TextButton(
             onPressed: () {
               Navigator.of(dialogContext).pop();
-              ConversationStore.instance
-                  .renameConversation(conversation.id, controller.text);
+              ConversationStore.instance.renameConversation(
+                conversation.id,
+                controller.text,
+              );
             },
             child: const Text('Save'),
           ),
@@ -1497,19 +1519,14 @@ class _SidebarConversationTile extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 7),
       child: Material(
-        color: selected
-            ? FluxColors.surfaceOf(context)
-            : Colors.transparent,
+        color: selected ? FluxColors.surfaceOf(context) : Colors.transparent,
         borderRadius: BorderRadius.circular(14),
         child: InkWell(
           onTap: onTap,
           onLongPress: () => _showChatPopupMenu(context),
           borderRadius: BorderRadius.circular(14),
           child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 11,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
             child: Text(
               conversation.title,
               maxLines: 1,

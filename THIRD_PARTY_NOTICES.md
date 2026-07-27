@@ -1,13 +1,110 @@
-# Third-party notices
+# Third-Party Licences & Notices
 
-Finn AI is proprietary software. Its use of open-source dependencies and
-open-weight models does not make the Finn AI application source code open
-source.
+FinnAI relies on open-source software and model weights. This document contains third-party notices and license terms for primary components.
 
-- `llama.cpp` and `llama_cpp_dart` are used under their MIT licenses.
-- Prism ML Bonsai model weights are downloaded separately from Hugging Face
-  and are published under Apache License 2.0.
-- Flutter and the remaining Dart packages retain their respective licenses.
+*Note: Complete license texts for all transitive Flutter packages can be viewed in-app via `showLicensePage()` in app Settings under Open-Source Licences.*
 
-Release builds should expose the complete dependency license texts through the
-app's legal/about surface and store listing where required.
+---
+
+## 1. llama.cpp & ggml
+- **Project**: `llama.cpp` and `ggml`
+- **License**: MIT License
+```text
+MIT License
+
+Copyright (c) 2023-2026 Georgi Gerganov and contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+---
+
+## 2. Prism ML Bonsai AI Models
+- **Models**: Bonsai 1.7B, Bonsai 4B, Bonsai 8B (GGUF format)
+- **Creator**: Prism ML
+- **Attribution**: Created using Bonsai models by Prism ML.
+- **License**: Apache License, Version 2.0.
+
+---
+
+## 3. Cryptography Package (`package:cryptography`)
+- **License**: Apache License, Version 2.0
+```text
+Copyright 2019-2026 Gohilla.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+```
+
+---
+
+## 4. Flutter & Dart SDK Packages
+- **Flutter Framework**: BSD 3-Clause License
+- **google_mobile_ads**: Apache 2.0 License
+- **flutter_secure_storage**: BSD 3-Clause License
+- **package_info_plus**: BSD 3-Clause License
+- **path_provider**: BSD 3-Clause License
+- **url_launcher**: BSD 3-Clause License
+- **http**: BSD 3-Clause License
+- **crypto**: BSD 3-Clause License
+- **flutter_svg**: MIT License
+- **hugeicons**: MIT License
+
+```text
+BSD 3-Clause License
+
+Copyright 2014 The Flutter Authors. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
+
+    * Redistributions of source code must retain the above copyright notice,
+      this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above copyright notice,
+      this list of conditions and the following disclaimer in the documentation
+      and/or other materials provided with the distribution.
+    * Neither the name of Google Inc. nor the names of its contributors may be
+      used to endorse or promote products derived from this software without
+      specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+```
+
+---
+
+## 5. Typography & Fonts
+- **Instrument Sans**: SIL Open Font License, Version 1.1.

@@ -3,13 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'src/ads/ad_service.dart';
 import 'src/flux_app.dart';
 import 'src/inference/bonsai_inference.dart';
+import 'src/privacy/ad_consent_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await AdService.instance.initialize();
   if (const bool.fromEnvironment('FINN_BENCHMARK')) {
     await BonsaiInference.instance.initialize();
     if (const String.fromEnvironment('FINN_BENCH_TIER') == 'lite') {
@@ -26,6 +25,10 @@ Future<void> main() async {
       systemNavigationBarIconBrightness: Brightness.dark,
     ),
   );
+
+  // Initialize privacy consent asynchronously without delaying core local AI app startup
+  unawaited(AdConsentService.instance.initializeConsentAndAds());
+
   runApp(const FinnBootstrap());
 }
 
