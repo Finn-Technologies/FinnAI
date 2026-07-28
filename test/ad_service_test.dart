@@ -1,9 +1,18 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:finn_ai/src/ads/banner_ad_widget.dart';
+import 'package:finn_ai/src/creations/creation_generator.dart';
+import 'package:finn_ai/src/creations/creation_model.dart';
+import 'package:finn_ai/src/creations/creation_store.dart';
+import 'package:finn_ai/src/creations/creations_controller.dart';
+import 'package:finn_ai/src/creations/creations_page.dart';
+import 'package:finn_ai/src/flux_app.dart';
 import 'package:finn_ai/src/home/home_shell.dart';
 import 'package:finn_ai/src/privacy/ad_consent_service.dart';
 import 'package:finn_ai/src/settings/settings_page.dart';
+import 'package:finn_ai/src/skills/skills_page.dart';
+import 'package:finn_ai/src/you/you_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
@@ -60,6 +69,36 @@ class _ControlledLoader {
   void complete() => _pending?.complete(() {});
 }
 
+class _SwitchableCreationGenerator implements CreationGenerator {
+  Completer<CreationDraft>? pending;
+
+  @override
+  Future<CreationDraft> generate(String prompt, CreationKind kind) async {
+    final completer = pending;
+    if (completer != null) return completer.future;
+    return const CreationDraft(
+      title: 'Local plan',
+      summary: 'A locally generated plan.',
+      sections: [],
+    );
+  }
+}
+
+class _MemoryCreationStore extends CreationStore {
+  _MemoryCreationStore(this.records)
+    : super(directoryProvider: () async => Directory.systemTemp);
+
+  List<FinnCreation> records;
+
+  @override
+  Future<List<FinnCreation>> load() async => List.of(records);
+
+  @override
+  Future<void> save(List<FinnCreation> creations) async {
+    records = List.of(creations);
+  }
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -111,13 +150,139 @@ void main() {
 
         await tester.pump(const Duration(milliseconds: 500));
 
-        final bannerFinder = find.byType(BannerAdWidget);
-        if (bannerFinder.evaluate().isNotEmpty) {
-          final bannerBox = tester.renderObject(bannerFinder) as RenderBox;
-          expect(bannerBox.size.height, 0);
-        }
+        expect(
+          find.byType(BannerAdWidget),
+          findsNothing,
+          reason: 'native ads must not ride the sidebar transition',
+        );
       },
     );
+
+    testWidgets('onboarding and personalization editors are ad-free', (
+      tester,
+    ) async {
+      await tester.pumpWidget(const FluxApp(enableModelDownload: false));
+      await tester.pump();
+      expect(find.byType(BannerAdWidget), findsNothing);
+
+      await tester.pumpWidget(MaterialApp(home: YouPage(onBack: () {})));
+      await tester.pump();
+      expect(find.byType(BannerAdWidget), findsNothing);
+
+      await tester.pumpWidget(MaterialApp(home: SkillsPage(onBack: () {})));
+      await tester.pump();
+      expect(find.byType(BannerAdWidget), findsNothing);
+    });
+
+    testWidgets(
+      'placement gate prevents requests and invalidates an in-flight ad',
+      (tester) async {
+        final loader = _ControlledLoader();
+        final staleAd = _FakeBannerAd();
+        addTearDown(AdConsentService.instance.testRevokeConsent);
+        AdConsentService.instance.testGrantConsent();
+
+        Widget app({required bool enabled}) => MaterialApp(
+          home: Scaffold(
+            body: BannerAdWidget(
+              key: const ValueKey('gated-banner'),
+              enabled: enabled,
+              adLoader: loader.loader,
+              isSupportedPlatformOverride: true,
+            ),
+          ),
+        );
+
+        await tester.pumpWidget(app(enabled: false));
+        await tester.pump();
+        expect(loader.capturedGeneration, isNull);
+        expect(
+          (tester.renderObject(find.byType(BannerAdWidget)) as RenderBox)
+              .size
+              .height,
+          0,
+        );
+
+        await tester.pumpWidget(app(enabled: true));
+        await tester.pump();
+        expect(loader.capturedGeneration, 0);
+        final onLoaded = loader.capturedOnLoaded!;
+
+        await tester.pumpWidget(app(enabled: false));
+        await tester.pump();
+        onLoaded(staleAd, 0);
+        loader.complete();
+        await tester.pump();
+
+        expect(staleAd.disposed, isTrue);
+        expect(
+          (tester.renderObject(find.byType(BannerAdWidget)) as RenderBox)
+              .size
+              .height,
+          0,
+        );
+      },
+    );
+
+    testWidgets('Creations placement is enabled only while idle', (
+      tester,
+    ) async {
+      final generator = _SwitchableCreationGenerator();
+      final controller = CreationsController(
+        _MemoryCreationStore([
+          FinnCreation(
+            id: 'existing',
+            kind: CreationKind.app,
+            prompt: 'First local plan',
+            title: 'Local plan',
+            summary: 'Already generated locally.',
+            sections: const [],
+            createdAt: DateTime(2026, 7, 27),
+          ),
+        ]),
+        generator,
+      );
+      addTearDown(controller.dispose);
+      await controller.load();
+
+      await tester.pumpWidget(
+        MaterialApp(home: CreationsPage(controller: controller)),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      BannerAdWidget placement() =>
+          tester.widget(find.byKey(const Key('creations-idle-ad')));
+      expect(placement().enabled, isTrue);
+
+      generator.pending = Completer<CreationDraft>();
+      final generation = controller.create(
+        'Another local plan',
+        CreationKind.presentation,
+      );
+      await tester.pump();
+      expect(controller.generating, isTrue);
+      expect(placement().enabled, isFalse);
+      expect(
+        (tester.renderObject(find.byKey(const Key('creations-idle-ad')))
+                as RenderBox)
+            .size
+            .height,
+        0,
+      );
+
+      generator.pending!.complete(
+        const CreationDraft(
+          title: 'Finished plan',
+          summary: 'Finished locally.',
+          sections: [],
+        ),
+      );
+      await generation;
+      await tester.pump();
+      expect(controller.generating, isFalse);
+      expect(placement().enabled, isTrue);
+    });
 
     testWidgets(
       'BannerAdWidget stays collapsed when consent is denied throughout',

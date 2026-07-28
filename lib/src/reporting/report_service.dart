@@ -80,7 +80,7 @@ class ReportService {
       _customEndpoint?.trim() ??
       const String.fromEnvironment(
         'FINN_REPORT_ENDPOINT',
-        defaultValue: '',
+        defaultValue: 'https://finn-org.vercel.app/v1/reports',
       ).trim();
 
   bool get isConfigured => endpoint.isNotEmpty;

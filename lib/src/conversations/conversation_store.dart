@@ -209,6 +209,9 @@ class ConversationStore extends ChangeNotifier {
   String? _activeId;
   Timer? _saveDebounce;
   bool _initialized = false;
+  Future<void>? _initializeJob;
+  Future<void> _flushQueue = Future<void>.value();
+  bool _deleting = false;
   Uint8List? _masterKey;
   bool _storageError = false;
   String? _storageErrorMessage;
@@ -255,6 +258,18 @@ class ConversationStore extends ChangeNotifier {
 
   Future<void> initialize() async {
     if (_initialized) return;
+    final running = _initializeJob;
+    if (running != null) return running;
+    final job = _initialize();
+    _initializeJob = job;
+    try {
+      await job;
+    } finally {
+      if (identical(_initializeJob, job)) _initializeJob = null;
+    }
+  }
+
+  Future<void> _initialize() async {
     if (_conversations.isNotEmpty) {
       _initialized = true;
       return;
@@ -543,6 +558,21 @@ class ConversationStore extends ChangeNotifier {
     if (persistSoon) _scheduleSave();
   }
 
+  void removeMessage(String id) {
+    final conversation = active;
+    if (conversation == null ||
+        !conversation.messages.any((message) => message.id == id)) {
+      return;
+    }
+    final messages = conversation.messages
+        .where((message) => message.id != id)
+        .toList(growable: false);
+    _replace(
+      conversation.copyWith(updatedAt: DateTime.now(), messages: messages),
+    );
+    _changed();
+  }
+
   void renameConversation(String id, String newTitle) {
     final index = _conversations.indexWhere((item) => item.id == id);
     if (index < 0) return;
@@ -571,6 +601,8 @@ class ConversationStore extends ChangeNotifier {
   Future<Set<String>> deleteStorageFiles() async {
     _saveDebounce?.cancel();
     _saveDebounce = null;
+    _deleting = true;
+    await _flushQueue;
     _conversations.clear();
     _activeId = null;
 
@@ -614,18 +646,29 @@ class ConversationStore extends ChangeNotifier {
     _masterKey = null;
     _storageError = false;
     _storageErrorMessage = null;
+    _deleting = false;
     notifyListeners();
 
     return failures;
   }
 
-  Future<void> flush() async {
+  Future<void> flush() {
     _saveDebounce?.cancel();
     _saveDebounce = null;
-    if (_storageError) {
+    if (_storageError || _deleting) {
       debugPrint('Flush aborted: ConversationStore is in storage error state.');
-      return;
+      return Future<void>.value();
     }
+    final plaintext = jsonEncode(<String, Object?>{
+      'activeId': _activeId,
+      'conversations': _conversations.map((item) => item.toJson()).toList(),
+    });
+    _flushQueue = _flushQueue.then((_) => _writeEncrypted(plaintext));
+    return _flushQueue;
+  }
+
+  Future<void> _writeEncrypted(String plaintext) async {
+    if (_deleting) return;
     try {
       final key = await _getOrCreateMasterKey();
       if (key == null) {
@@ -634,12 +677,7 @@ class ConversationStore extends ChangeNotifier {
       }
       final file = await _file(filename: 'conversations.v2.enc');
       final temp = File('${file.path}.tmp');
-      final payload = <String, Object?>{
-        'activeId': _activeId,
-        'conversations': _conversations.map((item) => item.toJson()).toList(),
-      };
-      final plaintextStr = jsonEncode(payload);
-      final envelope = await ConversationCipher.encrypt(key, plaintextStr);
+      final envelope = await ConversationCipher.encrypt(key, plaintext);
 
       await temp.writeAsString(jsonEncode(envelope), flush: true);
       await temp.rename(file.path);

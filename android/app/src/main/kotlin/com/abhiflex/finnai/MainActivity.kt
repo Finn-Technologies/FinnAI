@@ -3,6 +3,7 @@ package com.abhiflex.finnai
 import android.app.ActivityManager
 import android.content.Context
 import android.os.Build
+import android.os.StatFs
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.engine.FlutterShellArgs
@@ -43,10 +44,12 @@ class MainActivity : FlutterActivity() {
             } else {
                 memory.totalMem
             }
+            val storage = StatFs(filesDir.absolutePath)
             result.success(
                 mapOf(
                     "totalRamBytes" to totalMemory,
                     "availableRamBytes" to memory.availMem,
+                    "availableStorageBytes" to storage.availableBytes,
                     "lowMemory" to memory.lowMemory,
                     "socManufacturer" to if (Build.VERSION.SDK_INT >= 31) Build.SOC_MANUFACTURER else "",
                     "socModel" to if (Build.VERSION.SDK_INT >= 31) Build.SOC_MODEL else "",
@@ -58,5 +61,6 @@ class MainActivity : FlutterActivity() {
                 ),
             )
         }
+
     }
 }

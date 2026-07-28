@@ -10,10 +10,13 @@ FinnAI is designed as an on-device, privacy-first AI assistant. All inference ru
 | Data Type | Storage Location | Encryption Standard | Network Exposure |
 |---|---|---|---|
 | Chat History & Messages | Local App Private Storage (`conversations.v2.enc`) | AES-256-GCM via `package:cryptography` | None (Stored locally) |
+| Creations | Local App Private Storage (`creations.json`) | Android application sandbox | None |
+| Profile Preferences & Custom Instructions | Local App Private Storage (`user_personalization.json`) | Android application sandbox | None |
+| Skills | Local App Private Storage (`skills.json`) | Android application sandbox | None |
 | Encryption Master Key | `FlutterSecureStorage` (Android KeyStore / KeyChain) | 256-bit random key in OS-enforced Hardware KeyStore | None |
 | AI Model Weights | Local Cache Directory (`.gguf` files) | SHA-256 integrity verified | Download only from Hugging Face |
 | AdMob Data & Consent | Local Preferences & Google UMP SDK | Google Standard Advertising Privacy | Google AdMob Servers |
-| AI Response Reports | Transient in memory | HTTPS TLS 1.3 (When user submits & endpoint configured) | Configured Reporting Endpoint (`FINN_REPORT_ENDPOINT`) |
+| AI Response Reports | Transient in memory | HTTPS/TLS (Only when the user submits) | `https://finn-org.vercel.app/v1/reports`; 30-day Upstash Redis TTL |
 
 ---
 
@@ -44,7 +47,7 @@ Saved Envelope: { "version": "2", "algorithm": "AES-256-GCM", "nonce": "...", "c
 ## 3. User Controls & Data Purging
 - **Clear Chat History**: Purges saved conversations.
 - **Purge AI Memory**: Unloads AI models from RAM without deleting `.gguf` files.
-- **Delete All Local Data**: Attempts purging all encrypted conversations, master encryption keys, downloaded `.gguf` model files, partial downloads, and app caches, returning a structured `DeletionResult`.
+- **Delete All Local Data**: Attempts purging encrypted conversations, master encryption keys, downloaded `.gguf` model files, partial downloads, creations, profile preferences, Skills, and onboarding state, returning a structured `DeletionResult`.
 
 ---
 

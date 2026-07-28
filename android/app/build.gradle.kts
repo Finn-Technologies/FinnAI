@@ -10,16 +10,48 @@ plugins {
 val keystorePropertiesFile = rootProject.file("key.properties")
 val keystoreProperties = Properties()
 var hasReleaseSigning = false
+val signingEnvironmentNames = listOf(
+    "KEYSTORE_PATH",
+    "KEYSTORE_PASSWORD",
+    "KEY_ALIAS",
+    "KEY_PASSWORD",
+)
+val configuredSigningEnvironment =
+    signingEnvironmentNames.associateWith { System.getenv(it) }
 
 if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
     hasReleaseSigning = true
-} else if (System.getenv("KEYSTORE_PATH") != null) {
-    keystoreProperties["storeFile"] = System.getenv("KEYSTORE_PATH")
-    keystoreProperties["storePassword"] = System.getenv("KEYSTORE_PASSWORD")
-    keystoreProperties["keyAlias"] = System.getenv("KEY_ALIAS")
-    keystoreProperties["keyPassword"] = System.getenv("KEY_PASSWORD")
+} else if (configuredSigningEnvironment.values.any { !it.isNullOrBlank() }) {
+    val missingSigningEnvironment = configuredSigningEnvironment
+        .filterValues { it.isNullOrBlank() }
+        .keys
+    if (missingSigningEnvironment.isNotEmpty()) {
+        throw GradleException(
+            "Incomplete release signing environment. Missing: " +
+                missingSigningEnvironment.joinToString(", ")
+        )
+    }
+    keystoreProperties["storeFile"] = configuredSigningEnvironment.getValue("KEYSTORE_PATH")!!
+    keystoreProperties["storePassword"] =
+        configuredSigningEnvironment.getValue("KEYSTORE_PASSWORD")!!
+    keystoreProperties["keyAlias"] = configuredSigningEnvironment.getValue("KEY_ALIAS")!!
+    keystoreProperties["keyPassword"] = configuredSigningEnvironment.getValue("KEY_PASSWORD")!!
     hasReleaseSigning = true
+}
+
+if (hasReleaseSigning) {
+    val requiredSigningProperties =
+        listOf("storeFile", "storePassword", "keyAlias", "keyPassword")
+    val missingSigningProperties = requiredSigningProperties.filter {
+        keystoreProperties.getProperty(it).isNullOrBlank()
+    }
+    if (missingSigningProperties.isNotEmpty()) {
+        throw GradleException(
+            "Incomplete release signing configuration. Missing: " +
+                missingSigningProperties.joinToString(", ")
+        )
+    }
 }
 
 android {
@@ -42,6 +74,18 @@ android {
         ndk {
             // Bonsai's optimized mobile kernels target 64-bit ARM.
             abiFilters += listOf("arm64-v8a")
+        }
+    }
+
+    packaging {
+        jniLibs {
+            // Flutter's JNI helper is published for several ABIs even when
+            // --target-platform is arm64. FinnAI's native inference runtime is
+            // arm64-only, so exclude the unusable copies before Play delivery.
+            excludes += setOf(
+                "**/armeabi-v7a/libdartjni.so",
+                "**/x86_64/libdartjni.so",
+            )
         }
     }
 

@@ -4,7 +4,10 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'conversations/conversation_store.dart';
+import 'creations/creation_store.dart';
 import 'inference/bonsai_inference.dart';
+import 'skills/skills_store.dart';
+import 'you/you_profile_store.dart';
 
 class DeletionResult {
   const DeletionResult({
@@ -51,6 +54,9 @@ class AppStateStore extends ChangeNotifier {
   Future<DeletionResult> deleteAllData({
     ConversationStore? conversationStore,
     BonsaiInference? bonsaiInference,
+    CreationStore? creationStore,
+    YouProfileStore? youProfileStore,
+    SkillsStore? skillsStore,
   }) async {
     final deleted = <String>[];
     final nonExistent = <String>[];
@@ -94,6 +100,47 @@ class AppStateStore extends ChangeNotifier {
       }
     } catch (e) {
       failed.add('Downloaded AI model weights ($e)');
+    }
+
+    // 4. Delete locally generated creations and personalization features.
+    try {
+      final target =
+          creationStore ??
+          (_directoryProvider == null
+              ? CreationStore.instance
+              : CreationStore(directoryProvider: _directoryProvider));
+      final existed = await target.deleteStorage();
+      if (existed) {
+        deleted.add('Local creations');
+      } else {
+        nonExistent.add('Local creations');
+      }
+    } catch (e) {
+      failed.add('Local creations ($e)');
+    }
+
+    final profileTarget =
+        youProfileStore ??
+        (_directoryProvider == null
+            ? YouProfileStore.instance
+            : YouProfileStore(directoryProvider: _directoryProvider));
+    final profileFailures = await profileTarget.deleteStorage();
+    if (profileFailures.isEmpty) {
+      deleted.add('Personalization');
+    } else {
+      failed.addAll(profileFailures);
+    }
+
+    final skillTarget =
+        skillsStore ??
+        (_directoryProvider == null
+            ? SkillsStore.instance
+            : SkillsStore(directoryProvider: _directoryProvider));
+    final skillFailures = await skillTarget.deleteStorage();
+    if (skillFailures.isEmpty) {
+      deleted.add('Skills');
+    } else {
+      failed.addAll(skillFailures);
     }
 
     notifyListeners();

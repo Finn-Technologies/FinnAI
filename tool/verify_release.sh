@@ -11,7 +11,15 @@ BLOCKER_COUNT=0
 # KEY_PROPS_BAK is intentionally NOT added here — it is managed separately
 # in the cleanup function so that restoration happens in the right order
 # before the backup itself is removed.
-CREATED_FILES=()
+# Bash 3.2 treats an empty array expansion as unbound under `set -u`.
+# A harmless sentinel keeps early-failure cleanup reliable on macOS.
+CREATED_FILES=("")
+RELEASE_APK="build/app/outputs/flutter-apk/app-release.apk"
+RELEASE_AAB="build/app/outputs/bundle/release/app-release.aab"
+ARTIFACT_BACKUP_DIR=""
+ARTIFACTS_TRACKED=false
+RELEASE_APK_EXISTED=false
+RELEASE_AAB_EXISTED=false
 
 # ── key.properties lifecycle tracking ────────────────────────────────────────
 KEY_PROPS="android/key.properties"
@@ -40,10 +48,27 @@ cleanup() {
     echo "Restored original android/key.properties."
   fi
 
-  # 3. Remove other files/directories created during this run
+  # 3. Never leave temporary-key artifacts looking publishable. Restore
+  #    pre-existing release files, or remove the verifier-generated copies.
+  if [ "$ARTIFACTS_TRACKED" = "true" ]; then
+    if [ "$RELEASE_APK_EXISTED" = "true" ] &&
+        [ -f "$ARTIFACT_BACKUP_DIR/app-release.apk" ]; then
+      cp "$ARTIFACT_BACKUP_DIR/app-release.apk" "$RELEASE_APK"
+    else
+      rm -f "$RELEASE_APK"
+    fi
+    if [ "$RELEASE_AAB_EXISTED" = "true" ] &&
+        [ -f "$ARTIFACT_BACKUP_DIR/app-release.aab" ]; then
+      cp "$ARTIFACT_BACKUP_DIR/app-release.aab" "$RELEASE_AAB"
+    else
+      rm -f "$RELEASE_AAB"
+    fi
+  fi
+
+  # 4. Remove other files/directories created during this run
   #    (temp keystore dir, extracted APK dirs, etc.).
   for file in "${CREATED_FILES[@]}"; do
-    if [ -e "$file" ]; then
+    if [ -n "$file" ] && [ -e "$file" ]; then
       rm -rf "$file"
     fi
   done
@@ -97,16 +122,18 @@ echo "PASSED: All 20 required SVG runtime assets present."
 echo "[5/8] Checking Production Configuration Gate (URLs, Email, Endpoint)..."
 PROD_BUILD="${FINN_PRODUCTION_BUILD:-false}"
 
-FINN_PRIVACY_POLICY_URL="${FINN_PRIVACY_POLICY_URL:-}"
-FINN_TERMS_URL="${FINN_TERMS_URL:-}"
+FINN_PRIVACY_POLICY_URL="${FINN_PRIVACY_POLICY_URL:-https://finn-org.vercel.app/privacy}"
+FINN_TERMS_URL="${FINN_TERMS_URL:-https://finn-org.vercel.app/terms}"
+FINN_SUPPORT_URL="${FINN_SUPPORT_URL:-https://finn-org.vercel.app/support}"
 FINN_SUPPORT_EMAIL="${FINN_SUPPORT_EMAIL:-}"
-FINN_REPORT_ENDPOINT="${FINN_REPORT_ENDPOINT:-}"
+FINN_REPORT_ENDPOINT="${FINN_REPORT_ENDPOINT:-https://finn-org.vercel.app/v1/reports}"
 
 # All four production values are passed as --dart-define flags so the compiled
 # binary contains them rather than empty defaults.
 DART_DEFINES=(
   "--dart-define=FINN_PRIVACY_POLICY_URL=${FINN_PRIVACY_POLICY_URL}"
   "--dart-define=FINN_TERMS_URL=${FINN_TERMS_URL}"
+  "--dart-define=FINN_SUPPORT_URL=${FINN_SUPPORT_URL}"
   "--dart-define=FINN_SUPPORT_EMAIL=${FINN_SUPPORT_EMAIL}"
   "--dart-define=FINN_REPORT_ENDPOINT=${FINN_REPORT_ENDPOINT}"
 )
@@ -115,7 +142,7 @@ if [ "$PROD_BUILD" = "true" ]; then
   MISSING=()
   [ -z "$FINN_PRIVACY_POLICY_URL" ] && MISSING+=("FINN_PRIVACY_POLICY_URL")
   [ -z "$FINN_TERMS_URL" ]          && MISSING+=("FINN_TERMS_URL")
-  [ -z "$FINN_SUPPORT_EMAIL" ]      && MISSING+=("FINN_SUPPORT_EMAIL")
+  [ -z "$FINN_SUPPORT_URL" ]        && MISSING+=("FINN_SUPPORT_URL")
   [ -z "$FINN_REPORT_ENDPOINT" ]    && MISSING+=("FINN_REPORT_ENDPOINT")
 
   if [ "${#MISSING[@]}" -gt 0 ]; then
@@ -124,6 +151,18 @@ if [ "$PROD_BUILD" = "true" ]; then
       echo "  $var: MISSING"
     done
     BLOCKER_COUNT=$((BLOCKER_COUNT + 1))
+    exit 1
+  fi
+
+  for url in "$FINN_PRIVACY_POLICY_URL" "$FINN_TERMS_URL" "$FINN_SUPPORT_URL" "$FINN_REPORT_ENDPOINT"; do
+    if [[ ! "$url" =~ ^https://[^[:space:]]+$ ]]; then
+      echo "FAIL: Production URLs must be valid HTTPS URLs: $url"
+      exit 1
+    fi
+  done
+  if [ -n "$FINN_SUPPORT_EMAIL" ] &&
+      [[ ! "$FINN_SUPPORT_EMAIL" =~ ^[^[:space:]@]+@[^[:space:]@]+[.][^[:space:]@]+$ ]]; then
+    echo "FAIL: FINN_SUPPORT_EMAIL is not a valid email address."
     exit 1
   fi
 fi
@@ -164,10 +203,20 @@ keyAlias=finn_ci_verify
 storeFile=${TEMP_JKS_REL}
 EOF
 
-RELEASE_APK="build/app/outputs/flutter-apk/app-release.apk"
+ARTIFACT_BACKUP_DIR=$(mktemp -d)
+CREATED_FILES+=("$ARTIFACT_BACKUP_DIR")
+ARTIFACTS_TRACKED=true
+if [ -f "$RELEASE_APK" ]; then
+  RELEASE_APK_EXISTED=true
+  cp "$RELEASE_APK" "$ARTIFACT_BACKUP_DIR/app-release.apk"
+fi
+if [ -f "$RELEASE_AAB" ]; then
+  RELEASE_AAB_EXISTED=true
+  cp "$RELEASE_AAB" "$ARTIFACT_BACKUP_DIR/app-release.aab"
+fi
 
 echo "Building release APK..."
-if ! flutter build apk --release "${DART_DEFINES[@]}"; then
+if ! flutter build apk --release --target-platform android-arm64 "${DART_DEFINES[@]}"; then
   echo "FAIL: Release APK build failed."
   BLOCKER_COUNT=$((BLOCKER_COUNT + 1))
   exit 1
@@ -175,7 +224,7 @@ fi
 echo "PASSED: Release APK built successfully."
 
 echo "Building release AAB..."
-if ! flutter build appbundle --release "${DART_DEFINES[@]}"; then
+if ! flutter build appbundle --release --target-platform android-arm64 "${DART_DEFINES[@]}"; then
   echo "FAIL: Release App Bundle (AAB) build failed."
   BLOCKER_COUNT=$((BLOCKER_COUNT + 1))
   exit 1
@@ -218,6 +267,26 @@ CREATED_FILES+=("$APK_UNZIP_TMP")
 
 unzip -oq "$RELEASE_APK" -d "$APK_UNZIP_TMP"
 
+# FinnAI ships llama.cpp only for arm64. Publishing Flutter engine libraries
+# for another ABI would make Play deliver a build that cannot load libllama.
+APK_ABIS="$(find "$APK_UNZIP_TMP/lib" -mindepth 1 -maxdepth 1 -type d \
+  -exec basename {} \; | sort -u)"
+if [ "$APK_ABIS" != "arm64-v8a" ]; then
+  echo "FAIL: Release APK contains unsupported ABI set: $APK_ABIS"
+  BLOCKER_COUNT=$((BLOCKER_COUNT + 1))
+else
+  echo "PASSED: Release APK contains only arm64-v8a native libraries."
+fi
+
+AAB_ABIS="$(unzip -Z1 "$RELEASE_AAB" | awk -F/ \
+  '$1 == "base" && $2 == "lib" { print $3 }' | sort -u)"
+if [ "$AAB_ABIS" != "arm64-v8a" ]; then
+  echo "FAIL: Release AAB contains unsupported ABI set: $AAB_ABIS"
+  BLOCKER_COUNT=$((BLOCKER_COUNT + 1))
+else
+  echo "PASSED: Release AAB contains only arm64-v8a native libraries."
+fi
+
 # ── Dart-define embedding verification ───────────────────────────────────────
 # Run against the extracted APK tree (classes.dex + compiled assets) so we
 # are searching the actual binary content rather than the compressed ZIP.
@@ -226,12 +295,14 @@ echo "Verifying dart-define values are embedded in the extracted release APK..."
 DEFINE_NAMES=(
   "FINN_PRIVACY_POLICY_URL"
   "FINN_TERMS_URL"
+  "FINN_SUPPORT_URL"
   "FINN_SUPPORT_EMAIL"
   "FINN_REPORT_ENDPOINT"
 )
 DEFINE_VALUES=(
   "$FINN_PRIVACY_POLICY_URL"
   "$FINN_TERMS_URL"
+  "$FINN_SUPPORT_URL"
   "$FINN_SUPPORT_EMAIL"
   "$FINN_REPORT_ENDPOINT"
 )

@@ -1,295 +1,451 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
 
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+import '../ads/banner_ad_widget.dart';
+import '../inference/bonsai_inference.dart';
 import '../theme/flux_theme.dart';
 import '../widgets/ambient_background.dart';
+import '../widgets/finn_page_header.dart';
 import '../widgets/flux_controls.dart';
-
-enum _CreationKind { app, widget, presentation }
-
-class _CreationData {
-  const _CreationData({
-    required this.label,
-    required this.kind,
-    required this.icon,
-  });
-
-  final String label;
-  final _CreationKind kind;
-  final List<List<dynamic>> icon;
-}
+import 'creation_generator.dart';
+import 'creation_model.dart';
+import 'creation_store.dart';
+import 'creations_controller.dart';
 
 class CreationsPage extends StatefulWidget {
-  const CreationsPage({super.key});
+  const CreationsPage({super.key, this.controller});
+
+  /// Injectable for tests and alternate local generation/storage backends.
+  final CreationsController? controller;
 
   @override
   State<CreationsPage> createState() => _CreationsPageState();
 }
 
 class _CreationsPageState extends State<CreationsPage> {
-  final _controller = TextEditingController();
+  late final CreationsController _controller;
+  late final bool _ownsController;
+  final _inference = BonsaiInference.instance;
+  final _promptController = TextEditingController();
   final _focusNode = FocusNode();
-  int selected = 0;
-  bool askingDetails = false;
-  String prompt = '';
-  final List<_CreationData> _creations = [];
+  final ValueNotifier<double> _headerOffset = ValueNotifier(0);
+
+  @override
+  void initState() {
+    super.initState();
+    _ownsController = widget.controller == null;
+    _controller =
+        widget.controller ??
+        CreationsController(CreationStore(), BonsaiCreationGenerator());
+    _controller.addListener(_changed);
+    _inference.addListener(_changed);
+    _controller.load();
+  }
+
+  void _changed() {
+    if (mounted) setState(() {});
+  }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _controller.removeListener(_changed);
+    _inference.removeListener(_changed);
+    if (_ownsController) {
+      if (_controller.generating) {
+        unawaited(_controller.cancelGeneration());
+      }
+      _controller.dispose();
+    }
+    _promptController.dispose();
     _focusNode.dispose();
+    _headerOffset.dispose();
     super.dispose();
   }
 
-  void _submit() {
-    final value = _controller.text.trim();
-    if (value.isEmpty) return;
+  Future<void> _chooseKind() async {
+    final prompt = _promptController.text.trim();
+    if (prompt.isEmpty || _controller.generating) return;
     _focusNode.unfocus();
-    setState(() {
-      prompt = value;
-      askingDetails = true;
-      _controller.clear();
-    });
+    final kind = await showModalBottomSheet<CreationKind>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => const _KindPicker(),
+    );
+    if (kind == null || !mounted) return;
+    final creation = await _controller.create(prompt, kind);
+    if (!mounted) return;
+    if (creation != null) {
+      _promptController.clear();
+      await _showCreation(creation);
+    }
   }
 
-  void _completeCreation(_CreationKind kind) {
-    final icon = switch (kind) {
-      _CreationKind.app => FluxIcons.canvas,
-      _CreationKind.widget => FluxIcons.chip,
-      _CreationKind.presentation => FluxIcons.skills,
-    };
-    setState(() {
-      _creations.add(_CreationData(label: prompt, kind: kind, icon: icon));
-      askingDetails = false;
-      prompt = '';
-      selected = 0;
-    });
+  Future<void> _close() async {
+    if (!_controller.generating) {
+      Navigator.of(context).pop();
+      return;
+    }
+    final stop = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+        title: const Text('Stop this creation?'),
+        content: const Text(
+          'The unfinished result will be discarded. Your prompt will stay here.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Keep creating'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Stop'),
+          ),
+        ],
+      ),
+    );
+    if (stop != true) return;
+    await _controller.cancelGeneration();
+    if (mounted) Navigator.of(context).pop();
   }
+
+  Future<void> _showCreation(FinnCreation creation) =>
+      showModalBottomSheet<void>(
+        context: context,
+        backgroundColor: Colors.transparent,
+        isScrollControlled: true,
+        useSafeArea: true,
+        builder: (_) => _CreationDetail(
+          creation: creation,
+          onDelete: () async {
+            Navigator.pop(context);
+            await _controller.delete(creation);
+          },
+        ),
+      );
 
   @override
   Widget build(BuildContext context) {
-    final visibleCreations = _visibleCreations();
-    return Scaffold(
-      resizeToAvoidBottomInset: true,
-      body: AmbientBackground(
-        intensity: 1,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final sy = constraints.maxHeight / 844;
-            final safeBottom = MediaQuery.viewPaddingOf(context).bottom;
-            return Stack(
-              children: [
-                Positioned(
-                  left: 20,
-                  top: 71 * sy,
-                  child: BackControl(onTap: () => Navigator.pop(context)),
-                ),
-                Positioned(
-                  left: 20,
-                  top: 110 * sy,
-                  child: Text(
-                    'Creations',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                ),
-                if (!askingDetails) ...[
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    return PopScope(
+      canPop: !_controller.generating,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) unawaited(_close());
+      },
+      child: Scaffold(
+        resizeToAvoidBottomInset: true,
+        body: AmbientBackground(
+          intensity: .6,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final metrics = FinnPageHeaderMetrics.forHeight(
+                constraints.maxHeight,
+              );
+              return Stack(
+                children: [
                   Positioned(
-                    left: 20,
-                    top: 149 * sy,
-                    right: 20,
-                    height: 28,
-                    child: _Chips(
-                      selected: selected,
-                      onSelected: (value) => setState(() => selected = value),
-                    ),
-                  ),
-                  if (visibleCreations.isNotEmpty)
-                    Positioned.fill(
-                      top: 197 * sy,
-                      bottom: 100 + safeBottom,
-                      child: GridView.builder(
-                        physics: const BouncingScrollPhysics(),
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              mainAxisExtent: 178,
-                              crossAxisSpacing: 37,
-                              mainAxisSpacing: 16,
-                            ),
-                        itemCount: visibleCreations.length,
-                        itemBuilder: (context, index) => _CreationCard(
-                          creation: visibleCreations[index],
-                          index: index,
+                    left: 0,
+                    right: 0,
+                    top: metrics.contentTop + 5,
+                    bottom: 0,
+                    child: Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Turn an idea into a structured plan, entirely on device.',
+                                style: Theme.of(context).textTheme.bodyMedium
+                                    ?.copyWith(
+                                      color: FluxColors.mutedOf(context),
+                                      height: 1.35,
+                                    ),
+                              ),
+                              const SizedBox(height: 18),
+                              _Filters(
+                                selected: _controller.filter,
+                                onSelected: _controller.setFilter,
+                              ),
+                              AnimatedSize(
+                                duration: const Duration(milliseconds: 180),
+                                curve: Curves.easeOutCubic,
+                                child: _controller.error == null
+                                    ? const SizedBox(width: double.infinity)
+                                    : Padding(
+                                        padding: const EdgeInsets.only(top: 12),
+                                        child: _ErrorNotice(
+                                          message: _controller.error!,
+                                          onDismiss: _controller.clearError,
+                                        ),
+                                      ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 14),
+                        Expanded(child: _content()),
+                        BannerAdWidget(
+                          key: const Key('creations-idle-ad'),
+                          enabled:
+                              !_controller.loading &&
+                              !_controller.generating &&
+                              _controller.creations.isNotEmpty &&
+                              BonsaiInference.instance.phase !=
+                                  InferencePhase.generating &&
+                              bottomInset == 0,
+                          margin: const EdgeInsets.only(top: 2, bottom: 4),
+                        ),
+                        AnimatedPadding(
+                          duration: const Duration(milliseconds: 180),
+                          curve: Curves.easeOutCubic,
+                          padding: EdgeInsets.fromLTRB(
+                            20,
+                            10,
+                            20,
+                            bottomInset > 0
+                                ? 12
+                                : MediaQuery.paddingOf(context).bottom + 20,
+                          ),
+                          child: _CreationComposer(
+                            controller: _promptController,
+                            focusNode: _focusNode,
+                            busy: _controller.loading || _controller.generating,
+                            onSubmit: _chooseKind,
+                          ),
+                        ),
+                      ],
                     ),
-                ] else ...[
-                  Positioned(
-                    right: 20,
-                    top: 154 * sy,
-                    child: _PromptBubble(text: prompt),
                   ),
-                  Positioned(
-                    left: 20,
-                    right: 20,
-                    top: 212 * sy,
-                    height: 197,
-                    child: _AskingDetails(onSelected: _completeCreation),
+                  Positioned.fill(
+                    child: FinnPageHeader(
+                      title: 'Creations',
+                      onBack: _close,
+                      metrics: metrics,
+                      scrollOffset: _headerOffset,
+                    ),
                   ),
                 ],
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  height: 124 + safeBottom,
-                  child: IgnorePointer(
-                    child: ColoredBox(color: FluxColors.canvasOf(context)),
-                  ),
-                ),
-                Positioned(
-                  left: 20,
-                  right: 20,
-                  bottom: safeBottom + (constraints.maxHeight < 650 ? 20 : 30),
-                  child: _CreationComposer(
-                    controller: _controller,
-                    focusNode: _focusNode,
-                    onSubmit: _submit,
-                  ),
-                ),
-              ],
-            );
-          },
+              );
+            },
+          ),
         ),
       ),
     );
   }
 
-  List<_CreationData> _visibleCreations() {
-    if (selected == 0) return _creations;
-    final kind = _CreationKind.values[selected - 1];
-    return _creations.where((creation) => creation.kind == kind).toList();
+  Widget _content() {
+    if (_controller.loading) {
+      return const Center(child: _QuietLoader(label: 'Opening creations'));
+    }
+    final visible = _controller.visible;
+    if (visible.isEmpty) {
+      return _EmptyState(filtered: _controller.filter != null);
+    }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = constraints.maxWidth >= 760
+            ? 3
+            : constraints.maxWidth >= 460
+            ? 2
+            : 1;
+        return GridView.builder(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          padding: const EdgeInsets.fromLTRB(20, 2, 20, 12),
+          physics: const BouncingScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: columns,
+            mainAxisExtent: 164,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+          ),
+          itemCount: visible.length,
+          itemBuilder: (context, index) {
+            final creation = visible[index];
+            return _CreationCard(
+              key: ValueKey(creation.id),
+              creation: creation,
+              onTap: () => _showCreation(creation),
+            );
+          },
+        );
+      },
+    );
   }
 }
 
-class _Chips extends StatelessWidget {
-  const _Chips({required this.selected, required this.onSelected});
-  final int selected;
-  final ValueChanged<int> onSelected;
+class _Filters extends StatelessWidget {
+  const _Filters({required this.selected, required this.onSelected});
+  final CreationKind? selected;
+  final ValueChanged<CreationKind?> onSelected;
 
   @override
   Widget build(BuildContext context) {
-    const labels = ['All', 'Apps', 'Widgets', 'Presentations'];
-    const widths = [49.0, 67.0, 89.0, 126.0];
-    return Row(
-      children: List.generate(labels.length, (i) {
-        final active = i == selected;
-        return Padding(
-          padding: EdgeInsets.only(right: i == labels.length - 1 ? 0 : 5),
-          child: Material(
-            color: active
-                ? FluxColors.inkOf(context)
-                : FluxColors.surfaceOf(context).withValues(alpha: .84),
-            borderRadius: BorderRadius.circular(99),
-            child: InkWell(
-              onTap: () => onSelected(i),
+    final values = <CreationKind?>[null, ...CreationKind.values];
+    return SizedBox(
+      height: 48,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: values.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 7),
+        itemBuilder: (context, index) {
+          final value = values[index];
+          final active = selected == value;
+          return Semantics(
+            button: true,
+            selected: active,
+            label: '${value?.label ?? 'All'} creations',
+            child: Material(
+              color: active
+                  ? FluxColors.inkOf(context)
+                  : FluxColors.surfaceOf(context),
               borderRadius: BorderRadius.circular(99),
-              child: SizedBox(
-                width: widths[i],
-                height: 28,
-                child: Center(
-                  child: Text(
-                    labels[i],
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: active
-                          ? FluxColors.canvasOf(context)
-                          : FluxColors.inkOf(context),
+              child: InkWell(
+                onTap: () => onSelected(value),
+                borderRadius: BorderRadius.circular(99),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  child: Center(
+                    child: Text(
+                      value?.label ?? 'All',
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        color: active
+                            ? FluxColors.canvasOf(context)
+                            : FluxColors.inkOf(context),
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
-          ),
-        );
-      }),
+          );
+        },
+      ),
     );
   }
 }
 
+class _EmptyState extends StatelessWidget {
+  const _EmptyState({required this.filtered});
+  final bool filtered;
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 42),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 62,
+            height: 62,
+            decoration: BoxDecoration(
+              color: FluxColors.surfaceOf(context),
+              shape: BoxShape.circle,
+            ),
+            child: const Center(
+              child: FluxIcon(icon: FluxIcons.canvas, size: 27),
+            ),
+          ),
+          const SizedBox(height: 17),
+          Text(
+            filtered ? 'Nothing here yet' : 'Make something useful',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            filtered
+                ? 'Try another category or create a new one.'
+                : 'Describe an app, widget or presentation below. Finn will shape it into a practical plan.',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: FluxColors.mutedOf(context),
+              height: 1.4,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
 class _CreationCard extends StatelessWidget {
-  const _CreationCard({required this.creation, required this.index});
-  final _CreationData creation;
-  final int index;
+  const _CreationCard({super.key, required this.creation, required this.onTap});
+  final FinnCreation creation;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final colors = [
-      const Color(0xFFBFEECB),
-      const Color(0xFFBBE7F6),
-      const Color(0xFFD0F1BB),
-      const Color(0xFFF0CFBB),
-      const Color(0xFFD2D2F4),
-    ];
-    final iconColors = [
-      FluxColors.ink,
-      const Color(0xFF55A6F7),
-      const Color(0xFF75E38C),
-      const Color(0xFFE87777),
-      const Color(0xFF55A6F7),
-    ];
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 150,
-          height: 150,
-          child: Stack(
+    final accent = switch (creation.kind) {
+      CreationKind.app => const Color(0xFFBDECCB),
+      CreationKind.widget => const Color(0xFFB9DFF1),
+      CreationKind.presentation => const Color(0xFFE5D4F5),
+    };
+    return Material(
+      color: FluxColors.cardOf(context),
+      borderRadius: BorderRadius.circular(22),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(22),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Positioned.fill(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: colors[index % colors.length],
-                    border: Border.all(color: Colors.white, width: 2),
-                  ),
-                  child: Center(
-                    child: FluxIcon(
-                      icon: creation.icon,
-                      size: 60,
-                      color: iconColors[index % iconColors.length],
-                      strokeWidth: 1.45,
+              Row(
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: accent,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Center(
+                      child: FluxIcon(
+                        icon: _iconFor(creation.kind),
+                        color: FluxColors.ink,
+                        size: 19,
+                      ),
                     ),
                   ),
-                ),
-              ),
-              Positioned(
-                right: 5,
-                bottom: 5,
-                child: Container(
-                  width: 30,
-                  height: 30,
-                  alignment: Alignment.center,
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
+                  const Spacer(),
+                  Text(
+                    creation.kind.label,
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: FluxColors.mutedOf(context),
+                    ),
                   ),
-                  child: const FluxIcon(icon: FluxIcons.add, size: 20),
+                ],
+              ),
+              const Spacer(),
+              Text(
+                creation.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                creation.summary,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: FluxColors.mutedOf(context),
+                  height: 1.35,
                 ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 10),
-        SizedBox(
-          width: 150,
-          child: Text(
-            creation.label,
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-        ),
-      ],
+      ),
     );
   }
 }
@@ -298,10 +454,12 @@ class _CreationComposer extends StatefulWidget {
   const _CreationComposer({
     required this.controller,
     required this.focusNode,
+    required this.busy,
     required this.onSubmit,
   });
   final TextEditingController controller;
   final FocusNode focusNode;
+  final bool busy;
   final VoidCallback onSubmit;
 
   @override
@@ -309,20 +467,13 @@ class _CreationComposer extends StatefulWidget {
 }
 
 class _CreationComposerState extends State<_CreationComposer> {
-  late bool _hasText;
-
   @override
   void initState() {
     super.initState();
-    _hasText = widget.controller.text.trim().isNotEmpty;
     widget.controller.addListener(_changed);
   }
 
-  void _changed() {
-    final hasText = widget.controller.text.trim().isNotEmpty;
-    if (hasText == _hasText) return;
-    setState(() => _hasText = hasText);
-  }
+  void _changed() => setState(() {});
 
   @override
   void dispose() {
@@ -331,124 +482,394 @@ class _CreationComposerState extends State<_CreationComposer> {
   }
 
   @override
-  Widget build(BuildContext context) => FluxGlass(
-    radius: 15,
-    color: Colors.white.withValues(alpha: .84),
-    child: SizedBox(
-      height: 50,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8),
+  Widget build(BuildContext context) {
+    final canSend = widget.controller.text.trim().isNotEmpty && !widget.busy;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: FluxColors.cardOf(context),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: FluxColors.lineOf(context)),
+      ),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 54, maxHeight: 118),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            const FigmaSvg(
-              asset: FigmaAssets.creationAdd,
-              width: 30,
-              height: 30,
-            ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 16),
             Expanded(
               child: TextField(
                 controller: widget.controller,
                 focusNode: widget.focusNode,
+                inputFormatters: [LengthLimitingTextInputFormatter(4000)],
+                enabled: !widget.busy,
+                minLines: 1,
+                maxLines: 1,
                 textInputAction: TextInputAction.send,
-                onSubmitted: (_) => widget.onSubmit(),
+                onSubmitted: (_) => canSend ? widget.onSubmit() : null,
                 style: Theme.of(context).textTheme.bodyMedium,
-                decoration: InputDecoration.collapsed(
-                  hintText: 'Describe a Creation',
+                decoration: InputDecoration(
+                  border: InputBorder.none,
+                  hintText: 'Describe a creation',
                   hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: FluxColors.mutedOf(context),
                   ),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 17),
                 ),
               ),
             ),
-            InkWell(
-              onTap: _hasText ? widget.onSubmit : null,
-              borderRadius: BorderRadius.circular(17),
-              child: FigmaSvg(
-                asset: _hasText
-                    ? FigmaAssets.activeSend
-                    : FigmaAssets.creationSend,
-                width: 34,
-                height: 34,
+            Padding(
+              padding: const EdgeInsets.all(3),
+              child: Semantics(
+                button: true,
+                enabled: canSend,
+                label: 'Create',
+                child: AnimatedScale(
+                  scale: canSend ? 1 : .94,
+                  duration: MediaQuery.disableAnimationsOf(context)
+                      ? Duration.zero
+                      : const Duration(milliseconds: 220),
+                  curve: Curves.easeOutBack,
+                  child: InkWell(
+                    onTap: canSend ? widget.onSubmit : null,
+                    borderRadius: BorderRadius.circular(24),
+                    child: SizedBox.square(
+                      dimension: 48,
+                      child: Center(
+                        child: FigmaSvg(
+                          asset: canSend
+                              ? FigmaAssets.activeSend
+                              : FigmaAssets.send,
+                          width: 34,
+                          height: 34,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               ),
             ),
           ],
         ),
       ),
-    ),
-  );
+    );
+  }
 }
 
-class _PromptBubble extends StatelessWidget {
-  const _PromptBubble({required this.text});
-  final String text;
+class _ErrorNotice extends StatelessWidget {
+  const _ErrorNotice({required this.message, required this.onDismiss});
+  final String message;
+  final VoidCallback onDismiss;
 
   @override
   Widget build(BuildContext context) => Container(
-    constraints: const BoxConstraints(maxWidth: 230),
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+    padding: const EdgeInsets.fromLTRB(14, 11, 8, 11),
     decoration: BoxDecoration(
-      color: FluxColors.surfaceOf(context),
-      borderRadius: BorderRadius.circular(10),
+      color: const Color(0xFFD34B4B).withValues(alpha: .09),
+      borderRadius: BorderRadius.circular(14),
     ),
-    child: Text(text, style: Theme.of(context).textTheme.bodyMedium),
+    child: Row(
+      children: [
+        const FluxIcon(icon: FluxIcons.sad, size: 18, color: Color(0xFFD34B4B)),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(message, style: Theme.of(context).textTheme.labelMedium),
+        ),
+        FluxIconButton(
+          icon: FluxIcons.close,
+          size: 30,
+          tooltip: 'Dismiss',
+          onTap: onDismiss,
+        ),
+      ],
+    ),
   );
 }
 
-class _AskingDetails extends StatelessWidget {
-  const _AskingDetails({required this.onSelected});
-  final ValueChanged<_CreationKind> onSelected;
+class _KindPicker extends StatelessWidget {
+  const _KindPicker();
 
   @override
-  Widget build(BuildContext context) => FluxGlass(
-    radius: 12,
-    child: Stack(
+  Widget build(BuildContext context) => Container(
+    decoration: BoxDecoration(
+      color: FluxColors.canvasOf(context),
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+    ),
+    padding: EdgeInsets.fromLTRB(
+      20,
+      12,
+      20,
+      MediaQuery.paddingOf(context).bottom + 22,
+    ),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Positioned(
-          left: 15,
-          right: 15,
-          top: 15,
-          child: Text(
-            'Is your new Creation an app, a widget or a presentation?',
-            style: Theme.of(context).textTheme.bodyMedium,
+        Align(
+          child: Container(
+            width: 34,
+            height: 4,
+            decoration: BoxDecoration(
+              color: FluxColors.lineOf(context),
+              borderRadius: BorderRadius.circular(99),
+            ),
           ),
         ),
-        Positioned(
-          left: 15,
-          right: 15,
-          top: 66,
-          child: Column(
-            children: _CreationKind.values
-                .map(
-                  (kind) => Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: Material(
-                      color: FluxColors.surfaceOf(
-                        context,
-                      ).withValues(alpha: .84),
-                      borderRadius: BorderRadius.circular(99),
-                      child: InkWell(
-                        onTap: () => onSelected(kind),
-                        borderRadius: BorderRadius.circular(99),
-                        child: SizedBox(
-                          width: 320,
-                          height: 32,
-                          child: Center(
-                            child: Text(switch (kind) {
-                              _CreationKind.app => 'App',
-                              _CreationKind.widget => 'Widget',
-                              _CreationKind.presentation => 'Presentation',
-                            }, style: Theme.of(context).textTheme.bodyMedium),
-                          ),
-                        ),
+        const SizedBox(height: 22),
+        Text(
+          'What are we making?',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Finn adapts the structure to the format.',
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(color: FluxColors.mutedOf(context)),
+        ),
+        const SizedBox(height: 18),
+        ...CreationKind.values.map(
+          (kind) => Padding(
+            padding: const EdgeInsets.only(bottom: 9),
+            child: Material(
+              color: FluxColors.surfaceOf(context),
+              borderRadius: BorderRadius.circular(16),
+              child: InkWell(
+                onTap: () => Navigator.pop(context, kind),
+                borderRadius: BorderRadius.circular(16),
+                child: Padding(
+                  padding: const EdgeInsets.all(15),
+                  child: Row(
+                    children: [
+                      FluxIcon(icon: _iconFor(kind), size: 21),
+                      const SizedBox(width: 13),
+                      Text(
+                        kind.label,
+                        style: Theme.of(context).textTheme.bodyLarge,
                       ),
-                    ),
+                      const Spacer(),
+                      const FluxIcon(icon: FluxIcons.arrowUp02, size: 17),
+                    ],
                   ),
-                )
-                .toList(),
+                ),
+              ),
+            ),
           ),
         ),
       ],
     ),
   );
 }
+
+class _CreationDetail extends StatelessWidget {
+  const _CreationDetail({required this.creation, required this.onDelete});
+  final FinnCreation creation;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    height: MediaQuery.sizeOf(context).height * .88,
+    decoration: BoxDecoration(
+      color: FluxColors.canvasOf(context),
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+    ),
+    child: Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 12, 8),
+          child: Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: FluxColors.surfaceOf(context),
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: Center(
+                  child: FluxIcon(icon: _iconFor(creation.kind), size: 18),
+                ),
+              ),
+              const SizedBox(width: 11),
+              Text(
+                creation.kind.label,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: FluxColors.mutedOf(context),
+                ),
+              ),
+              const Spacer(),
+              TextButton(
+                onPressed: () async {
+                  final confirmed = await showDialog<bool>(
+                    context: context,
+                    builder: (dialogContext) => AlertDialog(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      title: const Text('Delete this creation?'),
+                      content: Text(
+                        '“${creation.title}” will be removed from this device.',
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(dialogContext, false),
+                          child: const Text('Cancel'),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(dialogContext, true),
+                          child: const Text('Delete'),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (confirmed == true) onDelete();
+                },
+                child: Text(
+                  'Delete',
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: const Color(0xFFD34B4B),
+                  ),
+                ),
+              ),
+              FluxIconButton(
+                icon: FluxIcons.close,
+                tooltip: 'Close',
+                onTap: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 14, 20, 32),
+            children: [
+              Text(
+                creation.title,
+                style: Theme.of(context).textTheme.headlineLarge,
+              ),
+              if (creation.summary.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(
+                  creation.summary,
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: FluxColors.mutedOf(context),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 24),
+              ...creation.sections.map(
+                (section) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Container(
+                    padding: const EdgeInsets.all(17),
+                    decoration: BoxDecoration(
+                      color: FluxColors.cardOf(context),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          section.heading,
+                          style: Theme.of(context).textTheme.bodyLarge
+                              ?.copyWith(fontWeight: FontWeight.w500),
+                        ),
+                        const SizedBox(height: 7),
+                        Text(
+                          section.body,
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color: FluxColors.mutedOf(context),
+                                height: 1.45,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Original brief',
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: FluxColors.mutedOf(context),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                creation.prompt,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _QuietLoader extends StatefulWidget {
+  const _QuietLoader({this.label});
+  final String? label;
+
+  @override
+  State<_QuietLoader> createState() => _QuietLoaderState();
+}
+
+class _QuietLoaderState extends State<_QuietLoader>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _animation = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  );
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _animation.stop();
+      _animation.value = .15;
+    } else if (!_animation.isAnimating) {
+      _animation.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _animation.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    label: widget.label ?? 'Creating',
+    liveRegion: true,
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        RotationTransition(
+          turns: _animation,
+          child: FluxIcon(
+            icon: FluxIcons.loading,
+            size: 20,
+            color: FluxColors.mutedOf(context),
+          ),
+        ),
+        if (widget.label != null) ...[
+          const SizedBox(width: 10),
+          Text(
+            widget.label!,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: FluxColors.mutedOf(context),
+            ),
+          ),
+        ],
+      ],
+    ),
+  );
+}
+
+List<List<dynamic>> _iconFor(CreationKind kind) => switch (kind) {
+  CreationKind.app => FluxIcons.canvas,
+  CreationKind.widget => FluxIcons.chip,
+  CreationKind.presentation => FluxIcons.skills,
+};

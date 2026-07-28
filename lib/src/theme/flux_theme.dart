@@ -4,7 +4,7 @@ abstract final class FluxColors {
   // Light Palette
   static const canvas = Color(0xFFF8F8F8);
   static const ink = Color(0xFF121212);
-  static const muted = Color(0xFF777875);
+  static const muted = Color(0xFF686966);
   static const line = Color(0xFFEAEAE7);
   static const surface = Color(0xFFF3F3F3);
   static const card = Color(0xFFFFFFFF);

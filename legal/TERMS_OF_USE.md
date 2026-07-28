@@ -27,5 +27,5 @@ You agree not to use FinnAI to:
 To the maximum extent permitted by law, FinnAI shall not be liable for any indirect, incidental, special, or consequential damages resulting from your use of the application or reliance on AI-generated outputs.
 
 ## 6. Contact & Terms Availability
-- **Public Terms URL**: These terms are published at `FINN_TERMS_URL` when configured by the app provider.
-- **Support Contact**: Contact support via `FINN_SUPPORT_EMAIL` when configured by the app provider.
+- **Public Terms URL**: `https://finn-org.vercel.app/terms`
+- **Support Contact**: `https://finn-org.vercel.app/support`

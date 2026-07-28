@@ -1,0 +1,54 @@
+# FinnAI Google Play Listing (en-US)
+
+## App name
+
+Finn AI: Local AI Assistant
+
+## Short description
+
+Private AI conversations powered entirely on your Android device.
+
+## Full description
+
+Meet FinnAI, a fast and private AI assistant designed to run locally on your
+Android device.
+
+Your prompts and conversations stay on your phone. FinnAI automatically checks
+your device's memory and processor capabilities, then installs the best
+compatible Bonsai model. On supported hardware, its local router balances quick
+answers with more capable models for harder questions.
+
+Use FinnAI to:
+
+- Ask questions and continue natural multi-turn conversations
+- Draft, explain, summarize, brainstorm, and reason without a cloud AI service
+- Turn ideas into saved Creations
+- Personalize answers through You and reusable Skills
+- Keep conversation history encrypted in app-private local storage
+- Delete conversations, models, preferences, and other local data from Settings
+
+FinnAI needs at least 3 GB of RAM and a 64-bit ARM Android device. The initial
+AI model download requires an internet connection. AI responses are generated
+on device after installation.
+
+AI can make mistakes. Verify important medical, legal, financial, or safety
+information independently.
+
+FinnAI contains advertising. Advertising and consent services may use network
+access according to your privacy choices. Prompts and conversations are not
+sent to advertising services.
+
+## Category
+
+Productivity
+
+## Tags
+
+AI assistant, local AI, private AI, productivity, writing
+
+## Store asset requirements
+
+- 512 × 512 PNG app icon
+- 1024 × 500 PNG feature graphic
+- At least two polished phone screenshots
+- Optional 7-inch and 10-inch tablet screenshots only after tablet QA

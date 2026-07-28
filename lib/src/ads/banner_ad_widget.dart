@@ -48,6 +48,7 @@ Future<void> _defaultLoader({
 class BannerAdWidget extends StatefulWidget {
   const BannerAdWidget({
     super.key,
+    this.enabled = true,
     this.margin,
     this.adUnitId,
     this.onAdLoadedStateChanged,
@@ -55,6 +56,11 @@ class BannerAdWidget extends StatefulWidget {
     this.isSupportedPlatformOverride,
   });
 
+  /// Product-level placement gate.
+  ///
+  /// Disabled slots do not initialize or request ads, dispose an existing
+  /// native view immediately, and occupy exactly zero layout space.
+  final bool enabled;
   final EdgeInsetsGeometry? margin;
   final String? adUnitId;
   final ValueChanged<bool>? onAdLoadedStateChanged;
@@ -88,9 +94,30 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
     _loadAdIfAllowed();
   }
 
+  @override
+  void didUpdateWidget(covariant BannerAdWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.enabled == widget.enabled) return;
+    if (widget.enabled) {
+      _loadAdIfAllowed();
+    } else {
+      _deactivate();
+    }
+  }
+
+  void _deactivate() {
+    _generation++;
+    _bannerAd?.dispose();
+    _bannerAd = null;
+    final changed = _adLoaded || _isLoading;
+    _adLoaded = false;
+    _isLoading = false;
+    if (changed) widget.onAdLoadedStateChanged?.call(false);
+  }
+
   void _onConsentChanged() {
     if (!mounted) return;
-    if (AdConsentService.instance.canRequestAds) {
+    if (AdConsentService.instance.canRequestAds && widget.enabled) {
       if (!_adLoaded && !_isLoading) {
         _loadAdIfAllowed();
       }
@@ -111,6 +138,7 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
   }
 
   Future<void> _loadAdIfAllowed() async {
+    if (!widget.enabled) return;
     final supported =
         widget.isSupportedPlatformOverride ??
         AdService.instance.isSupportedPlatform;
@@ -130,7 +158,7 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
 
       // If consent was revoked while we awaited initialize(), our generation
       // will have been incremented and we must not proceed.
-      if (_generation != myGeneration) return;
+      if (_generation != myGeneration || !widget.enabled) return;
 
       final loader = widget.adLoader ?? _defaultLoader;
       await loader(
@@ -159,7 +187,9 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
     }
     // Re-check live consent in case it changed between the callback being
     // enqueued and it being processed on the Dart event loop.
-    if (!mounted || !AdConsentService.instance.canRequestAds) {
+    if (!mounted ||
+        !widget.enabled ||
+        !AdConsentService.instance.canRequestAds) {
       ad.dispose();
       if (mounted) {
         setState(() {
@@ -200,7 +230,7 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_adLoaded || _bannerAd == null) {
+    if (!widget.enabled || !_adLoaded || _bannerAd == null) {
       return const SizedBox.shrink();
     }
 

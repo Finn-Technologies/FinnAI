@@ -94,10 +94,31 @@ jobs:
           EOF
 
       - name: Build Release APK
-        run: flutter build apk --release
+        run: |
+          flutter build apk --release --target-platform android-arm64 \
+            --dart-define=FINN_SUPPORT_EMAIL=ci@example.invalid \
+            --dart-define=FINN_SUPPORT_URL=https://example.invalid/support \
+            --dart-define=FINN_PRIVACY_POLICY_URL=https://example.invalid/privacy \
+            --dart-define=FINN_TERMS_URL=https://example.invalid/terms \
+            --dart-define=FINN_REPORT_ENDPOINT=https://example.invalid/v1/reports
 
       - name: Build Release Android App Bundle (AAB)
-        run: flutter build appbundle --release
+        run: |
+          flutter build appbundle --release --target-platform android-arm64 \
+            --dart-define=FINN_SUPPORT_EMAIL=ci@example.invalid \
+            --dart-define=FINN_SUPPORT_URL=https://example.invalid/support \
+            --dart-define=FINN_PRIVACY_POLICY_URL=https://example.invalid/privacy \
+            --dart-define=FINN_TERMS_URL=https://example.invalid/terms \
+            --dart-define=FINN_REPORT_ENDPOINT=https://example.invalid/v1/reports
+
+      - name: Verify ARM64-only packaging
+        run: |
+          unzip -Z1 build/app/outputs/flutter-apk/app-release.apk |
+            awk -F/ '/^lib\\// {print $2}' | sort -u |
+            diff -u <(printf 'arm64-v8a\n') -
+          unzip -Z1 build/app/outputs/bundle/release/app-release.aab |
+            awk -F/ '/^base\\/lib\\// {print $3}' | sort -u |
+            diff -u <(printf 'arm64-v8a\n') -
 
       - name: Verify zipalign 16 KB Boundary on Release APK
         run: |

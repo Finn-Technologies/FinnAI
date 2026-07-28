@@ -70,4 +70,23 @@ void main() {
 
     expect(DeviceProfiler.plan(profile).tier, BonsaiTier.pro);
   });
+
+  test(
+    'clear complex requests bypass generative routing at the right tier',
+    () {
+      final inference = BonsaiInference.instance;
+      expect(
+        inference.fastRouteForTest('Write a careful launch plan.'),
+        BonsaiTier.plus,
+      );
+      expect(
+        inference.fastRouteForTest(
+          'Perform a rigorous proof with deep reasoning.',
+          highestTier: BonsaiTier.pro,
+        ),
+        BonsaiTier.pro,
+      );
+      expect(inference.fastRouteForTest('Hello!'), isNull);
+    },
+  );
 }

@@ -9,10 +9,14 @@ Package Identifier: `com.abhiflex.finnai`
 ## Key Features
 
 - **On-Device Local Inference**: Powered by Prism ML Bonsai GGUF models (`Bonsai 1.7B`, `Bonsai 4B`, `Bonsai 8B`) running via C++ native binaries on worker isolates.
+- **Hardware-Adaptive Routing**: Device profiling chooses the safe model set and routes clear complex work directly while retaining Lite-model routing for ambiguous requests.
+- **Creations**: Generates and stores structured app, widget, and presentation concepts entirely on device.
+- **You & Skills**: Local personalization, response-style controls, built-in capabilities, and reusable custom instructions feed a private system context.
 - **AES-256-GCM Encrypted Storage**: Conversations are protected using AES-256-GCM authenticated encryption (`package:cryptography`) with master keys secured in Android KeyStore (`FlutterSecureStorage`).
 - **AdMob Privacy & UMP Consent**: Integrated Google User Messaging Platform (UMP) SDK. Banner ads collapse cleanly to 0 height (`SizedBox.shrink()`) when unconsented or inactive.
-- **AI Safety & Report Action**: In-app AI response reporting system (`ReportDialog`) with category classification and prompt inclusion controls. Reporting is disabled until a production endpoint (`FINN_REPORT_ENDPOINT`) is configured.
+- **AI Safety & Report Action**: In-app AI response reporting system (`ReportDialog`) with category classification and prompt inclusion controls. Production reports use `https://finn-org.vercel.app/v1/reports`.
 - **Settings & Data Sovereignty**: Dynamic versioning, open-source licence viewer, interactive privacy choices, legal documents, and truthful "Delete All Local Data" action returning detailed deletion results.
+- **Responsive, Low-Overhead UI**: Instrument Sans, Figma-imported icons, reduced-motion support, lazy sidebar composition, bounded input work, and no runtime gradients or backdrop blur.
 
 ---
 
@@ -24,20 +28,22 @@ FinnAI/
 ├── assets/                    # Assets and launcher icons
 ├── docs/                      # Technical & release documentation
 │   ├── PLAY_RELEASE_READINESS.md          # Master Play Store release checklist
-│   ├── NATIVE_16KB_VERIFICATION.md         # 16 KB ARM64 ELF alignment verification (BLOCKED)
+│   ├── NATIVE_16KB_VERIFICATION.md         # Source build provenance and 16 KB verification
 │   ├── SECURITY_AND_PRIVACY_ARCHITECTURE.md # Security & AES-256-GCM encryption design
 │   ├── DATA_SAFETY_DRAFT.md               # Google Play Data Safety section questionnaire draft
 │   ├── PLAY_CONSOLE_CHECKLIST.md          # Manual Play Console submission steps
 │   ├── AI_SAFETY_TESTING.md               # Red-team safety test matrix
+│   ├── PERFORMANCE_VALIDATION.md            # Physical Nord inference/UI measurements
 │   └── REPORTING_BACKEND.md               # Serverless reporting endpoint deployment guide
 ├── legal/                     # Legal policies
 │   ├── PRIVACY_POLICY.md
 │   └── TERMS_OF_USE.md
 ├── lib/                       # Flutter / Dart application source code
-├── reporting-service/         # Cloudflare Worker backend for AI response reports
+├── store-listing/             # Play listing copy and app-ads.txt source
 ├── test/                      # Unit & widget test suite
 ├── tool/                      # Verification scripts
-│   └── verify_release.sh      # Complete automated release verification script
+│   ├── verify_release.sh      # Temporary-key automated release verification
+│   └── build_play_release.sh  # Fail-closed production AAB builder
 └── THIRD_PARTY_NOTICES.md     # Open-source license attribution notices
 ```
 
@@ -74,11 +80,36 @@ keyAlias=YOUR_KEY_ALIAS
 storeFile=/absolute/path/to/upload-keystore.jks
 ```
 
-Build the release App Bundle:
-```bash
-flutter build appbundle --release \
-  --dart-define=FINN_SUPPORT_EMAIL="support@yourdomain.com" \
-  --dart-define=FINN_PRIVACY_POLICY_URL="https://yourdomain.com/privacy" \
-  --dart-define=FINN_TERMS_URL="https://yourdomain.com/terms" \
-  --dart-define=FINN_REPORT_ENDPOINT="https://reports.yourdomain.com/v1/reports"
+Finn AI includes production defaults for its public website:
+
+```text
+Privacy:  https://finn-org.vercel.app/privacy
+Terms:    https://finn-org.vercel.app/terms
+Support:  https://finn-org.vercel.app/support
+Reports:  https://finn-org.vercel.app/v1/reports
 ```
+
+You may override them for another environment:
+
+```bash
+export FINN_SUPPORT_URL="https://finn-org.vercel.app/support"
+export FINN_PRIVACY_POLICY_URL="https://finn-org.vercel.app/privacy"
+export FINN_TERMS_URL="https://finn-org.vercel.app/terms"
+export FINN_REPORT_ENDPOINT="https://finn-org.vercel.app/v1/reports"
+
+./tool/build_play_release.sh
+```
+
+FinnAI currently ships an ARM64 native inference runtime, so Play artifacts
+must remain ARM64-only. `tool/verify_release.sh` rejects accidental extra ABIs.
+The production builder also rejects missing values, non-HTTPS URLs, reserved
+`.invalid` domains, missing signing material, or any failed release check.
+
+Before launch, host `store-listing/app-ads.txt` at the root of the developer
+website linked from the Play listing. Complete the remaining publisher-owned
+steps in `docs/PLAY_CONSOLE_CHECKLIST.md`.
+
+The reporting API is maintained in the separate public
+`Finn-Technologies/landing-page` repository. Its Vercel project must have
+`UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, and `RATE_LIMIT_SALT`
+configured before the production builder will pass its health check.

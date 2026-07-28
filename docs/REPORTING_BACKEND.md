@@ -1,7 +1,10 @@
-# FinnAI In-App AI Response Reporting Backend Specification
+# Finn AI In-App Response Reporting Backend
 
 ## Overview
-FinnAI includes an in-app reporting flow for flagged AI assistant outputs to comply with Google Play Store policies for generative AI apps.
+The canonical backend is maintained in the separate public
+[`Finn-Technologies/landing-page`](https://github.com/Finn-Technologies/landing-page)
+repository and deployed with that site on Vercel. Backend source must not be
+duplicated in the private Flutter repository.
 
 ---
 
@@ -10,6 +13,8 @@ FinnAI includes an in-app reporting flow for flagged AI assistant outputs to com
 - **Route**: `POST /v1/reports`
 - **Protocol**: HTTPS required in production
 - **Header**: `Content-Type: application/json`
+- **Health check**: `GET /health` returns HTTP 200 with `{"status":"ok"}`
+  only when both required production bindings are configured.
 
 ### Request Body Schema
 ```json
@@ -28,29 +33,33 @@ FinnAI includes an in-app reporting flow for flagged AI assistant outputs to com
 ### Strict Server Validation & Unknown Field Rejection
 - Unknown fields are strictly rejected with HTTP 400 (`{"error": "Unknown field '...' in report payload"}`).
 - Missing required fields or invalid timestamps return HTTP 400.
-- Missing `REPORTS_KV` or `RATE_LIMIT_SALT` configuration returns HTTP 503.
+- Missing Upstash Redis credentials or `RATE_LIMIT_SALT` returns HTTP 503.
 
 ### Data Retention & Privacy
-- **Retention TTL**: All report records stored in `REPORTS_KV` expire automatically after **30 days** (`expirationTtl: 2592000` seconds).
+- **Retention TTL**: All `report:*` records stored in Upstash Redis expire
+  automatically after **30 days** (`2592000` seconds).
 - No Advertising ID, Android ID, hardware serial, or user account identity is attached to report payloads.
 - Client IP addresses are hashed with `RATE_LIMIT_SALT` for hourly rate limiting (max 10 requests / hour per IP) and are **never** persisted to storage.
 
 ---
 
-## Cloudflare Workers Deployment
+## Vercel Production Configuration
 
-1. Install Wrangler CLI: `npm install -g wrangler`
-2. Authenticate: `wrangler login`
-3. Create KV Namespace: `wrangler kv:namespace create REPORTS_KV`
-4. Set Secret Salt: `wrangler secret put RATE_LIMIT_SALT`
-5. Deploy worker: `wrangler deploy`
-6. Configure the production endpoint URL during Flutter release compilation:
-   ```bash
-   flutter build appbundle --release \
-     --dart-define=FINN_REPORT_ENDPOINT="https://reports.finnai.app/v1/reports"
-   ```
+Connect an Upstash Redis database to the landing-page Vercel project and set:
+
+```text
+UPSTASH_REDIS_REST_URL
+UPSTASH_REDIS_REST_TOKEN
+RATE_LIMIT_SALT
+```
+
+The deployed routes are:
+
+- `POST https://finn-org.vercel.app/v1/reports`
+- `GET https://finn-org.vercel.app/health`
 
 ---
 
 ## Operational Status
-When no production reporting endpoint is deployed, reporting is marked `BLOCKED / NOT DEPLOYED` and the in-app dialog informs the user that reporting is currently unconfigured.
+The release builder refuses to produce a publishable AAB until `/health`
+returns HTTP 200 with `{"status":"ok"}`.

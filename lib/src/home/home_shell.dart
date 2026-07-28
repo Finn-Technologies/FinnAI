@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
-import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -8,9 +8,14 @@ import '../ads/banner_ad_widget.dart';
 import '../conversations/conversation_store.dart';
 import '../creations/creations_page.dart';
 import '../inference/bonsai_inference.dart';
+import '../privacy/ad_consent_service.dart';
 import '../reporting/report_dialog.dart';
 import '../settings/settings_page.dart';
+import '../skills/skills_page.dart';
+import '../skills/skills_store.dart';
 import '../theme/flux_theme.dart';
+import '../you/you_page.dart';
+import '../you/you_profile_store.dart';
 import '../widgets/ambient_background.dart';
 import '../widgets/flux_controls.dart';
 
@@ -32,12 +37,16 @@ class _HomeShellState extends State<HomeShell>
   StreamSubscription<String>? _replySubscription;
   Timer? _tokenPaintTimer;
   Timer? _memoryReleaseTimer;
+  Timer? _prewarmTimer;
   final _pendingTokens = StringBuffer();
   final _streamingAnswer = ValueNotifier<String>('');
   String? _assistantMessageId;
   _ReplyState _replyState = _ReplyState.idle;
   bool _sidebar = false;
+  bool _sidebarEverOpened = false;
+  bool _sidebarAdVisible = false;
   bool _preparing = false;
+  bool _storesReady = false;
   String _answer = '';
   String _error = '';
   late final AnimationController _sidebarController = AnimationController(
@@ -64,8 +73,9 @@ class _HomeShellState extends State<HomeShell>
     _conversations.addListener(_conversationChanged);
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      unawaited(_conversations.initialize());
-      unawaited(_inference.prewarm());
+      unawaited(_initializeStores());
+      _schedulePrewarm();
+      unawaited(AdConsentService.instance.initializeConsentAndAds());
     });
   }
 
@@ -73,8 +83,14 @@ class _HomeShellState extends State<HomeShell>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.detached) {
       _memoryReleaseTimer?.cancel();
+      _prewarmTimer?.cancel();
+      unawaited(_conversations.flush());
       unawaited(_inference.releaseMemory());
-    } else if (state == AppLifecycleState.paused) {
+    } else if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused) {
+      _prewarmTimer?.cancel();
+      unawaited(_conversations.flush());
+      if (state != AppLifecycleState.paused) return;
       _memoryReleaseTimer?.cancel();
       final profile = _inference.deviceProfile;
       final constrained =
@@ -82,12 +98,42 @@ class _HomeShellState extends State<HomeShell>
           (profile?.availableRamBytes ?? 1 << 40) < 1800 * 1024 * 1024;
       _memoryReleaseTimer = Timer(
         Duration(seconds: constrained ? 5 : 35),
-        () => unawaited(_inference.releaseMemory()),
+        _releaseMemoryWhenIdle,
       );
     } else if (state == AppLifecycleState.resumed) {
       _memoryReleaseTimer?.cancel();
-      unawaited(_inference.prewarm());
+      _schedulePrewarm();
     }
+  }
+
+  @override
+  void didHaveMemoryPressure() {
+    _prewarmTimer?.cancel();
+    _memoryReleaseTimer?.cancel();
+    if (_replySubscription == null) {
+      unawaited(_inference.releaseMemory());
+    }
+  }
+
+  Future<void> _initializeStores() async {
+    await Future.wait([
+      _conversations.initialize(),
+      YouProfileStore.instance.initialize(),
+      SkillsStore.instance.initialize(),
+    ]);
+    if (!mounted) return;
+    setState(() => _storesReady = true);
+  }
+
+  void _releaseMemoryWhenIdle() {
+    if (_inference.isGeneratingReply) {
+      _memoryReleaseTimer = Timer(
+        const Duration(seconds: 10),
+        _releaseMemoryWhenIdle,
+      );
+      return;
+    }
+    unawaited(_inference.releaseMemory());
   }
 
   void _conversationChanged() {
@@ -102,6 +148,7 @@ class _HomeShellState extends State<HomeShell>
     unawaited(_replySubscription?.cancel());
     _tokenPaintTimer?.cancel();
     _memoryReleaseTimer?.cancel();
+    _prewarmTimer?.cancel();
     _sidebarController.dispose();
     unawaited(_conversations.flush());
     _composer.dispose();
@@ -110,9 +157,17 @@ class _HomeShellState extends State<HomeShell>
     super.dispose();
   }
 
+  void _schedulePrewarm() {
+    _prewarmTimer?.cancel();
+    _prewarmTimer = Timer(
+      const Duration(milliseconds: 450),
+      () => unawaited(_inference.prewarm()),
+    );
+  }
+
   void _inferenceChanged() {
     if (!mounted ||
-        _replyState == _ReplyState.idle ||
+        (_replySubscription == null && !_preparing) ||
         _inference.phase == InferencePhase.idle) {
       return;
     }
@@ -135,8 +190,31 @@ class _HomeShellState extends State<HomeShell>
   Future<void> _send() async {
     final value = _composer.text.trim();
     if (value.isEmpty || _busy) return;
+    if (_inference.isGeneratingReply) {
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('Finn AI is finishing another local task.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      return;
+    }
+    _prewarmTimer?.cancel();
 
-    _preparing = true;
+    setState(() => _preparing = true);
+    await Future.wait([
+      _conversations.initialize(),
+      YouProfileStore.instance.initialize(),
+      SkillsStore.instance.initialize(),
+    ]);
+    if (!mounted) return;
+    _storesReady = true;
+    final systemContext = [
+      YouProfileStore.instance.promptContext,
+      SkillsStore.instance.activePromptContext,
+    ].where((item) => item.trim().isNotEmpty).join('\n\n');
     final missing = <BonsaiModel>[];
     for (final model in _inference.requiredModels) {
       if (!await _inference.isInstalled(model)) missing.add(model);
@@ -183,11 +261,11 @@ class _HomeShellState extends State<HomeShell>
         ),
       );
       if (accepted != true) {
-        _preparing = false;
+        if (mounted) setState(() => _preparing = false);
         return;
       }
     }
-    _preparing = false;
+    if (mounted) setState(() => _preparing = false);
     if (!mounted) return;
 
     final conversation = _conversations.active ?? _conversations.startNew();
@@ -208,7 +286,12 @@ class _HomeShellState extends State<HomeShell>
     });
 
     _replySubscription = _inference
-        .generateReply(value, conversationId: conversation.id, history: history)
+        .generateReply(
+          value,
+          conversationId: conversation.id,
+          history: history,
+          systemContext: systemContext,
+        )
         .listen(
           (token) {
             if (!mounted) return;
@@ -297,6 +380,25 @@ class _HomeShellState extends State<HomeShell>
     }
   }
 
+  Future<void> _stopReply() async {
+    final subscription = _replySubscription;
+    if (subscription == null) return;
+    _replySubscription = null;
+    _tokenPaintTimer?.cancel();
+    _tokenPaintTimer = null;
+    await subscription.cancel();
+    await _inference.stopGeneration();
+    _flushTokenPaint(persist: true);
+    final messageId = _assistantMessageId;
+    if (_answer.trim().isEmpty && messageId != null) {
+      _conversations.removeMessage(messageId);
+    }
+    _streamingAnswer.value = '';
+    _assistantMessageId = null;
+    if (mounted) setState(() => _replyState = _ReplyState.complete);
+    await _conversations.flush();
+  }
+
   void _activateConversation(String id) {
     _conversations.activate(id);
     _setSidebar(false);
@@ -321,15 +423,35 @@ class _HomeShellState extends State<HomeShell>
     });
   }
 
-  void _openCreations() {
-    _setSidebar(false);
+  Future<void> _openCreations() async {
+    await _closeSidebarForNavigation();
+    if (!mounted) return;
     Navigator.of(context).push(_FinnPageRoute(child: const CreationsPage()));
   }
 
-  void _openSettings() {
-    _setSidebar(false);
+  Future<void> _openYou() async {
+    await _closeSidebarForNavigation();
+    if (!mounted) return;
+    Navigator.of(context).push(
+      _FinnPageRoute(child: YouPage(onBack: () => Navigator.of(context).pop())),
+    );
+  }
+
+  Future<void> _openSkills() async {
+    await _closeSidebarForNavigation();
+    if (!mounted) return;
     Navigator.of(context).push(
       _FinnPageRoute(
+        child: SkillsPage(onBack: () => Navigator.of(context).pop()),
+      ),
+    );
+  }
+
+  Future<void> _openSettings() async {
+    await _closeSidebarForNavigation();
+    if (!mounted) return;
+    Navigator.of(context).push(
+      _FinnSettingsRoute(
         child: SettingsPage(onBack: () => Navigator.of(context).pop()),
       ),
     );
@@ -337,107 +459,148 @@ class _HomeShellState extends State<HomeShell>
 
   void _setSidebar(bool open) {
     if (_sidebar == open) return;
-    setState(() => _sidebar = open);
+    setState(() {
+      _sidebar = open;
+      if (open) _sidebarEverOpened = true;
+      if (!open) _sidebarAdVisible = false;
+    });
     final reduced = MediaQuery.disableAnimationsOf(context);
     if (reduced) {
       _sidebarController.value = open ? 1 : 0;
+      if (open && mounted) setState(() => _sidebarAdVisible = true);
     } else if (open) {
-      _sidebarController.forward();
+      _sidebarController.forward().whenComplete(() {
+        if (mounted && _sidebar && _sidebarController.value == 1) {
+          setState(() => _sidebarAdVisible = true);
+        }
+      });
     } else {
       _sidebarController.reverse();
     }
   }
 
+  Future<void> _closeSidebarForNavigation() async {
+    if (!_sidebar) return;
+    setState(() {
+      _sidebar = false;
+      _sidebarAdVisible = false;
+    });
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _sidebarController.value = 0;
+    } else {
+      await _sidebarController.reverse();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      resizeToAvoidBottomInset: true,
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final sy = constraints.maxHeight / 844;
-          final safeBottom = MediaQuery.viewPaddingOf(context).bottom;
-          final homeLayer = RepaintBoundary(
-            child: AmbientBackground(
-              intensity: 1,
-              child: Stack(
-                children: [
-                  Positioned(
-                    left: 20,
-                    top: 71 * sy,
-                    child: _HomeHeader(onMenu: () => _setSidebar(true)),
-                  ),
-                  Positioned(
-                    left: 20,
-                    right: 20,
-                    top: 125 * sy,
-                    bottom: 92 + safeBottom,
-                    child: _Conversation(
-                      messages: _conversations.active?.messages ?? const [],
-                      state: _replyState,
-                      streamingAnswer: _streamingAnswer,
-                      streamingMessageId: _assistantMessageId,
-                      error: _error,
+    return PopScope(
+      canPop: !_sidebar,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && _sidebar) _setSidebar(false);
+      },
+      child: Scaffold(
+        resizeToAvoidBottomInset: true,
+        body: LayoutBuilder(
+          builder: (context, constraints) {
+            final sy = constraints.maxHeight / 844;
+            final safeBottom = MediaQuery.viewPaddingOf(context).bottom;
+            final homeLayer = RepaintBoundary(
+              child: AmbientBackground(
+                intensity: 1,
+                child: Stack(
+                  children: [
+                    Positioned(
+                      left: 20,
+                      top: 71 * sy,
+                      child: _HomeHeader(onMenu: () => _setSidebar(true)),
                     ),
-                  ),
-                  Positioned(
-                    left: 20,
-                    right: 20,
-                    bottom:
-                        safeBottom + (constraints.maxHeight < 650 ? 20 : 30),
-                    child: _Composer(
-                      controller: _composer,
-                      focusNode: _focusNode,
-                      blocked: _busy,
-                      onSend: _send,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-          final sidebarLayer = RepaintBoundary(
-            child: _Sidebar(
-              onClose: () => _setSidebar(false),
-              onNewConversation: _newConversation,
-              onConversation: _activateConversation,
-              conversations: _conversations.conversations,
-              activeConversationId: _conversations.active?.id,
-              onCreations: _openCreations,
-              onSettings: _openSettings,
-            ),
-          );
-          return AnimatedBuilder(
-            animation: _sidebarAnimation,
-            builder: (context, _) {
-              final motion = _sidebarAnimation.value;
-              final scale = 1.0 - (.04 * motion);
-              return Stack(
-                children: [
-                  Transform.translate(
-                    offset: Offset(constraints.maxWidth * .14 * motion, 0),
-                    child: Transform.scale(scale: scale, child: homeLayer),
-                  ),
-                  IgnorePointer(
-                    ignoring: !_sidebar,
-                    child: GestureDetector(
-                      onTap: () => _setSidebar(false),
-                      child: ColoredBox(
-                        color: Colors.black.withValues(alpha: .18 * motion),
+                    Positioned(
+                      left: 20,
+                      right: 20,
+                      top: 125 * sy,
+                      bottom: 92 + safeBottom,
+                      child: _Conversation(
+                        messages: _conversations.active?.messages ?? const [],
+                        state: _replyState,
+                        streamingAnswer: _streamingAnswer,
+                        streamingMessageId: _assistantMessageId,
+                        error: _error,
+                        onStop: _stopReply,
                       ),
                     ),
-                  ),
-                  IgnorePointer(
-                    ignoring: !_sidebar,
-                    child: FractionalTranslation(
-                      translation: Offset(-1 + motion, 0),
-                      child: sidebarLayer,
+                    Positioned(
+                      left: 20,
+                      right: 20,
+                      bottom:
+                          safeBottom + (constraints.maxHeight < 650 ? 20 : 30),
+                      child: _Composer(
+                        controller: _composer,
+                        focusNode: _focusNode,
+                        blocked: _busy || !_storesReady,
+                        onSend: _send,
+                      ),
                     ),
-                  ),
-                ],
-              );
-            },
-          );
-        },
+                  ],
+                ),
+              ),
+            );
+            final sidebarLayer = !_sidebarEverOpened
+                ? const SizedBox.shrink()
+                : RepaintBoundary(
+                    child: _Sidebar(
+                      onClose: () => _setSidebar(false),
+                      onNewConversation: _newConversation,
+                      onConversation: _activateConversation,
+                      conversations: _conversations.conversations,
+                      activeConversationId: _conversations.active?.id,
+                      onCreations: _openCreations,
+                      onYou: _openYou,
+                      onSkills: _openSkills,
+                      onSettings: _openSettings,
+                      showAd:
+                          _sidebarAdVisible && !_inference.isGeneratingReply,
+                    ),
+                  );
+            return AnimatedBuilder(
+              animation: _sidebarAnimation,
+              builder: (context, _) {
+                final motion = _sidebarAnimation.value;
+                final scale = 1.0 - (.04 * motion);
+                return Stack(
+                  children: [
+                    ExcludeSemantics(
+                      excluding: _sidebar,
+                      child: Transform.translate(
+                        offset: Offset(constraints.maxWidth * .14 * motion, 0),
+                        child: Transform.scale(scale: scale, child: homeLayer),
+                      ),
+                    ),
+                    IgnorePointer(
+                      ignoring: !_sidebar,
+                      child: GestureDetector(
+                        onTap: () => _setSidebar(false),
+                        child: ColoredBox(
+                          color: Colors.black.withValues(alpha: .18 * motion),
+                        ),
+                      ),
+                    ),
+                    IgnorePointer(
+                      ignoring: !_sidebar,
+                      child: ExcludeSemantics(
+                        excluding: !_sidebar,
+                        child: FractionalTranslation(
+                          translation: Offset(-1 + motion, 0),
+                          child: sidebarLayer,
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            );
+          },
+        ),
       ),
     );
   }
@@ -492,12 +655,14 @@ class _Conversation extends StatelessWidget {
     required this.streamingAnswer,
     required this.streamingMessageId,
     required this.error,
+    required this.onStop,
   });
   final List<ConversationMessage> messages;
   final _ReplyState state;
   final ValueNotifier<String> streamingAnswer;
   final String? streamingMessageId;
   final String error;
+  final VoidCallback onStop;
 
   @override
   Widget build(BuildContext context) {
@@ -544,11 +709,13 @@ class _Conversation extends StatelessWidget {
                   ),
                 ),
                 child: switch (state) {
-                  _ReplyState.loading => const _ModelResponseLoader(
+                  _ReplyState.loading => _ModelResponseLoader(
                     key: ValueKey('loading'),
+                    onStop: onStop,
                   ),
-                  _ReplyState.thinking => const _ModelResponseLoader(
+                  _ReplyState.thinking => _ModelResponseLoader(
                     key: ValueKey('thinking'),
+                    onStop: onStop,
                   ),
                   _ReplyState.complete => const SizedBox(
                     key: ValueKey('complete'),
@@ -629,7 +796,9 @@ class _Bubble extends StatelessWidget {
 }
 
 class _ModelResponseLoader extends StatefulWidget {
-  const _ModelResponseLoader({super.key});
+  const _ModelResponseLoader({super.key, required this.onStop});
+
+  final VoidCallback onStop;
 
   @override
   State<_ModelResponseLoader> createState() => _ModelResponseLoaderState();
@@ -662,42 +831,66 @@ class _ModelResponseLoaderState extends State<_ModelResponseLoader>
   @override
   Widget build(BuildContext context) => Semantics(
     label: 'Finn AI is preparing a response',
+    hint: 'Tap to stop generation',
+    button: true,
     liveRegion: true,
     child: Align(
       alignment: Alignment.centerLeft,
       child: RepaintBoundary(
-        child: Container(
-          width: 72,
-          height: 38,
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          decoration: BoxDecoration(
-            color: FluxColors.cardOf(context).withValues(alpha: .7),
-            borderRadius: BorderRadius.circular(19),
-            border: Border.all(color: FluxColors.lineOf(context)),
-          ),
-          child: AnimatedBuilder(
-            animation: _controller,
-            builder: (context, _) => Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: List.generate(3, (index) {
-                final wave =
-                    (math.sin(_controller.value * math.pi * 2 - index * .8) +
-                        1) /
-                    2;
-                return Transform.scale(
-                  scale: .72 + wave * .3,
-                  child: Opacity(
-                    opacity: .28 + wave * .72,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: FluxColors.inkOf(context),
-                        shape: BoxShape.circle,
+        child: Material(
+          color: FluxColors.cardOf(context).withValues(alpha: .7),
+          borderRadius: BorderRadius.circular(22),
+          child: InkWell(
+            onTap: widget.onStop,
+            borderRadius: BorderRadius.circular(22),
+            child: Container(
+              width: 94,
+              height: 38,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(19),
+                border: Border.all(color: FluxColors.lineOf(context)),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: AnimatedBuilder(
+                      animation: _controller,
+                      builder: (context, _) => Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: List.generate(3, (index) {
+                          final wave =
+                              (math.sin(
+                                    _controller.value * math.pi * 2 -
+                                        index * .8,
+                                  ) +
+                                  1) /
+                              2;
+                          return Transform.scale(
+                            scale: .72 + wave * .3,
+                            child: Opacity(
+                              opacity: .28 + wave * .72,
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  color: FluxColors.inkOf(context),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const SizedBox.square(dimension: 6),
+                              ),
+                            ),
+                          );
+                        }),
                       ),
-                      child: const SizedBox.square(dimension: 6),
                     ),
                   ),
-                );
-              }),
+                  const SizedBox(width: 7),
+                  FluxIcon(
+                    icon: FluxIcons.close,
+                    size: 15,
+                    color: FluxColors.mutedOf(context),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -809,6 +1002,26 @@ class _FinnPageRoute<T> extends PageRouteBuilder<T> {
       );
 }
 
+class _FinnSettingsRoute<T> extends PageRouteBuilder<T> {
+  _FinnSettingsRoute({required Widget child})
+    : super(
+        transitionDuration: const Duration(milliseconds: 180),
+        reverseTransitionDuration: const Duration(milliseconds: 180),
+        pageBuilder: (_, _, _) => child,
+        transitionsBuilder: (context, animation, _, page) {
+          if (MediaQuery.disableAnimationsOf(context)) return page;
+          return FadeTransition(
+            opacity: CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOutCubic,
+              reverseCurve: Curves.easeInCubic,
+            ),
+            child: page,
+          );
+        },
+      );
+}
+
 class _ErrorReply extends StatelessWidget {
   const _ErrorReply({super.key, required this.text});
 
@@ -876,41 +1089,59 @@ class _ComposerState extends State<_Composer> {
         context,
       ).withValues(alpha: _focused ? .18 : .045),
       child: SizedBox(
-        height: 50,
+        height: 56,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14),
+          padding: const EdgeInsets.only(left: 14, right: 4),
           child: Row(
             children: [
               Expanded(
-                child: TextField(
-                  controller: widget.controller,
-                  focusNode: widget.focusNode,
-                  enabled: !widget.blocked,
-                  textInputAction: TextInputAction.send,
-                  onSubmitted: (_) => canSend ? widget.onSend() : null,
-                  style: Theme.of(context).textTheme.bodyMedium,
-                  decoration: InputDecoration.collapsed(
-                    hintText: widget.blocked
-                        ? 'Finn AI is responding…'
-                        : 'Ask anything',
-                    hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: FluxColors.mutedOf(context),
+                child: Semantics(
+                  label: 'Message to Finn AI',
+                  textField: true,
+                  child: TextField(
+                    controller: widget.controller,
+                    focusNode: widget.focusNode,
+                    inputFormatters: [LengthLimitingTextInputFormatter(4000)],
+                    enabled: !widget.blocked,
+                    textInputAction: TextInputAction.send,
+                    onSubmitted: (_) => canSend ? widget.onSend() : null,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                    decoration: InputDecoration.collapsed(
+                      hintText: widget.blocked
+                          ? 'Finn AI is responding…'
+                          : 'Ask anything',
+                      hintStyle: Theme.of(context).textTheme.bodyMedium
+                          ?.copyWith(color: FluxColors.mutedOf(context)),
                     ),
                   ),
                 ),
               ),
               const SizedBox(width: 8),
-              AnimatedScale(
-                scale: canSend ? 1 : .94,
-                duration: const Duration(milliseconds: 220),
-                curve: Curves.easeOutBack,
-                child: InkWell(
-                  onTap: canSend ? widget.onSend : null,
-                  borderRadius: BorderRadius.circular(17),
-                  child: FigmaSvg(
-                    asset: canSend ? FigmaAssets.activeSend : FigmaAssets.send,
-                    width: 34,
-                    height: 34,
+              Semantics(
+                button: true,
+                enabled: canSend,
+                label: 'Send message',
+                child: AnimatedScale(
+                  scale: canSend ? 1 : .94,
+                  duration: MediaQuery.disableAnimationsOf(context)
+                      ? Duration.zero
+                      : const Duration(milliseconds: 220),
+                  curve: Curves.easeOutBack,
+                  child: InkWell(
+                    onTap: canSend ? widget.onSend : null,
+                    borderRadius: BorderRadius.circular(24),
+                    child: SizedBox.square(
+                      dimension: 48,
+                      child: Center(
+                        child: FigmaSvg(
+                          asset: canSend
+                              ? FigmaAssets.activeSend
+                              : FigmaAssets.send,
+                          width: 34,
+                          height: 34,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -930,7 +1161,10 @@ class _Sidebar extends StatefulWidget {
     required this.conversations,
     required this.activeConversationId,
     required this.onCreations,
+    required this.onYou,
+    required this.onSkills,
     required this.onSettings,
+    required this.showAd,
   });
 
   final VoidCallback onClose;
@@ -939,7 +1173,10 @@ class _Sidebar extends StatefulWidget {
   final List<FinnConversation> conversations;
   final String? activeConversationId;
   final VoidCallback onCreations;
+  final VoidCallback onYou;
+  final VoidCallback onSkills;
   final VoidCallback onSettings;
+  final bool showAd;
 
   @override
   State<_Sidebar> createState() => _SidebarState();
@@ -948,7 +1185,6 @@ class _Sidebar extends StatefulWidget {
 class _SidebarState extends State<_Sidebar> {
   late final ScrollController _scrollController = ScrollController();
   final ValueNotifier<double> _scrollOffset = ValueNotifier<double>(0.0);
-  bool _adLoaded = false;
 
   @override
   void initState() {
@@ -987,21 +1223,9 @@ class _SidebarState extends State<_Sidebar> {
             52.0,
             62.0,
           );
-          final bool enableCreations = const bool.fromEnvironment(
-            'FINN_ENABLE_EXPERIMENTS',
-            defaultValue: false,
-          );
-          final double buttonsHeight = enableCreations ? (navSize + 20) : 0;
-          final double buttonsBottom = enableCreations
-              ? (buttonsTop + buttonsHeight)
-              : (headerTop + headerHeight);
-          final double adBannerTop = enableCreations
-              ? (buttonsBottom + 10 * sy)
-              : (buttonsBottom + 12 * sy);
-          final double adBannerHeight = _adLoaded ? 50.0 : 0.0;
-          final double initialTitleTop = _adLoaded
-              ? (adBannerTop + adBannerHeight + (16 * sy))
-              : (adBannerTop + (4 * sy));
+          final double buttonsHeight = navSize + 20;
+          final double buttonsBottom = buttonsTop + buttonsHeight;
+          final double initialTitleTop = buttonsBottom + 14 * sy;
           final double pinnedTitleTop = headerTop;
           const double titleHeight = 24;
           final double historyTopAtRest = initialTitleTop + titleHeight + 12;
@@ -1011,84 +1235,80 @@ class _SidebarState extends State<_Sidebar> {
             children: [
               // 1. Scrolling Chat History List in Background
               Positioned.fill(
-                child: NotificationListener<ScrollNotification>(
-                  onNotification: (notification) {
-                    _scrollOffset.value = notification.metrics.pixels;
-                    return false;
-                  },
-                  child: CustomScrollView(
-                    controller: _scrollController,
-                    physics: const BouncingScrollPhysics(
-                      parent: AlwaysScrollableScrollPhysics(),
-                    ),
-                    slivers: [
-                      SliverPadding(
-                        padding: EdgeInsets.only(
-                          left: 20,
-                          right: 20,
-                          top: historyTopAtRest,
-                          bottom: 30 + safeBottom,
-                        ),
-                        sliver: widget.conversations.isEmpty
-                            ? SliverToBoxAdapter(
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 40,
-                                  ),
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      const FigmaSvg(
-                                        asset: FigmaAssets.noHistory,
-                                        width: 40,
-                                        height: 40,
-                                      ),
-                                      const SizedBox(height: 10),
-                                      Text(
-                                        'No history',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .labelMedium
-                                            ?.copyWith(
-                                              color: FluxColors.mutedOf(
-                                                context,
-                                              ),
-                                              fontSize: 10,
-                                            ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              )
-                            : SliverList.builder(
-                                itemCount: widget.conversations.length,
-                                itemBuilder: (context, index) {
-                                  final conversation =
-                                      widget.conversations[index];
-                                  return _SidebarConversationTile(
-                                    key: ValueKey(conversation.id),
-                                    conversation: conversation,
-                                    selected:
-                                        conversation.id ==
-                                        widget.activeConversationId,
-                                    onTap: () =>
-                                        widget.onConversation(conversation.id),
-                                  );
-                                },
-                              ),
-                      ),
-                    ],
+                child: CustomScrollView(
+                  controller: _scrollController,
+                  physics: const BouncingScrollPhysics(
+                    parent: AlwaysScrollableScrollPhysics(),
                   ),
+                  slivers: [
+                    SliverPadding(
+                      padding: EdgeInsets.only(
+                        left: 20,
+                        right: 20,
+                        top: historyTopAtRest,
+                        bottom: (widget.showAd ? 74 : 30) + safeBottom,
+                      ),
+                      sliver: widget.conversations.isEmpty
+                          ? SliverToBoxAdapter(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 40,
+                                ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const FigmaSvg(
+                                      asset: FigmaAssets.noHistory,
+                                      width: 40,
+                                      height: 40,
+                                    ),
+                                    const SizedBox(height: 10),
+                                    Text(
+                                      'No history',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelMedium
+                                          ?.copyWith(
+                                            color: FluxColors.mutedOf(context),
+                                            fontSize: 10,
+                                          ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            )
+                          : SliverList.builder(
+                              itemCount: widget.conversations.length,
+                              itemBuilder: (context, index) {
+                                final conversation =
+                                    widget.conversations[index];
+                                return _SidebarConversationTile(
+                                  key: ValueKey(conversation.id),
+                                  conversation: conversation,
+                                  selected:
+                                      conversation.id ==
+                                      widget.activeConversationId,
+                                  onTap: () =>
+                                      widget.onConversation(conversation.id),
+                                );
+                              },
+                            ),
+                    ),
+                  ],
                 ),
               ),
 
-              // 2. Progressive Blur Mask overlay over top header region
+              // 2. Lightweight pinned-header surface. A solid surface avoids
+              // per-frame backdrop filtering while preserving legibility.
               ValueListenableBuilder<double>(
                 valueListenable: _scrollOffset,
                 builder: (context, offset, _) {
                   final double scrollUp = math.max(0.0, offset);
-                  final double blurProgress = (scrollUp / 24.0).clamp(0.0, 1.0);
-                  final double blurHeight = blurProgress <= 0
+                  final double coverProgress = (scrollUp / 24.0).clamp(
+                    0.0,
+                    1.0,
+                  );
+                  final double coverHeight = coverProgress <= 0
                       ? 0.0
                       : (pinnedTitleTop + titleHeight + 14 * sy);
 
@@ -1096,39 +1316,14 @@ class _SidebarState extends State<_Sidebar> {
                     left: 0,
                     right: 0,
                     top: 0,
-                    height: blurHeight,
+                    height: coverHeight,
                     child: IgnorePointer(
-                      child: blurProgress <= 0
+                      child: coverProgress <= 0
                           ? const SizedBox()
-                          : RepaintBoundary(
-                              child: ClipRect(
-                                child: ShaderMask(
-                                  shaderCallback: (bounds) {
-                                    return const LinearGradient(
-                                      begin: Alignment.topCenter,
-                                      end: Alignment.bottomCenter,
-                                      colors: [
-                                        Colors.black,
-                                        Colors.black,
-                                        Colors.transparent,
-                                      ],
-                                      stops: [0.0, 0.65, 1.0],
-                                    ).createShader(bounds);
-                                  },
-                                  blendMode: BlendMode.dstIn,
-                                  child: BackdropFilter(
-                                    filter: ui.ImageFilter.blur(
-                                      sigmaX: 10 * blurProgress,
-                                      sigmaY: 10 * blurProgress,
-                                    ),
-                                    child: ColoredBox(
-                                      color: FluxColors.canvasOf(
-                                        context,
-                                      ).withValues(alpha: .86 * blurProgress),
-                                    ),
-                                  ),
-                                ),
-                              ),
+                          : ColoredBox(
+                              color: FluxColors.canvasOf(
+                                context,
+                              ).withValues(alpha: .96),
                             ),
                     ),
                   );
@@ -1230,75 +1425,60 @@ class _SidebarState extends State<_Sidebar> {
                 ),
               ),
 
-              // 4. Creations experimental feature button (gated by FINN_ENABLE_EXPERIMENTS)
-              if (enableCreations)
-                Positioned(
-                  left: 25,
-                  right: 25,
-                  top: buttonsTop,
-                  height: buttonsHeight,
-                  child: ValueListenableBuilder<double>(
-                    valueListenable: _scrollOffset,
-                    builder: (context, offset, child) {
-                      final double pullDown = offset < 0 ? -offset : 0.0;
-                      final double shift = pullDown * 0.45;
-                      final double scrollUp = math.max(0.0, offset);
-                      final double opacity =
-                          (1.0 - (scrollUp / (titleTravelDistance * 0.7)))
-                              .clamp(0.0, 1.0);
-
-                      return IgnorePointer(
-                        ignoring: opacity < 0.5,
-                        child: Opacity(
-                          opacity: opacity,
-                          child: Transform.translate(
-                            offset: Offset(0, shift),
-                            child: child,
-                          ),
-                        ),
-                      );
-                    },
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        _NavTile(
-                          asset: FigmaAssets.sidebarCreations,
-                          label: 'Creations',
-                          onTap: widget.onCreations,
-                          size: navSize,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              // 4.5. Banner Ad between 3 Nav Buttons and Chat History Title
+              // 4. Local feature destinations.
               Positioned(
-                left: 20,
-                right: 20,
-                top: adBannerTop,
-                height: adBannerHeight,
+                left: 25,
+                right: 25,
+                top: buttonsTop,
+                height: buttonsHeight,
                 child: ValueListenableBuilder<double>(
                   valueListenable: _scrollOffset,
                   builder: (context, offset, child) {
                     final double pullDown = offset < 0 ? -offset : 0.0;
-                    final double shift = pullDown * 0.55;
+                    final double shift = pullDown * 0.45;
+                    final double scrollUp = math.max(0.0, offset);
+                    final double opacity =
+                        (1.0 - (scrollUp / (titleTravelDistance * 0.7))).clamp(
+                          0.0,
+                          1.0,
+                        );
 
-                    return Transform.translate(
-                      offset: Offset(0, shift),
-                      child: child,
+                    return IgnorePointer(
+                      ignoring: opacity < 0.5,
+                      child: Opacity(
+                        opacity: opacity,
+                        child: Transform.translate(
+                          offset: Offset(0, shift),
+                          child: child,
+                        ),
+                      ),
                     );
                   },
-                  child: BannerAdWidget(
-                    margin: EdgeInsets.zero,
-                    onAdLoadedStateChanged: (loaded) {
-                      if (mounted && _adLoaded != loaded) {
-                        setState(() => _adLoaded = loaded);
-                      }
-                    },
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _NavTile(
+                        asset: FigmaAssets.sidebarCreations,
+                        label: 'Creations',
+                        onTap: widget.onCreations,
+                        size: navSize,
+                      ),
+                      _NavTile(
+                        asset: FigmaAssets.sidebarYou,
+                        label: 'You',
+                        onTap: widget.onYou,
+                        size: navSize,
+                      ),
+                      _NavTile(
+                        asset: FigmaAssets.sidebarSkills,
+                        label: 'Skills',
+                        onTap: widget.onSkills,
+                        size: navSize,
+                      ),
+                    ],
                   ),
                 ),
               ),
-
               // 5. Chat History Title - lifts up on scroll all the way to headerTop replacing content beneath, spring overscroll on pull down
               Positioned(
                 left: 25,
@@ -1327,6 +1507,16 @@ class _SidebarState extends State<_Sidebar> {
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ),
+                ),
+              ),
+              Positioned(
+                left: 20,
+                right: 20,
+                bottom: safeBottom + 8,
+                child: BannerAdWidget(
+                  key: const Key('sidebar-ad'),
+                  enabled: widget.showAd,
+                  margin: EdgeInsets.zero,
                 ),
               ),
             ],
@@ -1483,7 +1673,7 @@ class _SidebarConversationTile extends StatelessWidget {
           ),
         ],
       ),
-    );
+    ).whenComplete(controller.dispose);
   }
 
   void _showDeleteConfirmDialog(BuildContext context) {

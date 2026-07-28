@@ -54,6 +54,14 @@ class AdService {
       return;
     }
     try {
+      await MobileAds.instance.updateRequestConfiguration(
+        RequestConfiguration(
+          maxAdContentRating: MaxAdContentRating.pg,
+          tagForChildDirectedTreatment:
+              TagForChildDirectedTreatment.unspecified,
+          tagForUnderAgeOfConsent: TagForUnderAgeOfConsent.unspecified,
+        ),
+      );
       await MobileAds.instance.initialize();
       _initialized = true;
     } catch (e) {

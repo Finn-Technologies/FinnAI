@@ -1,7 +1,11 @@
 import 'package:finn_ai/src/conversations/conversation_store.dart';
+import 'package:finn_ai/src/creations/creations_page.dart';
 import 'package:finn_ai/src/flux_app.dart';
 import 'package:finn_ai/src/home/home_shell.dart';
+import 'package:finn_ai/src/settings/settings_page.dart';
+import 'package:finn_ai/src/skills/skills_page.dart';
 import 'package:finn_ai/src/theme/flux_theme.dart';
+import 'package:finn_ai/src/you/you_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -47,14 +51,11 @@ void main() {
     expect(find.text('Finn AI is Privacy-First'), findsOneWidget);
     expect(find.textContaining('proprietary software'), findsOneWidget);
     await moveForward();
-    expect(find.text('Choose an AI model'), findsOneWidget);
+    expect(find.text('Installing the best model'), findsOneWidget);
     expect(
       find.text('Finding the best model for this device…'),
       findsOneWidget,
     );
-    await tester.tap(find.text('Next'));
-    await tester.pump(const Duration(milliseconds: 200));
-    expect(find.text('Choose an AI model'), findsOneWidget);
 
     tester.widget<PageView>(find.byType(PageView)).controller!.jumpToPage(3);
     await tester.pump();
@@ -88,6 +89,146 @@ void main() {
     await tester.pump(const Duration(milliseconds: 600));
     expect(find.text('Chat History'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('composer always shows the original send button', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(theme: FluxTheme.light, home: const HomeShell()),
+    );
+    await tester.pump(const Duration(milliseconds: 600));
+
+    expect(find.bySemanticsLabel('Send message'), findsOneWidget);
+    expect(find.bySemanticsLabel('Start on-device voice input'), findsNothing);
+  });
+
+  testWidgets('Creations composer exposes the home-style send action', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(theme: FluxTheme.light, home: const CreationsPage()),
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.bySemanticsLabel('Create'), findsOneWidget);
+    await tester.enterText(
+      find.byType(TextField).last,
+      'A focused water tracker',
+    );
+    await tester.pump();
+    final field = tester.widget<TextField>(find.byType(TextField).last);
+    expect(field.textInputAction, TextInputAction.send);
+    expect(field.onSubmitted, isNotNull);
+    expect(find.bySemanticsLabel('Create'), findsOneWidget);
+  });
+
+  testWidgets('system back closes the sidebar instead of leaving home', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(theme: FluxTheme.light, home: const HomeShell()),
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(find.byTooltip('Open menu'));
+    await tester.pumpAndSettle();
+    expect(find.text('Chat History'), findsOneWidget);
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+
+    expect(find.byType(HomeShell), findsOneWidget);
+    expect(find.byTooltip('Open menu'), findsOneWidget);
+  });
+
+  testWidgets('sidebar exposes and navigates to Creations, You, and Skills', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(theme: FluxTheme.light, home: const HomeShell()),
+    );
+    await tester.pump(const Duration(milliseconds: 120));
+
+    Future<void> openSidebar() async {
+      await tester.tap(find.byTooltip('Open menu'));
+      // Start the ticker before advancing through the transition duration.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.text('Creations'), findsOneWidget);
+      expect(find.text('You'), findsOneWidget);
+      expect(find.text('Skills'), findsOneWidget);
+    }
+
+    Future<void> returnHome() async {
+      await tester.tap(find.text('Back'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.byTooltip('Open menu'), findsOneWidget);
+    }
+
+    await openSidebar();
+    await tester.tap(find.text('Creations'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 450));
+    await tester.pump();
+    expect(find.byType(CreationsPage), findsOneWidget);
+    expect(
+      find.text('Turn an idea into a structured plan, entirely on device.'),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+    await returnHome();
+
+    await openSidebar();
+    await tester.tap(find.text('You'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 450));
+    await tester.pump();
+    expect(find.byType(YouPage), findsOneWidget);
+    expect(find.text('You'), findsWidgets);
+    expect(tester.takeException(), isNull);
+    await returnHome();
+
+    await openSidebar();
+    await tester.tap(find.text('Skills'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 450));
+    await tester.pump();
+    expect(find.byType(SkillsPage), findsOneWidget);
+    expect(find.text('Skills'), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('feature page headers share the Settings visual anchors', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    Future<(double, double)> measure(Widget page, String title) async {
+      await tester.pumpWidget(MaterialApp(theme: FluxTheme.light, home: page));
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+      return (
+        tester.getTopLeft(find.text('Back')).dy,
+        tester.getTopLeft(find.text(title)).dy,
+      );
+    }
+
+    final settings = await measure(SettingsPage(onBack: () {}), 'Settings');
+    final creations = await measure(const CreationsPage(), 'Creations');
+    final you = await measure(YouPage(onBack: () {}), 'You');
+    final skills = await measure(SkillsPage(onBack: () {}), 'Skills');
+
+    for (final header in [creations, you, skills]) {
+      expect(header.$1, closeTo(settings.$1, .01));
+      expect(header.$2, closeTo(settings.$2, .01));
+    }
   });
 
   testWidgets('precautions adapt to a narrow Android viewport', (tester) async {

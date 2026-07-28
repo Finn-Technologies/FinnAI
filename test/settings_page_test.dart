@@ -42,5 +42,22 @@ void main() {
       await tester.pump();
       expect(tapped, isTrue);
     });
+
+    testWidgets('entrance lifts only the body and keeps title anchored', (
+      WidgetTester tester,
+    ) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(MaterialApp(home: SettingsPage(onBack: () {})));
+      await tester.pump();
+      final titleTop = tester.getTopLeft(find.text('Settings')).dy;
+
+      await tester.pump(const Duration(milliseconds: 280));
+      expect(tester.getTopLeft(find.text('Settings')).dy, titleTop);
+      expect(tester.takeException(), isNull);
+    });
   });
 }

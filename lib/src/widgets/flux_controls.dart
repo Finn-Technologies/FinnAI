@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -6,9 +8,9 @@ import '../theme/flux_theme.dart';
 
 abstract final class FluxIcons {
   static const add = HugeIcons.strokeRoundedAdd01;
+  static const close = HugeIcons.strokeRoundedCancel01;
   static const arrowUp01 = HugeIcons.strokeRoundedArrowUp01;
   static const arrowUp02 = HugeIcons.strokeRoundedArrowUp02;
-  static const mic = HugeIcons.strokeRoundedMic02;
   static const menu = HugeIcons.strokeRoundedMenu02;
   static const copy = HugeIcons.strokeRoundedCopy;
   static const exchange = HugeIcons.strokeRoundedExchange01;
@@ -47,7 +49,6 @@ abstract final class FigmaAssets {
   static const modelChevron = '$_root/icon_59_32.svg';
   static const send = '$_root/icon_59_14.svg';
   static const activeSend = '$_root/icon_59_65.svg';
-  static const microphone = '$_root/icon_59_15.svg';
   static const add = '$_root/icon_59_19.svg';
   static const sidebarActions = '$_root/icon_98_197.svg';
   static const sidebarCreations = '$_root/icon_98_202.svg';
@@ -174,16 +175,21 @@ class FluxIconButton extends StatelessWidget {
         ? FluxColors.canvasOf(context)
         : FluxColors.inkOf(context);
 
-    final button = Material(
-      color: bgColor,
-      borderRadius: BorderRadius.circular(size / 2),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(size / 2),
-        child: SizedBox.square(
-          dimension: size,
-          child: Center(
-            child: FluxIcon(icon: icon, size: size * .56, color: fgColor),
+    final button = SizedBox.square(
+      dimension: math.max(48, size),
+      child: Center(
+        child: Material(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(size / 2),
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(24),
+            child: SizedBox.square(
+              dimension: size,
+              child: Center(
+                child: FluxIcon(icon: icon, size: size * .56, color: fgColor),
+              ),
+            ),
           ),
         ),
       ),
@@ -258,8 +264,8 @@ class BackControl extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(20),
         child: SizedBox(
-          width: 70,
-          height: 24,
+          width: 82,
+          height: 48,
           child: Row(
             children: [
               Transform.rotate(

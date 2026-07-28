@@ -16,7 +16,6 @@ void main() {
       FigmaAssets.modelChevron,
       FigmaAssets.send,
       FigmaAssets.activeSend,
-      FigmaAssets.microphone,
       FigmaAssets.add,
       FigmaAssets.sidebarActions,
       FigmaAssets.sidebarCreations,

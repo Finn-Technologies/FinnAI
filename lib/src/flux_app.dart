@@ -109,13 +109,15 @@ class _UnsupportedDevicePage extends StatelessWidget {
                 ),
                 const SizedBox(height: 22),
                 Text(
-                  'Finn AI needs 3 GB of RAM',
+                  'Finn AI cannot run on this device',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  'This device does not have enough memory to run local AI reliably. No model has been downloaded.',
+                  'Finn AI requires at least 3 GB of RAM and a 64-bit ARM '
+                  'processor to run local models reliably. No model has been '
+                  'downloaded.',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: Colors.black.withValues(alpha: .56),

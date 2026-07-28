@@ -533,7 +533,7 @@ class _AutomaticModelPageState extends State<_AutomaticModelPage> {
   @override
   Widget build(BuildContext context) => _DetailPage(
     iconAsset: FigmaAssets.magic,
-    title: 'Choose an AI model',
+    title: _ready ? 'Best model installed' : 'Installing the best model',
     contentTop: 79,
     onBack: widget.onBack,
     backEnabled: _ready,
@@ -579,7 +579,7 @@ class _AutomaticInstallPanel extends StatelessWidget {
     return FluxGlass(
       radius: 24,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 22),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -601,7 +601,8 @@ class _AutomaticInstallPanel extends StatelessWidget {
             Text(
               ready
                   ? 'Installed on this device'
-                  : '${model.parameterLabel} · ${model.sizeLabel}',
+                  : 'Best fit · ${model.parameterLabel} · ${model.sizeLabel}',
+              textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.labelMedium?.copyWith(
                 color: FluxColors.mutedOf(context),
               ),
@@ -613,26 +614,40 @@ class _AutomaticInstallPanel extends StatelessWidget {
                   : const Duration(milliseconds: 320),
               switchInCurve: Curves.easeOutCubic,
               child: error != null
-                  ? Row(
+                  ? Column(
                       key: const ValueKey('error'),
-                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Flexible(
-                          child: Text(
-                            error!,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.labelMedium
-                                ?.copyWith(color: FluxColors.mutedOf(context)),
-                          ),
+                        Text(
+                          error!,
+                          maxLines: 2,
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.labelMedium
+                              ?.copyWith(color: FluxColors.mutedOf(context)),
                         ),
-                        const SizedBox(width: 8),
-                        GestureDetector(
-                          onTap: onRetry,
-                          child: Text(
-                            'Retry',
-                            style: Theme.of(context).textTheme.labelMedium
-                                ?.copyWith(color: FluxColors.inkOf(context)),
+                        const SizedBox(height: 10),
+                        Semantics(
+                          button: true,
+                          label: 'Retry model download',
+                          child: Material(
+                            color: FluxColors.surfaceOf(context),
+                            borderRadius: BorderRadius.circular(99),
+                            child: InkWell(
+                              onTap: onRetry,
+                              borderRadius: BorderRadius.circular(99),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 9,
+                                ),
+                                child: Text(
+                                  'Retry',
+                                  style: Theme.of(context).textTheme.labelMedium
+                                      ?.copyWith(
+                                        color: FluxColors.inkOf(context),
+                                      ),
+                                ),
+                              ),
+                            ),
                           ),
                         ),
                       ],

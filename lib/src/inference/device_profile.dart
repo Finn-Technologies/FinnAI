@@ -17,6 +17,8 @@ class DeviceProfile {
     required this.soc,
     required this.cores,
     required this.lowMemory,
+    this.supportedAbis = const [],
+    this.availableStorageBytes,
   });
 
   static const minimumRamBytes = 3000000000;
@@ -27,11 +29,14 @@ class DeviceProfile {
   final String soc;
   final int cores;
   final bool lowMemory;
+  final List<String> supportedAbis;
+  final int? availableStorageBytes;
 
   bool get supported =>
       !Platform.isAndroid ||
-      totalRamBytes == null ||
-      totalRamBytes! >= minimumRamBytes;
+      (totalRamBytes != null &&
+          totalRamBytes! >= minimumRamBytes &&
+          supportedAbis.contains('arm64-v8a'));
 
   String get processorLabel => switch (processor) {
     ProcessorClass.entry => 'Efficiency processor',
@@ -112,6 +117,11 @@ class DeviceProfiler {
       soc: soc.isEmpty ? 'Unknown SoC' : soc,
       cores: cores,
       lowMemory: native['lowMemory'] == true,
+      supportedAbis:
+          (native['supportedAbis'] as List<Object?>? ?? const <Object?>[])
+              .whereType<String>()
+              .toList(growable: false),
+      availableStorageBytes: _asInt(native['availableStorageBytes']),
     );
   }
 
