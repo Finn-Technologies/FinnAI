@@ -114,10 +114,10 @@ jobs:
       - name: Verify ARM64-only packaging
         run: |
           unzip -Z1 build/app/outputs/flutter-apk/app-release.apk |
-            awk -F/ '/^lib\\// {print $2}' | sort -u |
+            awk -F/ '/^lib\// {print $2}' | sort -u |
             diff -u <(printf 'arm64-v8a\n') -
           unzip -Z1 build/app/outputs/bundle/release/app-release.aab |
-            awk -F/ '/^base\\/lib\\// {print $3}' | sort -u |
+            awk -F/ '/^base\/lib\// {print $3}' | sort -u |
             diff -u <(printf 'arm64-v8a\n') -
 
       - name: Verify zipalign 16 KB Boundary on Release APK
