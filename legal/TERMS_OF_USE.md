@@ -29,3 +29,4 @@ To the maximum extent permitted by law, FinnAI shall not be liable for any indir
 ## 6. Contact & Terms Availability
 - **Public Terms URL**: `https://finn-org.vercel.app/terms`
 - **Support Contact**: `https://finn-org.vercel.app/support`
+- **Support Email**: `finn_org@proton.me`

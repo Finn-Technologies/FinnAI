@@ -39,7 +39,7 @@ Follow these steps in the [Google Play Console](https://play.google.com/console)
   - [x] Phone Screenshots: three verified 1080 × 1920 images under
     `store-listing/`.
 - [ ] **Developer Website**: Enter `https://finn-org.vercel.app`.
-- [ ] **Support Contact**: Use a real, monitored support email address.
+- [x] **Support Contact**: Use `finn_org@proton.me`.
 
 ### 2. Privacy Policy & Data Safety
 - [x] **Privacy Policy Hosting**: Public URL verified at

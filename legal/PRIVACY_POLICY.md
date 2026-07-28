@@ -43,3 +43,4 @@ FinnAI does not knowingly collect personal information from children under the a
 ## 5. Contact & Policy Availability
 - **Public Policy URL**: `https://finn-org.vercel.app/privacy`
 - **Support Contact**: `https://finn-org.vercel.app/support`
+- **Support Email**: `finn_org@proton.me`

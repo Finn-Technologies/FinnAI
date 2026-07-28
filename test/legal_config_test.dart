@@ -4,12 +4,12 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   group('LegalConfig Environment Variable Tests', () {
     test('Production website links are available by default', () {
-      expect(LegalConfig.hasSupportEmail, isFalse);
+      expect(LegalConfig.hasSupportEmail, isTrue);
       expect(LegalConfig.hasSupportUrl, isTrue);
       expect(LegalConfig.hasPrivacyPolicyUrl, isTrue);
       expect(LegalConfig.hasTermsUrl, isTrue);
 
-      expect(LegalConfig.resolvedSupportEmail, contains('Unconfigured'));
+      expect(LegalConfig.resolvedSupportEmail, 'finn_org@proton.me');
       expect(
         LegalConfig.resolvedSupportUrl,
         'https://finn-org.vercel.app/support',

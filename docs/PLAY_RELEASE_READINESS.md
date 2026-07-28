@@ -43,8 +43,8 @@ This document records the exact completion and verification status of all releas
    - Configure `android/key.properties` with production upload key credentials before generating final release AAB for Google Play Console.
 
 4. **Play Support Email**:
-   - The public support page is configured in-app. Select a separate real,
-     monitored email address for the required Play Console support-email field.
+   - Use the configured monitored address `finn_org@proton.me` for the required
+     Play Console support-email field.
 
 5. **AdMob Verification and Publisher Declarations**:
    - Publish `store-listing/app-ads.txt` at the developer website root and link

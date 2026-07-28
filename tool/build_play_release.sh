@@ -26,7 +26,7 @@ require_https_url() {
 FINN_PRIVACY_POLICY_URL="${FINN_PRIVACY_POLICY_URL:-https://finn-org.vercel.app/privacy}"
 FINN_TERMS_URL="${FINN_TERMS_URL:-https://finn-org.vercel.app/terms}"
 FINN_SUPPORT_URL="${FINN_SUPPORT_URL:-https://finn-org.vercel.app/support}"
-FINN_SUPPORT_EMAIL="${FINN_SUPPORT_EMAIL:-}"
+FINN_SUPPORT_EMAIL="${FINN_SUPPORT_EMAIL:-finn_org@proton.me}"
 FINN_REPORT_ENDPOINT="${FINN_REPORT_ENDPOINT:-https://finn-org.vercel.app/v1/reports}"
 
 require_https_url FINN_PRIVACY_POLICY_URL

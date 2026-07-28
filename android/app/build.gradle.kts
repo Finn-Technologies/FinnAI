@@ -80,11 +80,13 @@ android {
     packaging {
         jniLibs {
             // Flutter's JNI helper is published for several ABIs even when
-            // --target-platform is arm64. FinnAI's native inference runtime is
-            // arm64-only, so exclude the unusable copies before Play delivery.
+            // FinnAI's native inference runtime is arm64-only. A plain
+            // `flutter build apk --release` otherwise injects Flutter engine
+            // binaries for unsupported ABIs, so strip those copies before
+            // APK and Play delivery.
             excludes += setOf(
-                "**/armeabi-v7a/libdartjni.so",
-                "**/x86_64/libdartjni.so",
+                "**/armeabi-v7a/*.so",
+                "**/x86_64/*.so",
             )
         }
     }

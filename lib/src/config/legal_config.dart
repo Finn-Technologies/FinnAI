@@ -8,7 +8,7 @@ class LegalConfig {
 
   static const String supportEmail = String.fromEnvironment(
     'FINN_SUPPORT_EMAIL',
-    defaultValue: '',
+    defaultValue: 'finn_org@proton.me',
   );
 
   static const String privacyPolicyUrl = String.fromEnvironment(

@@ -86,6 +86,7 @@ Finn AI includes production defaults for its public website:
 Privacy:  https://finn-org.vercel.app/privacy
 Terms:    https://finn-org.vercel.app/terms
 Support:  https://finn-org.vercel.app/support
+Email:    finn_org@proton.me
 Reports:  https://finn-org.vercel.app/v1/reports
 ```
 
@@ -93,6 +94,7 @@ You may override them for another environment:
 
 ```bash
 export FINN_SUPPORT_URL="https://finn-org.vercel.app/support"
+export FINN_SUPPORT_EMAIL="finn_org@proton.me"
 export FINN_PRIVACY_POLICY_URL="https://finn-org.vercel.app/privacy"
 export FINN_TERMS_URL="https://finn-org.vercel.app/terms"
 export FINN_REPORT_ENDPOINT="https://finn-org.vercel.app/v1/reports"
