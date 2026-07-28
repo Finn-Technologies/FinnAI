@@ -122,8 +122,11 @@ jobs:
 
       - name: Verify zipalign 16 KB Boundary on Release APK
         run: |
-          sudo apt-get update && sudo apt-get install -y zipalign
-          zipalign -c -P 16 -v 4 build/app/outputs/flutter-apk/app-release.apk
+          zipalign_path=$(find "$ANDROID_HOME/build-tools" -mindepth 2 \
+            -maxdepth 2 -name zipalign -type f | sort -V | tail -1)
+          test -n "$zipalign_path"
+          "$zipalign_path" -c -P 16 -v 4 \
+            build/app/outputs/flutter-apk/app-release.apk
 
       - name: Verify 16 KB Page Alignment of Native Libraries (Fail on 4 KB)
         run: |
