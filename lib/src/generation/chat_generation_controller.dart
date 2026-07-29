@@ -1,0 +1,559 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
+
+import '../conversations/conversation_store.dart';
+import '../inference/bonsai_inference.dart';
+import '../inference/prompt_intent.dart';
+
+enum ChatGenerationState { preparing, generating, stopping, complete, error }
+
+@immutable
+class ChatGenerationJob {
+  const ChatGenerationJob({
+    required this.generationId,
+    required this.conversationId,
+    required this.assistantMessageId,
+    required this.originalPrompt,
+    required this.modelName,
+    required this.state,
+    required this.responseText,
+    required this.startedAt,
+    required this.cancellationRequested,
+    required this.continuationCount,
+    required this.epoch,
+    this.finishReason,
+    this.errorMessage,
+  });
+
+  final String generationId;
+  final String conversationId;
+  final String assistantMessageId;
+  final String originalPrompt;
+  final String modelName;
+  final ChatGenerationState state;
+  final String responseText;
+  final GenerationFinishReason? finishReason;
+  final DateTime startedAt;
+  final bool cancellationRequested;
+  final int continuationCount;
+  final int epoch;
+  final String? errorMessage;
+
+  bool get busy =>
+      state == ChatGenerationState.preparing ||
+      state == ChatGenerationState.generating ||
+      state == ChatGenerationState.stopping;
+
+  ChatGenerationJob copyWith({
+    String? modelName,
+    ChatGenerationState? state,
+    String? responseText,
+    GenerationFinishReason? finishReason,
+    bool? cancellationRequested,
+    String? errorMessage,
+  }) => ChatGenerationJob(
+    generationId: generationId,
+    conversationId: conversationId,
+    assistantMessageId: assistantMessageId,
+    originalPrompt: originalPrompt,
+    modelName: modelName ?? this.modelName,
+    state: state ?? this.state,
+    responseText: responseText ?? this.responseText,
+    finishReason: finishReason ?? this.finishReason,
+    startedAt: startedAt,
+    cancellationRequested: cancellationRequested ?? this.cancellationRequested,
+    continuationCount: continuationCount,
+    epoch: epoch,
+    errorMessage: errorMessage ?? this.errorMessage,
+  );
+}
+
+@immutable
+class CancellationMetrics {
+  const CancellationMetrics({
+    required this.nativeAcknowledgement,
+    required this.composerUnblocked,
+    required this.lateTokenCount,
+    required this.engineResetRequired,
+  });
+
+  final Duration nativeAcknowledgement;
+  final Duration composerUnblocked;
+  final int lateTokenCount;
+  final bool engineResetRequired;
+}
+
+abstract interface class ChatInferenceRuntime implements Listenable {
+  InferencePhase get phase;
+  String get status;
+  String get selectedModelName;
+  String get lastGeneratingModelName;
+  GenerationReport? get lastGenerationReport;
+
+  Stream<String> generateReply(
+    String prompt, {
+    required String conversationId,
+    required List<LocalChatTurn> history,
+    required String systemContext,
+    PromptAnalysis? promptAnalysis,
+  });
+
+  Future<void> stopGeneration();
+  Future<void> resetAfterCancellationTimeout();
+}
+
+class BonsaiChatInferenceRuntime implements ChatInferenceRuntime {
+  BonsaiChatInferenceRuntime(this.inference);
+
+  final BonsaiInference inference;
+
+  @override
+  InferencePhase get phase => inference.phase;
+  @override
+  String get status => inference.status;
+  @override
+  String get selectedModelName => inference.selected.name;
+  @override
+  String get lastGeneratingModelName => inference.lastGeneratingModel.name;
+  @override
+  GenerationReport? get lastGenerationReport => inference.lastGenerationReport;
+
+  @override
+  void addListener(VoidCallback listener) => inference.addListener(listener);
+  @override
+  void removeListener(VoidCallback listener) =>
+      inference.removeListener(listener);
+
+  @override
+  Stream<String> generateReply(
+    String prompt, {
+    required String conversationId,
+    required List<LocalChatTurn> history,
+    required String systemContext,
+    PromptAnalysis? promptAnalysis,
+  }) => inference.generateReply(
+    prompt,
+    conversationId: conversationId,
+    history: history,
+    systemContext: systemContext,
+    promptAnalysis: promptAnalysis,
+  );
+
+  @override
+  Future<void> stopGeneration() => inference.stopGeneration();
+
+  @override
+  Future<void> resetAfterCancellationTimeout() =>
+      inference.resetAfterCancellationTimeout();
+}
+
+/// Owns the single native chat generation independently of visible navigation.
+class ChatGenerationController extends ChangeNotifier {
+  ChatGenerationController({
+    required this.conversations,
+    required this.runtime,
+    this.persistenceInterval = const Duration(milliseconds: 350),
+    this.cancellationTimeout = const Duration(seconds: 1),
+    DateTime Function()? clock,
+  }) : _clock = clock ?? DateTime.now {
+    runtime.addListener(_runtimeChanged);
+  }
+
+  static final instance = ChatGenerationController(
+    conversations: ConversationStore.instance,
+    runtime: BonsaiChatInferenceRuntime(BonsaiInference.instance),
+  );
+
+  final ConversationStore conversations;
+  final ChatInferenceRuntime runtime;
+  final DateTime Function() _clock;
+  final Duration persistenceInterval;
+  final Duration cancellationTimeout;
+
+  ChatGenerationJob? _job;
+  ChatGenerationJob? get job => _job;
+  ChatGenerationJob? get activeJob => _job?.busy == true ? _job : null;
+  bool get busy => activeJob != null;
+  StreamSubscription<String>? _subscription;
+  Timer? _persistenceTimer;
+  Timer? _notifyTimer;
+  Future<void>? _stopFuture;
+  var _epoch = 0;
+  var _idSequence = 0;
+  var _lateTokenCount = 0;
+  var _disposed = false;
+  CancellationMetrics? _lastCancellationMetrics;
+  CancellationMetrics? get lastCancellationMetrics => _lastCancellationMetrics;
+
+  String get progressLabel {
+    final current = activeJob;
+    if (current == null) return 'Ready';
+    if (current.state == ChatGenerationState.stopping) return 'Stopping';
+    if (runtime.phase == InferencePhase.downloading ||
+        runtime.phase == InferencePhase.loading) {
+      return 'Preparing locally';
+    }
+    if (current.state == ChatGenerationState.preparing) {
+      return 'Understanding your request';
+    }
+    return 'Using ${current.modelName} · Generating response';
+  }
+
+  Future<ChatGenerationJob?> start({
+    required String conversationId,
+    required String prompt,
+    required List<LocalChatTurn> history,
+    required String systemContext,
+  }) async {
+    if (busy) return null;
+    final generationId = _nextId();
+    final assistant = conversations.beginExchangeInConversation(
+      conversationId,
+      prompt,
+      modelTier: runtime.selectedModelName,
+      generationId: generationId,
+    );
+    return _listen(
+      generationId: generationId,
+      conversationId: conversationId,
+      assistant: assistant,
+      originalPrompt: prompt,
+      runtimePrompt: prompt,
+      history: history,
+      systemContext: systemContext,
+      analysis: const PromptIntentClassifier().classify(prompt),
+      initialText: '',
+      continuationCount: 0,
+    );
+  }
+
+  Future<ChatGenerationJob?> continueResponse({
+    required String conversationId,
+    required String assistantMessageId,
+    required String originalPrompt,
+    required List<LocalChatTurn> history,
+    required String systemContext,
+  }) async {
+    if (busy) return null;
+    final generationId = _nextId();
+    final assistant = conversations.beginContinuation(
+      conversationId: conversationId,
+      messageId: assistantMessageId,
+      generationId: generationId,
+    );
+    if (assistant == null) return null;
+    return _listen(
+      generationId: generationId,
+      conversationId: conversationId,
+      assistant: assistant,
+      originalPrompt: originalPrompt,
+      runtimePrompt: BonsaiInference.continuationPrompt,
+      history: history,
+      systemContext: systemContext,
+      analysis: const PromptIntentClassifier().classify(originalPrompt),
+      initialText: assistant.text,
+      continuationCount: assistant.continuationCount,
+    );
+  }
+
+  ChatGenerationJob _listen({
+    required String generationId,
+    required String conversationId,
+    required ConversationMessage assistant,
+    required String originalPrompt,
+    required String runtimePrompt,
+    required List<LocalChatTurn> history,
+    required String systemContext,
+    required PromptAnalysis analysis,
+    required String initialText,
+    required int continuationCount,
+  }) {
+    final epoch = ++_epoch;
+    _lateTokenCount = 0;
+    _job = ChatGenerationJob(
+      generationId: generationId,
+      conversationId: conversationId,
+      assistantMessageId: assistant.id,
+      originalPrompt: originalPrompt,
+      modelName: runtime.selectedModelName,
+      state: ChatGenerationState.preparing,
+      responseText: initialText,
+      startedAt: _clock(),
+      cancellationRequested: false,
+      continuationCount: continuationCount,
+      epoch: epoch,
+    );
+    if (!_disposed) notifyListeners();
+
+    _subscription = runtime
+        .generateReply(
+          runtimePrompt,
+          conversationId: conversationId,
+          history: history,
+          systemContext: systemContext,
+          promptAnalysis: analysis,
+        )
+        .listen(
+          (token) => _token(generationId, epoch, token),
+          onError: (Object error, StackTrace stack) {
+            unawaited(_finishError(generationId, epoch, error));
+          },
+          onDone: () {
+            unawaited(_finish(generationId, epoch));
+          },
+          cancelOnError: true,
+        );
+    return _job!;
+  }
+
+  void _token(String generationId, int epoch, String token) {
+    final current = _job;
+    if (current == null ||
+        current.generationId != generationId ||
+        current.epoch != epoch ||
+        epoch != _epoch ||
+        current.cancellationRequested) {
+      _lateTokenCount++;
+      return;
+    }
+    _job = current.copyWith(
+      state: ChatGenerationState.generating,
+      responseText: '${current.responseText}$token',
+      modelName: runtime.lastGeneratingModelName,
+    );
+    _schedulePersistence();
+    _scheduleNotify();
+  }
+
+  void _runtimeChanged() {
+    final current = activeJob;
+    if (current == null || current.cancellationRequested) return;
+    final nextState = runtime.phase == InferencePhase.generating
+        ? ChatGenerationState.generating
+        : current.state;
+    final nextModel = runtime.lastGeneratingModelName;
+    if (nextState == current.state && nextModel == current.modelName) return;
+    _job = current.copyWith(state: nextState, modelName: nextModel);
+    if (!_disposed) notifyListeners();
+  }
+
+  Future<void> _finish(String generationId, int epoch) async {
+    final current = _job;
+    if (current == null ||
+        current.generationId != generationId ||
+        current.epoch != epoch ||
+        current.cancellationRequested ||
+        !current.busy) {
+      return;
+    }
+    final reason =
+        runtime.lastGenerationReport?.finishReason ??
+        GenerationFinishReason.eos;
+    final status = switch (reason) {
+      GenerationFinishReason.eos => ConversationMessageStatus.complete,
+      GenerationFinishReason.tokenLimit =>
+        ConversationMessageStatus.tokenLimited,
+      GenerationFinishReason.userCancellation =>
+        ConversationMessageStatus.stopped,
+      GenerationFinishReason.error => ConversationMessageStatus.failed,
+    };
+    await _finishPersisted(
+      current.copyWith(
+        state: reason == GenerationFinishReason.error
+            ? ChatGenerationState.error
+            : ChatGenerationState.complete,
+        finishReason: reason,
+      ),
+      status,
+    );
+  }
+
+  Future<void> _finishError(
+    String generationId,
+    int epoch,
+    Object error,
+  ) async {
+    final current = _job;
+    if (current == null ||
+        current.generationId != generationId ||
+        current.epoch != epoch ||
+        current.cancellationRequested ||
+        !current.busy) {
+      return;
+    }
+    await _finishPersisted(
+      current.copyWith(
+        state: ChatGenerationState.error,
+        finishReason: GenerationFinishReason.error,
+        errorMessage: runtime.status,
+      ),
+      ConversationMessageStatus.failed,
+    );
+  }
+
+  Future<void> _finishPersisted(
+    ChatGenerationJob terminal,
+    ConversationMessageStatus status,
+  ) async {
+    _persistenceTimer?.cancel();
+    _persistenceTimer = null;
+    _notifyTimer?.cancel();
+    _notifyTimer = null;
+    _subscription = null;
+    conversations.updateMessageInConversation(
+      terminal.conversationId,
+      terminal.assistantMessageId,
+      terminal.responseText,
+      expectedGenerationId: terminal.generationId,
+      modelTier: terminal.modelName,
+      status: status,
+      finishReason: terminal.finishReason?.name,
+      continuationCount: terminal.continuationCount,
+    );
+    await conversations.flush();
+    _job = terminal;
+    if (!_disposed) notifyListeners();
+  }
+
+  Future<void> stop() {
+    final running = _stopFuture;
+    if (running != null) return running;
+    final current = activeJob;
+    if (current == null) return Future<void>.value();
+    final future = _stop(current);
+    _stopFuture = future;
+    return future.whenComplete(() {
+      if (identical(_stopFuture, future)) _stopFuture = null;
+    });
+  }
+
+  Future<void> _stop(ChatGenerationJob captured) async {
+    final watch = Stopwatch()..start();
+    final invalidEpoch = ++_epoch;
+    _job = captured.copyWith(
+      state: ChatGenerationState.stopping,
+      cancellationRequested: true,
+    );
+    if (!_disposed) notifyListeners();
+
+    final subscription = _subscription;
+    // Calling the native stop starts cancellation synchronously. Do not cancel
+    // the Dart listener at the same time: some stream bridges complete native
+    // shutdown by closing that listener, so concurrent close/cancel can
+    // deadlock. The epoch above already makes every subsequent token inert.
+    final nativeStop = runtime.stopGeneration();
+    final persistence = _persistPartial();
+    var resetRequired = false;
+    Duration? nativeAcknowledgement;
+    try {
+      await Future.wait([nativeStop, persistence]).timeout(cancellationTimeout);
+      nativeAcknowledgement = watch.elapsed;
+    } catch (_) {
+      resetRequired = true;
+      await runtime.resetAfterCancellationTimeout();
+      nativeAcknowledgement = watch.elapsed;
+    }
+    try {
+      await (subscription?.cancel() ?? Future<void>.value()).timeout(
+        cancellationTimeout,
+      );
+    } catch (_) {
+      if (!resetRequired) {
+        resetRequired = true;
+        await runtime.resetAfterCancellationTimeout();
+      }
+    }
+
+    // The invalidated epoch and generation ID remain authoritative even if a
+    // fake or native source delivers callbacks after cancellation.
+    _epoch = invalidEpoch;
+    _subscription = null;
+    _persistenceTimer?.cancel();
+    _persistenceTimer = null;
+    final latest = _job;
+    if (latest == null || latest.generationId != captured.generationId) return;
+    if (latest.responseText.trim().isEmpty) {
+      conversations.removeMessageInConversation(
+        latest.conversationId,
+        latest.assistantMessageId,
+        expectedGenerationId: latest.generationId,
+      );
+    } else {
+      conversations.updateMessageInConversation(
+        latest.conversationId,
+        latest.assistantMessageId,
+        latest.responseText,
+        expectedGenerationId: latest.generationId,
+        modelTier: latest.modelName,
+        status: ConversationMessageStatus.stopped,
+        finishReason: GenerationFinishReason.userCancellation.name,
+        continuationCount: latest.continuationCount,
+      );
+    }
+    await conversations.flush();
+    _job = latest.copyWith(
+      state: ChatGenerationState.complete,
+      finishReason: GenerationFinishReason.userCancellation,
+    );
+    _lastCancellationMetrics = CancellationMetrics(
+      nativeAcknowledgement: nativeAcknowledgement,
+      composerUnblocked: watch.elapsed,
+      lateTokenCount: _lateTokenCount,
+      engineResetRequired: resetRequired,
+    );
+    debugPrint(
+      'FINN_CANCEL native_ack_ms=${nativeAcknowledgement.inMilliseconds} '
+      'composer_unblocked_ms=${watch.elapsedMilliseconds} '
+      'late_tokens=$_lateTokenCount reset_required=$resetRequired',
+    );
+    if (!_disposed) notifyListeners();
+  }
+
+  Future<void> flushActive() async {
+    await _persistPartial();
+    await conversations.flush();
+  }
+
+  Future<void> _persistPartial() async {
+    final current = _job;
+    if (current == null || current.responseText.isEmpty) return;
+    conversations.updateMessageInConversation(
+      current.conversationId,
+      current.assistantMessageId,
+      current.responseText,
+      expectedGenerationId: current.generationId,
+      modelTier: current.modelName,
+      status: current.busy ? ConversationMessageStatus.generating : null,
+      continuationCount: current.continuationCount,
+      notify: false,
+    );
+  }
+
+  void _schedulePersistence() {
+    _persistenceTimer ??= Timer(persistenceInterval, () {
+      _persistenceTimer = null;
+      unawaited(flushActive());
+    });
+  }
+
+  void _scheduleNotify() {
+    _notifyTimer ??= Timer(const Duration(milliseconds: 50), () {
+      _notifyTimer = null;
+      if (!_disposed) notifyListeners();
+    });
+  }
+
+  String _nextId() => '${_clock().microsecondsSinceEpoch}-${_idSequence++}';
+
+  @override
+  void dispose() {
+    if (_disposed) return;
+    _disposed = true;
+    runtime.removeListener(_runtimeChanged);
+    _persistenceTimer?.cancel();
+    _notifyTimer?.cancel();
+    if (activeJob != null) unawaited(flushActive());
+    super.dispose();
+  }
+}

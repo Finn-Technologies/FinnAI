@@ -45,4 +45,25 @@ Ingredienti:
     expect(result.noUnrelatedIngredients, isFalse);
     expect(result.doesNotListDishAsIngredient, isFalse);
   });
+
+  test('cautious laptop RAM guidance passes structural acceptance', () {
+    const response = '''
+Upgradeability depends on the manufacturer and exact model number. Check the
+manufacturer specifications or service manual before buying parts or opening
+the laptop. RAM may be soldered, socketed as a SODIMM, or use a combination of
+both, so I cannot infer capacity or slot count without the model. Power off and
+disconnect the charger and internal battery where the service manual permits.
+Use electrostatic precautions before touching components.
+''';
+    final result = assessLaptopRamGuidance(response);
+    expect(result.passed, isTrue, reason: result.toJson().toString());
+  });
+
+  test('invented universal laptop slot guidance fails acceptance', () {
+    const response =
+        'All laptops have two slots: Main RAM and a differently sized slot.';
+    final result = assessLaptopRamGuidance(response);
+    expect(result.passed, isFalse);
+    expect(result.avoidsInventedDetails, isFalse);
+  });
 }

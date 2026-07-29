@@ -107,3 +107,67 @@ RecipeAcceptance assessRicottaStrawberryCake(String response) {
     ).hasMatch(ingredientSection),
   );
 }
+
+@immutable
+class HardwareGuidanceAcceptance {
+  const HardwareGuidanceAcceptance({
+    required this.requestsExactModel,
+    required this.explainsRamVariations,
+    required this.recommendsAuthoritativeDocumentation,
+    required this.includesSafetyPrecautions,
+    required this.avoidsInventedDetails,
+  });
+
+  final bool requestsExactModel;
+  final bool explainsRamVariations;
+  final bool recommendsAuthoritativeDocumentation;
+  final bool includesSafetyPrecautions;
+  final bool avoidsInventedDetails;
+
+  bool get passed =>
+      requestsExactModel &&
+      explainsRamVariations &&
+      recommendsAuthoritativeDocumentation &&
+      includesSafetyPrecautions &&
+      avoidsInventedDetails;
+
+  Map<String, bool> toJson() => {
+    'passed': passed,
+    'requestsExactModel': requestsExactModel,
+    'explainsRamVariations': explainsRamVariations,
+    'recommendsAuthoritativeDocumentation':
+        recommendsAuthoritativeDocumentation,
+    'includesSafetyPrecautions': includesSafetyPrecautions,
+    'avoidsInventedDetails': avoidsInventedDetails,
+  };
+}
+
+HardwareGuidanceAcceptance assessLaptopRamGuidance(String response) {
+  final value = response.toLowerCase();
+  return HardwareGuidanceAcceptance(
+    requestsExactModel:
+        value.contains('exact model') ||
+        value.contains('model number') ||
+        value.contains('manufacturer and model'),
+    explainsRamVariations:
+        value.contains('soldered') &&
+        (value.contains('socketed') ||
+            value.contains('replaceable') ||
+            value.contains('sodimm')),
+    recommendsAuthoritativeDocumentation:
+        value.contains('service manual') ||
+        value.contains('manufacturer specifications') ||
+        value.contains('manufacturer’s specifications'),
+    includesSafetyPrecautions:
+        (value.contains('static') || value.contains('electrostatic')) &&
+        (value.contains('disconnect') || value.contains('power off')),
+    avoidsInventedDetails: !const [
+      'all laptops have two slots',
+      'every laptop has two slots',
+      'differently sized slots',
+      'main ram',
+      'slot labelled memory',
+      'slot labeled memory',
+    ].any(value.contains),
+  );
+}

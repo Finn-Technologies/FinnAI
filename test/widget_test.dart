@@ -6,6 +6,7 @@ import 'package:finn_ai/src/settings/settings_page.dart';
 import 'package:finn_ai/src/skills/skills_page.dart';
 import 'package:finn_ai/src/theme/flux_theme.dart';
 import 'package:finn_ai/src/you/you_page.dart';
+import 'package:finn_ai/src/widgets/safe_markdown_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -99,6 +100,79 @@ void main() {
 
     expect(find.bySemanticsLabel('Send message'), findsOneWidget);
     expect(find.bySemanticsLabel('Start on-device voice input'), findsNothing);
+  });
+
+  for (final brightness in [Brightness.light, Brightness.dark]) {
+    testWidgets(
+      'send control has distinct, contrasting states in ${brightness.name} mode',
+      (tester) async {
+        final theme = brightness == Brightness.dark
+            ? FluxTheme.dark
+            : FluxTheme.light;
+        final controller = TextEditingController();
+        final focusNode = FocusNode();
+        addTearDown(controller.dispose);
+        addTearDown(focusNode.dispose);
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: theme,
+            home: Scaffold(
+              body: ChatComposer(
+                controller: controller,
+                focusNode: focusNode,
+                blocked: false,
+                onSend: () {},
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+
+        final surfaceFinder = find.byKey(const ValueKey('send-button-surface'));
+        final iconFinder = find.byKey(const ValueKey('send-button-icon'));
+        final disabledSurface = tester.widget<Material>(surfaceFinder).color!;
+        final disabledIcon = tester.widget<Icon>(iconFinder).color!;
+        expect(tester.getSize(surfaceFinder), const Size(48, 48));
+        expect(find.bySemanticsLabel('Send message'), findsOneWidget);
+
+        await tester.enterText(find.byType(TextField), 'Ready');
+        await tester.pump();
+        final activeSurface = tester.widget<Material>(surfaceFinder).color!;
+        final activeIcon = tester.widget<Icon>(iconFinder).color!;
+
+        expect(activeSurface, isNot(disabledSurface));
+        expect(activeIcon, isNot(disabledIcon));
+        expect(_contrast(activeIcon, activeSurface), greaterThanOrEqualTo(3));
+        final canvas = FluxColors.canvasOf(tester.element(surfaceFinder));
+        final disabledComposite = _composite(disabledSurface, canvas);
+        expect(
+          _contrast(
+            _composite(disabledIcon, disabledComposite),
+            disabledComposite,
+          ),
+          greaterThanOrEqualTo(3),
+        );
+      },
+    );
+  }
+
+  testWidgets('partial safe Markdown hides raw markers without crashing', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: SafeMarkdownText(
+            text: '**unfinished bold\n1. partial step\n<div>safe text',
+          ),
+        ),
+      ),
+    );
+
+    expect(find.textContaining('**'), findsNothing);
+    expect(find.textContaining('<div>'), findsNothing);
+    expect(find.textContaining('unfinished bold'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('Creations composer exposes the home-style send action', (
@@ -369,4 +443,22 @@ void main() {
     expect(FluxColors.canvasOf(context), equals(FluxColors.darkCanvas));
     expect(FluxColors.inkOf(context), equals(FluxColors.darkInk));
   });
+}
+
+Color _composite(Color foreground, Color background) {
+  final alpha = foreground.a;
+  return Color.from(
+    alpha: 1,
+    red: foreground.r * alpha + background.r * (1 - alpha),
+    green: foreground.g * alpha + background.g * (1 - alpha),
+    blue: foreground.b * alpha + background.b * (1 - alpha),
+  );
+}
+
+double _contrast(Color foreground, Color background) {
+  final first = foreground.computeLuminance();
+  final second = background.computeLuminance();
+  final lighter = first > second ? first : second;
+  final darker = first > second ? second : first;
+  return (lighter + .05) / (darker + .05);
 }

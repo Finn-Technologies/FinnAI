@@ -52,6 +52,12 @@ Future<void> _runModelEvaluation() async {
     'Translate this sentence into Italian: The train leaves at six.',
     'Hello',
     'Ciao',
+    'Can you tell me how to upgrade the RAM in my laptop?',
+    'How do I replace my laptop SSD?',
+    'How do I replace my phone battery?',
+    'Come posso aggiornare la RAM del portatile?',
+    'Come posso sostituire l’SSD del portatile?',
+    'Come posso sostituire la batteria del telefono?',
   ];
   for (final entry in specification.split(';')) {
     final separator = entry.indexOf('=');
@@ -75,7 +81,7 @@ Future<void> _runModelEvaluation() async {
       final report = BonsaiInference.instance.lastGenerationReport;
       final response = answer.toString();
       debugPrint(
-        'FINN_EVAL ${jsonEncode({'selectedModel': label, 'intent': analysis.intent.name, 'route': report?.route.name, 'outputBudget': report?.outputBudget, 'finishReason': report?.finishReason.name, 'firstTokenLatencyMs': report?.firstTokenLatency?.inMilliseconds, 'totalGenerationTimeMs': report?.totalGenerationTime.inMilliseconds, 'outputTokens': report?.outputTokens, 'tokensPerSecond': report?.tokensPerSecond, if (index == 0) 'recipeAcceptance': assessRicottaStrawberryCake(response).toJson(), 'response': response})}',
+        'FINN_EVAL ${jsonEncode({'selectedModel': label, 'intent': analysis.intent.name, 'route': report?.route.name, 'outputBudget': report?.outputBudget, 'finishReason': report?.finishReason.name, 'firstTokenLatencyMs': report?.firstTokenLatency?.inMilliseconds, 'totalGenerationTimeMs': report?.totalGenerationTime.inMilliseconds, 'outputTokens': report?.outputTokens, 'tokensPerSecond': report?.tokensPerSecond, if (index == 0) 'recipeAcceptance': assessRicottaStrawberryCake(response).toJson(), if (prompt == 'Can you tell me how to upgrade the RAM in my laptop?') 'hardwareAcceptance': assessLaptopRamGuidance(response).toJson(), 'response': response})}',
       );
     }
     await BonsaiInference.instance.releaseMemory();

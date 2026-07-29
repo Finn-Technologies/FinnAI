@@ -90,7 +90,7 @@ class SafeMarkdownText extends StatelessWidget {
     var cursor = 0;
     for (final match in pattern.allMatches(value)) {
       if (match.start > cursor) {
-        spans.add(TextSpan(text: value.substring(cursor, match.start)));
+        spans.add(TextSpan(text: _plain(value.substring(cursor, match.start))));
       }
       final token = match.group(0)!;
       if (token.startsWith('**')) {
@@ -114,8 +114,10 @@ class SafeMarkdownText extends StatelessWidget {
       cursor = match.end;
     }
     if (cursor < value.length) {
-      spans.add(TextSpan(text: value.substring(cursor)));
+      spans.add(TextSpan(text: _plain(value.substring(cursor))));
     }
     return TextSpan(style: base, children: spans);
   }
+
+  String _plain(String value) => value.replaceAll('**', '');
 }

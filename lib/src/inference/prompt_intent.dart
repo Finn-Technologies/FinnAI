@@ -23,11 +23,13 @@ class PromptAnalysis {
     required this.intent,
     required this.language,
     this.advanced = false,
+    this.hardwareGuidance = false,
   });
 
   final PromptIntent intent;
   final PromptLanguage language;
   final bool advanced;
+  final bool hardwareGuidance;
 }
 
 /// Deterministic, multilingual policy used before any model is loaded.
@@ -48,7 +50,14 @@ class PromptIntentClassifier {
         'good evening',
       ],
       PromptIntent.recipe: ['recipe', 'cook', 'bake', 'ingredients'],
-      PromptIntent.howTo: ['how to', 'how do i', 'steps to', 'instructions'],
+      PromptIntent.howTo: [
+        'how to',
+        'how do i',
+        'steps to',
+        'instructions',
+        'upgrade',
+        'replace',
+      ],
       PromptIntent.writing: ['write', 'draft', 'compose', 'message', 'email'],
       PromptIntent.translation: ['translate', 'translation', 'into english'],
       PromptIntent.comparison: ['compare', 'comparison', 'versus', ' vs '],
@@ -102,6 +111,8 @@ class PromptIntentClassifier {
         'come cambiare',
         'istruzioni',
         'passaggi',
+        'sostituire',
+        'aggiornare',
       ],
       PromptIntent.writing: [
         'scrivi',
@@ -162,6 +173,8 @@ class PromptIntentClassifier {
         'cómo cambiar',
         'instrucciones',
         'pasos',
+        'reemplazar',
+        'actualizar',
       ],
       PromptIntent.writing: ['escribe', 'redacta', 'mensaje', 'correo'],
       PromptIntent.translation: ['traduce', 'traducción', 'al español'],
@@ -197,6 +210,8 @@ class PromptIntentClassifier {
         'comment changer',
         'instructions',
         'étapes',
+        'remplacer',
+        'mettre à niveau',
       ],
       PromptIntent.writing: ['écris', 'rédige', 'message', 'courriel'],
       PromptIntent.translation: ['traduis', 'traduction', 'en français'],
@@ -240,6 +255,8 @@ class PromptIntentClassifier {
         'wie kann ich',
         'anleitung',
         'schritte',
+        'ersetzen',
+        'aufrüsten',
       ],
       PromptIntent.writing: ['schreibe', 'verfasse', 'nachricht', 'e-mail'],
       PromptIntent.translation: ['übersetze', 'übersetzung', 'auf deutsch'],
@@ -260,6 +277,41 @@ class PromptIntentClassifier {
         'diagnose',
       ],
     },
+  };
+
+  static const _hardwareSignals = <PromptLanguage, List<String>>{
+    PromptLanguage.english: [
+      'laptop ram',
+      'ram in my laptop',
+      'laptop memory',
+      'laptop ssd',
+      'phone battery',
+    ],
+    PromptLanguage.italian: [
+      'ram del portatile',
+      'ram nel portatile',
+      'memoria del portatile',
+      'ssd',
+      'ssd del portatile',
+      'batteria del telefono',
+      'batteria dello smartphone',
+    ],
+    PromptLanguage.spanish: [
+      'ram del portátil',
+      'ssd del portátil',
+      'batería del teléfono',
+    ],
+    PromptLanguage.french: [
+      'ram du portable',
+      'ssd du portable',
+      'batterie du téléphone',
+    ],
+    PromptLanguage.german: [
+      'laptop ram',
+      'laptop-ram',
+      'laptop ssd',
+      'handy-akku',
+    ],
   };
 
   static const _priority = [
@@ -291,11 +343,23 @@ class PromptIntentClassifier {
         .key;
     final languageSignals =
         _signals[language] ?? _signals[PromptLanguage.english]!;
+    final hardwareGuidance =
+        (_hardwareSignals[language] ??
+                _hardwareSignals[PromptLanguage.english]!)
+            .any((term) => _contains(value, term));
 
     final trimmed = value.replaceAll(RegExp(r'[!.,?\s]+$'), '');
     final greetingTerms = languageSignals[PromptIntent.greeting] ?? const [];
     if (greetingTerms.any((term) => trimmed == term)) {
       return PromptAnalysis(intent: PromptIntent.greeting, language: language);
+    }
+    if (hardwareGuidance) {
+      return PromptAnalysis(
+        intent: PromptIntent.howTo,
+        language: language,
+        advanced: _isAdvanced(value),
+        hardwareGuidance: true,
+      );
     }
     for (final intent in _priority) {
       if ((languageSignals[intent] ?? const []).any(
@@ -305,6 +369,7 @@ class PromptIntentClassifier {
           intent: intent,
           language: language,
           advanced: _isAdvanced(value),
+          hardwareGuidance: hardwareGuidance,
         );
       }
     }
@@ -316,6 +381,7 @@ class PromptIntentClassifier {
       intent: PromptIntent.quickQuestion,
       language: language,
       advanced: _isAdvanced(value),
+      hardwareGuidance: hardwareGuidance,
     );
   }
 
@@ -328,7 +394,7 @@ class PromptIntentClassifier {
     bool word(int code) =>
         (code >= 48 && code <= 57) ||
         (code >= 97 && code <= 122) ||
-        code >= 0x00c0;
+        (code >= 0x00c0 && code <= 0x024f);
     final before = index == 0 || !word(value.codeUnitAt(index - 1));
     final end = index + term.length;
     final after = end == value.length || !word(value.codeUnitAt(end));
@@ -444,7 +510,13 @@ class PromptIntentPolicy {
             'ask one concise clarification question. Do not introduce unrelated ingredients or list the '
             'finished dish itself as an ingredient.',
       PromptIntent.howTo =>
-        'Give practical, ordered steps, include prerequisites and relevant safety cautions, and do not omit the final step.',
+        analysis.hardwareGuidance
+            ? 'For hardware repair or upgrade guidance, explain that compatibility and serviceability depend on the exact manufacturer and model. '
+                  'Ask for the exact model before device-specific disassembly or compatibility steps, and recommend its manufacturer specifications '
+                  'or service manual. For memory questions, explain that RAM may be soldered, socketed, or a combination; never assume two slots. '
+                  'Do not invent slot labels, slot sizes, screw locations, component layouts, or capacity limits. Give only cautious general steps, '
+                  'including electrostatic precautions and disconnecting external and internal power when appropriate.'
+            : 'Give practical, ordered steps, include prerequisites and relevant safety cautions, and do not omit the final step.',
       PromptIntent.translation =>
         'Translate faithfully into the requested language. Preserve meaning, tone, names, and formatting; add no commentary unless asked.',
       PromptIntent.comparison =>

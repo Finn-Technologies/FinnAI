@@ -7,8 +7,8 @@ import 'package:flutter/services.dart';
 import '../ads/banner_ad_widget.dart';
 import '../conversations/conversation_store.dart';
 import '../creations/creations_page.dart';
+import '../generation/chat_generation_controller.dart';
 import '../inference/bonsai_inference.dart';
-import '../inference/prompt_intent.dart';
 import '../privacy/ad_consent_service.dart';
 import '../reporting/report_dialog.dart';
 import '../settings/settings_page.dart';
@@ -21,10 +21,20 @@ import '../widgets/ambient_background.dart';
 import '../widgets/flux_controls.dart';
 import '../widgets/safe_markdown_text.dart';
 
-enum _ReplyState { idle, loading, thinking, complete, error }
-
 class HomeShell extends StatefulWidget {
-  const HomeShell({super.key});
+  const HomeShell({
+    super.key,
+    this.generationController,
+    this.conversationStore,
+    this.inference,
+    this.initializeServices = true,
+  });
+
+  final ChatGenerationController? generationController;
+  final ConversationStore? conversationStore;
+  final BonsaiInference? inference;
+  @visibleForTesting
+  final bool initializeServices;
 
   @override
   State<HomeShell> createState() => _HomeShellState();
@@ -34,25 +44,18 @@ class _HomeShellState extends State<HomeShell>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   final _composer = TextEditingController();
   final _focusNode = FocusNode();
-  final _inference = BonsaiInference.instance;
-  final _conversations = ConversationStore.instance;
-  StreamSubscription<String>? _replySubscription;
-  Timer? _tokenPaintTimer;
+  late final _inference = widget.inference ?? BonsaiInference.instance;
+  late final _conversations =
+      widget.conversationStore ?? ConversationStore.instance;
+  late final _generation =
+      widget.generationController ?? ChatGenerationController.instance;
   Timer? _memoryReleaseTimer;
   Timer? _prewarmTimer;
-  final _pendingTokens = StringBuffer();
-  final _streamingAnswer = ValueNotifier<String>('');
-  String? _assistantMessageId;
-  _ReplyState _replyState = _ReplyState.idle;
   bool _sidebar = false;
   bool _sidebarEverOpened = false;
   bool _sidebarAdVisible = false;
   bool _preparing = false;
-  bool _storesReady = false;
-  String _answer = '';
-  String _error = '';
-  bool _canContinue = false;
-  bool _continuationUsed = false;
+  late bool _storesReady = !widget.initializeServices;
   late final AnimationController _sidebarController = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 340),
@@ -64,23 +67,21 @@ class _HomeShellState extends State<HomeShell>
     reverseCurve: Curves.easeInCubic,
   );
 
-  bool get _busy =>
-      _preparing ||
-      _replySubscription != null ||
-      _replyState == _ReplyState.loading ||
-      _replyState == _ReplyState.thinking;
+  bool get _busy => _preparing || _generation.busy;
 
   @override
   void initState() {
     super.initState();
-    _inference.addListener(_inferenceChanged);
+    _generation.addListener(_generationChanged);
     _conversations.addListener(_conversationChanged);
     WidgetsBinding.instance.addObserver(this);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      unawaited(_initializeStores());
-      _schedulePrewarm();
-      unawaited(AdConsentService.instance.initializeConsentAndAds());
-    });
+    if (widget.initializeServices) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        unawaited(_initializeStores());
+        _schedulePrewarm();
+        unawaited(AdConsentService.instance.initializeConsentAndAds());
+      });
+    }
   }
 
   @override
@@ -88,12 +89,12 @@ class _HomeShellState extends State<HomeShell>
     if (state == AppLifecycleState.detached) {
       _memoryReleaseTimer?.cancel();
       _prewarmTimer?.cancel();
-      unawaited(_conversations.flush());
+      unawaited(_generation.flushActive());
       unawaited(_inference.releaseMemory());
     } else if (state == AppLifecycleState.inactive ||
         state == AppLifecycleState.paused) {
       _prewarmTimer?.cancel();
-      unawaited(_conversations.flush());
+      unawaited(_generation.flushActive());
       if (state != AppLifecycleState.paused) return;
       _memoryReleaseTimer?.cancel();
       final profile = _inference.deviceProfile;
@@ -114,7 +115,7 @@ class _HomeShellState extends State<HomeShell>
   void didHaveMemoryPressure() {
     _prewarmTimer?.cancel();
     _memoryReleaseTimer?.cancel();
-    if (_replySubscription == null) {
+    if (!_generation.busy) {
       unawaited(_inference.releaseMemory());
     }
   }
@@ -146,18 +147,15 @@ class _HomeShellState extends State<HomeShell>
 
   @override
   void dispose() {
-    _inference.removeListener(_inferenceChanged);
+    _generation.removeListener(_generationChanged);
     _conversations.removeListener(_conversationChanged);
     WidgetsBinding.instance.removeObserver(this);
-    unawaited(_replySubscription?.cancel());
-    _tokenPaintTimer?.cancel();
     _memoryReleaseTimer?.cancel();
     _prewarmTimer?.cancel();
     _sidebarController.dispose();
-    unawaited(_conversations.flush());
+    unawaited(_generation.flushActive());
     _composer.dispose();
     _focusNode.dispose();
-    _streamingAnswer.dispose();
     super.dispose();
   }
 
@@ -169,26 +167,8 @@ class _HomeShellState extends State<HomeShell>
     );
   }
 
-  void _inferenceChanged() {
-    if (!mounted ||
-        (_replySubscription == null && !_preparing) ||
-        _inference.phase == InferencePhase.idle) {
-      return;
-    }
-    setState(() {
-      switch (_inference.phase) {
-        case InferencePhase.downloading:
-        case InferencePhase.loading:
-          _replyState = _ReplyState.loading;
-        case InferencePhase.generating:
-          if (_answer.isEmpty) _replyState = _ReplyState.thinking;
-        case InferencePhase.error:
-          _error = _inference.status;
-          _replyState = _ReplyState.error;
-        case InferencePhase.idle:
-          break;
-      }
-    });
+  void _generationChanged() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _send() async {
@@ -278,90 +258,35 @@ class _HomeShellState extends State<HomeShell>
         LocalChatTurn(role: message.role.name, content: message.text),
     ];
 
-    final assistant = _conversations.beginExchange(value);
-    _assistantMessageId = assistant.id;
     _focusNode.unfocus();
-    setState(() {
-      _answer = '';
-      _streamingAnswer.value = '';
-      _error = '';
-      _canContinue = false;
-      _continuationUsed = false;
-      _composer.clear();
-      _replyState = _ReplyState.loading;
-    });
-
-    _replySubscription = _inference
-        .generateReply(
-          value,
-          conversationId: conversation.id,
-          history: history,
-          systemContext: systemContext,
-        )
-        .listen(
-          (token) {
-            if (!mounted) return;
-            _pendingTokens.write(token);
-            _tokenPaintTimer ??= Timer(
-              Duration(
-                milliseconds: _inference.plan?.tokenPaintIntervalMs ?? 50,
-              ),
-              () {
-                _tokenPaintTimer = null;
-                _flushTokenPaint();
-              },
-            );
-          },
-          onError: (Object _) {
-            if (!mounted) return;
-            _tokenPaintTimer?.cancel();
-            _tokenPaintTimer = null;
-            _flushTokenPaint(persist: true);
-            _replySubscription = null;
-            setState(() {
-              _error = _inference.status;
-              _replyState = _ReplyState.error;
-            });
-          },
-          onDone: () {
-            _flushTokenPaint(persist: true);
-            _tokenPaintTimer?.cancel();
-            _tokenPaintTimer = null;
-            _replySubscription = null;
-            if (mounted) {
-              if (_answer.isEmpty && _replyState != _ReplyState.error) {
-                setState(() {
-                  _error = 'The model finished without producing a response.';
-                  _replyState = _ReplyState.error;
-                });
-              } else {
-                // Settle onto the stored message so the lightweight streaming
-                // text is replaced by selectable text and actions only once.
-                _streamingAnswer.value = '';
-                _assistantMessageId = null;
-                setState(() {
-                  _replyState = _ReplyState.complete;
-                  _canContinue =
-                      !_continuationUsed &&
-                      _inference.lastGenerationReport?.finishReason ==
-                          GenerationFinishReason.tokenLimit;
-                });
-              }
-            }
-          },
-          cancelOnError: true,
-        );
+    _composer.clear();
+    await _generation.start(
+      conversationId: conversation.id,
+      prompt: value,
+      history: history,
+      systemContext: systemContext,
+    );
   }
 
-  Future<void> _continueReply() async {
-    if (_busy || !_canContinue) return;
+  Future<void> _continueReply(ConversationMessage assistant) async {
+    if (_busy ||
+        assistant.status != ConversationMessageStatus.tokenLimited ||
+        assistant.continuationCount >= 1) {
+      return;
+    }
     final conversation = _conversations.active;
-    if (conversation == null || conversation.messages.isEmpty) return;
-    final assistant = conversation.messages.last;
-    if (assistant.role != ConversationRole.assistant) return;
-    final latestUser = conversation.messages.reversed
+    if (conversation == null) return;
+    final assistantIndex = conversation.messages.indexWhere(
+      (message) => message.id == assistant.id,
+    );
+    if (assistantIndex <= 0) return;
+    final latestUser = conversation.messages
+        .take(assistantIndex)
+        .toList(growable: false)
+        .reversed
         .where((message) => message.role == ConversationRole.user)
         .firstOrNull;
+    if (latestUser == null) return;
     final history = [
       for (final message in conversation.messages)
         LocalChatTurn(role: message.role.name, content: message.text),
@@ -370,142 +295,29 @@ class _HomeShellState extends State<HomeShell>
       YouProfileStore.instance.promptContext,
       SkillsStore.instance.activePromptContext,
     ].where((item) => item.trim().isNotEmpty).join('\n\n');
-    _continuationUsed = true;
-    _canContinue = false;
-    _assistantMessageId = assistant.id;
-    _answer = assistant.text;
-    _streamingAnswer.value = _answer;
-    setState(() => _replyState = _ReplyState.thinking);
-    _replySubscription = _inference
-        .generateReply(
-          BonsaiInference.continuationPrompt,
-          conversationId: conversation.id,
-          history: history,
-          systemContext: systemContext,
-          promptAnalysis: latestUser == null
-              ? null
-              : const PromptIntentClassifier().classify(latestUser.text),
-        )
-        .listen(
-          (token) {
-            _pendingTokens.write(token);
-            _tokenPaintTimer ??= Timer(
-              Duration(
-                milliseconds: _inference.plan?.tokenPaintIntervalMs ?? 50,
-              ),
-              () {
-                _tokenPaintTimer = null;
-                _flushTokenPaint();
-              },
-            );
-          },
-          onError: (Object _) {
-            _flushTokenPaint(persist: true);
-            _replySubscription = null;
-            if (mounted) {
-              setState(() {
-                _error = _inference.status;
-                _replyState = _ReplyState.error;
-              });
-            }
-          },
-          onDone: () {
-            _flushTokenPaint(persist: true);
-            _tokenPaintTimer?.cancel();
-            _tokenPaintTimer = null;
-            _replySubscription = null;
-            _streamingAnswer.value = '';
-            _assistantMessageId = null;
-            if (mounted) setState(() => _replyState = _ReplyState.complete);
-          },
-          cancelOnError: true,
-        );
+    await _generation.continueResponse(
+      conversationId: conversation.id,
+      assistantMessageId: assistant.id,
+      originalPrompt: latestUser.text,
+      history: history,
+      systemContext: systemContext,
+    );
   }
 
-  void _flushTokenPaint({bool persist = false}) {
-    final generatingTier = _inference.lastGeneratingModel.name;
-    if (_pendingTokens.isEmpty) {
-      if (persist) {
-        final id = _assistantMessageId;
-        if (id != null) {
-          _conversations.updateMessage(
-            id,
-            _answer,
-            modelTier: generatingTier,
-            persistSoon: true,
-            notify: false,
-          );
-        } else {
-          unawaited(_conversations.flush());
-        }
-      }
-      return;
-    }
-    final next = _pendingTokens.toString();
-    _pendingTokens.clear();
-    final wasEmpty = _answer.isEmpty;
-    _answer += next;
-    _streamingAnswer.value = _answer;
-    final id = _assistantMessageId;
-    if (persist && id != null) {
-      _conversations.updateMessage(
-        id,
-        _answer,
-        modelTier: generatingTier,
-        persistSoon: true,
-        notify: false,
-      );
-    }
-    if (wasEmpty && mounted) {
-      setState(() => _replyState = _ReplyState.complete);
-    }
-  }
-
-  Future<void> _stopReply() async {
-    final subscription = _replySubscription;
-    if (subscription == null) return;
-    _replySubscription = null;
-    _tokenPaintTimer?.cancel();
-    _tokenPaintTimer = null;
-    await subscription.cancel();
-    await _inference.stopGeneration();
-    _flushTokenPaint(persist: true);
-    final messageId = _assistantMessageId;
-    if (_answer.trim().isEmpty && messageId != null) {
-      _conversations.removeMessage(messageId);
-    }
-    _streamingAnswer.value = '';
-    _assistantMessageId = null;
-    if (mounted) setState(() => _replyState = _ReplyState.complete);
-    await _conversations.flush();
-  }
+  void _stopReply() => unawaited(_generation.stop());
 
   void _activateConversation(String id) {
+    unawaited(_generation.flushActive());
     _conversations.activate(id);
     _setSidebar(false);
-    setState(() {
-      _assistantMessageId = null;
-      _replyState = _ReplyState.complete;
-      _answer = '';
-      _streamingAnswer.value = '';
-      _error = '';
-      _canContinue = false;
-      _continuationUsed = false;
-    });
+    setState(() {});
   }
 
   void _newConversation() {
+    unawaited(_generation.flushActive());
     _conversations.startNew();
     _setSidebar(false);
-    setState(() {
-      _assistantMessageId = null;
-      _replyState = _ReplyState.idle;
-      _answer = '';
-      _streamingAnswer.value = '';
-      _error = '';
-      _canContinue = false;
-      _continuationUsed = false;
-    });
+    setState(() {});
   }
 
   Future<void> _openCreations() async {
@@ -607,15 +419,12 @@ class _HomeShellState extends State<HomeShell>
                       bottom: 92 + safeBottom,
                       child: _Conversation(
                         messages: _conversations.active?.messages ?? const [],
-                        state: _replyState,
-                        streamingAnswer: _streamingAnswer,
-                        streamingMessageId: _assistantMessageId,
-                        error: _error,
+                        activeConversationId: _conversations.active?.id,
+                        generation: _generation,
+                        conversations: _conversations,
                         onStop: _stopReply,
-                        continuationMessageId: _canContinue
-                            ? _conversations.active?.messages.lastOrNull?.id
-                            : null,
                         onContinue: _continueReply,
+                        onOpenConversation: _activateConversation,
                       ),
                     ),
                     Positioned(
@@ -623,7 +432,7 @@ class _HomeShellState extends State<HomeShell>
                       right: 20,
                       bottom:
                           safeBottom + (constraints.maxHeight < 650 ? 20 : 30),
-                      child: _Composer(
+                      child: ChatComposer(
                         controller: _composer,
                         focusNode: _focusNode,
                         blocked: _busy || !_storesReady,
@@ -647,8 +456,7 @@ class _HomeShellState extends State<HomeShell>
                       onYou: _openYou,
                       onSkills: _openSkills,
                       onSettings: _openSettings,
-                      showAd:
-                          _sidebarAdVisible && !_inference.isGeneratingReply,
+                      showAd: _sidebarAdVisible && !_generation.busy,
                     ),
                   );
             return AnimatedBuilder(
@@ -740,26 +548,38 @@ class _HomeHeader extends StatelessWidget {
 class _Conversation extends StatelessWidget {
   const _Conversation({
     required this.messages,
-    required this.state,
-    required this.streamingAnswer,
-    required this.streamingMessageId,
-    required this.error,
+    required this.activeConversationId,
+    required this.generation,
+    required this.conversations,
     required this.onStop,
-    required this.continuationMessageId,
     required this.onContinue,
+    required this.onOpenConversation,
   });
   final List<ConversationMessage> messages;
-  final _ReplyState state;
-  final ValueNotifier<String> streamingAnswer;
-  final String? streamingMessageId;
-  final String error;
+  final String? activeConversationId;
+  final ChatGenerationController generation;
+  final ConversationStore conversations;
   final VoidCallback onStop;
-  final String? continuationMessageId;
-  final VoidCallback onContinue;
+  final ValueChanged<ConversationMessage> onContinue;
+  final ValueChanged<String> onOpenConversation;
 
   @override
   Widget build(BuildContext context) {
-    if (state == _ReplyState.idle && messages.isEmpty) return const SizedBox();
+    final activeJob = generation.activeJob;
+    final ownsGeneration =
+        activeJob != null && activeJob.conversationId == activeConversationId;
+    final terminalJob = generation.job;
+    final visibleError =
+        terminalJob?.conversationId == activeConversationId &&
+            terminalJob?.state == ChatGenerationState.error
+        ? terminalJob?.errorMessage
+        : null;
+    if (messages.isEmpty && activeJob == null && visibleError == null) {
+      return const SizedBox();
+    }
+    final streamingMessageId = ownsGeneration
+        ? activeJob.assistantMessageId
+        : null;
     final visibleMessages = messages
         .where(
           (message) =>
@@ -775,51 +595,31 @@ class _Conversation extends StatelessWidget {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              ValueListenableBuilder<String>(
-                valueListenable: streamingAnswer,
-                builder: (context, answer, _) => answer.isEmpty
-                    ? const SizedBox()
-                    : _CompleteReply(
-                        text: answer,
-                        showActions: false,
-                        selectable: false,
-                      ),
-              ),
-              AnimatedSwitcher(
-                duration: MediaQuery.disableAnimationsOf(context)
-                    ? Duration.zero
-                    : const Duration(milliseconds: 360),
-                switchInCurve: Curves.easeOutCubic,
-                switchOutCurve: Curves.easeInCubic,
-                transitionBuilder: (child, animation) => FadeTransition(
-                  opacity: animation,
-                  child: SlideTransition(
-                    position: Tween(
-                      begin: const Offset(0, .025),
-                      end: Offset.zero,
-                    ).animate(animation),
-                    child: child,
-                  ),
+              if (ownsGeneration && activeJob.responseText.isNotEmpty)
+                _CompleteReply(
+                  text: activeJob.responseText,
+                  showActions: false,
+                  selectable: false,
                 ),
-                child: switch (state) {
-                  _ReplyState.loading => _ModelResponseLoader(
-                    key: ValueKey('loading'),
-                    onStop: onStop,
-                  ),
-                  _ReplyState.thinking => _ModelResponseLoader(
-                    key: ValueKey('thinking'),
-                    onStop: onStop,
-                  ),
-                  _ReplyState.complete => const SizedBox(
-                    key: ValueKey('complete'),
-                  ),
-                  _ReplyState.error => _ErrorReply(
-                    key: const ValueKey('error'),
-                    text: error,
-                  ),
-                  _ => const SizedBox(),
-                },
-              ),
+              if (ownsGeneration)
+                _ModelResponseLoader(
+                  key: ValueKey(activeJob.state),
+                  label: generation.progressLabel,
+                  stopping: activeJob.state == ChatGenerationState.stopping,
+                  onStop: onStop,
+                )
+              else if (activeJob != null)
+                OtherChatGenerationNotice(
+                  title:
+                      conversations
+                          .conversationById(activeJob.conversationId)
+                          ?.title ??
+                      'another chat',
+                  onOpen: () => onOpenConversation(activeJob.conversationId),
+                  onStop: onStop,
+                )
+              else if (visibleError != null)
+                _ErrorReply(key: const ValueKey('error'), text: visibleError),
               if (visibleMessages.isNotEmpty) const SizedBox(height: 14),
             ],
           );
@@ -842,10 +642,14 @@ class _Conversation extends StatelessWidget {
                       ? visibleMessages[visibleMessages.length - index - 1].text
                       : null,
                   modelTier: message.modelTier,
+                  status: message.status,
                   showActions: true,
                   selectable: true,
-                  onContinue: message.id == continuationMessageId
-                      ? onContinue
+                  onContinue:
+                      message.status ==
+                              ConversationMessageStatus.tokenLimited &&
+                          message.continuationCount < 1
+                      ? () => onContinue(message)
                       : null,
                 ),
         );
@@ -892,8 +696,15 @@ class _Bubble extends StatelessWidget {
 }
 
 class _ModelResponseLoader extends StatefulWidget {
-  const _ModelResponseLoader({super.key, required this.onStop});
+  const _ModelResponseLoader({
+    super.key,
+    required this.label,
+    required this.stopping,
+    required this.onStop,
+  });
 
+  final String label;
+  final bool stopping;
   final VoidCallback onStop;
 
   @override
@@ -926,9 +737,10 @@ class _ModelResponseLoaderState extends State<_ModelResponseLoader>
 
   @override
   Widget build(BuildContext context) => Semantics(
-    label: 'Finn AI is preparing a response',
-    hint: 'Tap to stop generation',
+    label: widget.label,
+    hint: widget.stopping ? null : 'Tap to stop generation',
     button: true,
+    enabled: !widget.stopping,
     liveRegion: true,
     child: Align(
       alignment: Alignment.centerLeft,
@@ -937,11 +749,10 @@ class _ModelResponseLoaderState extends State<_ModelResponseLoader>
           color: FluxColors.cardOf(context).withValues(alpha: .7),
           borderRadius: BorderRadius.circular(22),
           child: InkWell(
-            onTap: widget.onStop,
+            onTap: widget.stopping ? null : widget.onStop,
             borderRadius: BorderRadius.circular(22),
             child: Container(
-              width: 94,
-              height: 38,
+              constraints: const BoxConstraints(minHeight: 42, maxWidth: 300),
               padding: const EdgeInsets.symmetric(horizontal: 12),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(19),
@@ -949,7 +760,8 @@ class _ModelResponseLoaderState extends State<_ModelResponseLoader>
               ),
               child: Row(
                 children: [
-                  Expanded(
+                  SizedBox(
+                    width: 42,
                     child: AnimatedBuilder(
                       animation: _controller,
                       builder: (context, _) => Row(
@@ -979,12 +791,23 @@ class _ModelResponseLoaderState extends State<_ModelResponseLoader>
                       ),
                     ),
                   ),
-                  const SizedBox(width: 7),
-                  FluxIcon(
-                    icon: FluxIcons.close,
-                    size: 15,
-                    color: FluxColors.mutedOf(context),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      widget.label,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelMedium,
+                    ),
                   ),
+                  if (!widget.stopping) ...[
+                    const SizedBox(width: 7),
+                    FluxIcon(
+                      icon: FluxIcons.close,
+                      size: 15,
+                      color: FluxColors.mutedOf(context),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -995,11 +818,54 @@ class _ModelResponseLoaderState extends State<_ModelResponseLoader>
   );
 }
 
+@visibleForTesting
+class OtherChatGenerationNotice extends StatelessWidget {
+  const OtherChatGenerationNotice({
+    super.key,
+    required this.title,
+    required this.onOpen,
+    required this.onStop,
+  });
+
+  final String title;
+  final VoidCallback onOpen;
+  final VoidCallback onStop;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    liveRegion: true,
+    label: 'Generating in another chat',
+    child: Container(
+      padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
+      decoration: BoxDecoration(
+        color: FluxColors.cardOf(context).withValues(alpha: .78),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: FluxColors.lineOf(context)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              'Generating in $title',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelMedium,
+            ),
+          ),
+          TextButton(onPressed: onOpen, child: const Text('Open')),
+          TextButton(onPressed: onStop, child: const Text('Stop')),
+        ],
+      ),
+    ),
+  );
+}
+
 class _CompleteReply extends StatelessWidget {
   const _CompleteReply({
     required this.text,
     this.userPrompt,
     this.modelTier = 'Finn AI',
+    this.status = ConversationMessageStatus.complete,
     this.showActions = true,
     this.selectable = true,
     this.onContinue,
@@ -1008,6 +874,7 @@ class _CompleteReply extends StatelessWidget {
   final String text;
   final String? userPrompt;
   final String modelTier;
+  final ConversationMessageStatus status;
   final bool showActions;
   final bool selectable;
   final VoidCallback? onContinue;
@@ -1021,6 +888,25 @@ class _CompleteReply extends StatelessWidget {
       else
         _ReplyText(text: text),
       if (showActions) ...[
+        const SizedBox(height: 5),
+        Text(
+          switch (status) {
+            ConversationMessageStatus.complete => 'Answered using $modelTier',
+            ConversationMessageStatus.stopped =>
+              'Stopped by you · partial response',
+            ConversationMessageStatus.interrupted =>
+              'Interrupted · partial response preserved',
+            ConversationMessageStatus.tokenLimited =>
+              'Length limit reached · partial response preserved',
+            ConversationMessageStatus.failed =>
+              'Generation failed · partial response preserved',
+            ConversationMessageStatus.generating =>
+              'Generating using $modelTier',
+          },
+          style: Theme.of(
+            context,
+          ).textTheme.labelSmall?.copyWith(color: FluxColors.mutedOf(context)),
+        ),
         const SizedBox(height: 7),
         Row(
           children: [
@@ -1134,8 +1020,9 @@ class _ErrorReply extends StatelessWidget {
   Widget build(BuildContext context) => _Bubble(text: text);
 }
 
-class _Composer extends StatefulWidget {
-  const _Composer({
+class ChatComposer extends StatefulWidget {
+  const ChatComposer({
+    super.key,
     required this.controller,
     required this.focusNode,
     required this.blocked,
@@ -1147,10 +1034,10 @@ class _Composer extends StatefulWidget {
   final VoidCallback onSend;
 
   @override
-  State<_Composer> createState() => _ComposerState();
+  State<ChatComposer> createState() => _ChatComposerState();
 }
 
-class _ComposerState extends State<_Composer> {
+class _ChatComposerState extends State<ChatComposer> {
   late bool _hasText;
   late bool _focused;
 
@@ -1230,18 +1117,28 @@ class _ComposerState extends State<_Composer> {
                       ? Duration.zero
                       : const Duration(milliseconds: 220),
                   curve: Curves.easeOutBack,
-                  child: InkWell(
-                    onTap: canSend ? widget.onSend : null,
-                    borderRadius: BorderRadius.circular(24),
-                    child: SizedBox.square(
-                      dimension: 48,
-                      child: Center(
-                        child: FigmaSvg(
-                          asset: canSend
-                              ? FigmaAssets.activeSend
-                              : FigmaAssets.send,
-                          width: 34,
-                          height: 34,
+                  child: Material(
+                    key: const ValueKey('send-button-surface'),
+                    color: canSend
+                        ? FluxColors.inkOf(context)
+                        : FluxColors.inkOf(context).withValues(alpha: .14),
+                    shape: const CircleBorder(),
+                    child: InkWell(
+                      onTap: canSend ? widget.onSend : null,
+                      customBorder: const CircleBorder(),
+                      child: SizedBox.square(
+                        dimension: 48,
+                        child: Center(
+                          child: Icon(
+                            Icons.arrow_upward_rounded,
+                            key: const ValueKey('send-button-icon'),
+                            size: 23,
+                            color: canSend
+                                ? FluxColors.canvasOf(context)
+                                : FluxColors.inkOf(
+                                    context,
+                                  ).withValues(alpha: .58),
+                          ),
                         ),
                       ),
                     ),
@@ -1780,28 +1677,36 @@ class _SidebarConversationTile extends StatelessWidget {
   }
 
   void _showDeleteConfirmDialog(BuildContext context) {
+    final generationActive = conversation.messages.any(
+      (message) => message.status == ConversationMessageStatus.generating,
+    );
     showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Delete chat?'),
-        content: const Text(
-          'Are you sure you want to delete this chat history? This action cannot be undone.',
+        content: Text(
+          generationActive
+              ? 'Stop the active generation before deleting this chat. Its '
+                    'partial response will be preserved.'
+              : 'Are you sure you want to delete this chat history? This '
+                    'action cannot be undone.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancel'),
+            child: Text(generationActive ? 'Close' : 'Cancel'),
           ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(dialogContext).pop();
-              ConversationStore.instance.deleteConversation(conversation.id);
-            },
-            child: const Text(
-              'Delete',
-              style: TextStyle(color: Colors.redAccent),
+          if (!generationActive)
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                ConversationStore.instance.deleteConversation(conversation.id);
+              },
+              child: const Text(
+                'Delete',
+                style: TextStyle(color: Colors.redAccent),
+              ),
             ),
-          ),
         ],
       ),
     );

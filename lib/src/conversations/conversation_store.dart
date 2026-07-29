@@ -10,6 +10,15 @@ import 'package:path_provider/path_provider.dart';
 
 enum ConversationRole { user, assistant }
 
+enum ConversationMessageStatus {
+  complete,
+  generating,
+  stopped,
+  interrupted,
+  tokenLimited,
+  failed,
+}
+
 @immutable
 class ConversationMessage {
   const ConversationMessage({
@@ -18,6 +27,10 @@ class ConversationMessage {
     required this.text,
     required this.createdAt,
     this.modelTier = 'Finn AI',
+    this.status = ConversationMessageStatus.complete,
+    this.generationId,
+    this.finishReason,
+    this.continuationCount = 0,
   });
 
   final String id;
@@ -25,15 +38,30 @@ class ConversationMessage {
   final String text;
   final DateTime createdAt;
   final String modelTier;
+  final ConversationMessageStatus status;
+  final String? generationId;
+  final String? finishReason;
+  final int continuationCount;
 
-  ConversationMessage copyWith({String? text, String? modelTier}) =>
-      ConversationMessage(
-        id: id,
-        role: role,
-        text: text ?? this.text,
-        createdAt: createdAt,
-        modelTier: modelTier ?? this.modelTier,
-      );
+  ConversationMessage copyWith({
+    String? text,
+    String? modelTier,
+    ConversationMessageStatus? status,
+    String? generationId,
+    String? finishReason,
+    bool clearFinishReason = false,
+    int? continuationCount,
+  }) => ConversationMessage(
+    id: id,
+    role: role,
+    text: text ?? this.text,
+    createdAt: createdAt,
+    modelTier: modelTier ?? this.modelTier,
+    status: status ?? this.status,
+    generationId: generationId ?? this.generationId,
+    finishReason: clearFinishReason ? null : finishReason ?? this.finishReason,
+    continuationCount: continuationCount ?? this.continuationCount,
+  );
 
   Map<String, Object?> toJson() => {
     'id': id,
@@ -41,6 +69,10 @@ class ConversationMessage {
     'text': text,
     'createdAt': createdAt.toIso8601String(),
     'modelTier': modelTier,
+    'status': status.name,
+    if (generationId != null) 'generationId': generationId,
+    if (finishReason != null) 'finishReason': finishReason,
+    'continuationCount': continuationCount,
   };
 
   factory ConversationMessage.fromJson(Map<String, Object?> json) =>
@@ -50,6 +82,13 @@ class ConversationMessage {
         text: json['text'] as String,
         createdAt: DateTime.parse(json['createdAt'] as String),
         modelTier: (json['modelTier'] as String?) ?? 'Finn AI',
+        status: ConversationMessageStatus.values.byName(
+          (json['status'] as String?) ??
+              ConversationMessageStatus.complete.name,
+        ),
+        generationId: json['generationId'] as String?,
+        finishReason: json['finishReason'] as String?,
+        continuationCount: (json['continuationCount'] as int?) ?? 0,
       );
 }
 
@@ -220,6 +259,8 @@ class ConversationStore extends ChangeNotifier {
   FinnConversation? get active => _activeId == null
       ? null
       : _conversations.where((item) => item.id == _activeId).firstOrNull;
+  FinnConversation? conversationById(String id) =>
+      _conversations.where((item) => item.id == id).firstOrNull;
 
   bool get storageError => _storageError;
   String? get storageErrorMessage => _storageErrorMessage;
@@ -346,6 +387,9 @@ class ConversationStore extends ChangeNotifier {
       _storageError = true;
       _storageErrorMessage = 'Failed to load conversation store: $e';
       debugPrint(_storageErrorMessage);
+    }
+    if (!_storageError && _reconcileInterruptedGenerations()) {
+      await flush();
     }
     _initialized = true;
     notifyListeners();
@@ -504,8 +548,27 @@ class ConversationStore extends ChangeNotifier {
   ConversationMessage beginExchange(
     String userText, {
     String modelTier = 'Finn AI',
+    String? generationId,
   }) {
     final conversation = active ?? startNew();
+    return beginExchangeInConversation(
+      conversation.id,
+      userText,
+      modelTier: modelTier,
+      generationId: generationId,
+    );
+  }
+
+  ConversationMessage beginExchangeInConversation(
+    String conversationId,
+    String userText, {
+    String modelTier = 'Finn AI',
+    String? generationId,
+  }) {
+    final conversation = conversationById(conversationId);
+    if (conversation == null) {
+      throw StateError('Conversation $conversationId no longer exists.');
+    }
     final now = DateTime.now();
     final user = ConversationMessage(
       id: now.microsecondsSinceEpoch.toString(),
@@ -520,6 +583,8 @@ class ConversationStore extends ChangeNotifier {
       text: '',
       createdAt: now,
       modelTier: modelTier,
+      status: ConversationMessageStatus.generating,
+      generationId: generationId,
     );
     final title = conversation.messages.isEmpty
         ? _title(userText)
@@ -544,33 +609,114 @@ class ConversationStore extends ChangeNotifier {
   }) {
     final conversation = active;
     if (conversation == null) return;
-    final index = conversation.messages.indexWhere((item) => item.id == id);
-    if (index < 0) return;
+    updateMessageInConversation(
+      conversation.id,
+      id,
+      text,
+      modelTier: modelTier,
+      persistSoon: persistSoon,
+      notify: notify,
+    );
+  }
+
+  bool updateMessageInConversation(
+    String conversationId,
+    String messageId,
+    String text, {
+    String? expectedGenerationId,
+    String? modelTier,
+    ConversationMessageStatus? status,
+    String? finishReason,
+    int? continuationCount,
+    bool persistSoon = false,
+    bool notify = true,
+  }) {
+    final conversation = conversationById(conversationId);
+    if (conversation == null) return false;
+    final index = conversation.messages.indexWhere(
+      (item) => item.id == messageId,
+    );
+    if (index < 0) return false;
+    final previous = conversation.messages[index];
+    if (previous.role != ConversationRole.assistant ||
+        (expectedGenerationId != null &&
+            previous.generationId != expectedGenerationId)) {
+      return false;
+    }
     final messages = [...conversation.messages];
-    messages[index] = messages[index].copyWith(
+    messages[index] = previous.copyWith(
       text: text,
-      modelTier: modelTier ?? messages[index].modelTier,
+      modelTier: modelTier ?? previous.modelTier,
+      status: status,
+      finishReason: finishReason,
+      continuationCount: continuationCount,
     );
     _replace(
       conversation.copyWith(updatedAt: DateTime.now(), messages: messages),
     );
     if (notify) notifyListeners();
     if (persistSoon) _scheduleSave();
+    return true;
+  }
+
+  ConversationMessage? beginContinuation({
+    required String conversationId,
+    required String messageId,
+    required String generationId,
+  }) {
+    final conversation = conversationById(conversationId);
+    if (conversation == null) return null;
+    final index = conversation.messages.indexWhere(
+      (message) =>
+          message.id == messageId &&
+          message.role == ConversationRole.assistant &&
+          message.status == ConversationMessageStatus.tokenLimited &&
+          message.continuationCount < 1,
+    );
+    if (index < 0) return null;
+    final messages = [...conversation.messages];
+    messages[index] = messages[index].copyWith(
+      generationId: generationId,
+      status: ConversationMessageStatus.generating,
+      clearFinishReason: true,
+      continuationCount: messages[index].continuationCount + 1,
+    );
+    _replace(
+      conversation.copyWith(updatedAt: DateTime.now(), messages: messages),
+    );
+    _changed();
+    return messages[index];
   }
 
   void removeMessage(String id) {
     final conversation = active;
-    if (conversation == null ||
-        !conversation.messages.any((message) => message.id == id)) {
-      return;
+    if (conversation == null) return;
+    removeMessageInConversation(conversation.id, id);
+  }
+
+  bool removeMessageInConversation(
+    String conversationId,
+    String messageId, {
+    String? expectedGenerationId,
+  }) {
+    final conversation = conversationById(conversationId);
+    if (conversation == null) return false;
+    final target = conversation.messages
+        .where((message) => message.id == messageId)
+        .firstOrNull;
+    if (target == null ||
+        (expectedGenerationId != null &&
+            target.generationId != expectedGenerationId)) {
+      return false;
     }
     final messages = conversation.messages
-        .where((message) => message.id != id)
+        .where((message) => message.id != messageId)
         .toList(growable: false);
     _replace(
       conversation.copyWith(updatedAt: DateTime.now(), messages: messages),
     );
     _changed();
+    return true;
   }
 
   void renameConversation(String id, String newTitle) {
@@ -582,12 +728,20 @@ class ConversationStore extends ChangeNotifier {
     _changed();
   }
 
-  void deleteConversation(String id) {
+  bool deleteConversation(String id) {
+    final conversation = conversationById(id);
+    if (conversation == null ||
+        conversation.messages.any(
+          (message) => message.status == ConversationMessageStatus.generating,
+        )) {
+      return false;
+    }
     _conversations.removeWhere((item) => item.id == id);
     if (_activeId == id) {
       _activeId = _conversations.firstOrNull?.id;
     }
     _changed();
+    return true;
   }
 
   void clearAll() {
@@ -707,6 +861,35 @@ class ConversationStore extends ChangeNotifier {
     if (_storageError) return;
     _saveDebounce?.cancel();
     _saveDebounce = Timer(const Duration(milliseconds: 420), flush);
+  }
+
+  bool _reconcileInterruptedGenerations() {
+    var changed = false;
+    for (
+      var conversationIndex = 0;
+      conversationIndex < _conversations.length;
+      conversationIndex++
+    ) {
+      final conversation = _conversations[conversationIndex];
+      final messages = [
+        for (final message in conversation.messages)
+          if (message.status == ConversationMessageStatus.generating)
+            message.copyWith(
+              status: ConversationMessageStatus.interrupted,
+              finishReason: 'interrupted',
+            )
+          else
+            message,
+      ];
+      if (!listEquals(messages, conversation.messages)) {
+        changed = true;
+        _conversations[conversationIndex] = conversation.copyWith(
+          updatedAt: DateTime.now(),
+          messages: messages,
+        );
+      }
+    }
+    return changed;
   }
 
   Future<File> _file({required String filename}) async {

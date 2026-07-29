@@ -717,6 +717,7 @@ class BonsaiInference extends ChangeNotifier {
               )
               .listen(
                 (event) {
+                  if (generationEpoch != _generationEpoch) return;
                   if (event case TokenEvent(:final text)) {
                     emittedTokens++;
                     if (text.isNotEmpty && firstTokenAt == null) {
@@ -842,6 +843,31 @@ class BonsaiInference extends ChangeNotifier {
         _phase == InferencePhase.loading) {
       _setStatus(InferencePhase.idle, 'Stopped');
     }
+  }
+
+  /// Quarantines a generator that did not acknowledge cancellation promptly.
+  ///
+  /// [LlamaEngine.dispose] closes its streams and kills the worker isolate
+  /// after its own bounded two-second shutdown handshake. The runtime map is
+  /// cleared before awaiting disposal, so stale sessions cannot be reused.
+  Future<void> resetAfterCancellationTimeout() async {
+    _generationEpoch++;
+    final generation = _generation;
+    _generation = null;
+    unawaited(generation?.cancel());
+    final output = _activeOutput;
+    _activeOutput = null;
+    if (output != null && !output.isClosed) await output.close();
+
+    _runtimeEpoch++;
+    final runtimes = _runtimes.values.toList(growable: false);
+    _runtimes.clear();
+    _loadJobs.clear();
+    for (final runtime in runtimes) {
+      await runtime.engine.dispose();
+    }
+    _replyInFlight = false;
+    _setStatus(InferencePhase.idle, 'Ready after runtime reset');
   }
 
   void _markCancelled() {

@@ -139,6 +139,34 @@ void main() {
     );
   });
 
+  test(
+    'hardware guidance asks for exact model and avoids invented internals',
+    () {
+      const prompts = [
+        'Can you tell me how to upgrade the RAM in my laptop?',
+        'How do I replace my laptop SSD?',
+        'How do I replace my phone battery?',
+        'Come posso aggiornare la RAM del portatile?',
+        'Come posso sostituire l’SSD del portatile?',
+        'Come posso sostituire la batteria del telefono?',
+      ];
+      for (final prompt in prompts) {
+        final analysis = classifier.classify(prompt);
+        expect(analysis.intent, PromptIntent.howTo, reason: prompt);
+        expect(analysis.hardwareGuidance, isTrue, reason: prompt);
+        final rendered = BonsaiInference.instance.renderPromptForTest(
+          prompt: prompt,
+        );
+        expect(rendered, contains('exact manufacturer and model'));
+        expect(rendered, contains('service manual'));
+        expect(rendered, contains('RAM may be soldered, socketed'));
+        expect(rendered, contains('never assume two slots'));
+        expect(rendered, contains('electrostatic precautions'));
+        expect(rendered, contains('disconnecting external and internal power'));
+      }
+    },
+  );
+
   test('samplers are factual, chat, and creative intent-sensitive', () {
     final recipe = PromptIntentPolicy.sampler(PromptIntent.recipe);
     final chat = PromptIntentPolicy.sampler(PromptIntent.quickQuestion);
