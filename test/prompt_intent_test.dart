@@ -95,28 +95,28 @@ void main() {
       inference.outputBudgetForTest(
         'Come fare una torta di ricotta e fragole?',
       ),
-      320,
+      2048,
     );
     expect(
       inference.outputBudgetForTest(
         'Write a careful comparison.',
         tier: BonsaiTier.plus,
       ),
-      512,
+      4096,
     );
     expect(
       inference.outputBudgetForTest(
         'Analyze this complex program.',
         tier: BonsaiTier.pro,
       ),
-      768,
+      8092,
     );
     expect(
       inference.outputBudgetForTest(
         'Come fare una torta di ricotta e fragole?',
         supported: false,
       ),
-      160,
+      2048,
     );
   });
 

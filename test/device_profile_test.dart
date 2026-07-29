@@ -17,9 +17,32 @@ void main() {
 
     expect(plan.tier, BonsaiTier.plus);
     expect(plan.contextSize, 4096);
-    expect(plan.threads, 4);
-    expect(plan.batchThreads, 6);
+    expect(plan.threads, 5);
+    expect(plan.batchThreads, 8);
   });
+
+  test(
+    'thermally constrained balanced hardware uses the measured safe plan',
+    () {
+      const profile = DeviceProfile(
+        totalRamBytes: 8000000000,
+        availableRamBytes: 5000000000,
+        processor: ProcessorClass.balanced,
+        soc: 'Qualcomm SM7250 Snapdragon 765G',
+        cores: 8,
+        lowMemory: false,
+        thermalStatus: 3,
+        thermalHeadroom: .9,
+      );
+
+      final plan = DeviceProfiler.plan(profile);
+
+      expect(plan.threads, 4);
+      expect(plan.batchThreads, 4);
+      expect(plan.batchSize, 256);
+      expect(plan.microBatchSize, 128);
+    },
+  );
 
   test('processor tier caps model even when RAM is plentiful', () {
     const profile = DeviceProfile(
@@ -36,7 +59,7 @@ void main() {
     expect(plan.contextSize, 4096);
     expect(plan.threads, 3);
     expect(plan.batchSize, 256);
-    expect(plan.maxOutputTokens, 320);
+    expect(plan.maxOutputTokens, 2048);
     expect(plan.tokenPaintIntervalMs, 80);
   });
 
@@ -87,6 +110,16 @@ void main() {
         BonsaiTier.pro,
       );
       expect(inference.fastRouteForTest('Hello!'), BonsaiTier.lite);
+      expect(
+        inference.fastRouteForTest('Translate this sentence into Italian.'),
+        BonsaiTier.plus,
+      );
+      expect(
+        inference.fastRouteForTest(
+          'Can you tell me how to upgrade the RAM in my laptop?',
+        ),
+        BonsaiTier.plus,
+      );
     },
   );
 }

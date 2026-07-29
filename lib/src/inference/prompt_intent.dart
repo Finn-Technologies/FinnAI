@@ -453,12 +453,12 @@ class PromptIntentPolicy {
   static int desiredOutputTokens(PromptIntent intent) => switch (intent) {
     PromptIntent.greeting => 96,
     PromptIntent.quickQuestion || PromptIntent.translation => 224,
-    PromptIntent.recipe || PromptIntent.howTo => 320,
-    PromptIntent.writing || PromptIntent.comparison => 512,
+    PromptIntent.recipe || PromptIntent.howTo => 2048,
+    PromptIntent.writing || PromptIntent.comparison => 4096,
     PromptIntent.coding ||
     PromptIntent.analysis ||
-    PromptIntent.highStakes => 768,
-    PromptIntent.creative => 512,
+    PromptIntent.highStakes => 8092,
+    PromptIntent.creative => 4096,
   };
 
   static IntentSamplerProfile sampler(PromptIntent intent) => switch (intent) {

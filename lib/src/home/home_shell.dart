@@ -9,6 +9,7 @@ import '../conversations/conversation_store.dart';
 import '../creations/creations_page.dart';
 import '../generation/chat_generation_controller.dart';
 import '../inference/bonsai_inference.dart';
+import '../inference/residency_policy.dart';
 import '../privacy/ad_consent_service.dart';
 import '../reporting/report_dialog.dart';
 import '../settings/settings_page.dart';
@@ -78,7 +79,6 @@ class _HomeShellState extends State<HomeShell>
     if (widget.initializeServices) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         unawaited(_initializeStores());
-        _schedulePrewarm();
         unawaited(AdConsentService.instance.initializeConsentAndAds());
       });
     }
@@ -86,7 +86,13 @@ class _HomeShellState extends State<HomeShell>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.detached) {
+    final residencyAction = residencyActionFor(switch (state) {
+      AppLifecycleState.detached => ResidencyLifecycleEvent.detached,
+      AppLifecycleState.paused => ResidencyLifecycleEvent.paused,
+      AppLifecycleState.resumed => ResidencyLifecycleEvent.resumed,
+      _ => ResidencyLifecycleEvent.inactive,
+    });
+    if (residencyAction == ResidencyLifecycleAction.releaseNow) {
       _memoryReleaseTimer?.cancel();
       _prewarmTimer?.cancel();
       unawaited(_generation.flushActive());
@@ -95,7 +101,10 @@ class _HomeShellState extends State<HomeShell>
         state == AppLifecycleState.paused) {
       _prewarmTimer?.cancel();
       unawaited(_generation.flushActive());
-      if (state != AppLifecycleState.paused) return;
+      if (residencyAction !=
+          ResidencyLifecycleAction.scheduleBackgroundRelease) {
+        return;
+      }
       _memoryReleaseTimer?.cancel();
       final profile = _inference.deviceProfile;
       final constrained =
@@ -116,7 +125,7 @@ class _HomeShellState extends State<HomeShell>
     _prewarmTimer?.cancel();
     _memoryReleaseTimer?.cancel();
     if (!_generation.busy) {
-      unawaited(_inference.releaseMemory());
+      unawaited(_inference.handleMemoryPressure());
     }
   }
 
@@ -128,6 +137,7 @@ class _HomeShellState extends State<HomeShell>
     ]);
     if (!mounted) return;
     setState(() => _storesReady = true);
+    _schedulePrewarm();
   }
 
   void _releaseMemoryWhenIdle() {
@@ -168,7 +178,15 @@ class _HomeShellState extends State<HomeShell>
   }
 
   void _generationChanged() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    setState(() {});
+    final trace = _generation.activeTrace;
+    if (trace?.hasUiPaintScheduled == true &&
+        trace?.hasUiPaintCompleted == false) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _generation.markFirstVisiblePaintCompleted();
+      });
+    }
   }
 
   Future<void> _send() async {
@@ -185,6 +203,9 @@ class _HomeShellState extends State<HomeShell>
         );
       return;
     }
+    final timing = _generation.createTtftTrace(
+      _conversations.active?.id ?? 'new-conversation',
+    );
     _prewarmTimer?.cancel();
 
     setState(() => _preparing = true);
@@ -197,7 +218,7 @@ class _HomeShellState extends State<HomeShell>
     _storesReady = true;
     final systemContext = [
       YouProfileStore.instance.promptContext,
-      SkillsStore.instance.activePromptContext,
+      SkillsStore.instance.promptContextFor(value),
     ].where((item) => item.trim().isNotEmpty).join('\n\n');
     final missing = <BonsaiModel>[];
     for (final model in _inference.requiredModels) {
@@ -252,10 +273,27 @@ class _HomeShellState extends State<HomeShell>
     if (mounted) setState(() => _preparing = false);
     if (!mounted) return;
 
+    final profile = _inference.deviceProfile;
+    final thermal = thermalPolicyForStatus(
+      profile?.thermalStatus,
+      profile?.thermalHeadroom,
+    );
+    if (thermal.message != null) {
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(thermal.message!),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+    }
+
     final conversation = _conversations.active ?? _conversations.startNew();
     final history = [
       for (final message in conversation.messages)
-        LocalChatTurn(role: message.role.name, content: message.text),
+        if (message.text.trim().isNotEmpty)
+          LocalChatTurn(role: message.role.name, content: message.text),
     ];
 
     _focusNode.unfocus();
@@ -265,6 +303,7 @@ class _HomeShellState extends State<HomeShell>
       prompt: value,
       history: history,
       systemContext: systemContext,
+      trace: timing,
     );
   }
 
@@ -289,11 +328,12 @@ class _HomeShellState extends State<HomeShell>
     if (latestUser == null) return;
     final history = [
       for (final message in conversation.messages)
-        LocalChatTurn(role: message.role.name, content: message.text),
+        if (message.text.trim().isNotEmpty)
+          LocalChatTurn(role: message.role.name, content: message.text),
     ];
     final systemContext = [
       YouProfileStore.instance.promptContext,
-      SkillsStore.instance.activePromptContext,
+      SkillsStore.instance.promptContextFor(latestUser.text),
     ].where((item) => item.trim().isNotEmpty).join('\n\n');
     await _generation.continueResponse(
       conversationId: conversation.id,

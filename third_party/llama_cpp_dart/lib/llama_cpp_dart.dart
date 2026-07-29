@@ -1,0 +1,74 @@
+/// Dart FFI binding for llama.cpp targeting iOS, Android, and macOS.
+///
+/// Public API surface for the v1.0 rewrite. See `plan.md` for the full
+/// architecture.
+library;
+
+export 'src/adapter/lora.dart' show LlamaLora, LoraBinding;
+export 'src/batch/batch.dart' show LlamaBatch;
+export 'src/chat/chat_message.dart' show ChatMessage;
+export 'src/chat/chat_template.dart' show ChatTemplate, ChatTemplateException;
+export 'src/chat/known_templates.dart' show KnownChatTemplates;
+export 'src/context/context.dart' show LlamaContext;
+export 'src/context/context_params.dart'
+    show
+        AttentionType,
+        ContextParams,
+        FlashAttention,
+        KvCacheType,
+        PoolingType,
+        RopeScalingType;
+export 'src/diagnostics/perf.dart' show ContextPerf, SamplerPerf;
+export 'src/ffi/backends.dart'
+    show BackendDevice, BackendDeviceType, LlamaBackends;
+export 'src/ffi/bindings.dart' show LlamaBindings;
+export 'src/ffi/library_loader.dart' show LlamaLibrary, NumaStrategy;
+export 'src/ffi/log.dart' show LlamaLog, LlamaLogException;
+export 'src/generation/batch_embedder.dart' show BatchEmbedder;
+export 'src/generation/context_shift.dart'
+    show ContextShift, ContextShiftPolicy;
+export 'src/generation/embedding.dart' show EmbeddingResult;
+export 'src/generation/event.dart'
+    show DoneEvent, GenerationEvent, ShiftEvent, TokenEvent;
+export 'src/generation/generator.dart' show Generator;
+export 'src/generation/request.dart' show Request;
+export 'src/generation/speculative.dart'
+    show SpeculativeDecoder, SpeculativeResult;
+export 'src/generation/stop.dart'
+    show StopReason, StopEog, StopMaxTokens, StopUserAbort;
+export 'src/isolate/engine.dart'
+    show EngineChat, EngineSession, LlamaEngine, SessionPrefillResult;
+export 'src/model/model.dart' show LlamaModel;
+export 'src/model/model_params.dart'
+    show KvOverride, KvOverrideType, ModelParams, RopeType, SplitMode;
+export 'src/model/split_path.dart' show SplitPath;
+export 'src/model/vocab.dart' show LlamaVocab;
+export 'src/multimodal/media.dart' show LlamaMedia, MediaKind;
+export 'src/multimodal/mtmd_bitmap.dart' show MtmdBitmap, MtmdCapabilities;
+export 'src/multimodal/mtmd_chunks.dart'
+    show MtmdChunk, MtmdChunkKind, MtmdChunkOwned, MtmdChunks;
+export 'src/multimodal/multimodal_context.dart'
+    show MultimodalContext, MultimodalException;
+export 'src/multimodal/multimodal_params.dart' show MultimodalParams;
+export 'src/sampling/sampler.dart' show Sampler;
+export 'src/sampling/sampler_factory.dart' show SamplerFactory;
+export 'src/sampling/sampler_params.dart'
+    show
+        AdaptivePConfig,
+        DryConfig,
+        DynamicTempConfig,
+        GrammarConfig,
+        LogitBiasEntry,
+        MirostatConfig,
+        MirostatVersion,
+        SamplerParams,
+        XtcConfig,
+        defaultSeed;
+export 'src/session/session.dart' show LlamaSession;
+export 'src/session/state_codec.dart'
+    show LlamaStateError, LlamaStateException, StateMetadata, stateCodecVersion;
+export 'src/session/state_seq_flags.dart' show StateSeqFlags;
+export 'src/tokenizer/tokenizer.dart' show Tokenizer;
+export 'src/tokenizer/utf8_accumulator.dart' show Utf8Accumulator;
+export 'src/types/exceptions.dart';
+export 'src/version.dart' show LlamaVersion;

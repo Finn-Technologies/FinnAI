@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../conversations/conversation_store.dart';
 import '../inference/bonsai_inference.dart';
 import '../inference/prompt_intent.dart';
+import '../inference/ttft_metrics.dart';
 
 enum ChatGenerationState { preparing, generating, stopping, complete, error }
 
@@ -97,6 +98,7 @@ abstract interface class ChatInferenceRuntime implements Listenable {
     required List<LocalChatTurn> history,
     required String systemContext,
     PromptAnalysis? promptAnalysis,
+    TtftTrace? trace,
   });
 
   Future<void> stopGeneration();
@@ -132,12 +134,14 @@ class BonsaiChatInferenceRuntime implements ChatInferenceRuntime {
     required List<LocalChatTurn> history,
     required String systemContext,
     PromptAnalysis? promptAnalysis,
+    TtftTrace? trace,
   }) => inference.generateReply(
     prompt,
     conversationId: conversationId,
     history: history,
     systemContext: systemContext,
     promptAnalysis: promptAnalysis,
+    trace: trace,
   );
 
   @override
@@ -185,6 +189,12 @@ class ChatGenerationController extends ChangeNotifier {
   var _disposed = false;
   CancellationMetrics? _lastCancellationMetrics;
   CancellationMetrics? get lastCancellationMetrics => _lastCancellationMetrics;
+  TtftTrace? _activeTrace;
+  TtftTrace? get activeTrace => _activeTrace;
+  TtftTrace? get lastTtftTrace => _activeTrace;
+
+  TtftTrace createTtftTrace(String conversationId) =>
+      TtftTrace(generationId: _nextId(), conversationId: conversationId);
 
   String get progressLabel {
     final current = activeJob;
@@ -205,9 +215,13 @@ class ChatGenerationController extends ChangeNotifier {
     required String prompt,
     required List<LocalChatTurn> history,
     required String systemContext,
+    TtftTrace? trace,
   }) async {
     if (busy) return null;
-    final generationId = _nextId();
+    final timing = trace ?? createTtftTrace(conversationId);
+    final generationId = timing.generationId;
+    final analysis = const PromptIntentClassifier().classify(prompt);
+    timing.mark(TtftPhase.intentClassified);
     final assistant = conversations.beginExchangeInConversation(
       conversationId,
       prompt,
@@ -222,9 +236,10 @@ class ChatGenerationController extends ChangeNotifier {
       runtimePrompt: prompt,
       history: history,
       systemContext: systemContext,
-      analysis: const PromptIntentClassifier().classify(prompt),
+      analysis: analysis,
       initialText: '',
       continuationCount: 0,
+      trace: timing,
     );
   }
 
@@ -237,6 +252,12 @@ class ChatGenerationController extends ChangeNotifier {
   }) async {
     if (busy) return null;
     final generationId = _nextId();
+    final timing = TtftTrace(
+      generationId: generationId,
+      conversationId: conversationId,
+    );
+    final analysis = const PromptIntentClassifier().classify(originalPrompt);
+    timing.mark(TtftPhase.intentClassified);
     final assistant = conversations.beginContinuation(
       conversationId: conversationId,
       messageId: assistantMessageId,
@@ -251,9 +272,10 @@ class ChatGenerationController extends ChangeNotifier {
       runtimePrompt: BonsaiInference.continuationPrompt,
       history: history,
       systemContext: systemContext,
-      analysis: const PromptIntentClassifier().classify(originalPrompt),
+      analysis: analysis,
       initialText: assistant.text,
       continuationCount: assistant.continuationCount,
+      trace: timing,
     );
   }
 
@@ -268,9 +290,11 @@ class ChatGenerationController extends ChangeNotifier {
     required PromptAnalysis analysis,
     required String initialText,
     required int continuationCount,
+    required TtftTrace trace,
   }) {
     final epoch = ++_epoch;
     _lateTokenCount = 0;
+    _activeTrace = trace;
     _job = ChatGenerationJob(
       generationId: generationId,
       conversationId: conversationId,
@@ -293,6 +317,7 @@ class ChatGenerationController extends ChangeNotifier {
           history: history,
           systemContext: systemContext,
           promptAnalysis: analysis,
+          trace: trace,
         )
         .listen(
           (token) => _token(generationId, epoch, token),
@@ -308,6 +333,7 @@ class ChatGenerationController extends ChangeNotifier {
   }
 
   void _token(String generationId, int epoch, String token) {
+    if (token.isEmpty) return;
     final current = _job;
     if (current == null ||
         current.generationId != generationId ||
@@ -323,7 +349,21 @@ class ChatGenerationController extends ChangeNotifier {
       modelName: runtime.lastGeneratingModelName,
     );
     _schedulePersistence();
-    _scheduleNotify();
+    if (current.responseText.isEmpty) {
+      _notifyTimer?.cancel();
+      _notifyTimer = null;
+      _activeTrace?.mark(TtftPhase.uiPaintScheduled);
+      if (!_disposed) notifyListeners();
+    } else {
+      _scheduleNotify();
+    }
+  }
+
+  void markFirstVisiblePaintCompleted() {
+    final trace = _activeTrace;
+    if (trace == null || trace.hasUiPaintCompleted) return;
+    trace.mark(TtftPhase.uiPaintCompleted);
+    trace.report();
   }
 
   void _runtimeChanged() {

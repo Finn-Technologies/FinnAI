@@ -49,6 +49,19 @@ void main() {
     expect(store.skills.where((skill) => skill.builtIn), hasLength(4));
   });
 
+  test('prompt context includes only skills relevant to the request', () async {
+    final store = SkillsStore(directoryProvider: () async => directory);
+    await store.initialize();
+    await store.setEnabled('builtin-coding', true);
+    await store.setEnabled('builtin-writing', true);
+
+    final coding = store.promptContextFor('Debug this Flutter code');
+    expect(coding, contains('Coding partner'));
+    expect(coding, isNot(contains('Clear writing')));
+
+    expect(store.promptContextFor('What time is sunset?'), isEmpty);
+  });
+
   test('custom skills respect the four-active limit and prompt cap', () async {
     final store = SkillsStore(directoryProvider: () async => directory);
     await store.initialize();

@@ -256,11 +256,65 @@ class SkillsStore extends ChangeNotifier {
 
   /// Prompt fragment consumed by the inference layer.
   String get activePromptContext {
-    final active = enabledSkills.take(4);
-    if (active.isEmpty) return '';
+    return _promptContext(enabledSkills.take(4));
+  }
+
+  String promptContextFor(String prompt) {
+    final value = prompt.toLowerCase();
+    final relevant = enabledSkills
+        .where((skill) {
+          final signals = switch (skill.id) {
+            'builtin-writing' => const [
+              'write',
+              'rewrite',
+              'edit',
+              'message',
+              'scrivi',
+              'écris',
+            ],
+            'builtin-coding' => const [
+              'code',
+              'program',
+              'software',
+              'debug',
+              'flutter',
+              'python',
+              'swift',
+            ],
+            'builtin-learning' => const [
+              'learn',
+              'explain',
+              'teach',
+              'study',
+              'impar',
+              'spiega',
+            ],
+            'builtin-planning' => const [
+              'plan',
+              'schedule',
+              'roadmap',
+              'organize',
+              'piano',
+              'programma',
+            ],
+            _ => [
+              ...skill.name.toLowerCase().split(RegExp(r'\W+')),
+              ...skill.category.toLowerCase().split(RegExp(r'\W+')),
+              ...skill.description.toLowerCase().split(RegExp(r'\W+')),
+            ].where((word) => word.length >= 4),
+          };
+          return signals.any(value.contains);
+        })
+        .take(4);
+    return _promptContext(relevant);
+  }
+
+  String _promptContext(Iterable<FinnSkill> active) {
+    final selected = active.toList(growable: false);
+    if (selected.isEmpty) return '';
     final lines = <String>[
       'Active user-selected skills:',
-      for (final skill in active)
+      for (final skill in selected)
         '- ${skill.name}: ${skill.instructions.trim().substring(0, math.min(500, skill.instructions.trim().length))}',
       'Apply a skill only when it is relevant to the current request. Safety and explicit user requests take priority.',
     ];

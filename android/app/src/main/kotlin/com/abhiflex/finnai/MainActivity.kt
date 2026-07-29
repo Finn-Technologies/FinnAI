@@ -3,6 +3,7 @@ package com.abhiflex.finnai
 import android.app.ActivityManager
 import android.content.Context
 import android.os.Build
+import android.os.PowerManager
 import android.os.StatFs
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -45,6 +46,16 @@ class MainActivity : FlutterActivity() {
                 memory.totalMem
             }
             val storage = StatFs(filesDir.absolutePath)
+            val power = getSystemService(Context.POWER_SERVICE) as PowerManager
+            val thermalStatus =
+                if (Build.VERSION.SDK_INT >= 29) power.currentThermalStatus else null
+            val thermalHeadroom =
+                if (Build.VERSION.SDK_INT >= 30) {
+                    val value = power.getThermalHeadroom(0)
+                    if (value.isFinite()) value else null
+                } else {
+                    null
+                }
             result.success(
                 mapOf(
                     "totalRamBytes" to totalMemory,
@@ -58,6 +69,8 @@ class MainActivity : FlutterActivity() {
                     "cores" to Runtime.getRuntime().availableProcessors(),
                     "supportedAbis" to Build.SUPPORTED_ABIS.toList(),
                     "sdk" to Build.VERSION.SDK_INT,
+                    "thermalStatus" to thermalStatus,
+                    "thermalHeadroom" to thermalHeadroom,
                 ),
             )
         }

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 
@@ -9,6 +10,8 @@ import 'package:path_provider/path_provider.dart';
 
 import 'device_profile.dart';
 import 'prompt_intent.dart';
+import 'residency_policy.dart';
+import 'ttft_metrics.dart';
 
 enum BonsaiTier { lite, plus, pro }
 
@@ -155,15 +158,62 @@ class ModelStorageState {
 }
 
 class _ModelRuntime {
-  _ModelRuntime(this.model, this.engine);
+  _ModelRuntime(
+    this.model,
+    this.engine, {
+    required this.compactKv,
+    required this.contextSize,
+    required this.modelSha256,
+  });
 
   final BonsaiModel model;
   final LlamaEngine engine;
-  EngineSession? session;
-  String? conversationId;
-  String privateContext = '';
-  int messageCount = 0;
+  final bool compactKv;
+  final int contextSize;
+  final String modelSha256;
+  final Map<String, _ConversationSession> sessions = {};
+  int useSequence = 0;
+}
+
+@immutable
+class PrefixStateReport {
+  const PrefixStateReport({
+    required this.cacheHit,
+    required this.tokens,
+    required this.fileBytes,
+    this.preparation = Duration.zero,
+    this.restoration = Duration.zero,
+    this.promptTokensPerSecond = 0,
+  });
+
+  final bool cacheHit;
+  final int tokens;
+  final int fileBytes;
+  final Duration preparation;
+  final Duration restoration;
+  final double promptTokensPerSecond;
+}
+
+class _ConversationSession {
+  _ConversationSession({
+    required this.session,
+    required this.sequenceId,
+    required this.conversationId,
+    required this.promptConfigurationHash,
+    required this.messageCount,
+    required this.lastUsed,
+    required this.basePrefixReady,
+  });
+
+  final EngineSession session;
+  final int sequenceId;
+  final String conversationId;
+  String promptConfigurationHash;
+  int messageCount;
   bool primed = false;
+  final bool basePrefixReady;
+  String? lastTaskInstruction;
+  int lastUsed;
 }
 
 class _GenerationCancelled implements Exception {
@@ -183,6 +233,12 @@ class BonsaiInference extends ChangeNotifier {
       'Continue exactly where the previous response stopped. Do not repeat '
       'the introduction or completed sections. Finish the requested answer '
       'in the same language and format.';
+  static const systemPromptVersion = 2;
+  static const chatTemplateVersion = 1;
+  static const _persistentPrefixCacheEnabled = bool.fromEnvironment(
+    'FINN_PREFIX_CACHE',
+    defaultValue: true,
+  );
 
   BonsaiModel _selected = bonsaiModels.first;
   BonsaiModel get selected => _selected;
@@ -212,6 +268,8 @@ class BonsaiInference extends ChangeNotifier {
 
   final Map<BonsaiTier, _ModelRuntime> _runtimes = {};
   final Map<BonsaiTier, Future<_ModelRuntime>> _loadJobs = {};
+  final DeduplicatedLoadJob<BonsaiTier, _ModelRuntime> _deduplicatedLoads =
+      DeduplicatedLoadJob<BonsaiTier, _ModelRuntime>();
   StreamSubscription<GenerationEvent>? _generation;
   StreamController<String>? _activeOutput;
   int _generationEpoch = 0;
@@ -331,14 +389,50 @@ class BonsaiInference extends ChangeNotifier {
     _downloadClient?.close(force: true);
   }
 
-  /// Preloads only the always-used router. Stronger installed models are
-  /// opened lazily on their first routed request and remain resident after it.
+  /// Maps the recommended/default model. Direct Plus requests therefore reuse
+  /// this exact load instead of first paying for an unrelated Lite engine.
   Future<void> prewarm() async {
-    final model = requiredModels.first;
-    if (!await isInstalled(model) || _runtimes.containsKey(model.tier)) return;
+    final profile = Platform.isAndroid
+        ? await DeviceProfiler.read()
+        : _deviceProfile;
+    if (profile != null) {
+      _deviceProfile = profile;
+      if (_runtimes.isEmpty) _plan = DeviceProfiler.plan(profile);
+    }
+    final thermal = thermalPolicyForStatus(
+      profile?.thermalStatus,
+      profile?.thermalHeadroom,
+    );
+    if (!thermal.allowPrewarm) return;
+    // The selected automatic tier is the product's recommended/default model.
+    // Loading Lite first made every direct Plus request pay two cold loads.
+    final model = _selected;
+    if (!await isInstalled(model)) return;
     final file = await _modelFile(model);
-    await _ensureLoaded(model, file.path);
+    final runtime = await _ensureLoaded(model, file.path);
+    await _prepareBasePrefixState(runtime);
     _setStatus(InferencePhase.idle, 'Ready');
+  }
+
+  Future<void> prewarmTier(BonsaiTier tier) async {
+    final model = bonsaiModels.firstWhere(
+      (candidate) => candidate.tier == tier,
+    );
+    if (!await isInstalled(model)) return;
+    final file = await _modelFile(model);
+    final runtime = await _ensureLoaded(model, file.path);
+    await _prepareBasePrefixState(runtime);
+    _setStatus(InferencePhase.idle, 'Ready');
+  }
+
+  Future<void> releaseConversationSessions() async {
+    for (final runtime in _runtimes.values) {
+      final sessions = runtime.sessions.values.toList(growable: false);
+      runtime.sessions.clear();
+      for (final entry in sessions) {
+        await entry.session.dispose();
+      }
+    }
   }
 
   /// Releases the large native context when the app leaves the foreground.
@@ -346,6 +440,49 @@ class BonsaiInference extends ChangeNotifier {
     _queueUnload();
     return _pendingUnload;
   }
+
+  /// Memory-pressure order: inactive sessions, active sessions, secondary
+  /// engines, and finally the selected/default engine.
+  Future<void> handleMemoryPressure() async {
+    for (final runtime in _runtimes.values) {
+      if (runtime.sessions.length <= 1) continue;
+      final newest = runtime.sessions.values.reduce(
+        (a, b) => a.lastUsed >= b.lastUsed ? a : b,
+      );
+      final inactive = runtime.sessions.values
+          .where((entry) => !identical(entry, newest))
+          .toList(growable: false);
+      for (final entry in inactive) {
+        runtime.sessions.remove(entry.conversationId);
+        await entry.session.dispose();
+      }
+    }
+    for (final runtime in _runtimes.values) {
+      final active = runtime.sessions.values.toList(growable: false);
+      runtime.sessions.clear();
+      for (final entry in active) {
+        await entry.session.dispose();
+      }
+    }
+    for (final tier in _runtimes.keys.toList(growable: false)) {
+      if (tier != _selected.tier) await _unloadModel(tier);
+    }
+    final profile = await DeviceProfiler.read();
+    _deviceProfile = profile;
+    if (profile.lowMemory) await _unloadModel(_selected.tier);
+  }
+
+  ModelResidencyLevel residencyFor(BonsaiTier tier) {
+    final runtime = _runtimes[tier];
+    if (runtime == null) return ModelResidencyLevel.unloaded;
+    if (runtime.sessions.values.any((entry) => entry.primed)) {
+      return ModelResidencyLevel.conversationWarm;
+    }
+    return ModelResidencyLevel.engineReady;
+  }
+
+  @visibleForTesting
+  bool get hasDuplicateLoadJobs => _deduplicatedLoads.activeJobCount > 1;
 
   Future<Set<String>> remove(BonsaiModel model) async {
     final failures = <String>{};
@@ -394,6 +531,7 @@ class BonsaiInference extends ChangeNotifier {
     List<LocalChatTurn> history = const [],
     String systemContext = '',
     PromptAnalysis? promptAnalysis,
+    TtftTrace? trace,
   }) async* {
     if (_replyInFlight) {
       throw StateError('Finn AI is already generating a response.');
@@ -406,6 +544,7 @@ class BonsaiInference extends ChangeNotifier {
         history: history,
         systemContext: systemContext,
         promptAnalysis: promptAnalysis,
+        trace: trace,
       );
     } finally {
       _replyInFlight = false;
@@ -459,14 +598,26 @@ class BonsaiInference extends ChangeNotifier {
     required List<LocalChatTurn> history,
     required String systemContext,
     PromptAnalysis? promptAnalysis,
+    TtftTrace? trace,
   }) async* {
     final analysis =
         promptAnalysis ?? const PromptIntentClassifier().classify(prompt);
-    await installRequiredModels();
-    await prewarm();
-
+    trace?.mark(TtftPhase.intentClassified);
     final models = requiredModels;
     final lite = models.first;
+    final fastRoute = models.length == 1
+        ? lite.tier
+        : _fastRoute(models, analysis);
+    trace
+      ?..modelTier = (fastRoute ?? BonsaiTier.lite).name
+      ..mark(TtftPhase.routeSelected);
+    if (Platform.isAndroid) {
+      final freshProfile = await DeviceProfiler.read();
+      _deviceProfile = freshProfile;
+      if (_runtimes.isEmpty) _plan = DeviceProfiler.plan(freshProfile);
+    }
+    await installRequiredModels();
+
     _lastGeneratingModel = lite;
 
     if (models.length == 1) {
@@ -478,7 +629,9 @@ class BonsaiInference extends ChangeNotifier {
           history: history,
           systemContext: systemContext,
           analysis: analysis,
+          trace: trace,
         ),
+        trace: trace,
       );
       return;
     }
@@ -486,7 +639,6 @@ class BonsaiInference extends ChangeNotifier {
     // Clear complex requests skip the costly generative routing pass. Lite
     // still decides ambiguous requests, while obvious writing/coding/reasoning
     // work reaches the capable model with one less prefill and less energy.
-    final fastRoute = _fastRoute(models, analysis);
     if (fastRoute != null) {
       final target = models.firstWhere((model) => model.tier == fastRoute);
       _lastGeneratingModel = target;
@@ -498,7 +650,9 @@ class BonsaiInference extends ChangeNotifier {
           history: history,
           systemContext: systemContext,
           analysis: analysis,
+          trace: trace,
         ),
+        trace: trace,
       );
       return;
     }
@@ -516,7 +670,9 @@ class BonsaiInference extends ChangeNotifier {
         router: true,
         systemContext: systemContext,
         analysis: analysis,
+        trace: trace,
       ),
+      trace: trace,
     )) {
       if (directAnswer) {
         yield token;
@@ -551,23 +707,29 @@ class BonsaiInference extends ChangeNotifier {
         history: history,
         systemContext: systemContext,
         analysis: analysis,
+        trace: trace,
       ),
+      trace: trace,
     )) {
       targetOutput.write(token);
       yield token;
     }
     final answer = targetOutput.toString();
-    await _appendRoutedAnswerToLite(answer);
+    await _appendRoutedAnswerToLite(answer, conversationId);
   }
 
   static const _routeMarkers = {'<FINN_PLUS>', '<FINN_PRO>'};
 
-  Stream<String> _cleanModelStream(Stream<String> source) async* {
+  Stream<String> _cleanModelStream(
+    Stream<String> source, {
+    TtftTrace? trace,
+  }) async* {
     final prefix = StringBuffer();
     var decided = false;
     var hidingThought = false;
     await for (final token in source) {
       if (decided) {
+        if (token.isNotEmpty) trace?.mark(TtftPhase.sanitizedToken);
         yield token;
         continue;
       }
@@ -580,6 +742,7 @@ class BonsaiInference extends ChangeNotifier {
           hidingThought = true;
         } else {
           decided = true;
+          if (trimmed.isNotEmpty) trace?.mark(TtftPhase.sanitizedToken);
           yield trimmed;
           continue;
         }
@@ -588,10 +751,14 @@ class BonsaiInference extends ChangeNotifier {
       if (close < 0) continue;
       final visible = buffered.substring(close + '</think>'.length).trimLeft();
       decided = true;
-      if (visible.isNotEmpty) yield visible;
+      if (visible.isNotEmpty) {
+        trace?.mark(TtftPhase.sanitizedToken);
+        yield visible;
+      }
     }
     // An unterminated reasoning block is intentionally not surfaced.
     if (!decided && !hidingThought && prefix.isNotEmpty) {
+      trace?.mark(TtftPhase.sanitizedToken);
       yield prefix.toString();
     }
   }
@@ -620,6 +787,7 @@ class BonsaiInference extends ChangeNotifier {
       PromptIntent.recipe,
       PromptIntent.howTo,
       PromptIntent.writing,
+      PromptIntent.translation,
       PromptIntent.comparison,
       PromptIntent.coding,
       PromptIntent.analysis,
@@ -652,6 +820,7 @@ class BonsaiInference extends ChangeNotifier {
     String systemContext = '',
     PromptAnalysis? analysis,
     String? modelPath,
+    TtftTrace? trace,
   }) {
     late StreamController<String> output;
     output = StreamController<String>(
@@ -683,29 +852,83 @@ class BonsaiInference extends ChangeNotifier {
           }
           _throwIfGenerationCancelled(generationEpoch);
           final path = modelPath ?? (await _modelFile(model)).path;
+          final alreadyResident = _runtimes.containsKey(model.tier);
+          trace
+            ?..modelTier = model.tier.name
+            ..modelAlreadyResident = alreadyResident
+            ..mark(TtftPhase.modelLoadRequested);
           final runtime = await _ensureLoaded(model, path);
+          trace?.mark(TtftPhase.modelReady);
           _throwIfGenerationCancelled(generationEpoch);
-          await _prepareSession(
+          final prepared = await _prepareSession(
             runtime,
             conversationId,
             history,
             systemContext,
+            router: router,
           );
+          trace
+            ?..conversationSessionCacheHit = prepared.cacheHit
+            ..basePrefixCacheHit = prepared.prefix.cacheHit
+            ..prefixStateTokens = prepared.prefix.tokens
+            ..prefixStateBytes = prepared.prefix.fileBytes
+            ..prefixStatePreparationMicros =
+                prepared.prefix.preparation.inMicroseconds
+            ..prefixStateRestorationMicros =
+                prepared.prefix.restoration.inMicroseconds
+            ..prefixPromptTokensPerSecond =
+                prepared.prefix.promptTokensPerSecond
+            ..mark(TtftPhase.sessionReady);
           _throwIfGenerationCancelled(generationEpoch);
-          final session = runtime.session!;
+          final entry = prepared.entry;
+          final session = entry.session;
+          final taskInstruction = PromptIntentPolicy.taskInstruction(
+            promptAnalysis,
+          );
+          final includeTaskInstruction =
+              !entry.primed || entry.lastTaskInstruction != taskInstruction;
           final renderedPrompt = _renderPrompt(
-            runtime,
+            entry,
             prompt,
             history,
             router: router,
             systemContext: systemContext,
             analysis: promptAnalysis,
+            includeTaskInstruction: includeTaskInstruction,
           );
+          final promptBreakdown = promptTokenBreakdownForTest(
+            prompt: prompt,
+            history: history,
+            router: router,
+            systemContext: systemContext,
+            primed: entry.primed,
+            basePrefixReady: entry.basePrefixReady,
+            includeTaskInstruction: includeTaskInstruction,
+          );
+          if (!kReleaseMode) {
+            debugPrint('FINN_PROMPT ${jsonEncode(promptBreakdown)}');
+          }
+          final profile = _deviceProfile;
+          final plan = _plan;
+          trace
+            ?..promptTokenCount = (renderedPrompt.length / 3.2).ceil()
+            ..thermalStatus = profile?.thermalStatus
+            ..thermalHeadroom = profile?.thermalHeadroom
+            ..availableRamBytes = profile?.availableRamBytes
+            ..lowMemory = profile?.lowMemory ?? false
+            ..threads = plan?.threads
+            ..batchThreads = plan?.batchThreads
+            ..batchSize = plan?.batchSize
+            ..microBatchSize = plan?.microBatchSize
+            ..kvType = runtime.compactKv ? 'q8_0' : 'f16'
+            ..flashAttention = plan?.flashAttention == true ? 'on' : 'off'
+            ..mark(TtftPhase.promptRendered);
           _setStatus(InferencePhase.generating, 'Thinking on this device');
+          trace?.mark(TtftPhase.generationRequested);
           _generation = session
               .generate(
                 prompt: renderedPrompt,
-                addSpecial: !runtime.primed,
+                addSpecial: !entry.primed && !entry.basePrefixReady,
                 parseSpecial: true,
                 maxTokens: outputBudget,
                 shiftPolicy: runtime.engine.canShift
@@ -720,6 +943,7 @@ class BonsaiInference extends ChangeNotifier {
                   if (generationEpoch != _generationEpoch) return;
                   if (event case TokenEvent(:final text)) {
                     emittedTokens++;
+                    trace?.mark(TtftPhase.nativeToken);
                     if (text.isNotEmpty && firstTokenAt == null) {
                       firstTokenAt = runWatch.elapsed;
                       if (!kReleaseMode) {
@@ -789,8 +1013,10 @@ class BonsaiInference extends ChangeNotifier {
                   if (identical(_activeOutput, output)) {
                     _activeOutput = null;
                   }
-                  runtime.primed = true;
-                  runtime.messageCount = history.length + 2;
+                  entry.primed = true;
+                  entry.lastTaskInstruction = taskInstruction;
+                  entry.messageCount = history.length + 2;
+                  entry.lastUsed = ++runtime.useSequence;
                   _setStatus(InferencePhase.idle, 'Generated locally');
                   unawaited(output.close());
                 },
@@ -1008,18 +1234,18 @@ class BonsaiInference extends ChangeNotifier {
     await _pendingUnload;
     final loaded = _runtimes[model.tier];
     if (loaded != null) return loaded;
-    final running = _loadJobs[model.tier];
-    if (running != null) return running;
-    final epoch = _runtimeEpoch;
-    final job = _loadModel(model, path, epoch);
-    _loadJobs[model.tier] = job;
-    try {
-      return await job;
-    } finally {
-      if (identical(_loadJobs[model.tier], job)) {
-        _loadJobs.remove(model.tier);
+    return _deduplicatedLoads.run(model.tier, () async {
+      final epoch = _runtimeEpoch;
+      final job = _loadModel(model, path, epoch);
+      _loadJobs[model.tier] = job;
+      try {
+        return await job;
+      } finally {
+        if (identical(_loadJobs[model.tier], job)) {
+          _loadJobs.remove(model.tier);
+        }
       }
-    }
+    });
   }
 
   Future<_ModelRuntime> _loadModel(
@@ -1029,10 +1255,7 @@ class BonsaiInference extends ChangeNotifier {
   ) async {
     final loaded = _runtimes[model.tier];
     if (loaded != null) return loaded;
-    _setStatus(
-      InferencePhase.loading,
-      'Optimizing ${model.name} for this device',
-    );
+    _setStatus(InferencePhase.loading, 'Loading ${model.name}');
 
     final profile = _deviceProfile ?? await DeviceProfiler.read();
     final hardwarePlan = _plan ?? DeviceProfiler.plan(profile);
@@ -1057,7 +1280,10 @@ class BonsaiInference extends ChangeNotifier {
         nUbatch: hardwarePlan.microBatchSize,
         nThreads: hardwarePlan.threads,
         nThreadsBatch: hardwarePlan.batchThreads,
-        flashAttn: compactKv ? FlashAttention.on : FlashAttention.auto,
+        nSeqMax: hardwarePlan.sessionCacheEntries,
+        flashAttn: hardwarePlan.flashAttention
+            ? (compactKv ? FlashAttention.on : FlashAttention.auto)
+            : FlashAttention.off,
         typeK: compactKv ? KvCacheType.q8_0 : KvCacheType.f16,
         typeV: compactKv ? KvCacheType.q8_0 : KvCacheType.f16,
         swaFull: false,
@@ -1066,41 +1292,261 @@ class BonsaiInference extends ChangeNotifier {
     );
 
     late final LlamaEngine engine;
+    var compactKv = hardwarePlan.compactKv;
     try {
-      engine = await spawn(compactKv: true);
+      engine = await spawn(compactKv: compactKv);
     } catch (_) {
+      if (!compactKv) rethrow;
       // Quantized KV/Flash Attention is not universal. The F16 retry is the
       // compatibility baseline for older chips and vendor runtimes.
+      compactKv = false;
       engine = await spawn(compactKv: false);
     }
     if (epoch != _runtimeEpoch) {
       await engine.dispose();
       throw StateError('Model loading was superseded by a memory release.');
     }
-    final runtime = _ModelRuntime(model, engine);
+    final modelSha256 = model.sha256Digest.isEmpty
+        ? await compute(_sha256File, path)
+        : model.sha256Digest;
+    final runtime = _ModelRuntime(
+      model,
+      engine,
+      compactKv: compactKv,
+      contextSize: context,
+      modelSha256: modelSha256,
+    );
     _runtimes[model.tier] = runtime;
     return runtime;
   }
 
-  Future<void> _prepareSession(
+  Future<
+    ({_ConversationSession entry, bool cacheHit, PrefixStateReport prefix})
+  >
+  _prepareSession(
     _ModelRuntime runtime,
     String conversationId,
     List<LocalChatTurn> history,
-    String systemContext,
-  ) async {
-    final privateContext = systemContext.trim();
+    String systemContext, {
+    required bool router,
+  }) async {
+    final privateContextHash = sha256
+        .convert(utf8.encode(systemContext.trim()))
+        .toString();
+    final commonConfiguration = _prefixCacheKey(runtime);
+    final configuration = sha256
+        .convert(
+          utf8.encode(
+            '${commonConfiguration.stableHash}|$privateContextHash|'
+            'mode=${router ? 'router' : 'direct'}',
+          ),
+        )
+        .toString();
+    final existing = runtime.sessions[conversationId];
     final historyMatches =
-        runtime.conversationId == conversationId &&
-        runtime.messageCount == history.length &&
-        runtime.privateContext == privateContext;
-    if (runtime.session != null && historyMatches) return;
-    await runtime.session?.dispose();
-    runtime.session = await runtime.engine.createSession();
-    runtime.conversationId = conversationId;
-    runtime.messageCount = history.length;
-    runtime.privateContext = privateContext;
-    runtime.primed = false;
+        existing != null &&
+        existing.messageCount == history.length &&
+        existing.promptConfigurationHash == configuration;
+    if (historyMatches) {
+      existing.lastUsed = ++runtime.useSequence;
+      return (
+        entry: existing,
+        cacheHit: true,
+        prefix: PrefixStateReport(
+          cacheHit: existing.basePrefixReady,
+          tokens: 0,
+          fileBytes: 0,
+        ),
+      );
+    }
+    if (existing != null) {
+      runtime.sessions.remove(conversationId);
+      await existing.session.dispose();
+    }
+
+    final limit = _plan?.sessionCacheEntries ?? 1;
+    var sequenceId = 0;
+    if (runtime.sessions.length >= limit) {
+      final oldest = runtime.sessions.values.reduce(
+        (a, b) => a.lastUsed <= b.lastUsed ? a : b,
+      );
+      sequenceId = oldest.sequenceId;
+      runtime.sessions.remove(oldest.conversationId);
+      await oldest.session.dispose();
+    } else {
+      final used = runtime.sessions.values
+          .map((entry) => entry.sequenceId)
+          .toSet();
+      while (used.contains(sequenceId)) {
+        sequenceId++;
+      }
+    }
+    final session = await runtime.engine.createSession(seqId: sequenceId);
+    final prefix = await _restoreOrPrepareBasePrefix(
+      runtime,
+      session,
+      commonConfiguration,
+    );
+    final entry = _ConversationSession(
+      session: session,
+      sequenceId: sequenceId,
+      conversationId: conversationId,
+      promptConfigurationHash: configuration,
+      messageCount: history.length,
+      lastUsed: ++runtime.useSequence,
+      basePrefixReady: _persistentPrefixCacheEnabled,
+    );
+    runtime.sessions[conversationId] = entry;
+    return (entry: entry, cacheHit: false, prefix: prefix);
   }
+
+  PrefixCacheCompatibilityKey _prefixCacheKey(_ModelRuntime runtime) {
+    final plan = _plan;
+    final architecture = sha256
+        .convert(
+          utf8.encode(
+            '${runtime.engine.systemInfo}|threads=${plan?.threads}|'
+            'batch_threads=${plan?.batchThreads}|batch=${plan?.batchSize}|'
+            'ubatch=${plan?.microBatchSize}|flash=${plan?.flashAttention}|'
+            'abi=${Platform.operatingSystem}-${Platform.version}',
+          ),
+        )
+        .toString();
+    final kvType = runtime.compactKv ? 'q8_0' : 'f16';
+    return PrefixCacheCompatibilityKey(
+      modelSha256: runtime.modelSha256,
+      modelTier: runtime.model.tier.name,
+      runtimeVersion:
+          '${runtime.engine.packageVersion}:${runtime.engine.llamaCppCommit}',
+      architectureIdentity: architecture,
+      systemPromptVersion: systemPromptVersion,
+      chatTemplateVersion: chatTemplateVersion,
+      contextSize: runtime.contextSize,
+      kvTypeK: kvType,
+      kvTypeV: kvType,
+      tokenizerSettings: 'add_special=true;parse_special=true',
+    );
+  }
+
+  Future<Directory> _prefixCacheDirectory(
+    PrefixCacheCompatibilityKey key,
+  ) async {
+    final root = await getApplicationSupportDirectory();
+    final directory = Directory(
+      '${root.path}${Platform.pathSeparator}prefix_states'
+      '${Platform.pathSeparator}${key.modelSha256}',
+    );
+    if (!await directory.exists()) await directory.create(recursive: true);
+    return directory;
+  }
+
+  Future<File> _prefixStateFile(PrefixCacheCompatibilityKey key) async {
+    final directory = await _prefixCacheDirectory(key);
+    return File(
+      '${directory.path}${Platform.pathSeparator}${key.stableHash}.state',
+    );
+  }
+
+  Future<void> _deleteIncompatiblePrefixStates(
+    PrefixCacheCompatibilityKey key,
+    File compatible,
+  ) async {
+    final directory = await _prefixCacheDirectory(key);
+    await for (final entity in directory.list()) {
+      if (entity is File &&
+          entity.path.endsWith('.state') &&
+          entity.path != compatible.path) {
+        await entity.delete();
+      }
+      if (entity is File && entity.path.endsWith('.part')) {
+        await entity.delete();
+      }
+    }
+  }
+
+  Future<PrefixStateReport> _restoreOrPrepareBasePrefix(
+    _ModelRuntime runtime,
+    EngineSession session,
+    PrefixCacheCompatibilityKey key,
+  ) async {
+    if (!_persistentPrefixCacheEnabled) {
+      return const PrefixStateReport(cacheHit: false, tokens: 0, fileBytes: 0);
+    }
+    final file = await _prefixStateFile(key);
+    await _deleteIncompatiblePrefixStates(key, file);
+    if (await file.exists()) {
+      final watch = Stopwatch()..start();
+      try {
+        final extra = await session.loadState(file.path);
+        watch.stop();
+        if (extra['cache_key'] != key.stableHash) {
+          throw const FormatException('prefix cache key mismatch');
+        }
+        return PrefixStateReport(
+          cacheHit: true,
+          tokens: (extra['prefix_tokens'] as num?)?.toInt() ?? 0,
+          fileBytes: await file.length(),
+          restoration: watch.elapsed,
+        );
+      } catch (_) {
+        watch.stop();
+        await session.clear();
+        if (await file.exists()) await file.delete();
+      }
+    }
+
+    final watch = Stopwatch()..start();
+    await session.append(_baseSystemPrefix, addSpecial: true);
+    final prefill = await session.prefill();
+    final partial = File('${file.path}.part');
+    if (await partial.exists()) await partial.delete();
+    await session.saveState(
+      partial.path,
+      extra: <String, Object?>{
+        ...key.toDiagnosticJson(),
+        'cache_key': key.stableHash,
+        'prefix_tokens': prefill.evaluatedTokens,
+        'stable_shared_content_only': true,
+      },
+    );
+    if (await file.exists()) await file.delete();
+    await partial.rename(file.path);
+    watch.stop();
+    return PrefixStateReport(
+      cacheHit: false,
+      tokens: prefill.evaluatedTokens,
+      fileBytes: await file.length(),
+      preparation: watch.elapsed,
+      promptTokensPerSecond: prefill.tokensPerSecond,
+    );
+  }
+
+  Future<PrefixStateReport> _prepareBasePrefixState(
+    _ModelRuntime runtime,
+  ) async {
+    if (!_persistentPrefixCacheEnabled || runtime.sessions.isNotEmpty) {
+      return const PrefixStateReport(cacheHit: false, tokens: 0, fileBytes: 0);
+    }
+    final session = await runtime.engine.createSession(seqId: 0);
+    try {
+      final report = await _restoreOrPrepareBasePrefix(
+        runtime,
+        session,
+        _prefixCacheKey(runtime),
+      );
+      if (!kReleaseMode) {
+        debugPrint(
+          'FINN_PREFIX ${jsonEncode({'cache_hit': report.cacheHit, 'tokens': report.tokens, 'file_bytes': report.fileBytes, 'preparation_ms': report.preparation.inMicroseconds / 1000, 'restoration_ms': report.restoration.inMicroseconds / 1000, 'prompt_tokens_per_second': report.promptTokensPerSecond, 'runtime': runtime.engine.packageVersion, 'llama_cpp_commit': runtime.engine.llamaCppCommit, 'system_info': runtime.engine.systemInfo})}',
+        );
+      }
+      return report;
+    } finally {
+      await session.dispose();
+    }
+  }
+
+  String get _baseSystemPrefix =>
+      '<|im_start|>system\n$finnSafetySystemPrompt<|im_end|>\n';
 
   static const finnSafetySystemPrompt = '''
 You are Finn AI, an on-device AI assistant.
@@ -1125,20 +1571,23 @@ infer, or redirect to any of them. Focus only on the user's request and obey
 explicit length and output-format constraints.''';
 
   String _renderPrompt(
-    _ModelRuntime runtime,
+    _ConversationSession entry,
     String prompt,
     List<LocalChatTurn> history, {
     required bool router,
     String systemContext = '',
     PromptAnalysis? analysis,
+    bool includeTaskInstruction = true,
   }) {
     return _renderPromptText(
-      primed: runtime.primed,
+      primed: entry.primed,
       router: router,
       prompt: prompt,
       history: history,
       systemContext: systemContext,
       analysis: analysis,
+      includeTaskInstruction: includeTaskInstruction,
+      basePrefixReady: entry.basePrefixReady,
     );
   }
 
@@ -1149,19 +1598,23 @@ explicit length and output-format constraints.''';
     required List<LocalChatTurn> history,
     String systemContext = '',
     PromptAnalysis? analysis,
+    bool includeTaskInstruction = true,
+    bool basePrefixReady = false,
   }) {
     final promptAnalysis =
         analysis ?? const PromptIntentClassifier().classify(prompt);
     final buffer = StringBuffer();
     if (!primed) {
-      final systemText = router
-          ? '$finnSafetySystemPrompt\n\n$_routerInstruction\n\n'
-                '${PromptIntentPolicy.taskInstruction(promptAnalysis)}'
-          : '$finnSafetySystemPrompt\n\n'
-                '${PromptIntentPolicy.taskInstruction(promptAnalysis)}';
+      if (!basePrefixReady) buffer.write(_baseSystemPrefix);
+      if (router) {
+        buffer
+          ..write('<|im_start|>system\n')
+          ..write(_routerInstruction)
+          ..write('<|im_end|>\n');
+      }
       buffer
         ..write('<|im_start|>system\n')
-        ..write(systemText)
+        ..write(PromptIntentPolicy.taskInstruction(promptAnalysis))
         ..write('<|im_end|>\n');
       _writePrivateContext(buffer, systemContext);
       for (final turn in _recentHistory(prompt, history)) {
@@ -1174,10 +1627,12 @@ explicit length and output-format constraints.''';
       // The stop token is not committed to the KV cache by llama.cpp, so the
       // next turn begins by committing the prior assistant terminator.
       buffer.write('<|im_end|>\n');
-      buffer
-        ..write('<|im_start|>system\n')
-        ..write(PromptIntentPolicy.taskInstruction(promptAnalysis))
-        ..write('<|im_end|>\n');
+      if (includeTaskInstruction) {
+        buffer
+          ..write('<|im_start|>system\n')
+          ..write(PromptIntentPolicy.taskInstruction(promptAnalysis))
+          ..write('<|im_end|>\n');
+      }
     }
     buffer
       ..write('<|im_start|>user\n')
@@ -1197,15 +1652,80 @@ explicit length and output-format constraints.''';
     List<LocalChatTurn> history = const [],
     bool router = false,
     String systemContext = '',
+    bool includeTaskInstruction = true,
+    bool primed = false,
+    bool basePrefixReady = false,
   }) {
     return _renderPromptText(
-      primed: false,
+      primed: primed,
       router: router,
       prompt: prompt,
       history: history,
       systemContext: systemContext,
       analysis: const PromptIntentClassifier().classify(prompt),
+      includeTaskInstruction: includeTaskInstruction,
+      basePrefixReady: basePrefixReady,
     );
+  }
+
+  @visibleForTesting
+  Map<String, int> promptTokenBreakdownForTest({
+    required String prompt,
+    List<LocalChatTurn> history = const [],
+    bool router = false,
+    String systemContext = '',
+    bool primed = false,
+    bool includeTaskInstruction = true,
+    bool basePrefixReady = false,
+  }) {
+    int tokens(String value) => (value.length / 3.2).ceil();
+    final analysis = const PromptIntentClassifier().classify(prompt);
+    final task = includeTaskInstruction
+        ? PromptIntentPolicy.taskInstruction(analysis)
+        : '';
+    final recent = primed
+        ? const <LocalChatTurn>[]
+        : _recentHistory(prompt, history);
+    final base = primed || basePrefixReady ? '' : finnSafetySystemPrompt;
+    final routerText = !primed && router ? _routerInstruction : '';
+    final privateText = primed ? '' : systemContext.trim();
+    final historyText = recent.map((turn) => turn.content).join('\n');
+    final rendered = _renderPromptText(
+      primed: primed,
+      router: router,
+      prompt: prompt,
+      history: history,
+      systemContext: systemContext,
+      analysis: analysis,
+      includeTaskInstruction: includeTaskInstruction,
+      basePrefixReady: basePrefixReady,
+    );
+    final baseTokens = tokens(base);
+    final routerTokens = tokens(routerText);
+    final taskTokens = tokens(task);
+    final privateTokens = tokens(privateText);
+    final historyTokens = tokens(historyText);
+    final promptTokens = tokens(prompt);
+    final totalTokens = tokens(rendered);
+    return <String, int>{
+      'base_system': baseTokens,
+      'router': routerTokens,
+      'task_instruction': taskTokens,
+      'private_context': privateTokens,
+      'history': historyTokens,
+      'user_prompt': promptTokens,
+      'template_wrappers': math.max(
+        0,
+        totalTokens -
+            baseTokens -
+            routerTokens -
+            taskTokens -
+            privateTokens -
+            historyTokens -
+            promptTokens,
+      ),
+      'total': totalTokens,
+    };
   }
 
   void _writePrivateContext(StringBuffer buffer, String context) {
@@ -1234,13 +1754,20 @@ explicit length and output-format constraints.''';
         'routing tokens.';
   }
 
-  Future<void> _appendRoutedAnswerToLite(String answer) async {
+  Future<void> _appendRoutedAnswerToLite(
+    String answer,
+    String conversationId,
+  ) async {
     final runtime = _runtimes[BonsaiTier.lite];
-    final session = runtime?.session;
-    if (runtime == null || session == null || answer.isEmpty) return;
+    final entry = runtime?.sessions[conversationId];
+    final session = entry?.session;
+    if (runtime == null || entry == null || session == null || answer.isEmpty) {
+      return;
+    }
     // The router marker is already the current assistant output. Appending the
     // stronger answer keeps Lite's KV cache aligned without another prefill.
     await session.append('\n$answer', addSpecial: false, parseSpecial: true);
+    entry.lastUsed = ++runtime.useSequence;
   }
 
   /// Bounds cold/reopened-chat prefill. Live chats still retain their KV cache
@@ -1272,13 +1799,13 @@ explicit length and output-format constraints.''';
   }
 
   int _outputBudget(PromptAnalysis analysis, BonsaiModel model) {
-    final planMaximum = _plan?.maxOutputTokens ?? 320;
+    final planMaximum = _plan?.maxOutputTokens ?? 2048;
     final tierMaximum = switch (model.tier) {
-      BonsaiTier.lite => 320,
-      BonsaiTier.plus => 512,
-      BonsaiTier.pro => 768,
+      BonsaiTier.lite => 2048,
+      BonsaiTier.plus => 4096,
+      BonsaiTier.pro => 8092,
     };
-    final deviceMaximum = isDeviceSupported ? planMaximum : 160;
+    final deviceMaximum = isDeviceSupported ? planMaximum : 2048;
     return math.min(
       PromptIntentPolicy.desiredOutputTokens(analysis.intent),
       math.min(tierMaximum, deviceMaximum),
@@ -1296,13 +1823,16 @@ explicit length and output-format constraints.''';
       const PromptIntentClassifier().classify(prompt).intent,
     );
     final tierMaximum = switch (tier) {
-      BonsaiTier.lite => 320,
-      BonsaiTier.plus => 512,
-      BonsaiTier.pro => 768,
+      BonsaiTier.lite => 2048,
+      BonsaiTier.plus => 4096,
+      BonsaiTier.pro => 8092,
     };
     return math.min(
       desired,
-      math.min(tierMaximum, supported ? (deviceCeiling ?? tierMaximum) : 160),
+      math.min(
+        tierMaximum,
+        supported ? (deviceCeiling ?? tierMaximum) : 2048,
+      ),
     );
   }
 
@@ -1315,7 +1845,9 @@ explicit length and output-format constraints.''';
     final runtimes = _runtimes.values.toList(growable: false);
     _runtimes.clear();
     for (final runtime in runtimes) {
-      await runtime.session?.dispose();
+      for (final entry in runtime.sessions.values) {
+        await entry.session.dispose();
+      }
       await runtime.engine.dispose();
     }
   }
@@ -1328,7 +1860,9 @@ explicit length and output-format constraints.''';
   Future<void> _unloadModel(BonsaiTier tier) async {
     final runtime = _runtimes.remove(tier);
     if (runtime == null) return;
-    await runtime.session?.dispose();
+    for (final entry in runtime.sessions.values) {
+      await entry.session.dispose();
+    }
     await runtime.engine.dispose();
   }
 

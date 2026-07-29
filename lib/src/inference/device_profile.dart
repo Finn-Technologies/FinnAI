@@ -19,6 +19,8 @@ class DeviceProfile {
     required this.lowMemory,
     this.supportedAbis = const [],
     this.availableStorageBytes,
+    this.thermalStatus,
+    this.thermalHeadroom,
   });
 
   static const minimumRamBytes = 3000000000;
@@ -31,6 +33,11 @@ class DeviceProfile {
   final bool lowMemory;
   final List<String> supportedAbis;
   final int? availableStorageBytes;
+  final int? thermalStatus;
+  final double? thermalHeadroom;
+
+  bool get thermallyConstrained =>
+      (thermalStatus ?? 0) >= 3 || (thermalHeadroom ?? 0) >= .85;
 
   bool get supported =>
       !Platform.isAndroid ||
@@ -57,6 +64,8 @@ class InferencePlan {
     required this.compactKv,
     required this.maxOutputTokens,
     required this.tokenPaintIntervalMs,
+    required this.sessionCacheEntries,
+    required this.flashAttention,
   });
 
   final BonsaiTier tier;
@@ -68,6 +77,8 @@ class InferencePlan {
   final bool compactKv;
   final int maxOutputTokens;
   final int tokenPaintIntervalMs;
+  final int sessionCacheEntries;
+  final bool flashAttention;
 }
 
 class DeviceProfiler {
@@ -122,6 +133,8 @@ class DeviceProfiler {
               .whereType<String>()
               .toList(growable: false),
       availableStorageBytes: _asInt(native['availableStorageBytes']),
+      thermalStatus: _asInt(native['thermalStatus']),
+      thermalHeadroom: _asDouble(native['thermalHeadroom']),
     );
   }
 
@@ -160,39 +173,71 @@ class DeviceProfiler {
 
     final decodeCeiling = switch (processor) {
       ProcessorClass.entry => 3,
-      ProcessorClass.balanced => 4,
+      ProcessorClass.balanced => 5,
       ProcessorClass.flagship => 6,
     };
     final batchCeiling = switch (processor) {
       ProcessorClass.entry => 4,
-      ProcessorClass.balanced => 6,
+      ProcessorClass.balanced => 8,
       ProcessorClass.flagship => 8,
     };
     const threadOverride = int.fromEnvironment(
       'FINN_BENCH_THREADS',
       defaultValue: 0,
     );
-    final threads = threadOverride > 0
+    final normalThreads = threadOverride > 0
         ? threadOverride
         : math.max(1, math.min(decodeCeiling, profile.cores - 2));
-    final batchThreads = math.max(
+    final threads = threadOverride > 0
+        ? threadOverride
+        : profile.thermallyConstrained
+        ? math.min(4, normalThreads)
+        : normalThreads;
+    const batchThreadOverride = int.fromEnvironment(
+      'FINN_BENCH_BATCH_THREADS',
+      defaultValue: 0,
+    );
+    final normalBatchThreads = math.max(
       threads,
       math.min(batchCeiling, profile.cores),
     );
+    final batchThreads = batchThreadOverride > 0
+        ? batchThreadOverride
+        : profile.thermallyConstrained
+        ? math.min(4, normalBatchThreads)
+        : normalBatchThreads;
     final constrained =
         profile.lowMemory ||
         (profile.availableRamBytes != null &&
             profile.availableRamBytes! < 1800 * 1024 * 1024);
-    final batchSize = constrained
+    const batchOverride = int.fromEnvironment(
+      'FINN_BENCH_BATCH',
+      defaultValue: 0,
+    );
+    final normalBatchSize = profile.thermallyConstrained
+        ? 256
+        : constrained
         ? 128
         : processor == ProcessorClass.entry
         ? 256
         : 512;
-    final microBatchSize = constrained
+    final batchSize = batchOverride > 0 ? batchOverride : normalBatchSize;
+    const microBatchOverride = int.fromEnvironment(
+      'FINN_BENCH_UBATCH',
+      defaultValue: 0,
+    );
+    final normalMicroBatchSize = profile.thermallyConstrained
+        ? 128
+        : constrained
         ? 64
         : processor == ProcessorClass.entry
         ? 128
         : 256;
+    final microBatchSize = microBatchOverride > 0
+        ? microBatchOverride
+        : normalMicroBatchSize;
+    const f16Kv = bool.fromEnvironment('FINN_BENCH_F16_KV');
+    const flashOff = bool.fromEnvironment('FINN_BENCH_FLASH_OFF');
     return InferencePlan(
       tier: tier,
       contextSize: context,
@@ -200,17 +245,23 @@ class DeviceProfiler {
       batchThreads: batchThreads,
       batchSize: batchSize,
       microBatchSize: microBatchSize,
-      compactKv: true,
+      compactKv: !f16Kv,
       maxOutputTokens: switch (tier) {
-        BonsaiTier.lite => 320,
-        BonsaiTier.plus => 512,
-        BonsaiTier.pro => 768,
+        BonsaiTier.lite => 2048,
+        BonsaiTier.plus => 4096,
+        BonsaiTier.pro => 8092,
       },
       tokenPaintIntervalMs: switch (processor) {
         ProcessorClass.entry => 80,
         ProcessorClass.balanced => 50,
         ProcessorClass.flagship => 34,
       },
+      sessionCacheEntries: switch (processor) {
+        ProcessorClass.entry => 1,
+        ProcessorClass.balanced => 2,
+        ProcessorClass.flagship => 3,
+      },
+      flashAttention: !flashOff,
     );
   }
 
@@ -284,6 +335,8 @@ class DeviceProfiler {
   }
 
   static int? _asInt(Object? value) => value is int ? value : null;
+  static double? _asDouble(Object? value) =>
+      value is num ? value.toDouble() : null;
 
   static Future<int?> _memoryBytes(String field) async {
     if (!Platform.isAndroid && !Platform.isLinux) return null;

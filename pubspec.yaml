@@ -15,7 +15,8 @@ dependencies:
   crypto: ^3.0.7
   flutter_svg: ^2.2.3
   hugeicons: ^1.1.7
-  llama_cpp_dart: 0.9.0-dev.9
+  llama_cpp_dart:
+    path: third_party/llama_cpp_dart
   path_provider: ^2.1.5
   google_mobile_ads: ^9.0.0
   package_info_plus: ^8.2.2

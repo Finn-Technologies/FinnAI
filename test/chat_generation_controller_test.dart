@@ -6,6 +6,7 @@ import 'package:finn_ai/src/generation/chat_generation_controller.dart';
 import 'package:finn_ai/src/home/home_shell.dart';
 import 'package:finn_ai/src/inference/bonsai_inference.dart';
 import 'package:finn_ai/src/inference/prompt_intent.dart';
+import 'package:finn_ai/src/inference/ttft_metrics.dart';
 import 'package:finn_ai/src/theme/flux_theme.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -122,6 +123,26 @@ void main() {
       await controller.stop();
     },
   );
+
+  test('first token bypasses the normal UI notification batch', () async {
+    final conversation = store.startNew();
+    var notifications = 0;
+    controller.addListener(() => notifications++);
+    await controller.start(
+      conversationId: conversation.id,
+      prompt: 'Immediate token',
+      history: const [],
+      systemContext: '',
+    );
+    final beforeToken = notifications;
+
+    runtime.emit('Visible now');
+
+    expect(notifications, greaterThan(beforeToken));
+    expect(controller.job?.responseText, 'Visible now');
+    expect(controller.activeTrace?.hasUiPaintScheduled, isTrue);
+    await controller.stop();
+  });
 
   test(
     'cancellation timeout resets runtime and permits later generation',
@@ -362,6 +383,7 @@ class _FakeRuntime extends ChangeNotifier implements ChatInferenceRuntime {
     required List<LocalChatTurn> history,
     required String systemContext,
     PromptAnalysis? promptAnalysis,
+    TtftTrace? trace,
   }) {
     _stream = StreamController<String>(sync: true);
     _phase = InferencePhase.generating;

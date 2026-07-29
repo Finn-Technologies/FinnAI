@@ -7,6 +7,7 @@ import 'src/flux_app.dart';
 import 'src/inference/bonsai_inference.dart';
 import 'src/inference/evaluation.dart';
 import 'src/inference/prompt_intent.dart';
+import 'src/inference/ttft_metrics.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -93,27 +94,103 @@ Future<void> _runModelEvaluation() async {
 /// noise or synthetic native binaries.
 Future<void> _runDeviceBenchmark() async {
   final inference = BonsaiInference.instance;
-  final wasInstalled = await inference.isInstalled(inference.selected);
-  await inference.prewarm();
-  const firstPrompt =
-      'Write exactly 100 words about local AI with no introduction.';
-  final firstAnswer = StringBuffer();
-  await for (final token in inference.generateReply(
-    firstPrompt,
-    conversationId: 'device-benchmark',
-  )) {
-    firstAnswer.write(token);
+  const scenario = String.fromEnvironment(
+    'FINN_BENCH_SCENARIO',
+    defaultValue: 'model_warm',
+  );
+  const runs = int.fromEnvironment('FINN_BENCH_RUNS', defaultValue: 5);
+  const prewarm = String.fromEnvironment(
+    'FINN_BENCH_PREWARM',
+    defaultValue: 'selected',
+  );
+  const promptOverride = String.fromEnvironment('FINN_BENCH_PROMPT');
+  final prompt = promptOverride.isNotEmpty
+      ? promptOverride
+      : switch (scenario) {
+          'direct_plus' => 'Write five short sentences about Rome.',
+          'ambiguous' => 'Tell me something useful for today.',
+          _ => 'Reply with exactly one word: ready.',
+        };
+
+  if (scenario != 'true_cold') {
+    if (prewarm == 'lite' || prewarm == 'both') {
+      await inference.prewarmTier(BonsaiTier.lite);
+    }
+    if (prewarm == 'plus' || prewarm == 'both') {
+      await inference.prewarmTier(BonsaiTier.plus);
+    }
+    if (prewarm == 'selected') await inference.prewarm();
   }
-  await inference
-      .generateReply(
-        'Summarize that in one short sentence.',
-        conversationId: 'device-benchmark',
-        history: [
-          const LocalChatTurn(role: 'user', content: firstPrompt),
-          LocalChatTurn(role: 'assistant', content: firstAnswer.toString()),
-        ],
-      )
-      .drain<void>();
+
+  final ttftValues = <int>[];
+  final conversationHistory = <LocalChatTurn>[];
+  const warmConversationId = 'benchmark-conversation';
+  if (scenario == 'conversation_warm') {
+    final warmup = StringBuffer();
+    await for (final token in inference.generateReply(
+      prompt,
+      conversationId: warmConversationId,
+    )) {
+      warmup.write(token);
+    }
+    conversationHistory
+      ..add(LocalChatTurn(role: 'user', content: prompt))
+      ..add(LocalChatTurn(role: 'assistant', content: warmup.toString()));
+  }
+  for (var run = 0; run < runs; run++) {
+    if (scenario == 'true_cold') {
+      await inference.releaseMemory();
+    } else if (scenario == 'model_warm' ||
+        scenario == 'prefix_warm' ||
+        scenario == 'direct_plus' ||
+        scenario == 'ambiguous') {
+      await inference.releaseConversationSessions();
+    }
+    final conversationId = scenario == 'conversation_warm'
+        ? warmConversationId
+        : 'benchmark-$scenario-$run';
+    final trace = TtftTrace(
+      generationId: 'benchmark-$scenario-$run',
+      conversationId: conversationId,
+    );
+    var first = '';
+    final answer = StringBuffer();
+    await for (final token in inference.generateReply(
+      prompt,
+      conversationId: conversationId,
+      history: conversationHistory,
+      trace: trace,
+    )) {
+      if (first.isEmpty && token.isNotEmpty) {
+        first = token;
+        trace
+          ..mark(TtftPhase.uiPaintScheduled)
+          ..mark(TtftPhase.uiPaintCompleted);
+      }
+      answer.write(token);
+    }
+    if (scenario == 'conversation_warm') {
+      conversationHistory
+        ..add(LocalChatTurn(role: 'user', content: prompt))
+        ..add(LocalChatTurn(role: 'assistant', content: answer.toString()));
+    }
+    final metrics = trace.toJson();
+    final total = metrics['total_ttft_ms'];
+    if (total is int) ttftValues.add(total);
+    debugPrint(
+      'FINN_BENCH ${jsonEncode({'scenario': scenario, 'run': run, 'first_visible_characters': first.length, ...metrics})}',
+    );
+  }
+  if (ttftValues.isNotEmpty) {
+    ttftValues.sort();
+    int percentile(double fraction) {
+      final index = ((ttftValues.length - 1) * fraction).ceil();
+      return ttftValues[index.clamp(0, ttftValues.length - 1)];
+    }
+
+    debugPrint(
+      'FINN_BENCH_SUMMARY ${jsonEncode({'scenario': scenario, 'runs': ttftValues.length, 'min_ms': ttftValues.first, 'p50_ms': percentile(.50), 'p90_ms': percentile(.90), 'p95_ms': percentile(.95), 'max_ms': ttftValues.last})}',
+    );
+  }
   await inference.releaseMemory();
-  if (!wasInstalled) await inference.remove(inference.selected);
 }

@@ -103,6 +103,15 @@ android {
     }
 
     buildTypes {
+        getByName("profile") {
+            // Profile builds are the physical-device inference benchmark
+            // surface. Reuse the upload key when available so an instrumented
+            // APK can update a release-signed install without deleting its
+            // private GGUF files or prefix-state evidence.
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+        }
         release {
             if (hasReleaseSigning) {
                 signingConfig = signingConfigs.getByName("release")
