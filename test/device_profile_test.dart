@@ -36,7 +36,7 @@ void main() {
     expect(plan.contextSize, 4096);
     expect(plan.threads, 3);
     expect(plan.batchSize, 256);
-    expect(plan.maxOutputTokens, 160);
+    expect(plan.maxOutputTokens, 320);
     expect(plan.tokenPaintIntervalMs, 80);
   });
 
@@ -86,7 +86,7 @@ void main() {
         ),
         BonsaiTier.pro,
       );
-      expect(inference.fastRouteForTest('Hello!'), isNull);
+      expect(inference.fastRouteForTest('Hello!'), BonsaiTier.lite);
     },
   );
 }

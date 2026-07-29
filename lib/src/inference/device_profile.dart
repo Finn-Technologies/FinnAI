@@ -202,9 +202,9 @@ class DeviceProfiler {
       microBatchSize: microBatchSize,
       compactKv: true,
       maxOutputTokens: switch (tier) {
-        BonsaiTier.lite => 160,
-        BonsaiTier.plus => 256,
-        BonsaiTier.pro => 384,
+        BonsaiTier.lite => 320,
+        BonsaiTier.plus => 512,
+        BonsaiTier.pro => 768,
       },
       tokenPaintIntervalMs: switch (processor) {
         ProcessorClass.entry => 80,

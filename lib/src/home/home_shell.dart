@@ -8,6 +8,7 @@ import '../ads/banner_ad_widget.dart';
 import '../conversations/conversation_store.dart';
 import '../creations/creations_page.dart';
 import '../inference/bonsai_inference.dart';
+import '../inference/prompt_intent.dart';
 import '../privacy/ad_consent_service.dart';
 import '../reporting/report_dialog.dart';
 import '../settings/settings_page.dart';
@@ -18,6 +19,7 @@ import '../you/you_page.dart';
 import '../you/you_profile_store.dart';
 import '../widgets/ambient_background.dart';
 import '../widgets/flux_controls.dart';
+import '../widgets/safe_markdown_text.dart';
 
 enum _ReplyState { idle, loading, thinking, complete, error }
 
@@ -49,6 +51,8 @@ class _HomeShellState extends State<HomeShell>
   bool _storesReady = false;
   String _answer = '';
   String _error = '';
+  bool _canContinue = false;
+  bool _continuationUsed = false;
   late final AnimationController _sidebarController = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 340),
@@ -281,6 +285,8 @@ class _HomeShellState extends State<HomeShell>
       _answer = '';
       _streamingAnswer.value = '';
       _error = '';
+      _canContinue = false;
+      _continuationUsed = false;
       _composer.clear();
       _replyState = _ReplyState.loading;
     });
@@ -333,9 +339,84 @@ class _HomeShellState extends State<HomeShell>
                 // text is replaced by selectable text and actions only once.
                 _streamingAnswer.value = '';
                 _assistantMessageId = null;
-                setState(() => _replyState = _ReplyState.complete);
+                setState(() {
+                  _replyState = _ReplyState.complete;
+                  _canContinue =
+                      !_continuationUsed &&
+                      _inference.lastGenerationReport?.finishReason ==
+                          GenerationFinishReason.tokenLimit;
+                });
               }
             }
+          },
+          cancelOnError: true,
+        );
+  }
+
+  Future<void> _continueReply() async {
+    if (_busy || !_canContinue) return;
+    final conversation = _conversations.active;
+    if (conversation == null || conversation.messages.isEmpty) return;
+    final assistant = conversation.messages.last;
+    if (assistant.role != ConversationRole.assistant) return;
+    final latestUser = conversation.messages.reversed
+        .where((message) => message.role == ConversationRole.user)
+        .firstOrNull;
+    final history = [
+      for (final message in conversation.messages)
+        LocalChatTurn(role: message.role.name, content: message.text),
+    ];
+    final systemContext = [
+      YouProfileStore.instance.promptContext,
+      SkillsStore.instance.activePromptContext,
+    ].where((item) => item.trim().isNotEmpty).join('\n\n');
+    _continuationUsed = true;
+    _canContinue = false;
+    _assistantMessageId = assistant.id;
+    _answer = assistant.text;
+    _streamingAnswer.value = _answer;
+    setState(() => _replyState = _ReplyState.thinking);
+    _replySubscription = _inference
+        .generateReply(
+          BonsaiInference.continuationPrompt,
+          conversationId: conversation.id,
+          history: history,
+          systemContext: systemContext,
+          promptAnalysis: latestUser == null
+              ? null
+              : const PromptIntentClassifier().classify(latestUser.text),
+        )
+        .listen(
+          (token) {
+            _pendingTokens.write(token);
+            _tokenPaintTimer ??= Timer(
+              Duration(
+                milliseconds: _inference.plan?.tokenPaintIntervalMs ?? 50,
+              ),
+              () {
+                _tokenPaintTimer = null;
+                _flushTokenPaint();
+              },
+            );
+          },
+          onError: (Object _) {
+            _flushTokenPaint(persist: true);
+            _replySubscription = null;
+            if (mounted) {
+              setState(() {
+                _error = _inference.status;
+                _replyState = _ReplyState.error;
+              });
+            }
+          },
+          onDone: () {
+            _flushTokenPaint(persist: true);
+            _tokenPaintTimer?.cancel();
+            _tokenPaintTimer = null;
+            _replySubscription = null;
+            _streamingAnswer.value = '';
+            _assistantMessageId = null;
+            if (mounted) setState(() => _replyState = _ReplyState.complete);
           },
           cancelOnError: true,
         );
@@ -408,6 +489,8 @@ class _HomeShellState extends State<HomeShell>
       _answer = '';
       _streamingAnswer.value = '';
       _error = '';
+      _canContinue = false;
+      _continuationUsed = false;
     });
   }
 
@@ -420,6 +503,8 @@ class _HomeShellState extends State<HomeShell>
       _answer = '';
       _streamingAnswer.value = '';
       _error = '';
+      _canContinue = false;
+      _continuationUsed = false;
     });
   }
 
@@ -527,6 +612,10 @@ class _HomeShellState extends State<HomeShell>
                         streamingMessageId: _assistantMessageId,
                         error: _error,
                         onStop: _stopReply,
+                        continuationMessageId: _canContinue
+                            ? _conversations.active?.messages.lastOrNull?.id
+                            : null,
+                        onContinue: _continueReply,
                       ),
                     ),
                     Positioned(
@@ -656,6 +745,8 @@ class _Conversation extends StatelessWidget {
     required this.streamingMessageId,
     required this.error,
     required this.onStop,
+    required this.continuationMessageId,
+    required this.onContinue,
   });
   final List<ConversationMessage> messages;
   final _ReplyState state;
@@ -663,6 +754,8 @@ class _Conversation extends StatelessWidget {
   final String? streamingMessageId;
   final String error;
   final VoidCallback onStop;
+  final String? continuationMessageId;
+  final VoidCallback onContinue;
 
   @override
   Widget build(BuildContext context) {
@@ -751,6 +844,9 @@ class _Conversation extends StatelessWidget {
                   modelTier: message.modelTier,
                   showActions: true,
                   selectable: true,
+                  onContinue: message.id == continuationMessageId
+                      ? onContinue
+                      : null,
                 ),
         );
       },
@@ -906,6 +1002,7 @@ class _CompleteReply extends StatelessWidget {
     this.modelTier = 'Finn AI',
     this.showActions = true,
     this.selectable = true,
+    this.onContinue,
   });
 
   final String text;
@@ -913,6 +1010,7 @@ class _CompleteReply extends StatelessWidget {
   final String modelTier;
   final bool showActions;
   final bool selectable;
+  final VoidCallback? onContinue;
 
   @override
   Widget build(BuildContext context) => Column(
@@ -942,6 +1040,14 @@ class _CompleteReply extends StatelessWidget {
                   );
               },
             ),
+            if (onContinue != null) ...[
+              const SizedBox(width: 8),
+              TextButton.icon(
+                onPressed: onContinue,
+                icon: const Icon(Icons.arrow_forward, size: 17),
+                label: const Text('Continue'),
+              ),
+            ],
             const SizedBox(width: 8),
             FluxIconButton(
               icon: FluxIcons.flag,
@@ -969,10 +1075,7 @@ class _ReplyText extends StatelessWidget {
   final String text;
 
   @override
-  Widget build(BuildContext context) => Text(
-    text,
-    style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.38),
-  );
+  Widget build(BuildContext context) => SafeMarkdownText(text: text);
 }
 
 class _FinnPageRoute<T> extends PageRouteBuilder<T> {

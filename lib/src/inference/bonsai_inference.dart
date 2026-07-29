@@ -8,6 +8,7 @@ import 'package:llama_cpp_dart/llama_cpp_dart.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'device_profile.dart';
+import 'prompt_intent.dart';
 
 enum BonsaiTier { lite, plus, pro }
 
@@ -85,6 +86,57 @@ const bonsaiModels = <BonsaiModel>[
 
 enum InferencePhase { idle, downloading, loading, generating, error }
 
+enum GenerationFinishReason { eos, tokenLimit, userCancellation, error }
+
+@visibleForTesting
+GenerationFinishReason finishReasonFromStopReason(StopReason reason) =>
+    switch (reason) {
+      StopEog() => GenerationFinishReason.eos,
+      StopMaxTokens() => GenerationFinishReason.tokenLimit,
+      StopUserAbort() => GenerationFinishReason.userCancellation,
+    };
+
+@visibleForTesting
+Future<GenerationFinishReason> finishReasonFromEvents(
+  Stream<GenerationEvent> events,
+) async {
+  try {
+    await for (final event in events) {
+      if (event case DoneEvent(:final reason)) {
+        return finishReasonFromStopReason(reason);
+      }
+    }
+  } catch (_) {
+    return GenerationFinishReason.error;
+  }
+  return GenerationFinishReason.error;
+}
+
+@immutable
+class GenerationReport {
+  const GenerationReport({
+    required this.model,
+    required this.intent,
+    required this.route,
+    required this.outputBudget,
+    required this.finishReason,
+    required this.firstTokenLatency,
+    required this.totalGenerationTime,
+    required this.outputTokens,
+    required this.tokensPerSecond,
+  });
+
+  final BonsaiModel model;
+  final PromptIntent intent;
+  final BonsaiTier route;
+  final int outputBudget;
+  final GenerationFinishReason finishReason;
+  final Duration? firstTokenLatency;
+  final Duration totalGenerationTime;
+  final int outputTokens;
+  final double tokensPerSecond;
+}
+
 @immutable
 class ModelStorageState {
   const ModelStorageState({
@@ -127,6 +179,10 @@ class BonsaiInference extends ChangeNotifier {
   BonsaiInference._();
 
   static final BonsaiInference instance = BonsaiInference._();
+  static const continuationPrompt =
+      'Continue exactly where the previous response stopped. Do not repeat '
+      'the introduction or completed sections. Finish the requested answer '
+      'in the same language and format.';
 
   BonsaiModel _selected = bonsaiModels.first;
   BonsaiModel get selected => _selected;
@@ -329,12 +385,15 @@ class BonsaiInference extends ChangeNotifier {
 
   BonsaiModel? _lastGeneratingModel;
   BonsaiModel get lastGeneratingModel => _lastGeneratingModel ?? selected;
+  GenerationReport? _lastGenerationReport;
+  GenerationReport? get lastGenerationReport => _lastGenerationReport;
 
   Stream<String> generateReply(
     String prompt, {
     required String conversationId,
     List<LocalChatTurn> history = const [],
     String systemContext = '',
+    PromptAnalysis? promptAnalysis,
   }) async* {
     if (_replyInFlight) {
       throw StateError('Finn AI is already generating a response.');
@@ -346,6 +405,48 @@ class BonsaiInference extends ChangeNotifier {
         conversationId: conversationId,
         history: history,
         systemContext: systemContext,
+        promptAnalysis: promptAnalysis,
+      );
+    } finally {
+      _replyInFlight = false;
+    }
+  }
+
+  /// Developer harness entry point for an already-installed GGUF at [path].
+  ///
+  /// Production chat never calls this and model downloads/defaults are not
+  /// changed. The caller must release memory between different model files.
+  Stream<String> generateEvaluationReply(
+    String prompt, {
+    required String path,
+    required String modelLabel,
+    required BonsaiTier tier,
+    required String conversationId,
+  }) async* {
+    if (_replyInFlight) {
+      throw StateError('Finn AI is already generating a response.');
+    }
+    _replyInFlight = true;
+    final model = BonsaiModel(
+      tier: tier,
+      name: modelLabel,
+      parameterLabel: modelLabel,
+      fileName: path,
+      downloadUrl: '',
+      expectedBytes: 0,
+      sha256Digest: '',
+    );
+    try {
+      _lastGeneratingModel = model;
+      yield* _cleanModelStream(
+        _generateForModel(
+          model,
+          prompt,
+          conversationId: conversationId,
+          history: const [],
+          analysis: const PromptIntentClassifier().classify(prompt),
+          modelPath: path,
+        ),
       );
     } finally {
       _replyInFlight = false;
@@ -357,7 +458,10 @@ class BonsaiInference extends ChangeNotifier {
     required String conversationId,
     required List<LocalChatTurn> history,
     required String systemContext,
+    PromptAnalysis? promptAnalysis,
   }) async* {
+    final analysis =
+        promptAnalysis ?? const PromptIntentClassifier().classify(prompt);
     await installRequiredModels();
     await prewarm();
 
@@ -373,6 +477,7 @@ class BonsaiInference extends ChangeNotifier {
           conversationId: conversationId,
           history: history,
           systemContext: systemContext,
+          analysis: analysis,
         ),
       );
       return;
@@ -381,7 +486,7 @@ class BonsaiInference extends ChangeNotifier {
     // Clear complex requests skip the costly generative routing pass. Lite
     // still decides ambiguous requests, while obvious writing/coding/reasoning
     // work reaches the capable model with one less prefill and less energy.
-    final fastRoute = _fastRoute(prompt, models);
+    final fastRoute = _fastRoute(models, analysis);
     if (fastRoute != null) {
       final target = models.firstWhere((model) => model.tier == fastRoute);
       _lastGeneratingModel = target;
@@ -392,6 +497,7 @@ class BonsaiInference extends ChangeNotifier {
           conversationId: conversationId,
           history: history,
           systemContext: systemContext,
+          analysis: analysis,
         ),
       );
       return;
@@ -409,6 +515,7 @@ class BonsaiInference extends ChangeNotifier {
         history: history,
         router: true,
         systemContext: systemContext,
+        analysis: analysis,
       ),
     )) {
       if (directAnswer) {
@@ -443,6 +550,7 @@ class BonsaiInference extends ChangeNotifier {
         conversationId: conversationId,
         history: history,
         systemContext: systemContext,
+        analysis: analysis,
       ),
     )) {
       targetOutput.write(token);
@@ -501,41 +609,25 @@ class BonsaiInference extends ChangeNotifier {
     return null;
   }
 
-  BonsaiTier? _fastRoute(String prompt, List<BonsaiModel> available) {
-    final value = prompt.toLowerCase();
+  BonsaiTier? _fastRoute(List<BonsaiModel> available, PromptAnalysis analysis) {
     final hasPro = available.any((model) => model.tier == BonsaiTier.pro);
-    if (hasPro &&
-        (prompt.length > 900 ||
-            value.contains('advanced') ||
-            value.contains('rigorous proof') ||
-            value.contains('deep reasoning') ||
-            value.contains('security audit') ||
-            value.contains('system architecture') ||
-            value.contains('complex code'))) {
+    final hasPlus = available.any((model) => model.tier == BonsaiTier.plus);
+    if (hasPro && analysis.advanced) {
       return BonsaiTier.pro;
     }
-    const plusSignals = <String>[
-      'analyze',
-      'compare',
-      'create ',
-      'debug',
-      'design ',
-      'explain',
-      'implement',
-      'plan ',
-      'refactor',
-      'review ',
-      'solve ',
-      'steps',
-      'summarize',
-      'write ',
-    ];
-    if (prompt.length > 240 ||
-        prompt.contains('```') ||
-        plusSignals.any(value.contains)) {
-      return available.any((model) => model.tier == BonsaiTier.plus)
-          ? BonsaiTier.plus
-          : null;
+    if (analysis.intent == PromptIntent.greeting) return BonsaiTier.lite;
+    const plusIntents = {
+      PromptIntent.recipe,
+      PromptIntent.howTo,
+      PromptIntent.writing,
+      PromptIntent.comparison,
+      PromptIntent.coding,
+      PromptIntent.analysis,
+      PromptIntent.creative,
+      PromptIntent.highStakes,
+    };
+    if (plusIntents.contains(analysis.intent)) {
+      return hasPlus ? BonsaiTier.plus : BonsaiTier.lite;
     }
     return null;
   }
@@ -545,10 +637,10 @@ class BonsaiInference extends ChangeNotifier {
     String prompt, {
     BonsaiTier highestTier = BonsaiTier.plus,
   }) => _fastRoute(
-    prompt,
     bonsaiModels
         .where((model) => model.tier.index <= highestTier.index)
         .toList(growable: false),
+    const PromptIntentClassifier().classify(prompt),
   );
 
   Stream<String> _generateForModel(
@@ -558,6 +650,8 @@ class BonsaiInference extends ChangeNotifier {
     required List<LocalChatTurn> history,
     bool router = false,
     String systemContext = '',
+    PromptAnalysis? analysis,
+    String? modelPath,
   }) {
     late StreamController<String> output;
     output = StreamController<String>(
@@ -567,11 +661,29 @@ class BonsaiInference extends ChangeNotifier {
         final runWatch = Stopwatch()..start();
         Duration? firstTokenAt;
         var emittedTokens = 0;
+        final promptAnalysis =
+            analysis ?? const PromptIntentClassifier().classify(prompt);
+        final outputBudget = router
+            ? math.min(160, _outputBudget(promptAnalysis, model))
+            : _outputBudget(promptAnalysis, model);
+        _lastGenerationReport = GenerationReport(
+          model: model,
+          intent: promptAnalysis.intent,
+          route: model.tier,
+          outputBudget: outputBudget,
+          finishReason: GenerationFinishReason.userCancellation,
+          firstTokenLatency: null,
+          totalGenerationTime: Duration.zero,
+          outputTokens: 0,
+          tokensPerSecond: 0,
+        );
         try {
-          if (!await isInstalled(model)) await install(model);
+          if (modelPath == null && !await isInstalled(model)) {
+            await install(model);
+          }
           _throwIfGenerationCancelled(generationEpoch);
-          final file = await _modelFile(model);
-          final runtime = await _ensureLoaded(model, file.path);
+          final path = modelPath ?? (await _modelFile(model)).path;
+          final runtime = await _ensureLoaded(model, path);
           _throwIfGenerationCancelled(generationEpoch);
           await _prepareSession(
             runtime,
@@ -587,6 +699,7 @@ class BonsaiInference extends ChangeNotifier {
             history,
             router: router,
             systemContext: systemContext,
+            analysis: promptAnalysis,
           );
           _setStatus(InferencePhase.generating, 'Thinking on this device');
           _generation = session
@@ -594,20 +707,13 @@ class BonsaiInference extends ChangeNotifier {
                 prompt: renderedPrompt,
                 addSpecial: !runtime.primed,
                 parseSpecial: true,
-                maxTokens: router
-                    ? math.min(160, _outputBudget(prompt))
-                    : _outputBudget(prompt),
+                maxTokens: outputBudget,
                 shiftPolicy: runtime.engine.canShift
                     ? ContextShiftPolicy.auto
                     : ContextShiftPolicy.off,
-                sampler: const SamplerParams(
-                  temperature: .5,
-                  topK: 20,
-                  topP: .85,
-                  minP: 0,
-                  repeatPenalty: 1,
-                  penaltyLastN: 128,
-                ),
+                sampler: PromptIntentPolicy.sampler(
+                  promptAnalysis.intent,
+                ).params,
               )
               .listen(
                 (event) {
@@ -629,16 +735,30 @@ class BonsaiInference extends ChangeNotifier {
                   } else if (event case DoneEvent(
                     :final trailingText,
                     :final generatedCount,
+                    :final reason,
                   )) {
                     if (trailingText.isNotEmpty) output.add(trailingText);
+                    final total = runWatch.elapsed;
+                    final decodeMs =
+                        total.inMilliseconds -
+                        (firstTokenAt?.inMilliseconds ?? total.inMilliseconds);
+                    final decodeTokens = math.max(0, generatedCount - 1);
+                    final tokensPerSecond = decodeMs <= 0
+                        ? 0.0
+                        : decodeTokens * 1000 / decodeMs;
+                    _lastGenerationReport = GenerationReport(
+                      model: model,
+                      intent: promptAnalysis.intent,
+                      route: model.tier,
+                      outputBudget: outputBudget,
+                      finishReason: finishReasonFromStopReason(reason),
+                      firstTokenLatency: firstTokenAt,
+                      totalGenerationTime: total,
+                      outputTokens: generatedCount,
+                      tokensPerSecond: tokensPerSecond,
+                    );
                     if (!kReleaseMode) {
-                      final totalMs = runWatch.elapsedMilliseconds;
-                      final decodeMs =
-                          totalMs - (firstTokenAt?.inMilliseconds ?? totalMs);
-                      final decodeTokens = math.max(0, generatedCount - 1);
-                      final tokensPerSecond = decodeMs <= 0
-                          ? 0.0
-                          : decodeTokens * 1000 / decodeMs;
+                      final totalMs = total.inMilliseconds;
                       debugPrint(
                         'FINN_PERF done total_ms=$totalMs decode_ms=$decodeMs '
                         'tokens=$generatedCount emitted=$emittedTokens '
@@ -648,6 +768,17 @@ class BonsaiInference extends ChangeNotifier {
                   }
                 },
                 onError: (Object error, StackTrace stack) {
+                  _lastGenerationReport = GenerationReport(
+                    model: model,
+                    intent: promptAnalysis.intent,
+                    route: model.tier,
+                    outputBudget: outputBudget,
+                    finishReason: GenerationFinishReason.error,
+                    firstTokenLatency: firstTokenAt,
+                    totalGenerationTime: runWatch.elapsed,
+                    outputTokens: emittedTokens,
+                    tokensPerSecond: 0,
+                  );
                   _setStatus(InferencePhase.error, _friendlyError(error));
                   output.addError(error, stack);
                   unawaited(output.close());
@@ -669,6 +800,17 @@ class BonsaiInference extends ChangeNotifier {
           if (!output.isClosed) await output.close();
         } catch (error, stack) {
           if (identical(_activeOutput, output)) _activeOutput = null;
+          _lastGenerationReport = GenerationReport(
+            model: model,
+            intent: promptAnalysis.intent,
+            route: model.tier,
+            outputBudget: outputBudget,
+            finishReason: GenerationFinishReason.error,
+            firstTokenLatency: firstTokenAt,
+            totalGenerationTime: runWatch.elapsed,
+            outputTokens: emittedTokens,
+            tokensPerSecond: 0,
+          );
           _setStatus(InferencePhase.error, _friendlyError(error));
           output.addError(error, stack);
           await output.close();
@@ -676,6 +818,7 @@ class BonsaiInference extends ChangeNotifier {
       },
       onCancel: () async {
         _generationEpoch++;
+        _markCancelled();
         await _generation?.cancel();
         _generation = null;
         if (identical(_activeOutput, output)) _activeOutput = null;
@@ -689,6 +832,7 @@ class BonsaiInference extends ChangeNotifier {
 
   Future<void> stopGeneration() async {
     _generationEpoch++;
+    _markCancelled();
     await _generation?.cancel();
     _generation = null;
     final output = _activeOutput;
@@ -698,6 +842,22 @@ class BonsaiInference extends ChangeNotifier {
         _phase == InferencePhase.loading) {
       _setStatus(InferencePhase.idle, 'Stopped');
     }
+  }
+
+  void _markCancelled() {
+    final previous = _lastGenerationReport;
+    if (previous == null) return;
+    _lastGenerationReport = GenerationReport(
+      model: previous.model,
+      intent: previous.intent,
+      route: previous.route,
+      outputBudget: previous.outputBudget,
+      finishReason: GenerationFinishReason.userCancellation,
+      firstTokenLatency: previous.firstTokenLatency,
+      totalGenerationTime: previous.totalGenerationTime,
+      outputTokens: previous.outputTokens,
+      tokensPerSecond: previous.tokensPerSecond,
+    );
   }
 
   void _throwIfGenerationCancelled(int epoch) {
@@ -944,6 +1104,7 @@ explicit length and output-format constraints.''';
     List<LocalChatTurn> history, {
     required bool router,
     String systemContext = '',
+    PromptAnalysis? analysis,
   }) {
     return _renderPromptText(
       primed: runtime.primed,
@@ -951,6 +1112,7 @@ explicit length and output-format constraints.''';
       prompt: prompt,
       history: history,
       systemContext: systemContext,
+      analysis: analysis,
     );
   }
 
@@ -960,12 +1122,17 @@ explicit length and output-format constraints.''';
     required String prompt,
     required List<LocalChatTurn> history,
     String systemContext = '',
+    PromptAnalysis? analysis,
   }) {
+    final promptAnalysis =
+        analysis ?? const PromptIntentClassifier().classify(prompt);
     final buffer = StringBuffer();
     if (!primed) {
       final systemText = router
-          ? '$finnSafetySystemPrompt\n\n$_routerInstruction'
-          : finnSafetySystemPrompt;
+          ? '$finnSafetySystemPrompt\n\n$_routerInstruction\n\n'
+                '${PromptIntentPolicy.taskInstruction(promptAnalysis)}'
+          : '$finnSafetySystemPrompt\n\n'
+                '${PromptIntentPolicy.taskInstruction(promptAnalysis)}';
       buffer
         ..write('<|im_start|>system\n')
         ..write(systemText)
@@ -981,6 +1148,10 @@ explicit length and output-format constraints.''';
       // The stop token is not committed to the KV cache by llama.cpp, so the
       // next turn begins by committing the prior assistant terminator.
       buffer.write('<|im_end|>\n');
+      buffer
+        ..write('<|im_start|>system\n')
+        ..write(PromptIntentPolicy.taskInstruction(promptAnalysis))
+        ..write('<|im_end|>\n');
     }
     buffer
       ..write('<|im_start|>user\n')
@@ -1007,6 +1178,7 @@ explicit length and output-format constraints.''';
       prompt: prompt,
       history: history,
       systemContext: systemContext,
+      analysis: const PromptIntentClassifier().classify(prompt),
     );
   }
 
@@ -1053,7 +1225,8 @@ explicit length and output-format constraints.''';
   ) {
     if (history.isEmpty) return history;
     final contextTokens = _plan?.contextSize ?? 2048;
-    final reservedTokens = _outputBudget(prompt) + 256;
+    final analysis = const PromptIntentClassifier().classify(prompt);
+    final reservedTokens = _outputBudget(analysis, selected) + 256;
     final promptTokens = (prompt.length / 3).ceil();
     final historyCharacters = math.max(
       0,
@@ -1072,24 +1245,39 @@ explicit length and output-format constraints.''';
     return start >= history.length ? const [] : history.sublist(start);
   }
 
-  int _outputBudget(String prompt) {
-    final maximum = _plan?.maxOutputTokens ?? 192;
-    final value = prompt.toLowerCase();
-    final asksForDepth =
-        value.contains('detailed') ||
-        value.contains('explain') ||
-        value.contains('write ') ||
-        value.contains('code') ||
-        value.contains('steps') ||
-        value.contains('compare');
-    if (asksForDepth) return maximum;
-    final quickLimit = switch (_deviceProfile?.processor) {
-      ProcessorClass.entry => 96,
-      ProcessorClass.balanced => 128,
-      ProcessorClass.flagship => 160,
-      _ => 112,
+  int _outputBudget(PromptAnalysis analysis, BonsaiModel model) {
+    final planMaximum = _plan?.maxOutputTokens ?? 320;
+    final tierMaximum = switch (model.tier) {
+      BonsaiTier.lite => 320,
+      BonsaiTier.plus => 512,
+      BonsaiTier.pro => 768,
     };
-    return math.min(maximum, quickLimit);
+    final deviceMaximum = isDeviceSupported ? planMaximum : 160;
+    return math.min(
+      PromptIntentPolicy.desiredOutputTokens(analysis.intent),
+      math.min(tierMaximum, deviceMaximum),
+    );
+  }
+
+  @visibleForTesting
+  int outputBudgetForTest(
+    String prompt, {
+    BonsaiTier tier = BonsaiTier.lite,
+    int? deviceCeiling,
+    bool supported = true,
+  }) {
+    final desired = PromptIntentPolicy.desiredOutputTokens(
+      const PromptIntentClassifier().classify(prompt).intent,
+    );
+    final tierMaximum = switch (tier) {
+      BonsaiTier.lite => 320,
+      BonsaiTier.plus => 512,
+      BonsaiTier.pro => 768,
+    };
+    return math.min(
+      desired,
+      math.min(tierMaximum, supported ? (deviceCeiling ?? tierMaximum) : 160),
+    );
   }
 
   Future<void> _unload() async {
