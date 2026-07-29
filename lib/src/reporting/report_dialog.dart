@@ -329,12 +329,12 @@ class _ReportDialogState extends State<ReportDialog> {
             foregroundColor: FluxColors.canvasOf(context),
           ),
           child: _isSubmitting
-              ? const SizedBox(
+              ? SizedBox(
                   width: 16,
                   height: 16,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    color: Colors.white,
+                    color: FluxColors.canvasOf(context),
                   ),
                 )
               : const Text('Submit Report'),

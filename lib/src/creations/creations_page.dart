@@ -467,88 +467,84 @@ class _CreationComposer extends StatefulWidget {
 }
 
 class _CreationComposerState extends State<_CreationComposer> {
+  late bool _focused;
+
   @override
   void initState() {
     super.initState();
+    _focused = widget.focusNode.hasFocus;
     widget.controller.addListener(_changed);
+    widget.focusNode.addListener(_changed);
   }
 
-  void _changed() => setState(() {});
+  void _changed() => setState(() => _focused = widget.focusNode.hasFocus);
 
   @override
   void dispose() {
     widget.controller.removeListener(_changed);
+    widget.focusNode.removeListener(_changed);
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final canSend = widget.controller.text.trim().isNotEmpty && !widget.busy;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: FluxColors.cardOf(context),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: FluxColors.lineOf(context)),
-      ),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 54, maxHeight: 118),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            const SizedBox(width: 16),
-            Expanded(
-              child: TextField(
-                controller: widget.controller,
-                focusNode: widget.focusNode,
-                inputFormatters: [LengthLimitingTextInputFormatter(4000)],
-                enabled: !widget.busy,
-                minLines: 1,
-                maxLines: 1,
-                textInputAction: TextInputAction.send,
-                onSubmitted: (_) => canSend ? widget.onSubmit() : null,
-                style: Theme.of(context).textTheme.bodyMedium,
-                decoration: InputDecoration(
-                  border: InputBorder.none,
-                  hintText: 'Describe a creation',
-                  hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: FluxColors.mutedOf(context),
+    return FluxGlass(
+      radius: 999,
+      color: FluxColors.surfaceOf(context),
+      borderColor: FluxColors.inkOf(
+        context,
+      ).withValues(alpha: _focused ? .2 : .07),
+      child: SizedBox(
+        height: 54,
+        child: Padding(
+          padding: const EdgeInsets.only(left: 18, right: 7),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: widget.controller,
+                  focusNode: widget.focusNode,
+                  inputFormatters: [LengthLimitingTextInputFormatter(4000)],
+                  enabled: !widget.busy,
+                  minLines: 1,
+                  maxLines: 1,
+                  textInputAction: TextInputAction.send,
+                  onSubmitted: (_) => canSend ? widget.onSubmit() : null,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                  decoration: InputDecoration.collapsed(
+                    hintText: 'Describe a creation',
+                    hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: FluxColors.mutedOf(context),
+                    ),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(vertical: 17),
                 ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(3),
-              child: Semantics(
+              const SizedBox(width: 6),
+              Semantics(
                 button: true,
                 enabled: canSend,
                 label: 'Create',
-                child: AnimatedScale(
-                  scale: canSend ? 1 : .94,
-                  duration: MediaQuery.disableAnimationsOf(context)
-                      ? Duration.zero
-                      : const Duration(milliseconds: 220),
-                  curve: Curves.easeOutBack,
+                child: SizedBox.square(
+                  dimension: 40,
                   child: InkWell(
                     onTap: canSend ? widget.onSubmit : null,
-                    borderRadius: BorderRadius.circular(24),
-                    child: SizedBox.square(
-                      dimension: 48,
-                      child: Center(
-                        child: FigmaSvg(
-                          asset: canSend
-                              ? FigmaAssets.activeSend
-                              : FigmaAssets.send,
-                          width: 34,
-                          height: 34,
-                        ),
+                    customBorder: const CircleBorder(),
+                    child: Center(
+                      child: FigmaSvg(
+                        asset: canSend
+                            ? FigmaAssets.activeSend
+                            : FigmaAssets.send,
+                        width: 34,
+                        height: 34,
+                        invertForDark: FluxColors.isDark(context),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

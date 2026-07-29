@@ -5,6 +5,7 @@ import 'dart:math' as math;
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:llama_cpp_dart/llama_cpp_dart.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -226,6 +227,9 @@ class _GenerationCancelled implements Exception {
 /// settings deliberately retain a CPU path so unsupported accelerators never
 /// prevent inference.
 class BonsaiInference extends ChangeNotifier {
+  static const _backgroundDownloadChannel = MethodChannel(
+    'finn_ai/model_download',
+  );
   BonsaiInference._();
 
   static final BonsaiInference instance = BonsaiInference._();
@@ -1149,6 +1153,7 @@ class BonsaiInference extends ChangeNotifier {
           'Not enough storage for the model and safety reserve.',
         );
       }
+      return _downloadWithAndroidService(model, target, partial);
     }
     final client = HttpClient()
       ..connectionTimeout = const Duration(seconds: 20);
@@ -1228,6 +1233,56 @@ class BonsaiInference extends ChangeNotifier {
     } finally {
       client.close(force: true);
     }
+  }
+
+  Future<File> _downloadWithAndroidService(
+    BonsaiModel model,
+    File target,
+    File partial,
+  ) async {
+    _setStatus(InferencePhase.downloading, 'Downloading ${model.name}', 0);
+    await _backgroundDownloadChannel.invokeMethod<void>('start', {
+      'url': model.downloadUrl,
+      'target': target.path,
+      'expectedBytes': model.expectedBytes,
+      'label': model.name,
+    });
+    while (true) {
+      if (_cancelDownload) {
+        throw const HttpException('Download paused');
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 350));
+      final raw = await _backgroundDownloadChannel
+          .invokeMapMethod<String, dynamic>('status');
+      if (raw == null || raw['target'] != target.path) continue;
+      final progress = (raw['progress'] as num?)?.toDouble() ?? 0;
+      _setStatus(
+        InferencePhase.downloading,
+        'Downloading ${model.name}',
+        progress,
+      );
+      if (raw['failed'] == true) {
+        throw HttpException(
+          (raw['error'] as String?) ?? 'Model download failed',
+        );
+      }
+      if (raw['complete'] == true) break;
+    }
+    _setStatus(InferencePhase.loading, 'Verifying ${model.name}');
+    if (!await promoteVerifiedModelPartial(
+      partial: partial,
+      target: target,
+      expectedBytes: model.expectedBytes,
+      expectedSha256: model.sha256Digest,
+    )) {
+      throw const FormatException('Downloaded model failed verification');
+    }
+    if (!await _looksLikeGguf(target)) {
+      await target.delete();
+      throw const FormatException('Downloaded model is not a valid GGUF file');
+    }
+    _verifiedModels.add(model.tier);
+    return target;
   }
 
   Future<_ModelRuntime> _ensureLoaded(BonsaiModel model, String path) async {
@@ -1829,10 +1884,7 @@ explicit length and output-format constraints.''';
     };
     return math.min(
       desired,
-      math.min(
-        tierMaximum,
-        supported ? (deviceCeiling ?? tierMaximum) : 2048,
-      ),
+      math.min(tierMaximum, supported ? (deviceCeiling ?? tierMaximum) : 2048),
     );
   }
 

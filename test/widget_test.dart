@@ -7,6 +7,7 @@ import 'package:finn_ai/src/skills/skills_page.dart';
 import 'package:finn_ai/src/theme/flux_theme.dart';
 import 'package:finn_ai/src/you/you_page.dart';
 import 'package:finn_ai/src/widgets/safe_markdown_text.dart';
+import 'package:finn_ai/src/widgets/flux_controls.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -130,28 +131,17 @@ void main() {
 
         final surfaceFinder = find.byKey(const ValueKey('send-button-surface'));
         final iconFinder = find.byKey(const ValueKey('send-button-icon'));
-        final disabledSurface = tester.widget<Material>(surfaceFinder).color!;
-        final disabledIcon = tester.widget<Icon>(iconFinder).color!;
-        expect(tester.getSize(surfaceFinder), const Size(48, 48));
+        final disabledIcon = tester.widget<FigmaSvg>(iconFinder);
+        expect(tester.getSize(surfaceFinder), const Size(40, 40));
+        expect(find.byType(AnimatedScale), findsNothing);
         expect(find.bySemanticsLabel('Send message'), findsOneWidget);
 
         await tester.enterText(find.byType(TextField), 'Ready');
         await tester.pump();
-        final activeSurface = tester.widget<Material>(surfaceFinder).color!;
-        final activeIcon = tester.widget<Icon>(iconFinder).color!;
+        final activeIcon = tester.widget<FigmaSvg>(iconFinder);
 
-        expect(activeSurface, isNot(disabledSurface));
-        expect(activeIcon, isNot(disabledIcon));
-        expect(_contrast(activeIcon, activeSurface), greaterThanOrEqualTo(3));
-        final canvas = FluxColors.canvasOf(tester.element(surfaceFinder));
-        final disabledComposite = _composite(disabledSurface, canvas);
-        expect(
-          _contrast(
-            _composite(disabledIcon, disabledComposite),
-            disabledComposite,
-          ),
-          greaterThanOrEqualTo(3),
-        );
+        expect(activeIcon.asset, FigmaAssets.activeSend);
+        expect(disabledIcon.asset, FigmaAssets.send);
       },
     );
   }
@@ -443,22 +433,27 @@ void main() {
     expect(FluxColors.canvasOf(context), equals(FluxColors.darkCanvas));
     expect(FluxColors.inkOf(context), equals(FluxColors.darkInk));
   });
-}
 
-Color _composite(Color foreground, Color background) {
-  final alpha = foreground.a;
-  return Color.from(
-    alpha: 1,
-    red: foreground.r * alpha + background.r * (1 - alpha),
-    green: foreground.g * alpha + background.g * (1 - alpha),
-    blue: foreground.b * alpha + background.b * (1 - alpha),
-  );
-}
+  testWidgets('onboarding detail pages use dark theme surfaces and copy', (
+    tester,
+  ) async {
+    tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
+    addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
 
-double _contrast(Color foreground, Color background) {
-  final first = foreground.computeLuminance();
-  final second = background.computeLuminance();
-  final lighter = first > second ? first : second;
-  final darker = first > second ? second : first;
-  return (lighter + .05) / (darker + .05);
+    await tester.pumpWidget(const FluxApp(enableModelDownload: false));
+    tester.widget<PageView>(find.byType(PageView)).controller!.jumpToPage(1);
+    await tester.pump();
+
+    final panel = tester.widget<ColoredBox>(
+      find.byWidgetPredicate(
+        (widget) => widget is ColoredBox && widget.color == FluxColors.darkCard,
+      ),
+    );
+    expect(panel.color, FluxColors.darkCard);
+
+    final privacyCopy = tester.widget<Text>(
+      find.textContaining('Finn AI is designed to respect your privacy.'),
+    );
+    expect(privacyCopy.style?.color, FluxColors.darkInk.withValues(alpha: .7));
+  });
 }

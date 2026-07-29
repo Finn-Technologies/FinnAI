@@ -235,7 +235,7 @@ class _HomeShellState extends State<HomeShell>
       final accepted = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          backgroundColor: const Color(0xFFF7F8F4),
+          backgroundColor: FluxColors.cardOf(context),
           surfaceTintColor: Colors.transparent,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(26),
@@ -670,7 +670,11 @@ class _Conversation extends StatelessWidget {
           child: message.role == ConversationRole.user
               ? Align(
                   alignment: Alignment.centerRight,
-                  child: _Bubble(text: message.text, user: true),
+                  child: _Bubble(
+                    text: message.text,
+                    user: true,
+                    modelTier: 'User message',
+                  ),
                 )
               : _CompleteReply(
                   text: message.text,
@@ -699,40 +703,213 @@ class _Conversation extends StatelessWidget {
 }
 
 class _Bubble extends StatelessWidget {
-  const _Bubble({required this.text, this.user = false});
+  const _Bubble({
+    required this.text,
+    this.user = false,
+    this.modelTier = 'Finn AI',
+  });
+
   final String text;
   final bool user;
+  final String modelTier;
 
   @override
   Widget build(BuildContext context) {
-    final isDark = FluxColors.isDark(context);
-    final bgColor = user
-        ? FluxColors.surfaceOf(context)
-        : (isDark
-              ? const Color(0xCC222226)
-              : Colors.white.withValues(alpha: .66));
-    final borderColor = isDark
-        ? const Color(0x28FFFFFF)
-        : Colors.white.withValues(alpha: .42);
-
-    return Container(
-      constraints: BoxConstraints(
-        maxWidth: MediaQuery.sizeOf(context).width * .8,
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(18),
-          topRight: Radius.circular(18),
-          bottomLeft: Radius.circular(18),
-          bottomRight: Radius.circular(6),
+    return _MessageBubble(
+      text: text,
+      user: user,
+      modelTier: modelTier,
+      childBuilder: (selecting) => Text(
+        text,
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+          color: user ? FluxColors.canvasOf(context) : null,
         ),
-        border: Border.all(color: borderColor),
       ),
-      child: Text(text, style: Theme.of(context).textTheme.bodyMedium),
     );
   }
+}
+
+class _MessageBubble extends StatefulWidget {
+  const _MessageBubble({
+    required this.text,
+    required this.user,
+    required this.modelTier,
+    required this.childBuilder,
+    this.userPrompt,
+  });
+
+  final String text;
+  final bool user;
+  final String modelTier;
+  final String? userPrompt;
+  final Widget Function(bool selecting) childBuilder;
+
+  @override
+  State<_MessageBubble> createState() => _MessageBubbleState();
+}
+
+class _MessageBubbleState extends State<_MessageBubble> {
+  bool _actionsVisible = false;
+  bool _selecting = false;
+
+  Future<void> _copy() async {
+    await Clipboard.setData(ClipboardData(text: widget.text));
+    if (!mounted) return;
+    setState(() => _actionsVisible = false);
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(
+        const SnackBar(
+          content: Text('Copied to clipboard'),
+          duration: Duration(milliseconds: 900),
+        ),
+      );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bubble = Container(
+      constraints: BoxConstraints(
+        maxWidth: MediaQuery.sizeOf(context).width * .82,
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: widget.user
+            ? FluxColors.inkOf(context)
+            : FluxColors.cardOf(context),
+        borderRadius: BorderRadius.only(
+          topLeft: const Radius.circular(19),
+          topRight: const Radius.circular(19),
+          bottomLeft: Radius.circular(widget.user ? 19 : 5),
+          bottomRight: Radius.circular(widget.user ? 5 : 19),
+        ),
+        border: widget.user
+            ? null
+            : Border.all(color: FluxColors.lineOf(context)),
+      ),
+      child: _selecting
+          ? SelectionArea(child: widget.childBuilder(true))
+          : widget.childBuilder(false),
+    );
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: widget.user
+          ? CrossAxisAlignment.end
+          : CrossAxisAlignment.start,
+      children: [
+        GestureDetector(
+          onLongPress: _selecting
+              ? null
+              : () => setState(() => _actionsVisible = !_actionsVisible),
+          child: Semantics(
+            button: !_selecting,
+            hint: _selecting ? null : 'Press and hold for message actions',
+            child: bubble,
+          ),
+        ),
+        AnimatedSwitcher(
+          duration: MediaQuery.disableAnimationsOf(context)
+              ? Duration.zero
+              : const Duration(milliseconds: 220),
+          switchInCurve: Curves.easeOutCubic,
+          switchOutCurve: Curves.easeInCubic,
+          transitionBuilder: (child, animation) => FadeTransition(
+            opacity: animation,
+            child: SizeTransition(
+              sizeFactor: animation,
+              axis: Axis.vertical,
+              alignment: Alignment.topCenter,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0, -.16),
+                  end: Offset.zero,
+                ).animate(animation),
+                child: child,
+              ),
+            ),
+          ),
+          child: !_actionsVisible
+              ? const SizedBox(key: ValueKey('message-actions-hidden'))
+              : Padding(
+                  key: const ValueKey('message-actions-visible'),
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Material(
+                    color: FluxColors.surfaceOf(context),
+                    borderRadius: BorderRadius.circular(18),
+                    child: Container(
+                      width: 178,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: FluxColors.lineOf(context)),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _InlineMessageAction(
+                            icon: FluxIcons.copy,
+                            label: 'Copy',
+                            onTap: _copy,
+                          ),
+                          Divider(height: 1, color: FluxColors.lineOf(context)),
+                          _InlineMessageAction(
+                            icon: FluxIcons.edit,
+                            label: 'Select',
+                            onTap: () => setState(() {
+                              _selecting = true;
+                              _actionsVisible = false;
+                            }),
+                          ),
+                          Divider(height: 1, color: FluxColors.lineOf(context)),
+                          _InlineMessageAction(
+                            icon: FluxIcons.flag,
+                            label: 'Report',
+                            onTap: () {
+                              setState(() => _actionsVisible = false);
+                              ReportDialog.show(
+                                context,
+                                assistantResponse: widget.text,
+                                userPrompt: widget.userPrompt,
+                                modelTier: widget.modelTier,
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+class _InlineMessageAction extends StatelessWidget {
+  const _InlineMessageAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final List<List<dynamic>> icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(17),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+      child: Row(
+        children: [
+          FluxIcon(icon: icon, size: 18),
+          const SizedBox(width: 11),
+          Text(label, style: Theme.of(context).textTheme.labelLarge),
+        ],
+      ),
+    ),
+  );
 }
 
 class _ModelResponseLoader extends StatefulWidget {
@@ -923,10 +1100,13 @@ class _CompleteReply extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      if (selectable)
-        SelectionArea(child: _ReplyText(text: text))
-      else
-        _ReplyText(text: text),
+      _MessageBubble(
+        text: text,
+        user: false,
+        modelTier: modelTier,
+        userPrompt: userPrompt,
+        childBuilder: (_) => _ReplyText(text: text),
+      ),
       if (showActions) ...[
         const SizedBox(height: 5),
         Text(
@@ -947,49 +1127,12 @@ class _CompleteReply extends StatelessWidget {
             context,
           ).textTheme.labelSmall?.copyWith(color: FluxColors.mutedOf(context)),
         ),
-        const SizedBox(height: 7),
-        Row(
-          children: [
-            FluxIconButton(
-              icon: FluxIcons.copy,
-              size: 32,
-              tooltip: 'Copy response',
-              onTap: () {
-                Clipboard.setData(ClipboardData(text: text));
-                ScaffoldMessenger.of(context)
-                  ..clearSnackBars()
-                  ..showSnackBar(
-                    const SnackBar(
-                      content: Text('Copied'),
-                      duration: Duration(milliseconds: 900),
-                    ),
-                  );
-              },
-            ),
-            if (onContinue != null) ...[
-              const SizedBox(width: 8),
-              TextButton.icon(
-                onPressed: onContinue,
-                icon: const Icon(Icons.arrow_forward, size: 17),
-                label: const Text('Continue'),
-              ),
-            ],
-            const SizedBox(width: 8),
-            FluxIconButton(
-              icon: FluxIcons.flag,
-              size: 32,
-              tooltip: 'Report response',
-              onTap: () {
-                ReportDialog.show(
-                  context,
-                  assistantResponse: text,
-                  userPrompt: userPrompt,
-                  modelTier: modelTier,
-                );
-              },
-            ),
-          ],
-        ),
+        if (onContinue != null)
+          TextButton.icon(
+            onPressed: onContinue,
+            icon: const Icon(Icons.arrow_forward, size: 17),
+            label: const Text('Continue'),
+          ),
       ],
     ],
   );
@@ -1111,17 +1254,15 @@ class _ChatComposerState extends State<ChatComposer> {
   Widget build(BuildContext context) {
     final canSend = _hasText && !widget.blocked;
     return FluxGlass(
-      radius: 15,
-      color: FluxColors.isDark(context)
-          ? const Color(0xCC18181B)
-          : Colors.white.withValues(alpha: .82),
+      radius: 999,
+      color: FluxColors.surfaceOf(context),
       borderColor: FluxColors.inkOf(
         context,
-      ).withValues(alpha: _focused ? .18 : .045),
+      ).withValues(alpha: _focused ? .2 : .07),
       child: SizedBox(
-        height: 56,
+        height: 54,
         child: Padding(
-          padding: const EdgeInsets.only(left: 14, right: 4),
+          padding: const EdgeInsets.only(left: 18, right: 7),
           child: Row(
             children: [
               Expanded(
@@ -1146,40 +1287,26 @@ class _ChatComposerState extends State<ChatComposer> {
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
               Semantics(
                 button: true,
                 enabled: canSend,
                 label: 'Send message',
-                child: AnimatedScale(
-                  scale: canSend ? 1 : .94,
-                  duration: MediaQuery.disableAnimationsOf(context)
-                      ? Duration.zero
-                      : const Duration(milliseconds: 220),
-                  curve: Curves.easeOutBack,
-                  child: Material(
-                    key: const ValueKey('send-button-surface'),
-                    color: canSend
-                        ? FluxColors.inkOf(context)
-                        : FluxColors.inkOf(context).withValues(alpha: .14),
-                    shape: const CircleBorder(),
-                    child: InkWell(
-                      onTap: canSend ? widget.onSend : null,
-                      customBorder: const CircleBorder(),
-                      child: SizedBox.square(
-                        dimension: 48,
-                        child: Center(
-                          child: Icon(
-                            Icons.arrow_upward_rounded,
-                            key: const ValueKey('send-button-icon'),
-                            size: 23,
-                            color: canSend
-                                ? FluxColors.canvasOf(context)
-                                : FluxColors.inkOf(
-                                    context,
-                                  ).withValues(alpha: .58),
-                          ),
-                        ),
+                child: SizedBox.square(
+                  key: const ValueKey('send-button-surface'),
+                  dimension: 40,
+                  child: InkWell(
+                    onTap: canSend ? widget.onSend : null,
+                    customBorder: const CircleBorder(),
+                    child: Center(
+                      child: FigmaSvg(
+                        asset: canSend
+                            ? FigmaAssets.activeSend
+                            : FigmaAssets.send,
+                        key: const ValueKey('send-button-icon'),
+                        width: 34,
+                        height: 34,
+                        invertForDark: FluxColors.isDark(context),
                       ),
                     ),
                   ),

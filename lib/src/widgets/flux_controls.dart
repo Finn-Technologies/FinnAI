@@ -69,6 +69,7 @@ class FigmaSvg extends StatelessWidget {
     this.color,
     this.colorBlendMode = BlendMode.srcIn,
     this.isNavTile = false,
+    this.invertForDark = false,
   });
 
   final String asset;
@@ -77,6 +78,7 @@ class FigmaSvg extends StatelessWidget {
   final Color? color;
   final BlendMode colorBlendMode;
   final bool isNavTile;
+  final bool invertForDark;
 
   static const List<double> _darkNavTileMatrix = <double>[
     -1.082,
@@ -100,6 +102,28 @@ class FigmaSvg extends StatelessWidget {
     1,
     0,
   ];
+  static const List<double> _invertMatrix = <double>[
+    -1,
+    0,
+    0,
+    0,
+    255,
+    0,
+    -1,
+    0,
+    0,
+    255,
+    0,
+    0,
+    -1,
+    0,
+    255,
+    0,
+    0,
+    0,
+    1,
+    0,
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -108,6 +132,8 @@ class FigmaSvg extends StatelessWidget {
     ColorFilter? filter;
     if (color != null) {
       filter = ColorFilter.mode(color!, colorBlendMode);
+    } else if (isDark && invertForDark) {
+      filter = const ColorFilter.matrix(_invertMatrix);
     } else if (isDark) {
       if (isNavTile) {
         filter = const ColorFilter.matrix(_darkNavTileMatrix);

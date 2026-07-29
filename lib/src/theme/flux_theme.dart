@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 abstract final class FluxColors {
   // Light Palette
@@ -14,7 +15,7 @@ abstract final class FluxColors {
   static const green = Color(0xFF00FF2B);
 
   // Dark Palette (Sleek Dark Mode)
-  static const darkCanvas = Color(0xFF0F0F11);
+  static const darkCanvas = Color(0xFF000000);
   static const darkInk = Color(0xFFF5F5F7);
   static const darkMuted = Color(0xFF9898A0);
   static const darkLine = Color(0xFF26262D);
@@ -45,6 +46,26 @@ abstract final class FluxColors {
 }
 
 abstract final class FluxTheme {
+  static SystemUiOverlayStyle systemUiOverlayStyle(BuildContext context) {
+    final isDark = FluxColors.isDark(context);
+    return SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+      systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarIconBrightness: isDark
+          ? Brightness.light
+          : Brightness.dark,
+      systemStatusBarContrastEnforced: false,
+      systemNavigationBarContrastEnforced: false,
+    );
+  }
+
+  static Widget applySystemUi(BuildContext context, Widget? child) =>
+      AnnotatedRegion<SystemUiOverlayStyle>(
+        value: systemUiOverlayStyle(context),
+        child: child ?? const SizedBox.shrink(),
+      );
+
   static TextTheme _textTheme(Color color) => TextTheme(
     headlineLarge: TextStyle(
       fontSize: 24,

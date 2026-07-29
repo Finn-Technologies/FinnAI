@@ -35,7 +35,8 @@ class _FinnBootstrapState extends State<FinnBootstrap> {
         theme: FluxTheme.light,
         darkTheme: FluxTheme.dark,
         themeMode: ThemeMode.system,
-        home: const Scaffold(
+        builder: FluxTheme.applySystemUi,
+        home: Scaffold(
           body: AmbientBackground(
             child: Center(
               child: Text(
@@ -44,7 +45,7 @@ class _FinnBootstrapState extends State<FinnBootstrap> {
                   fontFamily: 'InstrumentSans',
                   fontSize: 22,
                   fontWeight: FontWeight.w400,
-                  color: Color(0xA6000000),
+                  color: FluxColors.inkOf(context).withValues(alpha: .65),
                 ),
               ),
             ),
@@ -73,6 +74,7 @@ class FluxApp extends StatelessWidget {
       theme: FluxTheme.light,
       darkTheme: FluxTheme.dark,
       themeMode: ThemeMode.system,
+      builder: FluxTheme.applySystemUi,
       home: BonsaiInference.instance.isDeviceSupported
           ? onboardingComplete
                 ? const HomeShell()
@@ -101,9 +103,9 @@ class _UnsupportedDevicePage extends StatelessWidget {
                 Container(
                   width: 62,
                   height: 62,
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Color(0xFFE8EDE2),
+                    color: FluxColors.surfaceOf(context),
                   ),
                   child: const Icon(Icons.memory_rounded, size: 27),
                 ),
@@ -120,7 +122,7 @@ class _UnsupportedDevicePage extends StatelessWidget {
                   'downloaded.',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.black.withValues(alpha: .56),
+                    color: FluxColors.mutedOf(context),
                   ),
                 ),
               ],

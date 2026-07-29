@@ -3,8 +3,11 @@ package com.abhiflex.finnai
 import android.app.ActivityManager
 import android.content.Context
 import android.os.Build
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.PowerManager
 import android.os.StatFs
+import android.content.Intent
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.engine.FlutterShellArgs
@@ -73,6 +76,43 @@ class MainActivity : FlutterActivity() {
                     "thermalHeadroom" to thermalHeadroom,
                 ),
             )
+        }
+
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            "finn_ai/model_download",
+        ).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "start" -> {
+                    val args = call.arguments as? Map<*, *> ?: run { result.error("args", "Missing download arguments", null); return@setMethodCallHandler }
+                    val requestedTarget = args["target"] as? String ?: run { result.error("args", "Missing download target", null); return@setMethodCallHandler }
+                    val current = ModelDownloadService.status(this)
+                    if (current["active"] == true && current["target"] == requestedTarget) {
+                        result.success(null)
+                        return@setMethodCallHandler
+                    }
+                    val serviceIntent = Intent(this, ModelDownloadService::class.java).apply {
+                        action = ModelDownloadService.ACTION_START
+                        putExtra(ModelDownloadService.EXTRA_URL, args["url"] as? String)
+                        putExtra(ModelDownloadService.EXTRA_TARGET, requestedTarget)
+                        putExtra(ModelDownloadService.EXTRA_EXPECTED_BYTES, (args["expectedBytes"] as? Number)?.toLong() ?: 0L)
+                        putExtra(ModelDownloadService.EXTRA_LABEL, args["label"] as? String)
+                    }
+                    if (Build.VERSION.SDK_INT >= 33 &&
+                        checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+                    ) {
+                        requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 4102)
+                    }
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        startForegroundService(serviceIntent)
+                    } else {
+                        startService(serviceIntent)
+                    }
+                    result.success(null)
+                }
+                "status" -> result.success(ModelDownloadService.status(this))
+                else -> result.notImplemented()
+            }
         }
 
     }

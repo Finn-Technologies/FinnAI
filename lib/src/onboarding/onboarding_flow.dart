@@ -115,12 +115,12 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               onNext: () => _to(2),
               child: Text(
                 'Finn AI is designed to respect your privacy.\n\nOnce a model is installed, your conversations and AI processing stay locally on this device. They are not sent to Finn AI or an external inference provider.\n\nFinn AI is proprietary software and is not open source.',
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'InstrumentSans',
                   fontSize: 16,
                   height: 1.2,
                   fontWeight: FontWeight.w400,
-                  color: Color(0xB3000000),
+                  color: FluxColors.inkOf(context).withValues(alpha: .7),
                 ),
               ),
             ),
@@ -184,7 +184,7 @@ class _WelcomePage extends StatelessWidget {
                     Text(
                       'Swipe to start',
                       style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: FluxColors.muted,
+                        color: FluxColors.mutedOf(context),
                         fontSize: 16,
                       ),
                     ),
@@ -372,7 +372,7 @@ class _DetailPage extends StatelessWidget {
                 top: Radius.circular(20),
               ),
               child: ColoredBox(
-                color: Colors.white,
+                color: FluxColors.cardOf(context),
                 child: Stack(
                   children: [
                     Positioned(
@@ -805,7 +805,7 @@ class _FinishPage extends StatelessWidget {
                     Text(
                       "You're all set. Finn AI is ready.",
                       style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: FluxColors.muted,
+                        color: FluxColors.mutedOf(context),
                         fontSize: 16,
                       ),
                     ),
