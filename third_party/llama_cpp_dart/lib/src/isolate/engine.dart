@@ -706,8 +706,8 @@ final class SessionPrefillResult {
   double get tokensPerSecond => elapsed.inMicroseconds == 0
       ? 0
       : evaluatedTokens *
-            Duration.microsecondsPerSecond /
-            elapsed.inMicroseconds;
+          Duration.microsecondsPerSecond /
+          elapsed.inMicroseconds;
 }
 
 /// A multi-turn chat handle backed by an [EngineSession].

@@ -9,7 +9,7 @@ FinnAI is designed as an on-device, privacy-first AI assistant. All inference ru
 
 | Data Type | Storage Location | Encryption Standard | Network Exposure |
 |---|---|---|---|
-| Chat History & Messages | Local App Private Storage (`conversations.v2.enc`) | AES-256-GCM via `package:cryptography` | None (Stored locally) |
+| Chat History & Messages | Local App Private Storage (`conversations.v2.enc`) | AES-256-GCM via `package:cryptography` | Latest request only when automatic web search is needed; history is never sent |
 | Creations | Local App Private Storage (`creations.json`) | Android application sandbox | None |
 | Profile Preferences & Custom Instructions | Local App Private Storage (`user_personalization.json`) | Android application sandbox | None |
 | Skills | Local App Private Storage (`skills.json`) | Android application sandbox | None |
@@ -17,6 +17,7 @@ FinnAI is designed as an on-device, privacy-first AI assistant. All inference ru
 | AI Model Weights | Local Cache Directory (`.gguf` files) | SHA-256 integrity verified | Download only from Hugging Face |
 | AdMob Data & Consent | Local Preferences & Google UMP SDK | Google Standard Advertising Privacy | Google AdMob Servers |
 | AI Response Reports | Transient in memory | HTTPS/TLS (Only when the user submits) | `https://finn-org.vercel.app/v1/reports`; 30-day Upstash Redis TTL |
+| Web Search Query | Transient in memory | HTTPS/TLS | Search provider, only for requests locally classified as needing web information |
 
 ---
 

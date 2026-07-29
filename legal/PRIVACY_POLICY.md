@@ -5,11 +5,23 @@
 FinnAI ("we", "our", or "us") is committed to protecting your privacy. This Privacy Policy explains how data is handled when you use the FinnAI mobile application for Android.
 
 ## 1. On-Device AI Processing & Privacy First Design
-FinnAI is designed as an on-device AI assistant. All prompts, user messages, and AI-generated responses are processed locally on your Android device using mmap-backed GGUF inference engines.
+FinnAI is designed as an on-device AI assistant. AI-generated responses are processed locally on your Android device using mmap-backed GGUF inference engines. When automatic web search is used, the latest request is also used as described below.
 
-- **No Remote AI Servers**: Your AI prompts and conversations are NOT sent to FinnAI or third-party AI cloud API providers.
+- **No Remote AI Servers**: Your conversations are not sent to FinnAI or third-party AI cloud inference providers.
 - **Encrypted Local Storage**: Your saved conversation history is stored strictly on your local device with authenticated AES-256-GCM encryption. Encryption keys are managed using OS-enforced secure key storage (`FlutterSecureStorage`).
 - **Other Local Features**: Creations, profile preferences, custom instructions, and Skills are stored in the app's private local storage. They are used only to provide the features you select and are not sent to an AI cloud service.
+
+## Automatic Web Search
+
+FinnAI decides locally whether a request needs current internet information,
+including news, recipes, explicit web lookups, and other time-sensitive
+questions. When it searches, only the latest user request is sent over HTTPS
+to the configured search provider. Conversation history, saved profile data,
+custom instructions, and Skills are not included. Search requests expose the
+query and ordinary network metadata such as the device IP address to the search
+provider. Retrieved excerpts are processed by the on-device model, and FinnAI
+shows the source links used. If search is unavailable, FinnAI falls back to a
+local answer.
 
 ## 2. Network Usage & Third-Party Services
 FinnAI uses network access exclusively for the following specific purposes:

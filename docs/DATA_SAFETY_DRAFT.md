@@ -74,7 +74,9 @@ https://finn-org.vercel.app/privacy
   as applicable to the configured Google Mobile Ads products.
 - Treat optional AI response reports as collected user-generated content only
   when the user explicitly submits them.
-- Do not declare prompts or conversation history as collected by FinnAI: local
-  inference and encrypted conversation storage remain on-device.
+- Conversation history remains on-device. Automatic web search sends only the
+  latest request to the configured search provider for transient processing;
+  reconcile this feature with the Play Console's current collection guidance
+  before submission.
 - Reconcile the target-audience answers with the child-directed and
   under-age-of-consent request tags before publishing.

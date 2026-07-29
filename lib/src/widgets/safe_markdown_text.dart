@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 /// Renders the small Markdown subset useful in local-model answers.
 ///
-/// Raw HTML, routing/thinking tags, images, and interactive links are removed.
-/// This intentionally avoids a WebView or URL launcher in model output.
+/// Raw HTML, routing/thinking tags, and images are removed. Only explicit
+/// HTTPS Markdown links are interactive; every other link target is stripped.
 class SafeMarkdownText extends StatelessWidget {
   const SafeMarkdownText({super.key, required this.text});
 
@@ -23,10 +24,12 @@ class SafeMarkdownText extends StatelessWidget {
           RegExp(r'!\[([^\]]*)\]\([^)]*\)'),
           (match) => match.group(1) ?? '',
         )
-        .replaceAllMapped(
-          RegExp(r'\[([^\]]+)\]\([^)]*\)'),
-          (match) => match.group(1) ?? '',
-        )
+        .replaceAllMapped(RegExp(r'\[([^\]]+)\]\(([^)]*)\)'), (match) {
+          final uri = Uri.tryParse(match.group(2) ?? '');
+          return uri?.scheme == 'https' && uri?.host.isNotEmpty == true
+              ? match.group(0)!
+              : match.group(1) ?? '';
+        })
         .replaceAll(RegExp(r'</?[A-Za-z][^>\n]*>'), '');
     return value.trim();
   }
@@ -55,6 +58,7 @@ class SafeMarkdownText extends StatelessWidget {
         padding: EdgeInsets.only(top: index == 0 ? 0 : 8, bottom: 3),
         child: Text.rich(
           _inline(
+            context,
             heading.group(2)!,
             base.copyWith(
               fontSize: (base.fontSize ?? 14) + (4 - level),
@@ -73,27 +77,51 @@ class SafeMarkdownText extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SizedBox(width: 25, child: Text(marker, style: base)),
-            Expanded(child: Text.rich(_inline(content, base))),
+            Expanded(child: Text.rich(_inline(context, content, base))),
           ],
         ),
       );
     }
     return Padding(
       padding: const EdgeInsets.only(bottom: 2),
-      child: Text.rich(_inline(line, base)),
+      child: Text.rich(_inline(context, line, base)),
     );
   }
 
-  TextSpan _inline(String value, TextStyle base) {
+  TextSpan _inline(BuildContext context, String value, TextStyle base) {
     final spans = <InlineSpan>[];
-    final pattern = RegExp(r'(\*\*[^*\n]+\*\*|`[^`\n]+`)');
+    final pattern = RegExp(
+      r'(\*\*[^*\n]+\*\*|`[^`\n]+`|\[[^\]\n]+\]\(https://[^)\s]+\))',
+    );
     var cursor = 0;
     for (final match in pattern.allMatches(value)) {
       if (match.start > cursor) {
         spans.add(TextSpan(text: _plain(value.substring(cursor, match.start))));
       }
       final token = match.group(0)!;
-      if (token.startsWith('**')) {
+      if (token.startsWith('[')) {
+        final link = RegExp(
+          r'^\[([^\]]+)\]\((https://[^)]+)\)$',
+        ).firstMatch(token)!;
+        final uri = Uri.parse(link.group(2)!);
+        spans.add(
+          WidgetSpan(
+            alignment: PlaceholderAlignment.baseline,
+            baseline: TextBaseline.alphabetic,
+            child: InkWell(
+              onTap: () => launchUrl(uri, mode: LaunchMode.externalApplication),
+              child: Text(
+                link.group(1)!,
+                style: base.copyWith(
+                  color: Theme.of(context).colorScheme.primary,
+                  decoration: TextDecoration.underline,
+                  decorationColor: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+            ),
+          ),
+        );
+      } else if (token.startsWith('**')) {
         spans.add(
           TextSpan(
             text: token.substring(2, token.length - 2),

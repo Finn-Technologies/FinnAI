@@ -6,14 +6,17 @@ Finn AI: Local AI Assistant
 
 ## Short description
 
-Private AI conversations powered entirely on your Android device.
+Private AI conversations powered on your Android device, with automatic web
+search when a request needs current information.
 
 ## Full description
 
 Meet FinnAI, a fast and private AI assistant designed to run locally on your
 Android device.
 
-Your prompts and conversations stay on your phone. FinnAI automatically checks
+Your conversations and AI processing stay on your phone. For news, recipes,
+and other requests that need web information, FinnAI sends only the latest
+request as a search query and shows tappable sources. FinnAI automatically checks
 your device's memory and processor capabilities, then installs the best
 compatible Bonsai model. On supported hardware, its local router balances quick
 answers with more capable models for harder questions.

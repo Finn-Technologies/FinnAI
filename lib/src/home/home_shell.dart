@@ -12,6 +12,7 @@ import '../inference/bonsai_inference.dart';
 import '../inference/residency_policy.dart';
 import '../privacy/ad_consent_service.dart';
 import '../reporting/report_dialog.dart';
+import '../search/web_search_service.dart';
 import '../settings/settings_page.dart';
 import '../skills/skills_page.dart';
 import '../skills/skills_store.dart';
@@ -29,6 +30,7 @@ class HomeShell extends StatefulWidget {
     this.conversationStore,
     this.inference,
     this.initializeServices = true,
+    this.webSearch,
   });
 
   final ChatGenerationController? generationController;
@@ -36,6 +38,7 @@ class HomeShell extends StatefulWidget {
   final BonsaiInference? inference;
   @visibleForTesting
   final bool initializeServices;
+  final WebSearchService? webSearch;
 
   @override
   State<HomeShell> createState() => _HomeShellState();
@@ -50,12 +53,14 @@ class _HomeShellState extends State<HomeShell>
       widget.conversationStore ?? ConversationStore.instance;
   late final _generation =
       widget.generationController ?? ChatGenerationController.instance;
+  late final _webSearch = widget.webSearch ?? WebSearchService();
   Timer? _memoryReleaseTimer;
   Timer? _prewarmTimer;
   bool _sidebar = false;
   bool _sidebarEverOpened = false;
   bool _sidebarAdVisible = false;
   bool _preparing = false;
+  String _preparingLabel = 'Preparing';
   late bool _storesReady = !widget.initializeServices;
   late final AnimationController _sidebarController = AnimationController(
     vsync: this,
@@ -208,7 +213,10 @@ class _HomeShellState extends State<HomeShell>
     );
     _prewarmTimer?.cancel();
 
-    setState(() => _preparing = true);
+    setState(() {
+      _preparing = true;
+      _preparingLabel = 'Preparing locally';
+    });
     await Future.wait([
       _conversations.initialize(),
       YouProfileStore.instance.initialize(),
@@ -216,9 +224,16 @@ class _HomeShellState extends State<HomeShell>
     ]);
     if (!mounted) return;
     _storesReady = true;
+    WebSearchResult? webResults;
+    if (_webSearch.policy.shouldSearch(value)) {
+      setState(() => _preparingLabel = 'Searching the web');
+      webResults = await _webSearch.searchIfNeeded(value);
+      if (!mounted) return;
+    }
     final systemContext = [
       YouProfileStore.instance.promptContext,
       SkillsStore.instance.promptContextFor(value),
+      webResults?.modelContext ?? '',
     ].where((item) => item.trim().isNotEmpty).join('\n\n');
     final missing = <BonsaiModel>[];
     for (final model in _inference.requiredModels) {
@@ -303,6 +318,7 @@ class _HomeShellState extends State<HomeShell>
       prompt: value,
       history: history,
       systemContext: systemContext,
+      responseSuffix: webResults?.markdownSources ?? '',
       trace: timing,
     );
   }
@@ -465,6 +481,8 @@ class _HomeShellState extends State<HomeShell>
                         onStop: _stopReply,
                         onContinue: _continueReply,
                         onOpenConversation: _activateConversation,
+                        preparing: _preparing,
+                        preparingLabel: _preparingLabel,
                       ),
                     ),
                     Positioned(
@@ -594,6 +612,8 @@ class _Conversation extends StatelessWidget {
     required this.onStop,
     required this.onContinue,
     required this.onOpenConversation,
+    required this.preparing,
+    required this.preparingLabel,
   });
   final List<ConversationMessage> messages;
   final String? activeConversationId;
@@ -602,6 +622,8 @@ class _Conversation extends StatelessWidget {
   final VoidCallback onStop;
   final ValueChanged<ConversationMessage> onContinue;
   final ValueChanged<String> onOpenConversation;
+  final bool preparing;
+  final String preparingLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -614,7 +636,10 @@ class _Conversation extends StatelessWidget {
             terminalJob?.state == ChatGenerationState.error
         ? terminalJob?.errorMessage
         : null;
-    if (messages.isEmpty && activeJob == null && visibleError == null) {
+    if (messages.isEmpty &&
+        activeJob == null &&
+        visibleError == null &&
+        !preparing) {
       return const SizedBox();
     }
     final streamingMessageId = ownsGeneration
@@ -646,6 +671,12 @@ class _Conversation extends StatelessWidget {
                   key: ValueKey(activeJob.state),
                   label: generation.progressLabel,
                   stopping: activeJob.state == ChatGenerationState.stopping,
+                  onStop: onStop,
+                )
+              else if (preparing)
+                _ModelResponseLoader(
+                  label: preparingLabel,
+                  stopping: true,
                   onStop: onStop,
                 )
               else if (activeJob != null)

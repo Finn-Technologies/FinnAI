@@ -145,6 +145,53 @@ void main() {
   });
 
   test(
+    'verified web sources are appended only after a complete answer',
+    () async {
+      final conversation = store.startNew();
+      await controller.start(
+        conversationId: conversation.id,
+        prompt: 'Latest news',
+        history: const [],
+        systemContext: 'Retrieved excerpts',
+        responseSuffix:
+            '\n\n### Sources\n- [Example](https://example.com/story)',
+      );
+      runtime.emit('A sourced answer [1].');
+      expect(controller.job?.responseText, 'A sourced answer [1].');
+
+      await runtime.finish(GenerationFinishReason.eos);
+      await _waitUntil(() => !controller.busy);
+
+      final answer = store
+          .conversationById(conversation.id)!
+          .messages
+          .last
+          .text;
+      expect(answer, contains('A sourced answer [1].'));
+      expect(answer, contains('[Example](https://example.com/story)'));
+    },
+  );
+
+  test('verified web sources survive a model token limit', () async {
+    final conversation = store.startNew();
+    await controller.start(
+      conversationId: conversation.id,
+      prompt: 'News today',
+      history: const [],
+      systemContext: 'Retrieved excerpts',
+      responseSuffix: '\n\n### Sources\n- [Example](https://example.com/story)',
+    );
+    runtime.emit('A long sourced answer');
+
+    await runtime.finish(GenerationFinishReason.tokenLimit);
+    await _waitUntil(() => !controller.busy);
+
+    final answer = store.conversationById(conversation.id)!.messages.last;
+    expect(answer.status, ConversationMessageStatus.tokenLimited);
+    expect(answer.text, contains('[Example](https://example.com/story)'));
+  });
+
+  test(
     'cancellation timeout resets runtime and permits later generation',
     () async {
       runtime.acknowledgeStop = false;

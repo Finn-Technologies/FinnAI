@@ -215,6 +215,7 @@ class ChatGenerationController extends ChangeNotifier {
     required String prompt,
     required List<LocalChatTurn> history,
     required String systemContext,
+    String responseSuffix = '',
     TtftTrace? trace,
   }) async {
     if (busy) return null;
@@ -236,6 +237,7 @@ class ChatGenerationController extends ChangeNotifier {
       runtimePrompt: prompt,
       history: history,
       systemContext: systemContext,
+      responseSuffix: responseSuffix,
       analysis: analysis,
       initialText: '',
       continuationCount: 0,
@@ -272,6 +274,7 @@ class ChatGenerationController extends ChangeNotifier {
       runtimePrompt: BonsaiInference.continuationPrompt,
       history: history,
       systemContext: systemContext,
+      responseSuffix: '',
       analysis: analysis,
       initialText: assistant.text,
       continuationCount: assistant.continuationCount,
@@ -287,6 +290,7 @@ class ChatGenerationController extends ChangeNotifier {
     required String runtimePrompt,
     required List<LocalChatTurn> history,
     required String systemContext,
+    required String responseSuffix,
     required PromptAnalysis analysis,
     required String initialText,
     required int continuationCount,
@@ -325,7 +329,7 @@ class ChatGenerationController extends ChangeNotifier {
             unawaited(_finishError(generationId, epoch, error));
           },
           onDone: () {
-            unawaited(_finish(generationId, epoch));
+            unawaited(_finish(generationId, epoch, responseSuffix));
           },
           cancelOnError: true,
         );
@@ -378,7 +382,11 @@ class ChatGenerationController extends ChangeNotifier {
     if (!_disposed) notifyListeners();
   }
 
-  Future<void> _finish(String generationId, int epoch) async {
+  Future<void> _finish(
+    String generationId,
+    int epoch,
+    String responseSuffix,
+  ) async {
     final current = _job;
     if (current == null ||
         current.generationId != generationId ||
@@ -398,12 +406,19 @@ class ChatGenerationController extends ChangeNotifier {
         ConversationMessageStatus.stopped,
       GenerationFinishReason.error => ConversationMessageStatus.failed,
     };
+    final completedText =
+        (reason == GenerationFinishReason.eos ||
+                reason == GenerationFinishReason.tokenLimit) &&
+            responseSuffix.isNotEmpty
+        ? '${current.responseText.trimRight()}$responseSuffix'
+        : current.responseText;
     await _finishPersisted(
       current.copyWith(
         state: reason == GenerationFinishReason.error
             ? ChatGenerationState.error
             : ChatGenerationState.complete,
         finishReason: reason,
+        responseText: completedText,
       ),
       status,
     );

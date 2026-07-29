@@ -225,4 +225,15 @@ void main() {
       expect(sanitized, contains('unsafe'));
     },
   );
+
+  test('safe Markdown keeps HTTPS sources and strips unsafe links', () {
+    final sanitized = SafeMarkdownText.sanitize(
+      '[Trusted](https://example.com/story) '
+      '[Unsafe](javascript:alert(1))',
+    );
+
+    expect(sanitized, contains('[Trusted](https://example.com/story)'));
+    expect(sanitized, contains('Unsafe'));
+    expect(sanitized, isNot(contains('javascript:')));
+  });
 }

@@ -114,7 +114,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               onBack: () => _to(0),
               onNext: () => _to(2),
               child: Text(
-                'Finn AI is designed to respect your privacy.\n\nOnce a model is installed, your conversations and AI processing stay locally on this device. They are not sent to Finn AI or an external inference provider.\n\nFinn AI is proprietary software and is not open source.',
+                'Finn AI is designed to respect your privacy.\n\nAI processing and conversation history stay on this device. When a request needs fresh information, Finn AI may send only that request as a web search query and will show the sources it used. Your history and personal profile are never included.\n\nFinn AI is proprietary software and is not open source.',
                 style: TextStyle(
                   fontFamily: 'InstrumentSans',
                   fontSize: 16,

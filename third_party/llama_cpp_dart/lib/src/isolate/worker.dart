@@ -554,9 +554,8 @@ StateMetadata _currentMetadata({
     nSeqMax: state.context.nSeqMax,
     embeddings: state.context.params.embeddings,
     mmprojPath: mtmd?.params.mmprojPath,
-    mmprojSizeBytes: mtmd == null
-        ? null
-        : File(mtmd.params.mmprojPath).statSync().size,
+    mmprojSizeBytes:
+        mtmd == null ? null : File(mtmd.params.mmprojPath).statSync().size,
     mmprojSupportsVision: mtmd?.supportsVision,
     mmprojSupportsAudio: mtmd?.supportsAudio,
     seqId: (session as dynamic).seqId as int,
