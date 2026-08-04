@@ -157,7 +157,7 @@ class ChatGenerationController extends ChangeNotifier {
   ChatGenerationController({
     required this.conversations,
     required this.runtime,
-    this.persistenceInterval = const Duration(milliseconds: 350),
+    this.persistenceInterval = const Duration(milliseconds: 1500),
     this.cancellationTimeout = const Duration(seconds: 1),
     DateTime Function()? clock,
   }) : _clock = clock ?? DateTime.now {
@@ -395,9 +395,16 @@ class ChatGenerationController extends ChangeNotifier {
         !current.busy) {
       return;
     }
-    final reason =
+    final reportedReason =
         runtime.lastGenerationReport?.finishReason ??
         GenerationFinishReason.eos;
+    // Some llama.cpp Android builds surface a normal stream termination as
+    // StopUserAbort. Only this controller's explicit stop path is allowed to
+    // label a message as user-cancelled; it invalidates the epoch and never
+    // reaches _finish.
+    final reason = reportedReason == GenerationFinishReason.userCancellation
+        ? GenerationFinishReason.eos
+        : reportedReason;
     final status = switch (reason) {
       GenerationFinishReason.eos => ConversationMessageStatus.complete,
       GenerationFinishReason.tokenLimit =>
@@ -570,7 +577,7 @@ class ChatGenerationController extends ChangeNotifier {
     await conversations.flush();
   }
 
-  Future<void> _persistPartial() async {
+  Future<void> _persistPartial({bool persistSoon = false}) async {
     final current = _job;
     if (current == null || current.responseText.isEmpty) return;
     conversations.updateMessageInConversation(
@@ -581,6 +588,7 @@ class ChatGenerationController extends ChangeNotifier {
       modelTier: current.modelName,
       status: current.busy ? ConversationMessageStatus.generating : null,
       continuationCount: current.continuationCount,
+      persistSoon: persistSoon,
       notify: false,
     );
   }
@@ -588,7 +596,11 @@ class ChatGenerationController extends ChangeNotifier {
   void _schedulePersistence() {
     _persistenceTimer ??= Timer(persistenceInterval, () {
       _persistenceTimer = null;
-      unawaited(flushActive());
+      // Checkpoint in memory and let ConversationStore coalesce encryption
+      // and disk I/O. Stop, completion, navigation, and disposal still flush
+      // immediately, so this removes hot-path writes without risking the
+      // terminal response.
+      unawaited(_persistPartial(persistSoon: true));
     });
   }
 

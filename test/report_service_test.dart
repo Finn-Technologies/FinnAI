@@ -25,6 +25,33 @@ void main() {
   });
 
   group('ReportService Unit Tests', () {
+    test('Email report is complete and addressed to FinnAI support', () {
+      final service = ReportService(
+        endpoint: '',
+        reportEmail: 'finn_org@proton.me',
+      );
+
+      final uri = service.buildEmailUri(testPayload);
+
+      expect(uri, isNotNull);
+      expect(uri!.scheme, 'mailto');
+      expect(uri.path, 'finn_org@proton.me');
+      expect(uri.queryParameters['subject'], contains('rep_12345'));
+      final body = uri.queryParameters['body']!;
+      expect(body, contains('Harmful or dangerous'));
+      expect(body, contains('Bonsai 4B'));
+      expect(body, contains('Tell me something dangerous'));
+      expect(body, contains('Sample flagged AI response'));
+      expect(body, contains('Test details'));
+    });
+
+    test('Invalid report email cannot create a mailto URI', () {
+      final service = ReportService(endpoint: '', reportEmail: 'not-an-email');
+
+      expect(service.canComposeEmail, isFalse);
+      expect(service.buildEmailUri(testPayload), isNull);
+    });
+
     test('Unconfigured endpoint returns unconfigured status', () async {
       final service = ReportService(endpoint: '');
       final status = await service.submitReport(testPayload);

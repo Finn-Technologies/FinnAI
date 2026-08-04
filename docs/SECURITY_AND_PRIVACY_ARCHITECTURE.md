@@ -16,7 +16,7 @@ FinnAI is designed as an on-device, privacy-first AI assistant. All inference ru
 | Encryption Master Key | `FlutterSecureStorage` (Android KeyStore / KeyChain) | 256-bit random key in OS-enforced Hardware KeyStore | None |
 | AI Model Weights | Local Cache Directory (`.gguf` files) | SHA-256 integrity verified | Download only from Hugging Face |
 | AdMob Data & Consent | Local Preferences & Google UMP SDK | Google Standard Advertising Privacy | Google AdMob Servers |
-| AI Response Reports | Transient in memory | HTTPS/TLS (Only when the user submits) | `https://finn-org.vercel.app/v1/reports`; 30-day Upstash Redis TTL |
+| AI Response Reports | Transient in memory until handed to the user's mail app | User-controlled email (only after review and Send) | `finn_org@proton.me`; retention is governed by the receiving mailbox |
 | Web Search Query | Transient in memory | HTTPS/TLS | Search provider, only for requests locally classified as needing web information |
 
 ---

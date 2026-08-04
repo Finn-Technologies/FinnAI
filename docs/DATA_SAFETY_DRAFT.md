@@ -7,9 +7,9 @@ Use these answers when completing the **Data Safety** questionnaire in Google Pl
 ## 1. Data Collection and Security Overview
 
 - **Does your app collect or share any of the required user data types?**
-  - **Yes** (Google Mobile Ads collects and shares data for ads, analytics, and fraud prevention; optional user-submitted reports are collected when a production endpoint is configured).
+  - **Yes** (Google Mobile Ads collects and shares data for ads, analytics, and fraud prevention; optional reports are collected only when the user reviews and sends the prepared email).
 - **Is all of the user data collected by your app encrypted in transit?**
-  - **Yes** (App-managed endpoints use HTTPS, and Google Mobile Ads encrypts its data in transit using TLS).
+  - **Yes** (reports use the user's email provider in transit, and Google Mobile Ads encrypts its data in transit using TLS).
 - **Do you provide a way for users to request that their data be deleted?**
   - **Yes** (In-app "Delete All Local Data" feature in Settings attempts to purge conversations, encryption keys, downloaded models, creations, profile preferences, Skills, and onboarding state, returning detailed results).
 
@@ -41,7 +41,7 @@ Use these answers when completing the **Data Safety** questionnaire in Google Pl
 
 ### E. User-generated Content
 - **Data Type**: Optional AI response report and, only with a separate opt-in, its associated prompt.
-- **Collected**: **Yes**, only after an explicit user submission and only when the reporting service is configured.
+- **Collected**: **Yes**, only after the user reviews and sends the report from their email app.
 - **Shared**: No.
 - **Required or Optional**: Optional.
 - **Purposes**: Developer Communications, App Functionality, Fraud Prevention & Safety.

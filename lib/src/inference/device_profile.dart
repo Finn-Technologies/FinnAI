@@ -19,8 +19,7 @@ class DeviceProfile {
     required this.lowMemory,
     this.supportedAbis = const [],
     this.availableStorageBytes,
-    this.thermalStatus,
-    this.thermalHeadroom,
+    this.nativeLibraryDir,
   });
 
   static const minimumRamBytes = 3000000000;
@@ -33,11 +32,7 @@ class DeviceProfile {
   final bool lowMemory;
   final List<String> supportedAbis;
   final int? availableStorageBytes;
-  final int? thermalStatus;
-  final double? thermalHeadroom;
-
-  bool get thermallyConstrained =>
-      (thermalStatus ?? 0) >= 3 || (thermalHeadroom ?? 0) >= .85;
+  final String? nativeLibraryDir;
 
   bool get supported =>
       !Platform.isAndroid ||
@@ -133,8 +128,7 @@ class DeviceProfiler {
               .whereType<String>()
               .toList(growable: false),
       availableStorageBytes: _asInt(native['availableStorageBytes']),
-      thermalStatus: _asInt(native['thermalStatus']),
-      thermalHeadroom: _asDouble(native['thermalHeadroom']),
+      nativeLibraryDir: native['nativeLibraryDir'] as String?,
     );
   }
 
@@ -146,7 +140,9 @@ class DeviceProfiler {
     final tier = switch (processor) {
       ProcessorClass.entry => BonsaiTier.lite,
       ProcessorClass.balanced =>
-        ramGb >= 5.5 ? BonsaiTier.plus : BonsaiTier.lite,
+        ramGb >= 5.5 && !_prefersLiteModel(profile.soc)
+            ? BonsaiTier.plus
+            : BonsaiTier.lite,
       ProcessorClass.flagship =>
         ramGb >= 7.5
             ? BonsaiTier.pro
@@ -188,11 +184,7 @@ class DeviceProfiler {
     final normalThreads = threadOverride > 0
         ? threadOverride
         : math.max(1, math.min(decodeCeiling, profile.cores - 2));
-    final threads = threadOverride > 0
-        ? threadOverride
-        : profile.thermallyConstrained
-        ? math.min(4, normalThreads)
-        : normalThreads;
+    final threads = normalThreads;
     const batchThreadOverride = int.fromEnvironment(
       'FINN_BENCH_BATCH_THREADS',
       defaultValue: 0,
@@ -203,8 +195,6 @@ class DeviceProfiler {
     );
     final batchThreads = batchThreadOverride > 0
         ? batchThreadOverride
-        : profile.thermallyConstrained
-        ? math.min(4, normalBatchThreads)
         : normalBatchThreads;
     final constrained =
         profile.lowMemory ||
@@ -214,9 +204,7 @@ class DeviceProfiler {
       'FINN_BENCH_BATCH',
       defaultValue: 0,
     );
-    final normalBatchSize = profile.thermallyConstrained
-        ? 256
-        : constrained
+    final normalBatchSize = constrained
         ? 128
         : processor == ProcessorClass.entry
         ? 256
@@ -226,9 +214,7 @@ class DeviceProfiler {
       'FINN_BENCH_UBATCH',
       defaultValue: 0,
     );
-    final normalMicroBatchSize = profile.thermallyConstrained
-        ? 128
-        : constrained
+    final normalMicroBatchSize = constrained
         ? 64
         : processor == ProcessorClass.entry
         ? 128
@@ -334,9 +320,15 @@ class DeviceProfiler {
     return cores >= 8 ? ProcessorClass.balanced : ProcessorClass.entry;
   }
 
+  static bool _prefersLiteModel(String raw) {
+    final value = raw.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), ' ');
+    // These older mid-range SoCs have enough RAM for the 4B model but their
+    // CPU prefill is too slow for an acceptable default-chat startup. Plus
+    // remains available as a manual selection.
+    return const ['sm7150', 'sm7250', 'sdm730', 'sdm765'].any(value.contains);
+  }
+
   static int? _asInt(Object? value) => value is int ? value : null;
-  static double? _asDouble(Object? value) =>
-      value is num ? value.toDouble() : null;
 
   static Future<int?> _memoryBytes(String field) async {
     if (!Platform.isAndroid && !Platform.isLinux) return null;

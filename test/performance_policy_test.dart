@@ -31,6 +31,38 @@ void main() {
     },
   );
 
+  test(
+    'native session setup is serialized and recovers after failure',
+    () async {
+      final gate = SerializedAsyncGate();
+      final firstStarted = Completer<void>();
+      final releaseFirst = Completer<void>();
+      var active = 0;
+      var maximumActive = 0;
+
+      final first = gate.run(() async {
+        active++;
+        maximumActive = active;
+        firstStarted.complete();
+        await releaseFirst.future;
+        active--;
+        throw StateError('simulated setup failure');
+      });
+      await firstStarted.future;
+      final second = gate.run(() async {
+        active++;
+        maximumActive = active > maximumActive ? active : maximumActive;
+        active--;
+        return 42;
+      });
+
+      releaseFirst.complete();
+      await expectLater(first, throwsStateError);
+      expect(await second, 42);
+      expect(maximumActive, 1);
+    },
+  );
+
   test('memory pressure release order keeps primary engine last', () {
     expect(memoryPressureReleaseOrder(), const [
       MemoryReleaseTarget.inactiveConversationSessions,
@@ -62,17 +94,6 @@ void main() {
       residencyActionFor(ResidencyLifecycleEvent.detached),
       ResidencyLifecycleAction.releaseNow,
     );
-  });
-
-  test('thermal policy suppresses prewarm and reduces batch concurrency', () {
-    final normal = thermalPolicyForStatus(0, .2);
-    expect(normal.allowPrewarm, isTrue);
-    expect(normal.message, isNull);
-
-    final severe = thermalPolicyForStatus(4, .95);
-    expect(severe.allowPrewarm, isFalse);
-    expect(severe.batchThreadCeiling, 4);
-    expect(severe.message, contains('device is hot'));
   });
 
   test('prefix cache key invalidates every compatibility dimension', () {

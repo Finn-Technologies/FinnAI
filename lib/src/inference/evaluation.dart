@@ -171,3 +171,99 @@ HardwareGuidanceAcceptance assessLaptopRamGuidance(String response) {
     ].any(value.contains),
   );
 }
+
+@immutable
+class BridgetownRoutingAcceptance {
+  const BridgetownRoutingAcceptance({
+    required this.identifiesRoda,
+    required this.mentionsSsrOrDynamicRoutes,
+    required this.avoidsRakeConflation,
+    required this.avoidsProjectDenial,
+  });
+
+  final bool identifiesRoda;
+  final bool mentionsSsrOrDynamicRoutes;
+  final bool avoidsRakeConflation;
+  final bool avoidsProjectDenial;
+
+  bool get passed =>
+      identifiesRoda &&
+      mentionsSsrOrDynamicRoutes &&
+      avoidsRakeConflation &&
+      avoidsProjectDenial;
+
+  Map<String, bool> toJson() => {
+    'passed': passed,
+    'identifiesRoda': identifiesRoda,
+    'mentionsSsrOrDynamicRoutes': mentionsSsrOrDynamicRoutes,
+    'avoidsRakeConflation': avoidsRakeConflation,
+    'avoidsProjectDenial': avoidsProjectDenial,
+  };
+}
+
+BridgetownRoutingAcceptance assessBridgetownRouting(String response) {
+  final value = response.toLowerCase();
+  return BridgetownRoutingAcceptance(
+    identifiesRoda: value.contains('roda'),
+    mentionsSsrOrDynamicRoutes:
+        value.contains('server-side rendering') ||
+        value.contains('ssr') ||
+        value.contains('dynamic route'),
+    avoidsRakeConflation: !RegExp(
+      r'(?:uses|based on|routing system.{0,20})\s+rake|rake\s+(?:as|is)\s+(?:its\s+)?routing',
+    ).hasMatch(value),
+    avoidsProjectDenial:
+        !value.contains('there isn\'t a widely recognized') &&
+        !value.contains('not a specific name for a ruby'),
+  );
+}
+
+@immutable
+class AntNecrophoresisAcceptance {
+  const AntNecrophoresisAcceptance({
+    required this.namesChemicalCues,
+    required this.explainsRemovalBehavior,
+    required this.acknowledgesSpeciesVariation,
+    required this.avoidsUniversalEmissionClaim,
+  });
+
+  final bool namesChemicalCues;
+  final bool explainsRemovalBehavior;
+  final bool acknowledgesSpeciesVariation;
+  final bool avoidsUniversalEmissionClaim;
+
+  bool get passed =>
+      namesChemicalCues &&
+      explainsRemovalBehavior &&
+      acknowledgesSpeciesVariation &&
+      avoidsUniversalEmissionClaim;
+
+  Map<String, bool> toJson() => {
+    'passed': passed,
+    'namesChemicalCues': namesChemicalCues,
+    'explainsRemovalBehavior': explainsRemovalBehavior,
+    'acknowledgesSpeciesVariation': acknowledgesSpeciesVariation,
+    'avoidsUniversalEmissionClaim': avoidsUniversalEmissionClaim,
+  };
+}
+
+AntNecrophoresisAcceptance assessAntNecrophoresis(String response) {
+  final value = response.toLowerCase();
+  return AntNecrophoresisAcceptance(
+    namesChemicalCues:
+        value.contains('oleic acid') ||
+        value.contains('linoleic acid') ||
+        value.contains('chemical signals associated with life'),
+    explainsRemovalBehavior:
+        value.contains('necrophoresis') ||
+        value.contains('remove') ||
+        value.contains('carry'),
+    acknowledgesSpeciesVariation:
+        value.contains('species') ||
+        value.contains('some ants') ||
+        value.contains('not all ants'),
+    avoidsUniversalEmissionClaim:
+        !value.contains('when an ant dies, it emits a unique scent') &&
+        !value.contains('all ants release oleic acid'),
+  );
+}

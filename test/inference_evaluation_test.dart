@@ -66,4 +66,44 @@ Use electrostatic precautions before touching components.
     expect(result.passed, isFalse);
     expect(result.avoidsInventedDetails, isFalse);
   });
+
+  test('accurate Bridgetown routing answer passes screenshot regression', () {
+    const response = '''
+Bridgetown is a Ruby-powered progressive site generator. Its server uses Roda
+for routing. Projects can define Roda API routes, opt into server-side
+rendering (SSR), and use the bridgetown-routes plugin for dynamic file-based
+routes. Rake may run build tasks, but it is not Bridgetown's routing system.
+''';
+    final result = assessBridgetownRouting(response);
+    expect(result.passed, isTrue, reason: result.toJson().toString());
+  });
+
+  test('reported Bridgetown and Rake hallucination fails quality gate', () {
+    const response =
+        'Bridgetown uses Rake as its routing system and has no built-in routing.';
+    final result = assessBridgetownRouting(response);
+    expect(result.passed, isFalse);
+    expect(result.identifiesRoda, isFalse);
+    expect(result.avoidsRakeConflation, isFalse);
+  });
+
+  test('species-aware ant death explanation passes screenshot regression', () {
+    const response = '''
+The mechanism varies by species. In some ants, post-mortem changes increase
+fatty-acid cues such as oleic or linoleic acid; workers detect these cues and
+perform necrophoresis, carrying the corpse away. Other species respond quickly
+to the disappearance of chemical signals associated with life, so there is no
+single delay that applies to all ants.
+''';
+    final result = assessAntNecrophoresis(response);
+    expect(result.passed, isTrue, reason: result.toJson().toString());
+  });
+
+  test('universal unique-scent ant claim fails quality gate', () {
+    const response =
+        'When an ant dies, it emits a unique scent that tells ants it is dead.';
+    final result = assessAntNecrophoresis(response);
+    expect(result.passed, isFalse);
+    expect(result.avoidsUniversalEmissionClaim, isFalse);
+  });
 }

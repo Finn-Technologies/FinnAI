@@ -126,7 +126,7 @@ FINN_PRIVACY_POLICY_URL="${FINN_PRIVACY_POLICY_URL:-https://finn-org.vercel.app/
 FINN_TERMS_URL="${FINN_TERMS_URL:-https://finn-org.vercel.app/terms}"
 FINN_SUPPORT_URL="${FINN_SUPPORT_URL:-https://finn-org.vercel.app/support}"
 FINN_SUPPORT_EMAIL="${FINN_SUPPORT_EMAIL:-finn_org@proton.me}"
-FINN_REPORT_ENDPOINT="${FINN_REPORT_ENDPOINT:-https://finn-org.vercel.app/v1/reports}"
+FINN_REPORT_EMAIL="${FINN_REPORT_EMAIL:-finn_org@proton.me}"
 
 # All four production values are passed as --dart-define flags so the compiled
 # binary contains them rather than empty defaults.
@@ -135,7 +135,7 @@ DART_DEFINES=(
   "--dart-define=FINN_TERMS_URL=${FINN_TERMS_URL}"
   "--dart-define=FINN_SUPPORT_URL=${FINN_SUPPORT_URL}"
   "--dart-define=FINN_SUPPORT_EMAIL=${FINN_SUPPORT_EMAIL}"
-  "--dart-define=FINN_REPORT_ENDPOINT=${FINN_REPORT_ENDPOINT}"
+  "--dart-define=FINN_REPORT_EMAIL=${FINN_REPORT_EMAIL}"
 )
 
 if [ "$PROD_BUILD" = "true" ]; then
@@ -143,7 +143,7 @@ if [ "$PROD_BUILD" = "true" ]; then
   [ -z "$FINN_PRIVACY_POLICY_URL" ] && MISSING+=("FINN_PRIVACY_POLICY_URL")
   [ -z "$FINN_TERMS_URL" ]          && MISSING+=("FINN_TERMS_URL")
   [ -z "$FINN_SUPPORT_URL" ]        && MISSING+=("FINN_SUPPORT_URL")
-  [ -z "$FINN_REPORT_ENDPOINT" ]    && MISSING+=("FINN_REPORT_ENDPOINT")
+  [ -z "$FINN_REPORT_EMAIL" ]       && MISSING+=("FINN_REPORT_EMAIL")
 
   if [ "${#MISSING[@]}" -gt 0 ]; then
     echo "FAIL: Production build missing required configuration variables:"
@@ -154,7 +154,7 @@ if [ "$PROD_BUILD" = "true" ]; then
     exit 1
   fi
 
-  for url in "$FINN_PRIVACY_POLICY_URL" "$FINN_TERMS_URL" "$FINN_SUPPORT_URL" "$FINN_REPORT_ENDPOINT"; do
+  for url in "$FINN_PRIVACY_POLICY_URL" "$FINN_TERMS_URL" "$FINN_SUPPORT_URL"; do
     if [[ ! "$url" =~ ^https://[^[:space:]]+$ ]]; then
       echo "FAIL: Production URLs must be valid HTTPS URLs: $url"
       exit 1
@@ -163,6 +163,10 @@ if [ "$PROD_BUILD" = "true" ]; then
   if [ -n "$FINN_SUPPORT_EMAIL" ] &&
       [[ ! "$FINN_SUPPORT_EMAIL" =~ ^[^[:space:]@]+@[^[:space:]@]+[.][^[:space:]@]+$ ]]; then
     echo "FAIL: FINN_SUPPORT_EMAIL is not a valid email address."
+    exit 1
+  fi
+  if [[ ! "$FINN_REPORT_EMAIL" =~ ^[^[:space:]@]+@[^[:space:]@]+[.][^[:space:]@]+$ ]]; then
+    echo "FAIL: FINN_REPORT_EMAIL is not a valid email address."
     exit 1
   fi
 fi
@@ -297,14 +301,14 @@ DEFINE_NAMES=(
   "FINN_TERMS_URL"
   "FINN_SUPPORT_URL"
   "FINN_SUPPORT_EMAIL"
-  "FINN_REPORT_ENDPOINT"
+  "FINN_REPORT_EMAIL"
 )
 DEFINE_VALUES=(
   "$FINN_PRIVACY_POLICY_URL"
   "$FINN_TERMS_URL"
   "$FINN_SUPPORT_URL"
   "$FINN_SUPPORT_EMAIL"
-  "$FINN_REPORT_ENDPOINT"
+  "$FINN_REPORT_EMAIL"
 )
 
 for i in "${!DEFINE_NAMES[@]}"; do

@@ -73,38 +73,6 @@ List<MemoryReleaseTarget> memoryPressureReleaseOrder() => const [
   MemoryReleaseTarget.primaryModelEngine,
 ];
 
-@immutable
-class ThermalPolicy {
-  const ThermalPolicy({
-    required this.allowPrewarm,
-    required this.batchThreadCeiling,
-    required this.message,
-  });
-
-  final bool allowPrewarm;
-  final int? batchThreadCeiling;
-  final String? message;
-}
-
-ThermalPolicy thermalPolicyForStatus(int? status, double? headroom) {
-  final constrained = (status ?? 0) >= 3 || (headroom ?? 0) >= .85;
-  if (constrained) {
-    return const ThermalPolicy(
-      allowPrewarm: false,
-      batchThreadCeiling: 4,
-      message: 'Your device is hot, so local generation may start more slowly.',
-    );
-  }
-  final warm = (status ?? 0) >= 2 || (headroom ?? 0) >= .65;
-  return ThermalPolicy(
-    allowPrewarm: !warm,
-    batchThreadCeiling: warm ? 6 : null,
-    message: warm
-        ? 'Your device is warm, so local generation may start more slowly.'
-        : null,
-  );
-}
-
 /// Collapses callers onto one in-flight load and lets Send promote the exact
 /// prewarm job instead of starting a competing model load.
 class DeduplicatedLoadJob<K, V> {
@@ -123,4 +91,18 @@ class DeduplicatedLoadJob<K, V> {
 
   bool contains(K key) => _jobs.containsKey(key);
   int get activeJobCount => _jobs.length;
+}
+
+/// Queues native-engine operations that must never overlap on one runtime.
+///
+/// A failed operation does not poison the queue; the next operation can still
+/// run and surface its own result.
+class SerializedAsyncGate {
+  Future<void> _tail = Future<void>.value();
+
+  Future<T> run<T>(Future<T> Function() operation) {
+    final result = _tail.then((_) => operation());
+    _tail = result.then<void>((_) {}, onError: (_, _) {});
+    return result;
+  }
 }

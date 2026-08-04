@@ -13,7 +13,7 @@ This document records the exact completion and verification status of all releas
 | **Native llama.cpp AAR** | `COMPLETE` | `VERIFIED (Nord + static) / 16 KB RUNTIME PENDING` | Rebuilt all five arm64 libraries from the exact pinned `llama_cpp_dart` and `llama.cpp` sources with NDK r28. Multi-turn generation passed on a OnePlus Nord. APK/AAB are ARM64-only and every packaged ELF has at least `0x4000` `PT_LOAD` alignment. A runtime test on a 16 KB kernel remains required. |
 | **Runtime SVG Assets** | `COMPLETE` | `VERIFIED` | All 20 required Figma icons copied to `assets/runtime/` and verified via `test/asset_verification_test.dart`. |
 | **AES-256-GCM Encryption** | `COMPLETE` | `VERIFIED` | Replaced custom crypto with maintained `cryptography` package. Verified roundtrips, tampered tag detection, key persistence, and atomic legacy migration in `test/conversation_store_test.dart`. |
-| **Truthful AI Reporting** | `COMPLETE` | `VERIFIED (App + Backend tests) / STORAGE CONFIG PENDING` | The canonical Vercel Function is deployed from `Finn-Technologies/landing-page` and stores reports in Upstash Redis for 30 days. Production health remains fail-closed until the three Vercel environment variables are configured. |
+| **Truthful AI Reporting** | `COMPLETE` | `VERIFIED (payload + routing tests) / DELIVERY CHECK PENDING` | The app prepares a complete report addressed to `finn_org@proton.me`, then requires the user to review and send it from their mail client. No mail credentials are embedded in the APK. |
 | **System Safety Prompts** | `COMPLETE` | `VERIFIED (Templates + observed output)` | Applied the compact `finnSafetySystemPrompt` to all tiers and modes. Automated template tests pass and user-visible generation was observed on the physical Nord after correcting Qwen 3 non-thinking priming. |
 | **Creations, You & Skills** | `COMPLETE` | `VERIFIED` | Persistent local creation generation, personalization, response styles, built-in/custom Skills, private inference-context integration, responsive screens, and deletion coverage. |
 | **Delete All Local Data** | `COMPLETE` | `VERIFIED` | Truthful deletion of onboarding state, encrypted history, keys, downloaded models, creations, profile preferences, and Skills. Returns `DeletionResult` with error reporting. Verified in `test/app_state_store_test.dart`. |
@@ -33,11 +33,10 @@ This document records the exact completion and verification status of all releas
    - Exercise model load, multi-turn generation, download resume, mmap, and
      memory-pressure behavior before production.
 
-2. **Vercel Reporting Storage Configuration**:
-   - Connect an Upstash Redis database to the landing-page Vercel project.
-   - Configure `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, and a
-     strong `RATE_LIMIT_SALT` for Production.
-   - Confirm `https://finn-org.vercel.app/health` returns `{"status":"ok"}`.
+2. **Report Email Delivery Check**:
+   - On a physical device with a configured mail client, report a generated
+     response, review the prefilled metadata, and send it.
+   - Confirm the message arrives at `finn_org@proton.me` before production.
 
 3. **Production Signing Keystore**:
    - Configure `android/key.properties` with production upload key credentials before generating final release AAB for Google Play Console.

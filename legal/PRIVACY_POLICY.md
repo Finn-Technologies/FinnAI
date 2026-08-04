@@ -37,11 +37,14 @@ FinnAI uses Google AdMob to display advertisements when allowed.
 
 ### C. Optional In-App AI Response Reporting
 If you explicitly choose to report an AI response via the in-app "Report" feature:
-- Reports are submitted to `https://finn-org.vercel.app/v1/reports`.
+- Reports are prepared as emails addressed to `finn_org@proton.me`. Nothing is
+  sent until you review the report and press Send in your email app.
 - The reported response, selected category, timestamp, app version, model tier, and any additional details you enter are submitted over HTTPS.
 - Your prompt is included ONLY if you explicitly check the prompt inclusion opt-in box.
-- Reports are stored in a protected Upstash Redis database for up to 30 days. Upstash acts as a data processor for this service.
-- FinnAI does not attach advertising IDs, Android IDs, or hardware serials to reports. The service uses a salted, one-way hash of the request IP only to enforce an hourly rate limit; neither the address nor its hash is stored with the report.
+- Sent reports are retained in the receiving Proton Mail mailbox according to
+  FinnAI's support and deletion procedures.
+- FinnAI does not attach advertising IDs, Android IDs, hardware serials, or
+  hidden device identifiers to reports.
 
 ## 3. Data Retention & User Controls
 You retain full control over your local data at any time:

@@ -100,7 +100,7 @@ jobs:
             --dart-define=FINN_SUPPORT_URL=https://example.invalid/support \
             --dart-define=FINN_PRIVACY_POLICY_URL=https://example.invalid/privacy \
             --dart-define=FINN_TERMS_URL=https://example.invalid/terms \
-            --dart-define=FINN_REPORT_ENDPOINT=https://example.invalid/v1/reports
+            --dart-define=FINN_REPORT_EMAIL=ci@example.invalid
 
       - name: Build Release Android App Bundle (AAB)
         run: |
@@ -109,7 +109,7 @@ jobs:
             --dart-define=FINN_SUPPORT_URL=https://example.invalid/support \
             --dart-define=FINN_PRIVACY_POLICY_URL=https://example.invalid/privacy \
             --dart-define=FINN_TERMS_URL=https://example.invalid/terms \
-            --dart-define=FINN_REPORT_ENDPOINT=https://example.invalid/v1/reports
+            --dart-define=FINN_REPORT_EMAIL=ci@example.invalid
 
       - name: Verify ARM64-only packaging
         run: |

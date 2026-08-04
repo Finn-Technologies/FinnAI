@@ -122,7 +122,7 @@ class ModelDownloadService : Service() {
     }
 
     private fun notification(text: String, progress: Int, done: Boolean) = NotificationCompat.Builder(this, CHANNEL_ID)
-        .setSmallIcon(com.abhiflex.finnai.R.mipmap.ic_launcher)
+        .setSmallIcon(com.abhiflex.finnai.R.drawable.ic_notification)
         .setContentTitle("Finn AI")
         .setContentText(text)
         .setOnlyAlertOnce(true)

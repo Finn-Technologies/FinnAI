@@ -15,6 +15,18 @@ void main() {
       );
       expect(policy.shouldSearch('Give me a tiramisu recipe'), isTrue);
       expect(
+        policy.shouldSearch('How does the routing in Bridgetown work?'),
+        isTrue,
+      );
+      expect(
+        policy.shouldSearch('Why is Bridgetown better than Rake?'),
+        isTrue,
+      );
+      expect(
+        policy.shouldSearch('How do living ants detect a dead ant?'),
+        isFalse,
+      );
+      expect(
         policy.shouldSearch('Cerca online le ultime notizie di Roma'),
         isTrue,
       );

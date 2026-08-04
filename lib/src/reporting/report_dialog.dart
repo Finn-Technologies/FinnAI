@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../theme/flux_theme.dart';
 import 'report_service.dart';
@@ -97,7 +98,18 @@ class _ReportDialogState extends State<ReportDialog> {
       additionalDetails: _detailsController.text.trim(),
     );
 
-    final status = await ReportService.instance.submitReport(payload);
+    final emailUri = ReportService.instance.buildEmailUri(payload);
+    var opened = false;
+    if (emailUri != null) {
+      try {
+        opened = await launchUrl(
+          emailUri,
+          mode: LaunchMode.externalApplication,
+        );
+      } catch (_) {
+        opened = false;
+      }
+    }
 
     if (!mounted) return;
 
@@ -105,33 +117,21 @@ class _ReportDialogState extends State<ReportDialog> {
       _isSubmitting = false;
     });
 
-    switch (status) {
-      case ReportSubmitStatus.success:
-        Navigator.of(context).pop();
-        ScaffoldMessenger.of(context)
-          ..clearSnackBars()
-          ..showSnackBar(
-            const SnackBar(
-              content: Text('Thank you. Your report was submitted.'),
-              duration: Duration(seconds: 3),
-            ),
-          );
-        break;
-      case ReportSubmitStatus.unconfigured:
-        setState(() {
-          _errorMessage = 'Reporting is temporarily unavailable.';
-        });
-        break;
-      case ReportSubmitStatus.networkError:
-      case ReportSubmitStatus.badRequest:
-      case ReportSubmitStatus.rateLimited:
-      case ReportSubmitStatus.serverError:
-      case ReportSubmitStatus.invalidEndpoint:
-        setState(() {
-          _errorMessage =
-              'The report could not be submitted. Please try again later.';
-        });
-        break;
+    if (opened) {
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('Review the report in your email app, then send it.'),
+            duration: Duration(seconds: 4),
+          ),
+        );
+    } else {
+      setState(() {
+        _errorMessage =
+            'No email app could be opened. Email finn_org@proton.me directly.';
+      });
     }
   }
 
@@ -139,7 +139,7 @@ class _ReportDialogState extends State<ReportDialog> {
   Widget build(BuildContext context) {
     final isDark = FluxColors.isDark(context);
     final textTheme = Theme.of(context).textTheme;
-    final isConfigured = ReportService.instance.isConfigured;
+    final isConfigured = ReportService.instance.canComposeEmail;
 
     return AlertDialog(
       backgroundColor: isDark
@@ -181,7 +181,7 @@ class _ReportDialogState extends State<ReportDialog> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Reporting is temporarily unavailable.',
+                        'The report email address is not configured.',
                         style: textTheme.bodySmall?.copyWith(
                           color: isDark
                               ? const Color(0xFFFBBF24)
@@ -308,7 +308,7 @@ class _ReportDialogState extends State<ReportDialog> {
             ],
             const SizedBox(height: 12),
             Text(
-              'Notice: Pressing Submit sends the reported text, category, and model metadata to FinnAI over HTTPS.',
+              'Continue opens a complete report addressed to finn_org@proton.me. Nothing is sent until you review and send it in your email app.',
               style: textTheme.labelSmall?.copyWith(
                 fontSize: 10,
                 color: FluxColors.mutedOf(context),
@@ -337,7 +337,7 @@ class _ReportDialogState extends State<ReportDialog> {
                     color: FluxColors.canvasOf(context),
                   ),
                 )
-              : const Text('Submit Report'),
+              : const Text('Continue to Email'),
         ),
       ],
     );

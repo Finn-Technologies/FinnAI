@@ -18,6 +18,8 @@ val signingEnvironmentNames = listOf(
 )
 val configuredSigningEnvironment =
     signingEnvironmentNames.associateWith { System.getenv(it) }
+val useReleaseProfileSigning =
+    System.getenv("FINN_PROFILE_RELEASE_SIGNING")?.toBooleanStrictOrNull() ?: true
 
 if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
@@ -79,6 +81,10 @@ android {
 
     packaging {
         jniLibs {
+            // llama.cpp's runtime-dispatched ARM backends are dlopen'ed by
+            // filename. They must exist in applicationInfo.nativeLibraryDir,
+            // not only as unextracted entries inside base.apk.
+            useLegacyPackaging = true
             // Flutter's JNI helper is published for several ABIs even when
             // FinnAI's native inference runtime is arm64-only. A plain
             // `flutter build apk --release` otherwise injects Flutter engine
@@ -108,7 +114,11 @@ android {
             // surface. Reuse the upload key when available so an instrumented
             // APK can update a release-signed install without deleting its
             // private GGUF files or prefix-state evidence.
-            if (hasReleaseSigning) {
+            // Physical benchmarks often update a debug-signed install so its
+            // private GGUF files remain intact. Set
+            // FINN_PROFILE_RELEASE_SIGNING=false for that workflow; normal
+            // profile/release validation retains release signing by default.
+            if (hasReleaseSigning && useReleaseProfileSigning) {
                 signingConfig = signingConfigs.getByName("release")
             }
         }

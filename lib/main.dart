@@ -61,13 +61,25 @@ Future<void> _runModelEvaluation() async {
     'Come posso aggiornare la RAM del portatile?',
     'Come posso sostituire l’SSD del portatile?',
     'Come posso sostituire la batteria del telefono?',
+    'How does the routing in Bridgetown work?',
+    'How do living ants know that an ant has died?',
   ];
+  const caseSelection = String.fromEnvironment('FINN_EVAL_CASES');
+  final selectedCases = caseSelection.trim().isEmpty
+      ? List<int>.generate(prompts.length, (index) => index)
+      : caseSelection
+            .split(',')
+            .map((value) => int.tryParse(value.trim()))
+            .whereType<int>()
+            .where((index) => index >= 0 && index < prompts.length)
+            .toSet()
+            .toList(growable: false);
   for (final entry in specification.split(';')) {
     final separator = entry.indexOf('=');
     if (separator <= 0) continue;
     final label = entry.substring(0, separator).trim();
     final path = entry.substring(separator + 1).trim();
-    for (var index = 0; index < prompts.length; index++) {
+    for (final index in selectedCases) {
       final prompt = prompts[index];
       final answer = StringBuffer();
       await for (final token
@@ -84,7 +96,7 @@ Future<void> _runModelEvaluation() async {
       final report = BonsaiInference.instance.lastGenerationReport;
       final response = answer.toString();
       debugPrint(
-        'FINN_EVAL ${jsonEncode({'selectedModel': label, 'intent': analysis.intent.name, 'route': report?.route.name, 'outputBudget': report?.outputBudget, 'finishReason': report?.finishReason.name, 'firstTokenLatencyMs': report?.firstTokenLatency?.inMilliseconds, 'totalGenerationTimeMs': report?.totalGenerationTime.inMilliseconds, 'outputTokens': report?.outputTokens, 'tokensPerSecond': report?.tokensPerSecond, if (index == 0) 'recipeAcceptance': assessRicottaStrawberryCake(response).toJson(), if (prompt == 'Can you tell me how to upgrade the RAM in my laptop?') 'hardwareAcceptance': assessLaptopRamGuidance(response).toJson(), 'response': response})}',
+        'FINN_EVAL ${jsonEncode({'selectedModel': label, 'intent': analysis.intent.name, 'route': report?.route.name, 'outputBudget': report?.outputBudget, 'finishReason': report?.finishReason.name, 'firstTokenLatencyMs': report?.firstTokenLatency?.inMilliseconds, 'totalGenerationTimeMs': report?.totalGenerationTime.inMilliseconds, 'outputTokens': report?.outputTokens, 'tokensPerSecond': report?.tokensPerSecond, if (index == 0) 'recipeAcceptance': assessRicottaStrawberryCake(response).toJson(), if (prompt == 'Can you tell me how to upgrade the RAM in my laptop?') 'hardwareAcceptance': assessLaptopRamGuidance(response).toJson(), if (prompt == 'How does the routing in Bridgetown work?') 'bridgetownAcceptance': assessBridgetownRouting(response).toJson(), if (prompt == 'How do living ants know that an ant has died?') 'antNecrophoresisAcceptance': assessAntNecrophoresis(response).toJson(), 'response': response})}',
       );
     }
     await BonsaiInference.instance.releaseMemory();
@@ -104,6 +116,11 @@ Future<void> _runDeviceBenchmark() async {
   const prewarm = String.fromEnvironment(
     'FINN_BENCH_PREWARM',
     defaultValue: 'selected',
+  );
+  const candidatePath = String.fromEnvironment('FINN_BENCH_MODEL_PATH');
+  const candidateLabel = String.fromEnvironment(
+    'FINN_BENCH_MODEL_LABEL',
+    defaultValue: 'benchmark-candidate',
   );
   const promptOverride = String.fromEnvironment('FINN_BENCH_PROMPT');
   final prompt = promptOverride.isNotEmpty
@@ -127,9 +144,30 @@ Future<void> _runDeviceBenchmark() async {
   final ttftValues = <int>[];
   final conversationHistory = <LocalChatTurn>[];
   const warmConversationId = 'benchmark-conversation';
+  Stream<String> generate(
+    String input, {
+    required String conversationId,
+    List<LocalChatTurn> history = const [],
+    TtftTrace? trace,
+  }) => candidatePath.isEmpty
+      ? inference.generateReply(
+          input,
+          conversationId: conversationId,
+          history: history,
+          trace: trace,
+        )
+      : inference.generateEvaluationReply(
+          input,
+          path: candidatePath,
+          modelLabel: candidateLabel,
+          tier: BonsaiTier.lite,
+          conversationId: conversationId,
+          history: history,
+          trace: trace,
+        );
   if (scenario == 'conversation_warm') {
     final warmup = StringBuffer();
-    await for (final token in inference.generateReply(
+    await for (final token in generate(
       prompt,
       conversationId: warmConversationId,
     )) {
@@ -157,7 +195,7 @@ Future<void> _runDeviceBenchmark() async {
     );
     var first = '';
     final answer = StringBuffer();
-    await for (final token in inference.generateReply(
+    await for (final token in generate(
       prompt,
       conversationId: conversationId,
       history: conversationHistory,

@@ -18,14 +18,25 @@ final class LlamaContext implements Finalizable {
   final LlamaModel model;
   final ContextParams params;
   final Pointer<llama_context> _ptr;
+  Pointer<ggml_threadpool> _threadpool;
+  Pointer<ggml_threadpool> _threadpoolBatch;
   bool _disposed = false;
 
-  LlamaContext._(this.model, this.params, this._ptr);
+  LlamaContext._(
+    this.model,
+    this.params,
+    this._ptr,
+    this._threadpool,
+    this._threadpoolBatch,
+  );
 
   static LlamaContext create(LlamaModel model, ContextParams params) {
     final b = LlamaLibrary.bindings;
 
-    final cp = b.llama_context_default_params()
+    final cp = b.llama_context_default_params();
+    final defaultThreads = cp.n_threads;
+    final defaultThreadsBatch = cp.n_threads_batch;
+    cp
       ..n_ctx = params.nCtx
       ..n_batch = params.nBatch
       ..n_ubatch = params.nUbatch
@@ -60,7 +71,48 @@ final class LlamaContext implements Finalizable {
         'llama_init_from_model returned null',
       );
     }
-    return LlamaContext._(model, params, ptr);
+
+    _Threadpools? threadpools;
+    var attached = false;
+    try {
+      try {
+        threadpools = _createThreadpools(
+          b,
+          nThreads: _effectiveThreadCount(params.nThreads, defaultThreads),
+          nThreadsBatch:
+              _effectiveThreadCount(params.nThreadsBatch, defaultThreadsBatch),
+        );
+        b.llama_attach_threadpool(
+          ptr,
+          threadpools.decode,
+          threadpools.batch,
+        );
+        attached = true;
+      } on ArgumentError {
+        // With GGML_BACKEND_DL the threadpool constructors live in the
+        // selected CPU module rather than libllama's symbol namespace. Keep
+        // llama.cpp's built-in transient-pool path for that configuration.
+        threadpools = null;
+      }
+      return LlamaContext._(
+        model,
+        params,
+        ptr,
+        threadpools?.decode ?? nullptr,
+        threadpools?.batch ?? nullptr,
+      );
+    } catch (_) {
+      try {
+        if (attached) b.llama_detach_threadpool(ptr);
+      } finally {
+        try {
+          b.llama_free(ptr);
+        } finally {
+          threadpools?.free(b);
+        }
+      }
+      rethrow;
+    }
   }
 
   Pointer<llama_context> get pointer {
@@ -203,7 +255,45 @@ final class LlamaContext implements Finalizable {
   /// [n] is the generation thread count, [nBatch] the prefill thread count.
   /// `0` for either lets llama.cpp pick.
   void setThreads({required int n, required int nBatch}) {
-    LlamaLibrary.bindings.llama_set_n_threads(pointer, n, nBatch);
+    final ctx = pointer;
+    final b = LlamaLibrary.bindings;
+    if (_threadpool == nullptr) {
+      b.llama_set_n_threads(ctx, n, nBatch);
+      return;
+    }
+    final defaults = b.llama_context_default_params();
+    final replacement = _createThreadpools(
+      b,
+      nThreads: _effectiveThreadCount(n, defaults.n_threads),
+      nThreadsBatch: _effectiveThreadCount(nBatch, defaults.n_threads_batch),
+    );
+
+    final previous = _Threadpools(_threadpool, _threadpoolBatch);
+    final previousThreads = b.llama_n_threads(ctx);
+    final previousThreadsBatch = b.llama_n_threads_batch(ctx);
+    var detached = false;
+    try {
+      b.llama_synchronize(ctx);
+      b.llama_detach_threadpool(ctx);
+      detached = true;
+      b.llama_set_n_threads(ctx, n, nBatch);
+      b.llama_attach_threadpool(ctx, replacement.decode, replacement.batch);
+    } catch (_) {
+      try {
+        if (detached) {
+          b.llama_detach_threadpool(ctx);
+          b.llama_set_n_threads(ctx, previousThreads, previousThreadsBatch);
+          b.llama_attach_threadpool(ctx, previous.decode, previous.batch);
+        }
+      } finally {
+        replacement.free(b);
+      }
+      rethrow;
+    }
+
+    _threadpool = replacement.decode;
+    _threadpoolBatch = replacement.batch;
+    previous.free(b);
   }
 
   /// Toggle embedding-output mode. Lets a single context flip between
@@ -399,7 +489,22 @@ final class LlamaContext implements Finalizable {
   void dispose() {
     if (_disposed) return;
     _disposed = true;
-    LlamaLibrary.bindings.llama_free(_ptr);
+    final b = LlamaLibrary.bindings;
+    final threadpools = _Threadpools(_threadpool, _threadpoolBatch);
+    _threadpool = nullptr;
+    _threadpoolBatch = nullptr;
+    try {
+      b.llama_synchronize(_ptr);
+      if (threadpools.decode != nullptr) {
+        b.llama_detach_threadpool(_ptr);
+      }
+    } finally {
+      try {
+        b.llama_free(_ptr);
+      } finally {
+        threadpools.free(b);
+      }
+    }
   }
 
   void _ensureAlive() {
@@ -460,4 +565,75 @@ final class LlamaContext implements Finalizable {
         KvCacheType.q5_0 => ggml_type.GGML_TYPE_Q5_0.value,
         KvCacheType.q5_1 => ggml_type.GGML_TYPE_Q5_1.value,
       };
+
+  static int _effectiveThreadCount(int requested, int fallback) {
+    if (requested > 0) return requested;
+    if (fallback > 0) return fallback;
+    return 1;
+  }
+
+  static _Threadpools _createThreadpools(
+    LlamaBindings b, {
+    required int nThreads,
+    required int nThreadsBatch,
+  }) {
+    Pointer<ggml_threadpool> decode = nullptr;
+    Pointer<ggml_threadpool> batch = nullptr;
+    try {
+      if (nThreads != nThreadsBatch) {
+        batch = _createThreadpool(
+          b,
+          nThreads: nThreadsBatch,
+          name: 'batch',
+        );
+      }
+      decode = _createThreadpool(
+        b,
+        nThreads: nThreads,
+        name: 'decode',
+        paused: batch != nullptr,
+      );
+      return _Threadpools(decode, batch);
+    } catch (_) {
+      _Threadpools(decode, batch).free(b);
+      rethrow;
+    }
+  }
+
+  static Pointer<ggml_threadpool> _createThreadpool(
+    LlamaBindings b, {
+    required int nThreads,
+    required String name,
+    bool paused = false,
+  }) {
+    final nativeParams = calloc<ggml_threadpool_params>();
+    try {
+      b.ggml_threadpool_params_init(nativeParams, nThreads);
+      nativeParams.ref.paused = paused;
+      final threadpool = b.ggml_threadpool_new(nativeParams);
+      if (threadpool == nullptr) {
+        throw LlamaContextException(
+          'ggml_threadpool_new returned null for $name pool '
+          '(nThreads=$nThreads)',
+        );
+      }
+      return threadpool;
+    } finally {
+      calloc.free(nativeParams);
+    }
+  }
+}
+
+final class _Threadpools {
+  final Pointer<ggml_threadpool> decode;
+
+  /// Null means batch work shares [decode], matching llama.cpp's API.
+  final Pointer<ggml_threadpool> batch;
+
+  const _Threadpools(this.decode, this.batch);
+
+  void free(LlamaBindings b) {
+    if (batch != nullptr) b.ggml_threadpool_free(batch);
+    if (decode != nullptr) b.ggml_threadpool_free(decode);
+  }
 }
