@@ -1,5 +1,9 @@
 # Finn AI In-App Response Reporting Backend
 
+> Legacy/optional design. The production app now prepares user-reviewable
+> email reports addressed to `finn_org@proton.me`; its Report action does not
+> call this endpoint.
+
 ## Overview
 The canonical backend is maintained in the separate public
 [`Finn-Technologies/landing-page`](https://github.com/Finn-Technologies/landing-page)

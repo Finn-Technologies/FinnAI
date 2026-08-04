@@ -3,7 +3,7 @@ import 'package:finn_ai/src/inference/device_profile.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('balanced Snapdragon with 8 GB selects an efficient 4B plan', () {
+  test('older balanced Snapdragon with 8 GB defaults to responsive Lite', () {
     const profile = DeviceProfile(
       totalRamBytes: 8000000000,
       availableRamBytes: 5000000000,
@@ -15,34 +15,24 @@ void main() {
 
     final plan = DeviceProfiler.plan(profile);
 
-    expect(plan.tier, BonsaiTier.plus);
+    expect(plan.tier, BonsaiTier.lite);
     expect(plan.contextSize, 4096);
     expect(plan.threads, 5);
     expect(plan.batchThreads, 8);
   });
 
-  test(
-    'thermally constrained balanced hardware uses the measured safe plan',
-    () {
-      const profile = DeviceProfile(
-        totalRamBytes: 8000000000,
-        availableRamBytes: 5000000000,
-        processor: ProcessorClass.balanced,
-        soc: 'Qualcomm SM7250 Snapdragon 765G',
-        cores: 8,
-        lowMemory: false,
-        thermalStatus: 3,
-        thermalHeadroom: .9,
-      );
+  test('newer balanced Snapdragon with 8 GB still selects Plus', () {
+    const profile = DeviceProfile(
+      totalRamBytes: 8000000000,
+      availableRamBytes: 5000000000,
+      processor: ProcessorClass.balanced,
+      soc: 'Qualcomm SM7550 Snapdragon 7 Gen 3',
+      cores: 8,
+      lowMemory: false,
+    );
 
-      final plan = DeviceProfiler.plan(profile);
-
-      expect(plan.threads, 4);
-      expect(plan.batchThreads, 4);
-      expect(plan.batchSize, 256);
-      expect(plan.microBatchSize, 128);
-    },
-  );
+    expect(DeviceProfiler.plan(profile).tier, BonsaiTier.plus);
+  });
 
   test('processor tier caps model even when RAM is plentiful', () {
     const profile = DeviceProfile(
@@ -122,4 +112,21 @@ void main() {
       );
     },
   );
+
+  test('explicit model requests bypass Lite routing', () {
+    final inference = BonsaiInference.instance;
+    expect(
+      inference.explicitTierRequestForTest(
+        'Use Finn AI Plus to make a new joke.',
+      ),
+      BonsaiTier.plus,
+    );
+    expect(
+      inference.explicitTierRequestForTest(
+        'Please use Finn Pro for this.',
+        highestTier: BonsaiTier.plus,
+      ),
+      isNull,
+    );
+  });
 }

@@ -14,7 +14,7 @@ This document demarcates automated repository preparation from manual actions re
 - [x] **Release Signing Setup**: Enforced `android/key.properties` or environment variables for release builds with Gradle validation.
 - [x] **AdMob & Privacy Consent**: Integrated Google UMP consent SDK (`AdConsentService`), environment-aware AdMob unit IDs (`kReleaseMode`), PG maximum ad-content rating, and banner error collapse.
 - [x] **Encrypted Local Storage**: Implemented authenticated AES-256-GCM storage (`conversations.v2.enc`) with secure key storage, atomic legacy migration, and data purge action.
-- [x] **AI Safety & Reporting**: Added the in-app Report dialog and red-team safety evaluation. The canonical backend is isolated in the public landing-page repository.
+- [x] **AI Safety & Reporting**: Added the in-app Report dialog and red-team safety evaluation. Reports are prepared as user-reviewable emails addressed to `finn_org@proton.me`.
 - [x] **Production Features**: The obsolete microphone and Models navigation are removed; Creations, You, and Skills are implemented, persisted locally, and covered by widget/store tests.
 - [x] **Legal & Attribution**: Published `PRIVACY_POLICY.md`, `TERMS_OF_USE.md`, `THIRD_PARTY_NOTICES.md`, dynamic versioning, and open-source licence viewer.
 - [x] **CI & Release Verification**: Added `.github/workflows/ci.yml`, `tool/verify_release.sh`, and fail-closed `tool/build_play_release.sh`.
@@ -55,8 +55,9 @@ Follow these steps in the [Google Play Console](https://play.google.com/console)
   under the applicable age of consent.
 - [ ] **Content Rating**: Complete the questionnaire truthfully for an
   unrestricted generative AI assistant and advertising.
-- [ ] **Generative AI Reporting**: Deploy the reporting endpoint and verify an
-  actual report arrives before uploading production.
+- [ ] **Generative AI Reporting**: On a physical device with a configured mail
+  client, report a generated response and verify the addressed email arrives at
+  `finn_org@proton.me` before uploading production.
 
 ### 3. Closed Testing Track Setup
 - [ ] **Create Closed Testing Track**: Create a new Closed Testing track named `Alpha Testing` or `Closed Beta`.

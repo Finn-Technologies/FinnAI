@@ -103,6 +103,46 @@ void main() {
     expect(find.bySemanticsLabel('Start on-device voice input'), findsNothing);
   });
 
+  testWidgets('chat fades at both edges and stays readable on wide screens', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1200, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final conversations = ConversationStore();
+    conversations.startNew();
+    conversations
+      ..add(ConversationRole.user, 'How does this layout adapt?')
+      ..add(
+        ConversationRole.assistant,
+        'The chat remains centered and readable on a wide display.',
+        modelTier: 'Bonsai 4B',
+      );
+    addTearDown(conversations.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: FluxTheme.light,
+        home: HomeShell(
+          conversationStore: conversations,
+          initializeServices: false,
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byKey(const ValueKey('chat-edge-fade')), findsOneWidget);
+    expect(find.byKey(const ValueKey('chat-scroll-view')), findsOneWidget);
+    expect(
+      tester.getSize(find.byKey(const ValueKey('chat-scroll-view'))).width,
+      lessThanOrEqualTo(760),
+    );
+    expect(tester.takeException(), isNull);
+    await tester.pump(const Duration(milliseconds: 500));
+  });
+
   for (final brightness in [Brightness.light, Brightness.dark]) {
     testWidgets(
       'send control has distinct, contrasting states in ${brightness.name} mode',

@@ -10,7 +10,6 @@ class SafeMarkdownText extends StatelessWidget {
 
   final String text;
 
-  @visibleForTesting
   static String sanitize(String source) {
     var value = source
         .replaceAll(

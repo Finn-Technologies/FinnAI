@@ -39,8 +39,6 @@ class TtftTrace {
   int? prefixStateRestorationMicros;
   double? prefixPromptTokensPerSecond;
   int? promptTokenCount;
-  int? thermalStatus;
-  double? thermalHeadroom;
   int? availableRamBytes;
   bool lowMemory = false;
   int? threads;
@@ -124,8 +122,6 @@ class TtftTrace {
         : prefixStateRestorationMicros! / 1000,
     'prefix_prompt_tokens_per_second': prefixPromptTokensPerSecond,
     'conversation_session_cache_hit': conversationSessionCacheHit,
-    'thermal_status': thermalStatus,
-    'thermal_headroom': thermalHeadroom,
     'available_ram_bytes': availableRamBytes,
     'low_memory': lowMemory,
     'threads': threads,

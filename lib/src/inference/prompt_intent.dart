@@ -453,15 +453,16 @@ class PromptIntentPolicy {
   static int desiredOutputTokens(PromptIntent intent) => switch (intent) {
     PromptIntent.greeting => 96,
     PromptIntent.quickQuestion || PromptIntent.translation => 224,
-    PromptIntent.recipe || PromptIntent.howTo => 2048,
-    PromptIntent.writing || PromptIntent.comparison => 4096,
+    PromptIntent.recipe || PromptIntent.howTo => 320,
+    PromptIntent.writing || PromptIntent.comparison => 512,
     PromptIntent.coding ||
     PromptIntent.analysis ||
-    PromptIntent.highStakes => 8092,
-    PromptIntent.creative => 4096,
+    PromptIntent.highStakes => 768,
+    PromptIntent.creative => 512,
   };
 
   static IntentSamplerProfile sampler(PromptIntent intent) => switch (intent) {
+    PromptIntent.quickQuestion ||
     PromptIntent.recipe ||
     PromptIntent.howTo ||
     PromptIntent.translation ||
@@ -469,7 +470,7 @@ class PromptIntentPolicy {
     PromptIntent.coding ||
     PromptIntent.analysis ||
     PromptIntent.highStakes => const IntentSamplerProfile(
-      temperature: .30,
+      temperature: .20,
       topK: 20,
       topP: .85,
       minP: .02,
@@ -530,7 +531,9 @@ class PromptIntentPolicy {
       PromptIntent.creative =>
         'Follow the requested genre, voice, constraints, and length while keeping the result coherent and original.',
       PromptIntent.quickQuestion =>
-        'Answer the question directly and factually. Admit uncertainty rather than inventing details.',
+        'Answer the exact question directly and factually. For a how or why question, explain the mechanism and important conditions. '
+            'Do not invent relationships, features, names, timings, or implementation details. Correct a false premise plainly. '
+            'If a named or niche subject is uncertain, say so and ask for identifying context rather than substituting a similar-sounding subject.',
       PromptIntent.highStakes =>
         'Be cautious and factual, explain uncertainty and limits, and recommend qualified professional help when appropriate.',
       PromptIntent.greeting => 'Respond naturally and briefly.',

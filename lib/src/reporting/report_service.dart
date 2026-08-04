@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
+import '../config/legal_config.dart';
+
 /// Report categories aligned with Google Play generative AI content policies.
 enum ReportCategory {
   harmfulOrDangerous('Harmful or dangerous'),
@@ -61,18 +63,49 @@ class ReportPayload {
     if (additionalDetails != null && additionalDetails!.isNotEmpty)
       'additionalDetails': additionalDetails,
   };
+
+  String toEmailBody() {
+    final buffer = StringBuffer()
+      ..writeln('FinnAI model response report')
+      ..writeln()
+      ..writeln('Report ID: $reportId')
+      ..writeln('Category: ${category.displayName}')
+      ..writeln('Timestamp: ${timestamp.toUtc().toIso8601String()}')
+      ..writeln('App version: $appVersion')
+      ..writeln('Generating model: $modelTier');
+    if (additionalDetails != null && additionalDetails!.isNotEmpty) {
+      buffer
+        ..writeln()
+        ..writeln('Additional details:')
+        ..writeln(additionalDetails);
+    }
+    if (userPrompt != null && userPrompt!.isNotEmpty) {
+      buffer
+        ..writeln()
+        ..writeln('User prompt (included with consent):')
+        ..writeln(userPrompt);
+    }
+    buffer
+      ..writeln()
+      ..writeln('Reported model response:')
+      ..writeln(assistantResponse);
+    return buffer.toString();
+  }
 }
 
 class ReportService {
   ReportService({
     String? endpoint,
+    String? reportEmail,
     http.Client? client,
     this._isReleaseModeOverride,
   }) : _customEndpoint = endpoint,
+       _customReportEmail = reportEmail,
        _client = client ?? http.Client();
 
   static final ReportService instance = ReportService();
   final String? _customEndpoint;
+  final String? _customReportEmail;
   final http.Client _client;
   final bool? _isReleaseModeOverride;
 
@@ -83,7 +116,35 @@ class ReportService {
         defaultValue: 'https://finn-org.vercel.app/v1/reports',
       ).trim();
 
-  bool get isConfigured => endpoint.isNotEmpty;
+  bool get isConfigured => canComposeEmail || endpoint.isNotEmpty;
+
+  String get reportEmail =>
+      _customReportEmail?.trim() ??
+      const String.fromEnvironment(
+        'FINN_REPORT_EMAIL',
+        defaultValue: LegalConfig.supportEmail,
+      ).trim();
+
+  bool get canComposeEmail => _validEmail(reportEmail);
+
+  /// Creates a complete, user-reviewable report addressed to FinnAI support.
+  /// No mail credentials are embedded in the app and nothing is sent until the
+  /// user confirms the message in their chosen mail client.
+  Uri? buildEmailUri(ReportPayload payload) {
+    if (!canComposeEmail) return null;
+    return Uri(
+      scheme: 'mailto',
+      path: reportEmail,
+      queryParameters: {
+        'subject':
+            '[FinnAI report] ${payload.category.displayName} · ${payload.reportId}',
+        'body': payload.toEmailBody(),
+      },
+    );
+  }
+
+  static bool _validEmail(String value) =>
+      RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(value);
 
   /// Submits an in-app AI response report.
   Future<ReportSubmitStatus> submitReport(ReportPayload payload) async {

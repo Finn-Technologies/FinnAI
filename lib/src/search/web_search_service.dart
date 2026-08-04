@@ -67,7 +67,48 @@ class WebSearchPolicy {
     return _explicit.any(value.contains) ||
         _freshness.any(value.contains) ||
         _news.any(value.contains) ||
-        _recipes.any(value.contains);
+        _recipes.any(value.contains) ||
+        _requiresTechnicalFactCheck(prompt, value);
+  }
+
+  static bool _requiresTechnicalFactCheck(String original, String value) {
+    final asksForFact = RegExp(
+      r'^(?:how|what|why|who|which|where|when|does|do|is|are|can)\b',
+    ).hasMatch(value);
+    if (!asksForFact) return false;
+    const technicalTerms = [
+      'routing',
+      'framework',
+      'library',
+      'static site generator',
+      'compiler',
+      'runtime',
+      'protocol',
+      'database',
+      ' api',
+      ' sdk',
+    ];
+    if (technicalTerms.any(value.contains)) return true;
+
+    // A capitalized identifier inside a factual question is often a named
+    // project/product that a compact offline model can easily confuse with a
+    // similar term. Verify it instead of rewarding a confident guess.
+    return RegExp(r'\b[A-Z][A-Za-z0-9.+#-]{2,}\b')
+        .allMatches(original)
+        .map((match) => match.group(0)!)
+        .any(
+          (word) => !const {
+            'How',
+            'What',
+            'Why',
+            'Who',
+            'Which',
+            'Where',
+            'When',
+            'Does',
+            'Can',
+          }.contains(word),
+        );
   }
 
   static const _explicit = [
@@ -140,7 +181,7 @@ class WebSearchService {
   WebSearchService({
     http.Client? client,
     this.policy = const WebSearchPolicy(),
-    this.timeout = const Duration(seconds: 8),
+    this.timeout = const Duration(seconds: 4),
     Uri? endpoint,
   }) : _client = client ?? http.Client(),
        endpoint = endpoint ?? Uri.parse('https://html.duckduckgo.com/html/');

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:flutter/services.dart';
 
 import '../ads/banner_ad_widget.dart';
@@ -217,19 +218,25 @@ class _HomeShellState extends State<HomeShell>
       _preparing = true;
       _preparingLabel = 'Preparing locally';
     });
-    await Future.wait([
+    final initialization = Future.wait([
       _conversations.initialize(),
       YouProfileStore.instance.initialize(),
       SkillsStore.instance.initialize(),
     ]);
+    final shouldSearch = _webSearch.policy.shouldSearch(value);
+    if (shouldSearch) {
+      setState(() => _preparingLabel = 'Searching the web');
+    }
+    final searchJob = shouldSearch
+        ? _webSearch.searchIfNeeded(value)
+        : Future<WebSearchResult?>.value();
+    // Local-store startup and optional retrieval are independent. Starting
+    // them together removes storage initialization from searched-query TTFT.
+    await initialization;
     if (!mounted) return;
     _storesReady = true;
-    WebSearchResult? webResults;
-    if (_webSearch.policy.shouldSearch(value)) {
-      setState(() => _preparingLabel = 'Searching the web');
-      webResults = await _webSearch.searchIfNeeded(value);
-      if (!mounted) return;
-    }
+    final webResults = await searchJob;
+    if (!mounted) return;
     final systemContext = [
       YouProfileStore.instance.promptContext,
       SkillsStore.instance.promptContextFor(value),
@@ -287,22 +294,6 @@ class _HomeShellState extends State<HomeShell>
     }
     if (mounted) setState(() => _preparing = false);
     if (!mounted) return;
-
-    final profile = _inference.deviceProfile;
-    final thermal = thermalPolicyForStatus(
-      profile?.thermalStatus,
-      profile?.thermalHeadroom,
-    );
-    if (thermal.message != null) {
-      ScaffoldMessenger.of(context)
-        ..clearSnackBars()
-        ..showSnackBar(
-          SnackBar(
-            content: Text(thermal.message!),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-    }
 
     final conversation = _conversations.active ?? _conversations.startNew();
     final history = [
@@ -456,23 +447,30 @@ class _HomeShellState extends State<HomeShell>
         resizeToAvoidBottomInset: true,
         body: LayoutBuilder(
           builder: (context, constraints) {
-            final sy = constraints.maxHeight / 844;
+            final sy = (constraints.maxHeight / 844).clamp(.72, 1.08);
             final safeBottom = MediaQuery.viewPaddingOf(context).bottom;
+            final horizontalGutter = constraints.maxWidth < 380 ? 14.0 : 20.0;
+            final contentWidth = math.min(
+              760.0,
+              constraints.maxWidth - horizontalGutter * 2,
+            );
+            final contentLeft = (constraints.maxWidth - contentWidth) / 2;
             final homeLayer = RepaintBoundary(
               child: AmbientBackground(
                 intensity: 1,
                 child: Stack(
                   children: [
                     Positioned(
-                      left: 20,
+                      left: contentLeft,
                       top: 71 * sy,
                       child: _HomeHeader(onMenu: () => _setSidebar(true)),
                     ),
                     Positioned(
-                      left: 20,
-                      right: 20,
+                      left: contentLeft,
+                      width: contentWidth,
                       top: 125 * sy,
-                      bottom: 92 + safeBottom,
+                      bottom:
+                          safeBottom + (constraints.maxHeight < 650 ? 78 : 88),
                       child: _Conversation(
                         messages: _conversations.active?.messages ?? const [],
                         activeConversationId: _conversations.active?.id,
@@ -486,8 +484,8 @@ class _HomeShellState extends State<HomeShell>
                       ),
                     ),
                     Positioned(
-                      left: 20,
-                      right: 20,
+                      left: contentLeft,
+                      width: contentWidth,
                       bottom:
                           safeBottom + (constraints.maxHeight < 650 ? 20 : 30),
                       child: ChatComposer(
@@ -603,7 +601,7 @@ class _HomeHeader extends StatelessWidget {
   );
 }
 
-class _Conversation extends StatelessWidget {
+class _Conversation extends StatefulWidget {
   const _Conversation({
     required this.messages,
     required this.activeConversationId,
@@ -626,109 +624,200 @@ class _Conversation extends StatelessWidget {
   final String preparingLabel;
 
   @override
+  State<_Conversation> createState() => _ConversationState();
+}
+
+class _ConversationState extends State<_Conversation> {
+  final ScrollController _scrollController = ScrollController();
+  Timer? _scrollSettleTimer;
+  String _contentSignature = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _contentSignature = _signature();
+  }
+
+  @override
+  void didUpdateWidget(covariant _Conversation oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final nextSignature = _signature();
+    if (nextSignature == _contentSignature) return;
+    _contentSignature = nextSignature;
+    _queueLatestAlignment();
+  }
+
+  String _signature() {
+    final active = widget.generation.activeJob;
+    return '${widget.activeConversationId}|${widget.messages.length}|'
+        '${active?.conversationId}|${active?.responseText.length}|'
+        '${active?.state.name}|${widget.preparing}';
+  }
+
+  void _queueLatestAlignment() {
+    _scrollSettleTimer?.cancel();
+    _scrollSettleTimer = Timer(const Duration(milliseconds: 70), () {
+      if (!mounted || !_scrollController.hasClients) return;
+      final position = _scrollController.position;
+      // Reverse lists place the latest response at offset zero. Follow new
+      // output only while the user is already near it; never pull someone
+      // away from an older message they are reading.
+      if (position.pixels > 140 || position.pixels <= .5) return;
+      if (MediaQuery.disableAnimationsOf(context)) {
+        _scrollController.jumpTo(0);
+      } else {
+        unawaited(
+          _scrollController.animateTo(
+            0,
+            duration: const Duration(milliseconds: 240),
+            curve: Curves.easeOutCubic,
+          ),
+        );
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollSettleTimer?.cancel();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final activeJob = generation.activeJob;
+    final activeJob = widget.generation.activeJob;
     final ownsGeneration =
-        activeJob != null && activeJob.conversationId == activeConversationId;
-    final terminalJob = generation.job;
+        activeJob != null &&
+        activeJob.conversationId == widget.activeConversationId;
+    final terminalJob = widget.generation.job;
     final visibleError =
-        terminalJob?.conversationId == activeConversationId &&
+        terminalJob?.conversationId == widget.activeConversationId &&
             terminalJob?.state == ChatGenerationState.error
         ? terminalJob?.errorMessage
         : null;
-    if (messages.isEmpty &&
+    if (widget.messages.isEmpty &&
         activeJob == null &&
         visibleError == null &&
-        !preparing) {
+        !widget.preparing) {
       return const SizedBox();
     }
     final streamingMessageId = ownsGeneration
         ? activeJob.assistantMessageId
         : null;
-    final visibleMessages = messages
+    final visibleMessages = widget.messages
         .where(
           (message) =>
               message.text.isNotEmpty && message.id != streamingMessageId,
         )
         .toList(growable: false);
-    return ListView.builder(
-      reverse: true,
-      physics: const BouncingScrollPhysics(),
-      itemCount: visibleMessages.length + 1,
-      itemBuilder: (context, index) {
-        if (index == 0) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (ownsGeneration && activeJob.responseText.isNotEmpty)
-                _CompleteReply(
-                  text: activeJob.responseText,
-                  showActions: false,
-                  selectable: false,
-                ),
-              if (ownsGeneration)
-                _ModelResponseLoader(
-                  key: ValueKey(activeJob.state),
-                  label: generation.progressLabel,
-                  stopping: activeJob.state == ChatGenerationState.stopping,
-                  onStop: onStop,
-                )
-              else if (preparing)
-                _ModelResponseLoader(
-                  label: preparingLabel,
-                  stopping: true,
-                  onStop: onStop,
-                )
-              else if (activeJob != null)
-                OtherChatGenerationNotice(
-                  title:
-                      conversations
-                          .conversationById(activeJob.conversationId)
-                          ?.title ??
-                      'another chat',
-                  onOpen: () => onOpenConversation(activeJob.conversationId),
-                  onStop: onStop,
-                )
-              else if (visibleError != null)
-                _ErrorReply(key: const ValueKey('error'), text: visibleError),
-              if (visibleMessages.isNotEmpty) const SizedBox(height: 14),
-            ],
-          );
-        }
-        final message = visibleMessages[visibleMessages.length - index];
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 14),
-          child: message.role == ConversationRole.user
-              ? Align(
-                  alignment: Alignment.centerRight,
-                  child: _Bubble(
-                    text: message.text,
-                    user: true,
-                    modelTier: 'User message',
-                  ),
-                )
-              : _CompleteReply(
-                  text: message.text,
-                  userPrompt:
-                      (visibleMessages.length - index - 1 >= 0 &&
-                          visibleMessages[visibleMessages.length - index - 1]
-                                  .role ==
-                              ConversationRole.user)
-                      ? visibleMessages[visibleMessages.length - index - 1].text
-                      : null,
-                  modelTier: message.modelTier,
-                  status: message.status,
-                  showActions: true,
-                  selectable: true,
-                  onContinue:
-                      message.status ==
-                              ConversationMessageStatus.tokenLimited &&
-                          message.continuationCount < 1
-                      ? () => onContinue(message)
-                      : null,
-                ),
-        );
+    return ShaderMask(
+      key: const ValueKey('chat-edge-fade'),
+      blendMode: BlendMode.dstIn,
+      shaderCallback: (bounds) {
+        final topStop = (30 / math.max(bounds.height, 1)).clamp(.04, .14);
+        final bottomStop =
+            1 - (38 / math.max(bounds.height, 1)).clamp(.05, .18);
+        return LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: const [
+            Colors.transparent,
+            Colors.black,
+            Colors.black,
+            Colors.transparent,
+          ],
+          stops: [0, topStop, bottomStop, 1],
+        ).createShader(bounds);
       },
+      child: ListView.builder(
+        key: const ValueKey('chat-scroll-view'),
+        controller: _scrollController,
+        reverse: true,
+        padding: const EdgeInsets.fromLTRB(0, 30, 0, 38),
+        scrollCacheExtent: const ScrollCacheExtent.pixels(700),
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        physics: const BouncingScrollPhysics(
+          parent: AlwaysScrollableScrollPhysics(),
+        ),
+        itemCount: visibleMessages.length + 1,
+        itemBuilder: (context, index) {
+          if (index == 0) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (ownsGeneration && activeJob.responseText.isNotEmpty)
+                  _CompleteReply(
+                    text: activeJob.responseText,
+                    showActions: false,
+                    selectable: false,
+                  ),
+                if (ownsGeneration)
+                  _ModelResponseLoader(
+                    key: ValueKey(activeJob.state),
+                    label: widget.generation.progressLabel,
+                    stopping: activeJob.state == ChatGenerationState.stopping,
+                    onStop: widget.onStop,
+                  )
+                else if (widget.preparing)
+                  _ModelResponseLoader(
+                    label: widget.preparingLabel,
+                    stopping: true,
+                    onStop: widget.onStop,
+                  )
+                else if (activeJob != null)
+                  OtherChatGenerationNotice(
+                    title:
+                        widget.conversations
+                            .conversationById(activeJob.conversationId)
+                            ?.title ??
+                        'another chat',
+                    onOpen: () =>
+                        widget.onOpenConversation(activeJob.conversationId),
+                    onStop: widget.onStop,
+                  )
+                else if (visibleError != null)
+                  _ErrorReply(key: const ValueKey('error'), text: visibleError),
+                if (visibleMessages.isNotEmpty) const SizedBox(height: 14),
+              ],
+            );
+          }
+          final message = visibleMessages[visibleMessages.length - index];
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 14),
+            child: message.role == ConversationRole.user
+                ? Align(
+                    alignment: Alignment.centerRight,
+                    child: _Bubble(
+                      text: message.text,
+                      user: true,
+                      modelTier: 'User message',
+                    ),
+                  )
+                : _CompleteReply(
+                    text: message.text,
+                    userPrompt:
+                        (visibleMessages.length - index - 1 >= 0 &&
+                            visibleMessages[visibleMessages.length - index - 1]
+                                    .role ==
+                                ConversationRole.user)
+                        ? visibleMessages[visibleMessages.length - index - 1]
+                              .text
+                        : null,
+                    modelTier: message.modelTier,
+                    status: message.status,
+                    showActions: true,
+                    selectable: true,
+                    onContinue:
+                        message.status ==
+                                ConversationMessageStatus.tokenLimited &&
+                            message.continuationCount < 1
+                        ? () => widget.onContinue(message)
+                        : null,
+                  ),
+          );
+        },
+      ),
     );
   }
 }
@@ -750,12 +839,14 @@ class _Bubble extends StatelessWidget {
       text: text,
       user: user,
       modelTier: modelTier,
-      childBuilder: (selecting) => Text(
-        text,
-        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+      childBuilder: (selecting) {
+        final style = Theme.of(context).textTheme.bodyMedium?.copyWith(
           color: user ? FluxColors.canvasOf(context) : null,
-        ),
-      ),
+        );
+        return selecting
+            ? SelectableText(text, style: style)
+            : Text(text, style: style);
+      },
     );
   }
 }
@@ -767,12 +858,14 @@ class _MessageBubble extends StatefulWidget {
     required this.modelTier,
     required this.childBuilder,
     this.userPrompt,
+    this.selectionEnabled = true,
   });
 
   final String text;
   final bool user;
   final String modelTier;
   final String? userPrompt;
+  final bool selectionEnabled;
   final Widget Function(bool selecting) childBuilder;
 
   @override
@@ -801,7 +894,7 @@ class _MessageBubbleState extends State<_MessageBubble> {
   Widget build(BuildContext context) {
     final bubble = Container(
       constraints: BoxConstraints(
-        maxWidth: MediaQuery.sizeOf(context).width * .82,
+        maxWidth: math.min(MediaQuery.sizeOf(context).width * .82, 620),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
@@ -818,9 +911,7 @@ class _MessageBubbleState extends State<_MessageBubble> {
             ? null
             : Border.all(color: FluxColors.lineOf(context)),
       ),
-      child: _selecting
-          ? SelectionArea(child: widget.childBuilder(true))
-          : widget.childBuilder(false),
+      child: widget.childBuilder(_selecting),
     );
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -881,15 +972,20 @@ class _MessageBubbleState extends State<_MessageBubble> {
                             label: 'Copy',
                             onTap: _copy,
                           ),
-                          Divider(height: 1, color: FluxColors.lineOf(context)),
-                          _InlineMessageAction(
-                            icon: FluxIcons.edit,
-                            label: 'Select',
-                            onTap: () => setState(() {
-                              _selecting = true;
-                              _actionsVisible = false;
-                            }),
-                          ),
+                          if (widget.selectionEnabled) ...[
+                            Divider(
+                              height: 1,
+                              color: FluxColors.lineOf(context),
+                            ),
+                            _InlineMessageAction(
+                              icon: FluxIcons.edit,
+                              label: 'Select',
+                              onTap: () => setState(() {
+                                _selecting = true;
+                                _actionsVisible = false;
+                              }),
+                            ),
+                          ],
                           Divider(height: 1, color: FluxColors.lineOf(context)),
                           _InlineMessageAction(
                             icon: FluxIcons.flag,
@@ -1136,7 +1232,9 @@ class _CompleteReply extends StatelessWidget {
         user: false,
         modelTier: modelTier,
         userPrompt: userPrompt,
-        childBuilder: (_) => _ReplyText(text: text),
+        selectionEnabled: selectable,
+        childBuilder: (selecting) =>
+            _ReplyText(text: text, selecting: selecting),
       ),
       if (showActions) ...[
         const SizedBox(height: 5),
@@ -1170,12 +1268,19 @@ class _CompleteReply extends StatelessWidget {
 }
 
 class _ReplyText extends StatelessWidget {
-  const _ReplyText({required this.text});
+  const _ReplyText({required this.text, required this.selecting});
 
   final String text;
+  final bool selecting;
 
   @override
-  Widget build(BuildContext context) => SafeMarkdownText(text: text);
+  Widget build(BuildContext context) {
+    if (!selecting) return SafeMarkdownText(text: text);
+    return SelectableText(
+      SafeMarkdownText.sanitize(text),
+      style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.38),
+    );
+  }
 }
 
 class _FinnPageRoute<T> extends PageRouteBuilder<T> {
@@ -1284,66 +1389,86 @@ class _ChatComposerState extends State<ChatComposer> {
   @override
   Widget build(BuildContext context) {
     final canSend = _hasText && !widget.blocked;
-    return FluxGlass(
-      radius: 999,
-      color: FluxColors.surfaceOf(context),
-      borderColor: FluxColors.inkOf(
-        context,
-      ).withValues(alpha: _focused ? .2 : .07),
-      child: SizedBox(
-        height: 54,
-        child: Padding(
-          padding: const EdgeInsets.only(left: 18, right: 7),
-          child: Row(
-            children: [
-              Expanded(
-                child: Semantics(
-                  label: 'Message to Finn AI',
-                  textField: true,
-                  child: TextField(
-                    controller: widget.controller,
-                    focusNode: widget.focusNode,
-                    inputFormatters: [LengthLimitingTextInputFormatter(4000)],
-                    enabled: !widget.blocked,
-                    textInputAction: TextInputAction.send,
-                    onSubmitted: (_) => canSend ? widget.onSend() : null,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                    decoration: InputDecoration.collapsed(
-                      hintText: widget.blocked
-                          ? 'Finn AI is responding…'
-                          : 'Ask anything',
-                      hintStyle: Theme.of(context).textTheme.bodyMedium
-                          ?.copyWith(color: FluxColors.mutedOf(context)),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 6),
-              Semantics(
-                button: true,
-                enabled: canSend,
-                label: 'Send message',
-                child: SizedBox.square(
-                  key: const ValueKey('send-button-surface'),
-                  dimension: 40,
-                  child: InkWell(
-                    onTap: canSend ? widget.onSend : null,
-                    customBorder: const CircleBorder(),
-                    child: Center(
-                      child: FigmaSvg(
-                        asset: canSend
-                            ? FigmaAssets.activeSend
-                            : FigmaAssets.send,
-                        key: const ValueKey('send-button-icon'),
-                        width: 34,
-                        height: 34,
-                        invertForDark: FluxColors.isDark(context),
+    final reducedMotion = MediaQuery.disableAnimationsOf(context);
+    return AnimatedContainer(
+      key: const ValueKey('chat-composer-motion'),
+      duration: reducedMotion
+          ? Duration.zero
+          : const Duration(milliseconds: 180),
+      curve: Curves.easeOutCubic,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(999),
+        boxShadow: [
+          BoxShadow(
+            color: FluxColors.inkOf(
+              context,
+            ).withValues(alpha: _focused ? .10 : .055),
+            blurRadius: _focused ? 22 : 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: FluxGlass(
+        radius: 999,
+        color: FluxColors.surfaceOf(context),
+        borderColor: FluxColors.inkOf(
+          context,
+        ).withValues(alpha: _focused ? .2 : .07),
+        child: SizedBox(
+          height: 54,
+          child: Padding(
+            padding: const EdgeInsets.only(left: 18, right: 7),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Semantics(
+                    label: 'Message to Finn AI',
+                    textField: true,
+                    child: TextField(
+                      controller: widget.controller,
+                      focusNode: widget.focusNode,
+                      inputFormatters: [LengthLimitingTextInputFormatter(4000)],
+                      enabled: !widget.blocked,
+                      textInputAction: TextInputAction.send,
+                      onSubmitted: (_) => canSend ? widget.onSend() : null,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                      decoration: InputDecoration.collapsed(
+                        hintText: widget.blocked
+                            ? 'Finn AI is responding…'
+                            : 'Ask anything',
+                        hintStyle: Theme.of(context).textTheme.bodyMedium
+                            ?.copyWith(color: FluxColors.mutedOf(context)),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(width: 6),
+                Semantics(
+                  button: true,
+                  enabled: canSend,
+                  label: 'Send message',
+                  child: SizedBox.square(
+                    key: const ValueKey('send-button-surface'),
+                    dimension: 40,
+                    child: InkWell(
+                      onTap: canSend ? widget.onSend : null,
+                      customBorder: const CircleBorder(),
+                      child: Center(
+                        child: FigmaSvg(
+                          asset: canSend
+                              ? FigmaAssets.activeSend
+                              : FigmaAssets.send,
+                          key: const ValueKey('send-button-icon'),
+                          width: 34,
+                          height: 34,
+                          invertForDark: FluxColors.isDark(context),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

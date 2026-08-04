@@ -5,7 +5,6 @@ import android.content.Context
 import android.os.Build
 import android.Manifest
 import android.content.pm.PackageManager
-import android.os.PowerManager
 import android.os.StatFs
 import android.content.Intent
 import io.flutter.embedding.android.FlutterActivity
@@ -49,16 +48,6 @@ class MainActivity : FlutterActivity() {
                 memory.totalMem
             }
             val storage = StatFs(filesDir.absolutePath)
-            val power = getSystemService(Context.POWER_SERVICE) as PowerManager
-            val thermalStatus =
-                if (Build.VERSION.SDK_INT >= 29) power.currentThermalStatus else null
-            val thermalHeadroom =
-                if (Build.VERSION.SDK_INT >= 30) {
-                    val value = power.getThermalHeadroom(0)
-                    if (value.isFinite()) value else null
-                } else {
-                    null
-                }
             result.success(
                 mapOf(
                     "totalRamBytes" to totalMemory,
@@ -72,8 +61,9 @@ class MainActivity : FlutterActivity() {
                     "cores" to Runtime.getRuntime().availableProcessors(),
                     "supportedAbis" to Build.SUPPORTED_ABIS.toList(),
                     "sdk" to Build.VERSION.SDK_INT,
-                    "thermalStatus" to thermalStatus,
-                    "thermalHeadroom" to thermalHeadroom,
+                    // llama.cpp's dynamic CPU backends must be discovered
+                    // from the extracted APK native-library directory.
+                    "nativeLibraryDir" to applicationInfo.nativeLibraryDir,
                 ),
             )
         }

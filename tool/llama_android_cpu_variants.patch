@@ -1,0 +1,32 @@
+diff --git a/tool/build_android_aar.sh b/tool/build_android_aar.sh
+index 9a61d26..fa0bdaa 100755
+--- a/tool/build_android_aar.sh
++++ b/tool/build_android_aar.sh
+@@ -91,6 +91,8 @@ cmake -G Ninja -B "$BUILD_DIR" -S "$LLAMA_SRC" \
+   -DGGML_OPENMP=OFF \
+   -DGGML_LLAMAFILE=OFF \
+   -DGGML_NATIVE=OFF \
++  -DGGML_BACKEND_DL=ON \
++  -DGGML_CPU_ALL_VARIANTS=ON \
+   -DCMAKE_CXX_FLAGS="-O3 -DNDEBUG"
+ 
+ echo "==== building"
+@@ -100,7 +102,7 @@ cmake --install "$BUILD_DIR"
+ # Collect runtime .so files. cmake --install drops them under
+ # $INSTALL_DIR/lib/. Filter to the runtime set we ship.
+ RUNTIME_SOS=()
+-for so in libllama.so libggml.so libggml-base.so libggml-cpu.so libmtmd.so; do
++for so in libllama.so libggml.so libggml-base.so libmtmd.so; do
+   if [[ -f "$INSTALL_DIR/lib/$so" ]]; then
+     RUNTIME_SOS+=("$INSTALL_DIR/lib/$so")
+   else
+@@ -113,6 +115,9 @@ for so in libllama.so libggml.so libggml-base.so libggml-cpu.so libmtmd.so; do
+     fi
+   fi
+ done
++while IFS= read -r so; do
++  RUNTIME_SOS+=("$so")
++done < <(find "$INSTALL_DIR/lib" "$BUILD_DIR" -name 'libggml-cpu*.so' -type f 2>/dev/null | sort -u)
+ if [[ ${#RUNTIME_SOS[@]} -eq 0 ]]; then
+   echo "error: no .so files found to package" >&2
+   exit 1

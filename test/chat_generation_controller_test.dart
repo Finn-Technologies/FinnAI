@@ -145,6 +145,49 @@ void main() {
   });
 
   test(
+    'a clean stream close is completed, never reported as user-stopped',
+    () async {
+      final conversation = store.startNew();
+      await controller.start(
+        conversationId: conversation.id,
+        prompt: 'Give a short answer',
+        history: const [],
+        systemContext: '',
+      );
+      runtime.emit('Finished answer');
+
+      await runtime.finishWithoutReport();
+      await _waitUntil(() => !controller.busy);
+
+      final answer = store.conversationById(conversation.id)!.messages.last;
+      expect(answer.text, 'Finished answer');
+      expect(answer.status, ConversationMessageStatus.complete);
+      expect(answer.finishReason, GenerationFinishReason.eos.name);
+    },
+  );
+
+  test(
+    'a spurious native user-abort is completed without an explicit stop',
+    () async {
+      final conversation = store.startNew();
+      await controller.start(
+        conversationId: conversation.id,
+        prompt: 'Give a short answer',
+        history: const [],
+        systemContext: '',
+      );
+      runtime.emit('Finished answer');
+
+      await runtime.finish(GenerationFinishReason.userCancellation);
+      await _waitUntil(() => !controller.busy);
+
+      final answer = store.conversationById(conversation.id)!.messages.last;
+      expect(answer.status, ConversationMessageStatus.complete);
+      expect(answer.finishReason, GenerationFinishReason.eos.name);
+    },
+  );
+
+  test(
     'verified web sources are appended only after a complete answer',
     () async {
       final conversation = store.startNew();
@@ -452,6 +495,13 @@ class _FakeRuntime extends ChangeNotifier implements ChatInferenceRuntime {
       outputTokens: 2,
       tokensPerSecond: 5,
     );
+    _phase = InferencePhase.idle;
+    notifyListeners();
+    await _stream!.close();
+  }
+
+  Future<void> finishWithoutReport() async {
+    _report = null;
     _phase = InferencePhase.idle;
     notifyListeners();
     await _stream!.close();

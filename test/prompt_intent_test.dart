@@ -79,6 +79,10 @@ void main() {
         BonsaiTier.plus,
       );
       expect(
+        inference.fastRouteForTest('How does the routing in Bridgetown work?'),
+        BonsaiTier.plus,
+      );
+      expect(
         inference.fastRouteForTest(
           'Perform an advanced security audit with deep reasoning.',
           highestTier: BonsaiTier.pro,
@@ -95,28 +99,35 @@ void main() {
       inference.outputBudgetForTest(
         'Come fare una torta di ricotta e fragole?',
       ),
-      2048,
+      320,
+    );
+    expect(
+      inference.outputBudgetForTest(
+        'Can you tell me how to upgrade the RAM in my laptop?',
+        tier: BonsaiTier.plus,
+      ),
+      320,
     );
     expect(
       inference.outputBudgetForTest(
         'Write a careful comparison.',
         tier: BonsaiTier.plus,
       ),
-      4096,
+      512,
     );
     expect(
       inference.outputBudgetForTest(
         'Analyze this complex program.',
         tier: BonsaiTier.pro,
       ),
-      8092,
+      768,
     );
     expect(
       inference.outputBudgetForTest(
         'Come fare una torta di ricotta e fragole?',
         supported: false,
       ),
-      2048,
+      320,
     );
   });
 
@@ -167,18 +178,27 @@ void main() {
     },
   );
 
+  test('repeat requests receive an explicit novelty constraint', () {
+    final rendered = BonsaiInference.instance.renderPromptForTest(
+      prompt: 'Make a new joke or pun.',
+      primed: true,
+    );
+    expect(rendered, contains('Give a genuinely new response'));
+    expect(rendered, contains('Do not repeat an example or answer'));
+  });
+
   test('samplers are factual, chat, and creative intent-sensitive', () {
     final recipe = PromptIntentPolicy.sampler(PromptIntent.recipe);
     final chat = PromptIntentPolicy.sampler(PromptIntent.quickQuestion);
     final creative = PromptIntentPolicy.sampler(PromptIntent.creative);
 
-    expect(recipe.temperature, .30);
+    expect(recipe.temperature, .20);
     expect(recipe.topK, 20);
     expect(recipe.topP, .85);
     expect(recipe.minP, .02);
     expect(recipe.repeatPenalty, 1.05);
-    expect(chat.temperature, .50);
-    expect(chat.topP, .90);
+    expect(chat.temperature, .20);
+    expect(chat.topP, .85);
     expect(creative.temperature, .70);
     expect(creative.topK, 40);
     expect(creative.topP, .95);
