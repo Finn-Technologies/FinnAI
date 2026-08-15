@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import '../inference/bonsai_inference.dart';
+import '../inference/qwen_inference.dart';
 import 'creation_model.dart';
 
 abstract interface class CreationGenerator {
@@ -11,12 +11,12 @@ abstract interface class CancelableCreationGenerator {
   Future<void> cancel();
 }
 
-class BonsaiCreationGenerator
+class QwenCreationGenerator
     implements CreationGenerator, CancelableCreationGenerator {
-  BonsaiCreationGenerator({BonsaiInference? inference})
-    : _inference = inference ?? BonsaiInference.instance;
+  QwenCreationGenerator({QwenInference? inference})
+    : _inference = inference ?? QwenInference.instance;
 
-  final BonsaiInference _inference;
+  final QwenInference _inference;
 
   @override
   Future<CreationDraft> generate(String prompt, CreationKind kind) async {

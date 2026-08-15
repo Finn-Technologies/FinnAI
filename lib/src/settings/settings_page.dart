@@ -10,7 +10,7 @@ import '../app_state_store.dart';
 import '../config/legal_config.dart';
 import '../conversations/conversation_store.dart';
 import '../flux_app.dart';
-import '../inference/bonsai_inference.dart';
+import '../inference/qwen_inference.dart';
 import '../privacy/ad_consent_service.dart';
 import '../theme/flux_theme.dart';
 import '../widgets/ambient_background.dart';
@@ -68,7 +68,7 @@ class _SettingsPageState extends State<SettingsPage>
   }
 
   Future<void> _loadSettingsData() async {
-    final statesFuture = BonsaiInference.instance.inspectModels();
+    final statesFuture = QwenInference.instance.inspectModels();
     final packageFuture = PackageInfo.fromPlatform()
         .then<PackageInfo?>((value) => value)
         .catchError((_) => null);
@@ -92,7 +92,7 @@ class _SettingsPageState extends State<SettingsPage>
 
   Future<void> _clearMemory() async {
     setState(() => _clearingMemory = true);
-    await BonsaiInference.instance.releaseMemory();
+    await QwenInference.instance.releaseMemory();
     if (mounted) {
       setState(() => _clearingMemory = false);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -299,7 +299,7 @@ class _SettingsPageState extends State<SettingsPage>
                   child: ListenableBuilder(
                     listenable: Listenable.merge([
                       ConversationStore.instance,
-                      BonsaiInference.instance,
+                      QwenInference.instance,
                       AdConsentService.instance,
                     ]),
                     builder: (context, _) {
@@ -307,7 +307,7 @@ class _SettingsPageState extends State<SettingsPage>
                           ConversationStore.instance.conversations.length;
                       final states = _storageStates;
                       final selectedTier =
-                          BonsaiInference.instance.selected.tier;
+                          QwenInference.instance.selected.tier;
                       final isPrivacyOptionsNeeded =
                           AdConsentService.instance.isPrivacyOptionsRequired;
 
@@ -327,7 +327,7 @@ class _SettingsPageState extends State<SettingsPage>
                             // 320dp banner also fits narrow supported devices.
                             child: BannerAdWidget(
                               enabled:
-                                  BonsaiInference.instance.phase !=
+                                  QwenInference.instance.phase !=
                                   InferencePhase.generating,
                               margin: EdgeInsets.zero,
                               adUnitId: AdService.settingsBannerAdUnitId,
@@ -350,7 +350,7 @@ class _SettingsPageState extends State<SettingsPage>
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const _SectionHeader(label: 'AI MODELS'),
+                                    const _SectionHeader(label: 'AI MODEL'),
                                     const SizedBox(height: 10),
                                     FluxGlass(
                                       radius: 16,
@@ -678,7 +678,7 @@ class _SettingsPageState extends State<SettingsPage>
                                                 applicationName: 'FinnAI',
                                                 applicationVersion: _appVersion,
                                                 applicationLegalese:
-                                                    'Created using Bonsai models by Prism ML.\n'
+                                                    'Created using Qwen 3.5 2B by Qwen.\n'
                                                     'Powered by llama.cpp and Flutter.',
                                               );
                                             },
@@ -746,7 +746,7 @@ class _SettingsPageState extends State<SettingsPage>
                                           _InfoRow(
                                             icon: FluxIcons.leaf,
                                             label: 'Model Attribution',
-                                            value: 'Bonsai by Prism ML',
+                                            value: 'Qwen 3.5 2B (Apache-2.0)',
                                           ),
                                         ],
                                       ),

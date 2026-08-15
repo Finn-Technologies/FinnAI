@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'src/flux_app.dart';
-import 'src/inference/bonsai_inference.dart';
+import 'src/inference/qwen_inference.dart';
 import 'src/inference/evaluation.dart';
 import 'src/inference/prompt_intent.dart';
 import 'src/inference/ttft_metrics.dart';
@@ -12,14 +12,14 @@ import 'src/inference/ttft_metrics.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   if (const bool.fromEnvironment('FINN_BENCHMARK')) {
-    await BonsaiInference.instance.initialize();
+    await QwenInference.instance.initialize();
     if (const String.fromEnvironment('FINN_BENCH_TIER') == 'lite') {
-      BonsaiInference.instance.select(BonsaiTier.lite);
+      QwenInference.instance.select(QwenTier.standard);
     }
     await _runDeviceBenchmark();
   }
   if (const bool.fromEnvironment('FINN_EVALUATION')) {
-    await BonsaiInference.instance.initialize();
+    await QwenInference.instance.initialize();
     await _runModelEvaluation();
   }
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
@@ -83,23 +83,23 @@ Future<void> _runModelEvaluation() async {
       final prompt = prompts[index];
       final answer = StringBuffer();
       await for (final token
-          in BonsaiInference.instance.generateEvaluationReply(
+          in QwenInference.instance.generateEvaluationReply(
             prompt,
             path: path,
             modelLabel: label,
-            tier: BonsaiTier.lite,
+            tier: QwenTier.standard,
             conversationId: 'eval-$label-$index',
           )) {
         answer.write(token);
       }
       final analysis = const PromptIntentClassifier().classify(prompt);
-      final report = BonsaiInference.instance.lastGenerationReport;
+      final report = QwenInference.instance.lastGenerationReport;
       final response = answer.toString();
       debugPrint(
         'FINN_EVAL ${jsonEncode({'selectedModel': label, 'intent': analysis.intent.name, 'route': report?.route.name, 'outputBudget': report?.outputBudget, 'finishReason': report?.finishReason.name, 'firstTokenLatencyMs': report?.firstTokenLatency?.inMilliseconds, 'totalGenerationTimeMs': report?.totalGenerationTime.inMilliseconds, 'outputTokens': report?.outputTokens, 'tokensPerSecond': report?.tokensPerSecond, if (index == 0) 'recipeAcceptance': assessRicottaStrawberryCake(response).toJson(), if (prompt == 'Can you tell me how to upgrade the RAM in my laptop?') 'hardwareAcceptance': assessLaptopRamGuidance(response).toJson(), if (prompt == 'How does the routing in Bridgetown work?') 'bridgetownAcceptance': assessBridgetownRouting(response).toJson(), if (prompt == 'How do living ants know that an ant has died?') 'antNecrophoresisAcceptance': assessAntNecrophoresis(response).toJson(), 'response': response})}',
       );
     }
-    await BonsaiInference.instance.releaseMemory();
+    await QwenInference.instance.releaseMemory();
   }
 }
 
@@ -107,7 +107,7 @@ Future<void> _runModelEvaluation() async {
 /// and lets performance changes be verified through ADB without UI timing
 /// noise or synthetic native binaries.
 Future<void> _runDeviceBenchmark() async {
-  final inference = BonsaiInference.instance;
+  final inference = QwenInference.instance;
   const scenario = String.fromEnvironment(
     'FINN_BENCH_SCENARIO',
     defaultValue: 'model_warm',
@@ -133,10 +133,10 @@ Future<void> _runDeviceBenchmark() async {
 
   if (scenario != 'true_cold') {
     if (prewarm == 'lite' || prewarm == 'both') {
-      await inference.prewarmTier(BonsaiTier.lite);
+      await inference.prewarmTier(QwenTier.standard);
     }
     if (prewarm == 'plus' || prewarm == 'both') {
-      await inference.prewarmTier(BonsaiTier.plus);
+      await inference.prewarmTier(QwenTier.standard);
     }
     if (prewarm == 'selected') await inference.prewarm();
   }
@@ -160,7 +160,7 @@ Future<void> _runDeviceBenchmark() async {
           input,
           path: candidatePath,
           modelLabel: candidateLabel,
-          tier: BonsaiTier.lite,
+          tier: QwenTier.standard,
           conversationId: conversationId,
           history: history,
           trace: trace,

@@ -1,18 +1,24 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui' show ImageFilter;
 
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../ads/banner_ad_widget.dart';
 import '../conversations/conversation_store.dart';
 import '../creations/creations_page.dart';
 import '../generation/chat_generation_controller.dart';
-import '../inference/bonsai_inference.dart';
+import '../inference/device_profile.dart';
+import '../inference/qwen_inference.dart';
 import '../inference/residency_policy.dart';
 import '../privacy/ad_consent_service.dart';
 import '../reporting/report_dialog.dart';
+import '../search/search_agent.dart';
+import '../search/web_search_agent.dart';
 import '../search/web_search_service.dart';
 import '../settings/settings_page.dart';
 import '../skills/skills_page.dart';
@@ -36,7 +42,7 @@ class HomeShell extends StatefulWidget {
 
   final ChatGenerationController? generationController;
   final ConversationStore? conversationStore;
-  final BonsaiInference? inference;
+  final QwenInference? inference;
   @visibleForTesting
   final bool initializeServices;
   final WebSearchService? webSearch;
@@ -49,7 +55,7 @@ class _HomeShellState extends State<HomeShell>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   final _composer = TextEditingController();
   final _focusNode = FocusNode();
-  late final _inference = widget.inference ?? BonsaiInference.instance;
+  late final _inference = widget.inference ?? QwenInference.instance;
   late final _conversations =
       widget.conversationStore ?? ConversationStore.instance;
   late final _generation =
@@ -62,6 +68,7 @@ class _HomeShellState extends State<HomeShell>
   bool _sidebarAdVisible = false;
   bool _preparing = false;
   String _preparingLabel = 'Preparing';
+  bool _dismissedSearchNotice = false;
   late bool _storesReady = !widget.initializeServices;
   late final AnimationController _sidebarController = AnimationController(
     vsync: this,
@@ -117,7 +124,7 @@ class _HomeShellState extends State<HomeShell>
           profile?.lowMemory == true ||
           (profile?.availableRamBytes ?? 1 << 40) < 1800 * 1024 * 1024;
       _memoryReleaseTimer = Timer(
-        Duration(seconds: constrained ? 5 : 35),
+        Duration(seconds: constrained ? 3 : 20),
         _releaseMemoryWhenIdle,
       );
     } else if (state == AppLifecycleState.resumed) {
@@ -170,6 +177,7 @@ class _HomeShellState extends State<HomeShell>
     _prewarmTimer?.cancel();
     _sidebarController.dispose();
     unawaited(_generation.flushActive());
+    if (widget.webSearch == null) _webSearch.close();
     _composer.dispose();
     _focusNode.dispose();
     super.dispose();
@@ -218,100 +226,105 @@ class _HomeShellState extends State<HomeShell>
       _preparing = true;
       _preparingLabel = 'Preparing locally';
     });
-    final initialization = Future.wait([
-      _conversations.initialize(),
-      YouProfileStore.instance.initialize(),
-      SkillsStore.instance.initialize(),
-    ]);
-    final shouldSearch = _webSearch.policy.shouldSearch(value);
-    if (shouldSearch) {
-      setState(() => _preparingLabel = 'Searching the web');
-    }
-    final searchJob = shouldSearch
-        ? _webSearch.searchIfNeeded(value)
-        : Future<WebSearchResult?>.value();
-    // Local-store startup and optional retrieval are independent. Starting
-    // them together removes storage initialization from searched-query TTFT.
-    await initialization;
-    if (!mounted) return;
-    _storesReady = true;
-    final webResults = await searchJob;
-    if (!mounted) return;
-    final systemContext = [
-      YouProfileStore.instance.promptContext,
-      SkillsStore.instance.promptContextFor(value),
-      webResults?.modelContext ?? '',
-    ].where((item) => item.trim().isNotEmpty).join('\n\n');
-    final missing = <BonsaiModel>[];
-    for (final model in _inference.requiredModels) {
-      if (!await _inference.isInstalled(model)) missing.add(model);
-    }
-    if (missing.isNotEmpty && mounted) {
-      final bytes = missing.fold<int>(
-        0,
-        (total, model) => total + model.expectedBytes,
-      );
-      final size = bytes >= 1000 * 1000 * 1000
-          ? '${(bytes / 1000 / 1000 / 1000).toStringAsFixed(2)} GB'
-          : '${(bytes / 1000 / 1000).round()} MB';
-      final accepted = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          backgroundColor: FluxColors.cardOf(context),
-          surfaceTintColor: Colors.transparent,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(26),
-          ),
-          title: Text(
-            missing.length == 1
-                ? 'Download the local model?'
-                : 'Download the adaptive model set?',
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w400),
-          ),
-          content: Text(
-            '$size downloads once. Finn AI will automatically use the '
-            'smallest model capable of answering each request, entirely on '
-            'this device.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Not now'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Download'),
-            ),
-          ],
-        ),
-      );
-      if (accepted != true) {
-        if (mounted) setState(() => _preparing = false);
-        return;
+    debugPrint('FINN_SEND preparing started');
+    try {
+      final initialization = Future.wait([
+        _conversations.initialize(),
+        YouProfileStore.instance.initialize(),
+        SkillsStore.instance.initialize(),
+      ]).timeout(const Duration(seconds: 12), onTimeout: () {
+        debugPrint('FINN_SEND store init timeout — proceeding with available stores');
+        return <void>[];
+      });
+      await initialization;
+      if (!mounted) return;
+      _storesReady = true;
+      final systemContext = [
+        YouProfileStore.instance.promptContext,
+        SkillsStore.instance.promptContextFor(value),
+      ].where((item) => item.trim().isNotEmpty).join('\n\n');
+      final missing = <QwenModel>[];
+      for (final model in _inference.requiredModels) {
+        if (!await _inference.isInstalled(model)) missing.add(model);
       }
+      if (missing.isNotEmpty && mounted) {
+        final bytes = missing.fold<int>(
+          0,
+          (total, model) => total + model.expectedBytes,
+        );
+        final size = bytes >= 1000 * 1000 * 1000
+            ? '${(bytes / 1000 / 1000 / 1000).toStringAsFixed(2)} GB'
+            : '${(bytes / 1000 / 1000).round()} MB';
+        final accepted = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            backgroundColor: FluxColors.cardOf(context),
+            surfaceTintColor: Colors.transparent,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(26),
+            ),
+            title: Text(
+              'Download the AI model for offline chat?',
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w400),
+            ),
+            content: Text(
+              '$size downloads once and is verified before use. The download '
+              'resumes safely after an interrupted connection, and your chats '
+              'stay on this device.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Not now'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('Download'),
+              ),
+            ],
+          ),
+        );
+        if (accepted != true) {
+          return;
+        }
+      }
+      if (!mounted) return;
+
+      final conversation = _conversations.active ?? _conversations.startNew();
+      final history = [
+        for (final message in conversation.messages)
+          if (message.text.trim().isNotEmpty)
+            LocalChatTurn(role: message.role.name, content: message.text),
+      ];
+
+      _focusNode.unfocus();
+      _composer.clear();
+      if (mounted) setState(() => _dismissedSearchNotice = false);
+      await _generation.start(
+        conversationId: conversation.id,
+        prompt: value,
+        history: history,
+        systemContext: systemContext,
+        trace: timing,
+      );
+    } catch (e) {
+      debugPrint('FINN_SEND error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+          ..clearSnackBars()
+          ..showSnackBar(
+            SnackBar(
+              content: Text('Could not prepare chat — tap to retry. ($e)'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+      }
+    } finally {
+      if (mounted) setState(() => _preparing = false);
+      debugPrint('FINN_SEND preparing cleared');
     }
-    if (mounted) setState(() => _preparing = false);
-    if (!mounted) return;
-
-    final conversation = _conversations.active ?? _conversations.startNew();
-    final history = [
-      for (final message in conversation.messages)
-        if (message.text.trim().isNotEmpty)
-          LocalChatTurn(role: message.role.name, content: message.text),
-    ];
-
-    _focusNode.unfocus();
-    _composer.clear();
-    await _generation.start(
-      conversationId: conversation.id,
-      prompt: value,
-      history: history,
-      systemContext: systemContext,
-      responseSuffix: webResults?.markdownSources ?? '',
-      trace: timing,
-    );
   }
 
   Future<void> _continueReply(ConversationMessage assistant) async {
@@ -342,7 +355,63 @@ class _HomeShellState extends State<HomeShell>
       YouProfileStore.instance.promptContext,
       SkillsStore.instance.promptContextFor(latestUser.text),
     ].where((item) => item.trim().isNotEmpty).join('\n\n');
+    // Continuations reuse the original turn's sources; the decision pass is
+    // disabled for the continuation prompt itself.
+    GroundedSearchResult? continuationGrounded;
+    if (assistant.sources.isNotEmpty &&
+        _webSearch.policy.shouldSearch(latestUser.text)) {
+      continuationGrounded = await WebSearchAgent(searchService: _webSearch)
+          .searchAndFetch(latestUser.text)
+          .timeout(const Duration(seconds: 8), onTimeout: () => null);
+    }
+    // Keep continuations grounded even when the original model-driven search
+    // was not triggered by the deterministic freshness policy. Persisted
+    // source excerpts are enough to continue offline; a fresh lookup is only
+    // attempted for requests that clearly need current information.
+    final continuationSources =
+        continuationGrounded?.search.sources ?? assistant.sources;
+    final groundedContext = continuationGrounded?.groundedContext ??
+        SearchAgent.groundedContextForSources(continuationSources);
     await _generation.continueResponse(
+      conversationId: conversation.id,
+      assistantMessageId: assistant.id,
+      originalPrompt: latestUser.text,
+      history: history,
+      systemContext: systemContext,
+      groundedContext: groundedContext,
+      sources: continuationSources,
+    );
+  }
+
+  /// Re-runs the model on the same user turn, replacing the last assistant
+  /// reply in place. The search decision runs again so a weak answer can be
+  /// re-grounded.
+  Future<void> _regenerateReply(ConversationMessage assistant) async {
+    if (_busy || _inference.isGeneratingReply) return;
+    final conversation = _conversations.active;
+    if (conversation == null) return;
+    final assistantIndex = conversation.messages.indexWhere(
+      (message) => message.id == assistant.id,
+    );
+    if (assistantIndex <= 0) return;
+    final latestUser = conversation.messages
+        .take(assistantIndex)
+        .toList(growable: false)
+        .reversed
+        .where((message) => message.role == ConversationRole.user)
+        .firstOrNull;
+    if (latestUser == null) return;
+    final history = [
+      for (final message in conversation.messages.take(assistantIndex))
+        if (message.text.trim().isNotEmpty)
+          LocalChatTurn(role: message.role.name, content: message.text),
+    ];
+    final systemContext = [
+      YouProfileStore.instance.promptContext,
+      SkillsStore.instance.promptContextFor(latestUser.text),
+    ].where((item) => item.trim().isNotEmpty).join('\n\n');
+    if (mounted) setState(() => _dismissedSearchNotice = false);
+    await _generation.regenerate(
       conversationId: conversation.id,
       assistantMessageId: assistant.id,
       originalPrompt: latestUser.text,
@@ -351,7 +420,58 @@ class _HomeShellState extends State<HomeShell>
     );
   }
 
-  void _stopReply() => unawaited(_generation.stop());
+  /// Replaces a user message and drops everything after it, then answers the
+  /// edited turn in the same conversation.
+  Future<void> _editUserMessage(ConversationMessage message) async {
+    if (_busy || _inference.isGeneratingReply) return;
+    final conversation = _conversations.active;
+    if (conversation == null) return;
+    final edited = await showDialog<String>(
+      context: context,
+      builder: (_) => _EditMessageDialog(initialText: message.text),
+    );
+    if (edited == null) return;
+    final trimmed = edited.trim();
+    if (trimmed.isEmpty || trimmed == message.text) return;
+    final ok = _conversations.editUserMessage(
+      conversationId: conversation.id,
+      messageId: message.id,
+      newText: trimmed,
+    );
+    if (!ok || !mounted) return;
+    final updated = _conversations.conversationById(conversation.id);
+    if (updated == null) return;
+    final history = [
+      for (final message in updated.messages)
+        if (message.text.trim().isNotEmpty)
+          LocalChatTurn(role: message.role.name, content: message.text),
+    ];
+    final systemContext = [
+      YouProfileStore.instance.promptContext,
+      SkillsStore.instance.promptContextFor(trimmed),
+    ].where((item) => item.trim().isNotEmpty).join('\n\n');
+    if (mounted) setState(() => _dismissedSearchNotice = false);
+    await _generation.replyToExisting(
+      conversationId: conversation.id,
+      prompt: trimmed,
+      history: history,
+      systemContext: systemContext,
+    );
+  }
+
+  void _applySuggestion(String text) {
+    _composer.text = text;
+    _composer.selection = TextSelection.collapsed(offset: text.length);
+    _focusNode.requestFocus();
+  }
+
+  void _stopReply() {
+    if (_preparing) {
+      setState(() => _preparing = false);
+      debugPrint('FINN_SEND cancelled during preparing');
+    }
+    unawaited(_generation.stop());
+  }
 
   void _activateConversation(String id) {
     unawaited(_generation.flushActive());
@@ -460,17 +580,14 @@ class _HomeShellState extends State<HomeShell>
                 intensity: 1,
                 child: Stack(
                   children: [
-                    Positioned(
-                      left: contentLeft,
-                      top: 71 * sy,
-                      child: _HomeHeader(onMenu: () => _setSidebar(true)),
-                    ),
+                    // 1. The scrolling chat list, full-bleed so content can
+                    // slide beneath the glass regions at the very top and
+                    // very bottom.
                     Positioned(
                       left: contentLeft,
                       width: contentWidth,
-                      top: 125 * sy,
-                      bottom:
-                          safeBottom + (constraints.maxHeight < 650 ? 78 : 88),
+                      top: 0,
+                      bottom: 0,
                       child: _Conversation(
                         messages: _conversations.active?.messages ?? const [],
                         activeConversationId: _conversations.active?.id,
@@ -478,10 +595,84 @@ class _HomeShellState extends State<HomeShell>
                         conversations: _conversations,
                         onStop: _stopReply,
                         onContinue: _continueReply,
+                        onRegenerate: _regenerateReply,
+                        onEdit: _editUserMessage,
+                        onSuggestion: _applySuggestion,
                         onOpenConversation: _activateConversation,
                         preparing: _preparing,
                         preparingLabel: _preparingLabel,
+                        // First message starts below the header; newest
+                        // message sits above the composer.
+                        topInset: 125 * sy,
+                        bottomInset:
+                            safeBottom +
+                            (constraints.maxHeight < 650 ? 78 : 88),
+                        lowEndBlur:
+                            _inference.deviceProfile != null &&
+                            DeviceProfiler.isLowEnd(_inference.deviceProfile!),
                       ),
+                    ),
+                    // 2. Floating notices (drawn above the list/glass, below
+                    // the header/composer).
+                    if (_inference.lastSearchFailed &&
+                        !_dismissedSearchNotice &&
+                        !_generation.busy)
+                      Positioned(
+                        left: contentLeft,
+                        width: contentWidth,
+                        bottom:
+                            safeBottom +
+                            (constraints.maxHeight < 650 ? 74 : 84),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: FluxColors.cardOf(context),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: FluxColors.lineOf(context),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.cloud_off_outlined,
+                                size: 16,
+                                color: FluxColors.mutedOf(context),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Offline — answer may be less accurate. Connect for cited sources.',
+                                  style: Theme.of(context).textTheme.labelSmall
+                                      ?.copyWith(
+                                        color: FluxColors.mutedOf(context),
+                                      ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              GestureDetector(
+                                onTap: () => setState(
+                                  () => _dismissedSearchNotice = true,
+                                ),
+                                child: Icon(
+                                  Icons.close,
+                                  size: 14,
+                                  color: FluxColors.mutedOf(context),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    // 4. Header and composer are the topmost layers: crisp
+                    // over the glass and always tappable.
+                    Positioned(
+                      left: contentLeft,
+                      top: 71 * sy,
+                      child: _HomeHeader(onMenu: () => _setSidebar(true)),
                     ),
                     Positioned(
                       left: contentLeft,
@@ -491,7 +682,8 @@ class _HomeShellState extends State<HomeShell>
                       child: ChatComposer(
                         controller: _composer,
                         focusNode: _focusNode,
-                        blocked: _busy || !_storesReady,
+                        blocked: _preparing || !_storesReady,
+                        busy: _generation.busy,
                         onSend: _send,
                       ),
                     ),
@@ -601,6 +793,202 @@ class _HomeHeader extends StatelessWidget {
   );
 }
 
+/// A glass band that sits over the scrolling chat list, like the
+/// liquid-glass regions in iOS 26: content passing beneath it is blurred and
+/// tinted, while the band itself never moves.
+///
+/// The blur is **progressive**: it's subtle at the newest end of the
+/// conversation and strengthens as older content slides beneath the
+/// header/composer (driven by [progress], 0..1).
+///
+/// Low-end devices get a weaker blur, a heavier tint, and no saturation
+/// boost — the blur operation is the expensive part, and a narrow band
+/// costs far less than a full-viewport blur.
+class _ChatGlassBand extends StatelessWidget {
+  const _ChatGlassBand({
+    super.key,
+    required this.lowEnd,
+    required this.progress,
+    this.peakFraction = 0,
+  });
+
+  final bool lowEnd;
+
+  /// 0..1 scroll progress; drives the blur strength.
+  final ValueListenable<double> progress;
+
+  /// Where in the band (0..1, from the top) the tint is strongest — the
+  /// header/composer row. Tint dissolves away from the peak on both sides.
+  final double peakFraction;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = FluxColors.isDark(context);
+    final saturation = lowEnd ? 1.0 : 1.25;
+    final peak = peakFraction.clamp(0.0, 1.0);
+    return ValueListenableBuilder<double>(
+      valueListenable: progress,
+      builder: (context, p, _) {
+        final t = Curves.easeOut.transform(p);
+        final blurSigma = 2.0 + t * 10.0;
+        final tintColor = isDark
+            ? FluxColors.darkCanvas.withValues(
+                alpha: (lowEnd ? .5 : .35) + t * (lowEnd ? .12 : .2),
+              )
+            : FluxColors.canvas.withValues(
+                alpha: (lowEnd ? .55 : .45) + t * (lowEnd ? .12 : .2),
+              );
+        return Container(
+          decoration: BoxDecoration(
+            // Tint peaks at the header/composer row and dissolves toward
+            // both band edges, matching Liquid Glass.
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              stops: [0, peak, 1],
+              colors: [
+                tintColor.withValues(alpha: 0),
+                tintColor,
+                tintColor.withValues(alpha: 0),
+              ],
+            ),
+          ),
+          // Backdrop blur is the most expensive layer here and re-runs every
+          // scroll frame. Low-end devices keep the tint without the blur so
+          // scrolling and generation hold their frame budget.
+          child: lowEnd
+              ? const SizedBox.expand()
+              : ClipRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
+              child: ColorFiltered(
+                colorFilter: ColorFilter.matrix(
+                  saturation == 1
+                      ? const [
+                          1,
+                          0,
+                          0,
+                          0,
+                          0,
+                          0,
+                          1,
+                          0,
+                          0,
+                          0,
+                          0,
+                          0,
+                          1,
+                          0,
+                          0,
+                          0,
+                          0,
+                          0,
+                          1,
+                          0,
+                        ]
+                      : [
+                          1.25,
+                          0,
+                          0,
+                          0,
+                          0,
+                          0,
+                          1.25,
+                          0,
+                          0,
+                          0,
+                          0,
+                          0,
+                          1.25,
+                          0,
+                          0,
+                          0,
+                          0,
+                          0,
+                          1,
+                          0,
+                        ],
+                ),
+                child: const SizedBox.expand(),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Cold-start welcome shown when the active conversation has no messages yet:
+/// a short greeting plus tappable suggestions that pre-fill the composer.
+class _ConversationEmpty extends StatelessWidget {
+  const _ConversationEmpty({required this.onSuggestion});
+
+  final ValueChanged<String> onSuggestion;
+
+  static const _suggestions = [
+    'Summarize a web article for me',
+    'Explain a complex topic simply',
+    'Plan my day in three steps',
+    'Draft a short email',
+  ];
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) => SingleChildScrollView(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(minHeight: constraints.maxHeight),
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'How can I help today?',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Ask anything — everything runs privately on this device.',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: FluxColors.mutedOf(context),
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 22),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.center,
+                  children: [
+                    for (final suggestion in _suggestions)
+                      ActionChip(
+                        label: Text(suggestion),
+                        onPressed: () => onSuggestion(suggestion),
+                        backgroundColor: FluxColors.cardOf(context),
+                        side: BorderSide(color: FluxColors.lineOf(context)),
+                        labelStyle: Theme.of(context).textTheme.labelMedium,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 4,
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
 class _Conversation extends StatefulWidget {
   const _Conversation({
     required this.messages,
@@ -609,9 +997,15 @@ class _Conversation extends StatefulWidget {
     required this.conversations,
     required this.onStop,
     required this.onContinue,
+    required this.onRegenerate,
+    required this.onEdit,
+    required this.onSuggestion,
     required this.onOpenConversation,
     required this.preparing,
     required this.preparingLabel,
+    required this.topInset,
+    required this.bottomInset,
+    this.lowEndBlur = false,
   });
   final List<ConversationMessage> messages;
   final String? activeConversationId;
@@ -619,9 +1013,21 @@ class _Conversation extends StatefulWidget {
   final ConversationStore conversations;
   final VoidCallback onStop;
   final ValueChanged<ConversationMessage> onContinue;
+  final ValueChanged<ConversationMessage> onRegenerate;
+  final ValueChanged<ConversationMessage> onEdit;
+  final ValueChanged<String> onSuggestion;
   final ValueChanged<String> onOpenConversation;
   final bool preparing;
   final String preparingLabel;
+
+  /// Vertical insets so the first message clears the header and the newest
+  /// message clears the composer, while the list still bleeds beneath both
+  /// for the glass blur.
+  final double topInset;
+  final double bottomInset;
+
+  /// True on entry-class / low-memory devices: weaker blur, heavier tint.
+  final bool lowEndBlur;
 
   @override
   State<_Conversation> createState() => _ConversationState();
@@ -632,10 +1038,25 @@ class _ConversationState extends State<_Conversation> {
   Timer? _scrollSettleTimer;
   String _contentSignature = '';
 
+  /// 0..1 scroll progress (0 = newest end). Shared with the glass bands so
+  /// the blur strengthens as older content slides beneath the header and
+  /// composer — progressive, not fixed.
+  final ValueNotifier<double> _scrollProgress = ValueNotifier(0);
+
   @override
   void initState() {
     super.initState();
     _contentSignature = _signature();
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final position = _scrollController.position;
+    final extent = math.max(position.maxScrollExtent, 0.0);
+    _scrollProgress.value = extent > 0
+        ? (position.pixels / extent).clamp(0.0, 1.0)
+        : 0.0;
   }
 
   @override
@@ -681,6 +1102,7 @@ class _ConversationState extends State<_Conversation> {
   void dispose() {
     _scrollSettleTimer?.cancel();
     _scrollController.dispose();
+    _scrollProgress.dispose();
     super.dispose();
   }
 
@@ -700,7 +1122,10 @@ class _ConversationState extends State<_Conversation> {
         activeJob == null &&
         visibleError == null &&
         !widget.preparing) {
-      return const SizedBox();
+      return Padding(
+        padding: EdgeInsets.fromLTRB(0, widget.topInset, 0, widget.bottomInset),
+        child: _ConversationEmpty(onSuggestion: widget.onSuggestion),
+      );
     }
     final streamingMessageId = ownsGeneration
         ? activeJob.assistantMessageId
@@ -711,113 +1136,154 @@ class _ConversationState extends State<_Conversation> {
               message.text.isNotEmpty && message.id != streamingMessageId,
         )
         .toList(growable: false);
-    return ShaderMask(
+    return Stack(
       key: const ValueKey('chat-edge-fade'),
-      blendMode: BlendMode.dstIn,
-      shaderCallback: (bounds) {
-        final topStop = (30 / math.max(bounds.height, 1)).clamp(.04, .14);
-        final bottomStop =
-            1 - (38 / math.max(bounds.height, 1)).clamp(.05, .18);
-        return LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: const [
-            Colors.transparent,
-            Colors.black,
-            Colors.black,
-            Colors.transparent,
-          ],
-          stops: [0, topStop, bottomStop, 1],
-        ).createShader(bounds);
-      },
-      child: ListView.builder(
-        key: const ValueKey('chat-scroll-view'),
-        controller: _scrollController,
-        reverse: true,
-        padding: const EdgeInsets.fromLTRB(0, 30, 0, 38),
-        scrollCacheExtent: const ScrollCacheExtent.pixels(700),
-        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-        physics: const BouncingScrollPhysics(
-          parent: AlwaysScrollableScrollPhysics(),
-        ),
-        itemCount: visibleMessages.length + 1,
-        itemBuilder: (context, index) {
-          if (index == 0) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (ownsGeneration && activeJob.responseText.isNotEmpty)
-                  _CompleteReply(
-                    text: activeJob.responseText,
-                    showActions: false,
-                    selectable: false,
-                  ),
-                if (ownsGeneration)
-                  _ModelResponseLoader(
-                    key: ValueKey(activeJob.state),
-                    label: widget.generation.progressLabel,
-                    stopping: activeJob.state == ChatGenerationState.stopping,
-                    onStop: widget.onStop,
-                  )
-                else if (widget.preparing)
-                  _ModelResponseLoader(
-                    label: widget.preparingLabel,
-                    stopping: true,
-                    onStop: widget.onStop,
-                  )
-                else if (activeJob != null)
-                  OtherChatGenerationNotice(
-                    title:
-                        widget.conversations
-                            .conversationById(activeJob.conversationId)
-                            ?.title ??
-                        'another chat',
-                    onOpen: () =>
-                        widget.onOpenConversation(activeJob.conversationId),
-                    onStop: widget.onStop,
-                  )
-                else if (visibleError != null)
-                  _ErrorReply(key: const ValueKey('error'), text: visibleError),
-                if (visibleMessages.isNotEmpty) const SizedBox(height: 14),
-              ],
-            );
-          }
-          final message = visibleMessages[visibleMessages.length - index];
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 14),
-            child: message.role == ConversationRole.user
-                ? Align(
-                    alignment: Alignment.centerRight,
-                    child: _Bubble(
-                      text: message.text,
-                      user: true,
-                      modelTier: 'User message',
+      children: [
+        ListView.builder(
+          key: const ValueKey('chat-scroll-view'),
+          controller: _scrollController,
+          reverse: true,
+          // Top padding lets the oldest message rest below the header;
+          // bottom padding keeps the newest message above the composer.
+          padding: EdgeInsets.fromLTRB(
+            0,
+            widget.topInset + 10,
+            0,
+            widget.bottomInset + 10,
+          ),
+          scrollCacheExtent: const ScrollCacheExtent.pixels(700),
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          physics: const BouncingScrollPhysics(
+            parent: AlwaysScrollableScrollPhysics(),
+          ),
+          itemCount: visibleMessages.length + 1,
+          itemBuilder: (context, index) {
+            if (index == 0) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (ownsGeneration && activeJob.responseText.isNotEmpty)
+                    _CompleteReply(
+                      text: activeJob.responseText,
+                      showActions: false,
+                      selectable: false,
+                      streaming: true,
                     ),
-                  )
-                : _CompleteReply(
-                    text: message.text,
-                    userPrompt:
-                        (visibleMessages.length - index - 1 >= 0 &&
-                            visibleMessages[visibleMessages.length - index - 1]
-                                    .role ==
-                                ConversationRole.user)
-                        ? visibleMessages[visibleMessages.length - index - 1]
-                              .text
-                        : null,
-                    modelTier: message.modelTier,
-                    status: message.status,
-                    showActions: true,
-                    selectable: true,
-                    onContinue:
-                        message.status ==
-                                ConversationMessageStatus.tokenLimited &&
-                            message.continuationCount < 1
-                        ? () => widget.onContinue(message)
-                        : null,
-                  ),
-          );
-        },
-      ),
+                  if (ownsGeneration)
+                    _ModelResponseLoader(
+                      key: ValueKey(activeJob.state),
+                      label: widget.generation.progressLabel,
+                      stopping: activeJob.state == ChatGenerationState.stopping,
+                      onStop: widget.onStop,
+                    )
+                  else if (widget.preparing)
+                    _ModelResponseLoader(
+                      label: widget.preparingLabel,
+                      stopping: false,
+                      onStop: widget.onStop,
+                    )
+                  else if (activeJob != null)
+                    OtherChatGenerationNotice(
+                      title:
+                          widget.conversations
+                              .conversationById(activeJob.conversationId)
+                              ?.title ??
+                          'another chat',
+                      onOpen: () =>
+                          widget.onOpenConversation(activeJob.conversationId),
+                      onStop: widget.onStop,
+                    )
+                  else if (visibleError != null)
+                    _ErrorReply(
+                      key: const ValueKey('error'),
+                      text: visibleError,
+                    ),
+                  if (visibleMessages.isNotEmpty) const SizedBox(height: 14),
+                ],
+              );
+            }
+            final message = visibleMessages[visibleMessages.length - index];
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 14),
+              child: _AnimatedIn(
+                child: message.role == ConversationRole.user
+                    ? Align(
+                        alignment: Alignment.centerRight,
+                        child: _Bubble(
+                          text: message.text,
+                          user: true,
+                          modelTier: 'User message',
+                          onEdit: () => widget.onEdit(message),
+                        ),
+                      )
+                    : _CompleteReply(
+                        text: message.text,
+                        userPrompt:
+                            (visibleMessages.length - index - 1 >= 0 &&
+                                visibleMessages[visibleMessages.length -
+                                            index -
+                                            1]
+                                        .role ==
+                                    ConversationRole.user)
+                            ? visibleMessages[visibleMessages.length -
+                                      index -
+                                      1]
+                                  .text
+                            : null,
+                        modelTier: message.modelTier,
+                        status: message.status,
+                        sources: message.sources,
+                        showActions: true,
+                        selectable: true,
+                        onContinue:
+                            message.status ==
+                                    ConversationMessageStatus.tokenLimited &&
+                                message.continuationCount < 1
+                            ? () => widget.onContinue(message)
+                            : null,
+                        onRegenerate:
+                            message.id == widget.messages.lastOrNull?.id
+                            ? () => widget.onRegenerate(message)
+                            : null,
+                      ),
+              ),
+            );
+          },
+        ),
+        // Progressive glass bands: they sit over the list (behind the
+        // header/composer which are above in the shell Stack) and their blur
+        // strengthens with scroll progress.
+        IgnorePointer(
+          child: Align(
+            alignment: Alignment.topCenter,
+            heightFactor: 1,
+            child: SizedBox(
+              height: widget.topInset,
+              child: _ChatGlassBand(
+                key: const ValueKey('chat-glass-top'),
+                lowEnd: widget.lowEndBlur,
+                progress: _scrollProgress,
+                peakFraction: 71 / 125,
+              ),
+            ),
+          ),
+        ),
+        IgnorePointer(
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            heightFactor: 1,
+            child: SizedBox(
+              height: widget.bottomInset,
+              child: _ChatGlassBand(
+                key: const ValueKey('chat-glass-bottom'),
+                lowEnd: widget.lowEndBlur,
+                progress: _scrollProgress,
+                peakFraction: .6,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -827,11 +1293,13 @@ class _Bubble extends StatelessWidget {
     required this.text,
     this.user = false,
     this.modelTier = 'Finn AI',
+    this.onEdit,
   });
 
   final String text;
   final bool user;
   final String modelTier;
+  final VoidCallback? onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -839,6 +1307,7 @@ class _Bubble extends StatelessWidget {
       text: text,
       user: user,
       modelTier: modelTier,
+      onEdit: onEdit,
       childBuilder: (selecting) {
         final style = Theme.of(context).textTheme.bodyMedium?.copyWith(
           color: user ? FluxColors.canvasOf(context) : null,
@@ -851,6 +1320,56 @@ class _Bubble extends StatelessWidget {
   }
 }
 
+/// Entrance animation for a freshly mounted chat message: a gentle rise
+/// with a fade, so new messages arrive instead of snapping into place.
+class _AnimatedIn extends StatefulWidget {
+  const _AnimatedIn({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_AnimatedIn> createState() => _AnimatedInState();
+}
+
+class _AnimatedInState extends State<_AnimatedIn>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 260),
+  );
+  late final CurvedAnimation _curve = CurvedAnimation(
+    parent: _controller,
+    curve: Curves.easeOutCubic,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (MediaQuery.disableAnimationsOf(context)) return widget.child;
+    return FadeTransition(
+      opacity: _curve,
+      child: SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0, .06),
+          end: Offset.zero,
+        ).animate(_curve),
+        child: widget.child,
+      ),
+    );
+  }
+}
+
 class _MessageBubble extends StatefulWidget {
   const _MessageBubble({
     required this.text,
@@ -859,6 +1378,8 @@ class _MessageBubble extends StatefulWidget {
     required this.childBuilder,
     this.userPrompt,
     this.selectionEnabled = true,
+    this.onRegenerate,
+    this.onEdit,
   });
 
   final String text;
@@ -867,6 +1388,8 @@ class _MessageBubble extends StatefulWidget {
   final String? userPrompt;
   final bool selectionEnabled;
   final Widget Function(bool selecting) childBuilder;
+  final VoidCallback? onRegenerate;
+  final VoidCallback? onEdit;
 
   @override
   State<_MessageBubble> createState() => _MessageBubbleState();
@@ -892,24 +1415,45 @@ class _MessageBubbleState extends State<_MessageBubble> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = FluxColors.isDark(context);
     final bubble = Container(
       constraints: BoxConstraints(
-        maxWidth: math.min(MediaQuery.sizeOf(context).width * .82, 620),
+        maxWidth: math.min(
+          MediaQuery.sizeOf(context).width * .82,
+          620,
+        ),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: widget.user
-            ? FluxColors.inkOf(context)
-            : FluxColors.cardOf(context),
+        gradient: widget.user
+            ? LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  FluxColors.inkOf(context),
+                  FluxColors.inkOf(context).withValues(alpha: .92),
+                ],
+              )
+            : null,
+        color: widget.user ? null : FluxColors.cardOf(context),
         borderRadius: BorderRadius.only(
           topLeft: const Radius.circular(19),
           topRight: const Radius.circular(19),
           bottomLeft: Radius.circular(widget.user ? 19 : 5),
           bottomRight: Radius.circular(widget.user ? 5 : 19),
         ),
+        boxShadow: widget.user
+            ? null
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? .35 : .05),
+                  blurRadius: isDark ? 10 : 7,
+                  offset: const Offset(0, 3),
+                ),
+              ],
         border: widget.user
             ? null
-            : Border.all(color: FluxColors.lineOf(context)),
+            : Border.all(color: FluxColors.lineOf(context).withValues(alpha: 0.06)),
       ),
       child: widget.childBuilder(_selecting),
     );
@@ -958,15 +1502,46 @@ class _MessageBubbleState extends State<_MessageBubble> {
                   child: Material(
                     color: FluxColors.surfaceOf(context),
                     borderRadius: BorderRadius.circular(18),
-                    child: Container(
-                      width: 178,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: FluxColors.lineOf(context)),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: math.min(178, MediaQuery.sizeOf(context).width - 64),
                       ),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: FluxColors.lineOf(context).withValues(alpha: 0.08)),
+                        ),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
+                          if (widget.onRegenerate != null) ...[
+                            _InlineMessageAction(
+                              icon: FluxIcons.refresh,
+                              label: 'Regenerate',
+                              onTap: () {
+                                setState(() => _actionsVisible = false);
+                                widget.onRegenerate?.call();
+                              },
+                            ),
+                            Divider(
+                              height: 1,
+                              color: FluxColors.lineOf(context),
+                            ),
+                          ],
+                          if (widget.onEdit != null) ...[
+                            _InlineMessageAction(
+                              icon: FluxIcons.edit,
+                              label: 'Edit',
+                              onTap: () {
+                                setState(() => _actionsVisible = false);
+                                widget.onEdit?.call();
+                              },
+                            ),
+                            Divider(
+                              height: 1,
+                              color: FluxColors.lineOf(context),
+                            ),
+                          ],
                           _InlineMessageAction(
                             icon: FluxIcons.copy,
                             label: 'Copy',
@@ -1001,6 +1576,7 @@ class _MessageBubbleState extends State<_MessageBubble> {
                             },
                           ),
                         ],
+                        ),
                       ),
                     ),
                   ),
@@ -1090,22 +1666,23 @@ class _ModelResponseLoaderState extends State<_ModelResponseLoader>
       alignment: Alignment.centerLeft,
       child: RepaintBoundary(
         child: Material(
-          color: FluxColors.cardOf(context).withValues(alpha: .7),
-          borderRadius: BorderRadius.circular(22),
+          color: FluxColors.cardOf(context).withValues(alpha: .8),
+          borderRadius: BorderRadius.circular(19),
           child: InkWell(
             onTap: widget.stopping ? null : widget.onStop,
-            borderRadius: BorderRadius.circular(22),
+            borderRadius: BorderRadius.circular(19),
             child: Container(
-              constraints: const BoxConstraints(minHeight: 42, maxWidth: 300),
-              padding: const EdgeInsets.symmetric(horizontal: 12),
+              constraints: const BoxConstraints(minHeight: 36, maxWidth: 300),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(19),
                 border: Border.all(color: FluxColors.lineOf(context)),
               ),
               child: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   SizedBox(
-                    width: 42,
+                    width: 26,
                     child: AnimatedBuilder(
                       animation: _controller,
                       builder: (context, _) => Row(
@@ -1114,20 +1691,20 @@ class _ModelResponseLoaderState extends State<_ModelResponseLoader>
                           final wave =
                               (math.sin(
                                     _controller.value * math.pi * 2 -
-                                        index * .8,
+                                        index * .9,
                                   ) +
                                   1) /
                               2;
                           return Transform.scale(
-                            scale: .72 + wave * .3,
+                            scale: .65 + wave * .5,
                             child: Opacity(
-                              opacity: .28 + wave * .72,
+                              opacity: .3 + wave * .7,
                               child: DecoratedBox(
                                 decoration: BoxDecoration(
                                   color: FluxColors.inkOf(context),
                                   shape: BoxShape.circle,
                                 ),
-                                child: const SizedBox.square(dimension: 6),
+                                child: const SizedBox.square(dimension: 5),
                               ),
                             ),
                           );
@@ -1139,16 +1716,18 @@ class _ModelResponseLoaderState extends State<_ModelResponseLoader>
                   Flexible(
                     child: Text(
                       widget.label,
-                      maxLines: 2,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.labelMedium,
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        color: FluxColors.mutedOf(context),
+                      ),
                     ),
                   ),
                   if (!widget.stopping) ...[
                     const SizedBox(width: 7),
                     FluxIcon(
                       icon: FluxIcons.close,
-                      size: 15,
+                      size: 13,
                       color: FluxColors.mutedOf(context),
                     ),
                   ],
@@ -1212,7 +1791,10 @@ class _CompleteReply extends StatelessWidget {
     this.status = ConversationMessageStatus.complete,
     this.showActions = true,
     this.selectable = true,
+    this.streaming = false,
     this.onContinue,
+    this.onRegenerate,
+    this.sources = const [],
   });
 
   final String text;
@@ -1221,7 +1803,10 @@ class _CompleteReply extends StatelessWidget {
   final ConversationMessageStatus status;
   final bool showActions;
   final bool selectable;
+  final bool streaming;
   final VoidCallback? onContinue;
+  final VoidCallback? onRegenerate;
+  final List<WebSource> sources;
 
   @override
   Widget build(BuildContext context) => Column(
@@ -1233,29 +1818,31 @@ class _CompleteReply extends StatelessWidget {
         modelTier: modelTier,
         userPrompt: userPrompt,
         selectionEnabled: selectable,
+        onRegenerate: onRegenerate,
         childBuilder: (selecting) =>
-            _ReplyText(text: text, selecting: selecting),
+            streaming
+            ? Text(
+                text,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  height: 1.38,
+                ),
+              )
+            : _ReplyText(text: text, selecting: selecting),
       ),
+      if (sources.isNotEmpty) ...[
+        const SizedBox(height: 6),
+        _SourceChips(sources: sources),
+      ],
       if (showActions) ...[
-        const SizedBox(height: 5),
-        Text(
-          switch (status) {
-            ConversationMessageStatus.complete => 'Answered using $modelTier',
-            ConversationMessageStatus.stopped =>
-              'Stopped by you · partial response',
-            ConversationMessageStatus.interrupted =>
-              'Interrupted · partial response preserved',
-            ConversationMessageStatus.tokenLimited =>
-              'Length limit reached · partial response preserved',
-            ConversationMessageStatus.failed =>
-              'Generation failed · partial response preserved',
-            ConversationMessageStatus.generating =>
-              'Generating using $modelTier',
-          },
-          style: Theme.of(
-            context,
-          ).textTheme.labelSmall?.copyWith(color: FluxColors.mutedOf(context)),
-        ),
+        if (status == ConversationMessageStatus.generating) ...[
+          const SizedBox(height: 5),
+          Text(
+            'Finn is typing…',
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: FluxColors.mutedOf(context),
+            ),
+          ),
+        ],
         if (onContinue != null)
           TextButton.icon(
             onPressed: onContinue,
@@ -1265,6 +1852,51 @@ class _CompleteReply extends StatelessWidget {
       ],
     ],
   );
+}
+
+/// Horizontal row of clickable source chips shown under a web-grounded answer.
+class _SourceChips extends StatelessWidget {
+  const _SourceChips({required this.sources});
+
+  final List<WebSource> sources;
+
+  Future<void> _open(BuildContext context, WebSource source) async {
+    final uri = source.url;
+    if (uri.scheme == 'http' || uri.scheme == 'https') {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 30,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        shrinkWrap: true,
+        itemCount: sources.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 6),
+        itemBuilder: (context, index) {
+          final source = sources[index];
+          return ActionChip(
+            avatar: const Icon(Icons.public, size: 15),
+            label: Text(
+              source.title.isEmpty ? source.url.host : source.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelSmall,
+            ),
+            onPressed: () => _open(context, source),
+            visualDensity: VisualDensity.compact,
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            side: BorderSide(color: FluxColors.lineOf(context)),
+            backgroundColor: FluxColors.cardOf(context),
+            labelPadding: const EdgeInsets.symmetric(horizontal: 6),
+          );
+        },
+      ),
+    );
+  }
 }
 
 class _ReplyText extends StatelessWidget {
@@ -1339,6 +1971,61 @@ class _ErrorReply extends StatelessWidget {
   Widget build(BuildContext context) => _Bubble(text: text);
 }
 
+/// Edit dialog that owns its text controller, used to rewrite a user message
+/// before the turn is answered again.
+class _EditMessageDialog extends StatefulWidget {
+  const _EditMessageDialog({required this.initialText});
+
+  final String initialText;
+
+  @override
+  State<_EditMessageDialog> createState() => _EditMessageDialogState();
+}
+
+class _EditMessageDialogState extends State<_EditMessageDialog> {
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.initialText,
+  );
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    backgroundColor: FluxColors.cardOf(context),
+    surfaceTintColor: Colors.transparent,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
+    title: Text(
+      'Edit message',
+      style: Theme.of(
+        context,
+      ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w400),
+    ),
+    content: TextField(
+      controller: _controller,
+      autofocus: true,
+      minLines: 1,
+      maxLines: 6,
+      maxLength: 4000,
+      textCapitalization: TextCapitalization.sentences,
+      decoration: const InputDecoration(hintText: 'Rewrite your message'),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.of(context).pop(),
+        child: const Text('Cancel'),
+      ),
+      FilledButton(
+        onPressed: () => Navigator.of(context).pop(_controller.text),
+        child: const Text('Resend'),
+      ),
+    ],
+  );
+}
+
 class ChatComposer extends StatefulWidget {
   const ChatComposer({
     super.key,
@@ -1346,11 +2033,16 @@ class ChatComposer extends StatefulWidget {
     required this.focusNode,
     required this.blocked,
     required this.onSend,
+    this.busy = false,
   });
   final TextEditingController controller;
   final FocusNode focusNode;
   final bool blocked;
   final VoidCallback onSend;
+
+  /// True while a reply is generating. Input stays enabled so the user can
+  /// draft the next message, but sending is disabled until the turn ends.
+  final bool busy;
 
   @override
   State<ChatComposer> createState() => _ChatComposerState();
@@ -1388,84 +2080,86 @@ class _ChatComposerState extends State<ChatComposer> {
 
   @override
   Widget build(BuildContext context) {
-    final canSend = _hasText && !widget.blocked;
+    final canSend = _hasText && !widget.blocked && !widget.busy;
     final reducedMotion = MediaQuery.disableAnimationsOf(context);
     return AnimatedContainer(
       key: const ValueKey('chat-composer-motion'),
-      duration: reducedMotion
-          ? Duration.zero
-          : const Duration(milliseconds: 180),
+      duration: reducedMotion ? Duration.zero : const Duration(milliseconds: 180),
       curve: Curves.easeOutCubic,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(
-            color: FluxColors.inkOf(
-              context,
-            ).withValues(alpha: _focused ? .10 : .055),
+            color: FluxColors.inkOf(context).withValues(alpha: _focused ? .10 : .055),
             blurRadius: _focused ? 22 : 14,
             offset: const Offset(0, 6),
           ),
         ],
       ),
       child: FluxGlass(
-        radius: 999,
+        radius: 28,
         color: FluxColors.surfaceOf(context),
-        borderColor: FluxColors.inkOf(
-          context,
-        ).withValues(alpha: _focused ? .2 : .07),
-        child: SizedBox(
-          height: 54,
+        borderColor: FluxColors.inkOf(context).withValues(alpha: _focused ? .2 : .07),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 54, maxHeight: 190),
           child: Padding(
-            padding: const EdgeInsets.only(left: 18, right: 7),
-            child: Row(
+            padding: const EdgeInsets.fromLTRB(14, 10, 7, 10),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(
-                  child: Semantics(
-                    label: 'Message to Finn AI',
-                    textField: true,
-                    child: TextField(
-                      controller: widget.controller,
-                      focusNode: widget.focusNode,
-                      inputFormatters: [LengthLimitingTextInputFormatter(4000)],
-                      enabled: !widget.blocked,
-                      textInputAction: TextInputAction.send,
-                      onSubmitted: (_) => canSend ? widget.onSend() : null,
-                      style: Theme.of(context).textTheme.bodyMedium,
-                      decoration: InputDecoration.collapsed(
-                        hintText: widget.blocked
-                            ? 'Finn AI is responding…'
-                            : 'Ask anything',
-                        hintStyle: Theme.of(context).textTheme.bodyMedium
-                            ?.copyWith(color: FluxColors.mutedOf(context)),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Semantics(
-                  button: true,
-                  enabled: canSend,
-                  label: 'Send message',
-                  child: SizedBox.square(
-                    key: const ValueKey('send-button-surface'),
-                    dimension: 40,
-                    child: InkWell(
-                      onTap: canSend ? widget.onSend : null,
-                      customBorder: const CircleBorder(),
-                      child: Center(
-                        child: FigmaSvg(
-                          asset: canSend
-                              ? FigmaAssets.activeSend
-                              : FigmaAssets.send,
-                          key: const ValueKey('send-button-icon'),
-                          width: 34,
-                          height: 34,
-                          invertForDark: FluxColors.isDark(context),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: Semantics(
+                        label: 'Message to Finn AI',
+                        textField: true,
+                        child: TextField(
+                          controller: widget.controller,
+                          focusNode: widget.focusNode,
+                          inputFormatters: [LengthLimitingTextInputFormatter(4000)],
+                          enabled: !widget.blocked,
+                          minLines: 1,
+                          maxLines: 5,
+                          keyboardType: TextInputType.multiline,
+                          textInputAction: TextInputAction.send,
+                          onSubmitted: (_) => canSend ? widget.onSend() : null,
+                          style: Theme.of(context).textTheme.bodyMedium,
+                          decoration: InputDecoration.collapsed(
+                            hintText: widget.blocked ? 'Finn is typing…' : 'Ask anything',
+                            hintStyle: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(color: FluxColors.mutedOf(context)),
+                          ),
                         ),
                       ),
                     ),
-                  ),
+                    const SizedBox(width: 6),
+                    Semantics(
+                      button: true,
+                      enabled: canSend,
+                      label: 'Send message',
+                      child: SizedBox.square(
+                        key: const ValueKey('send-button-surface'),
+                        dimension: 40,
+                        child: InkWell(
+                          onTap: canSend ? widget.onSend : null,
+                          customBorder: const CircleBorder(),
+                          child: Center(
+                            child: FigmaSvg(
+                              asset: canSend ? FigmaAssets.activeSend : FigmaAssets.send,
+                              key: const ValueKey('send-button-icon'),
+                              width: 34,
+                              height: 34,
+                              invertForDark: FluxColors.isDark(context),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../home/home_shell.dart';
-import '../inference/bonsai_inference.dart';
+import '../inference/qwen_inference.dart';
 import '../theme/flux_theme.dart';
 import '../widgets/ambient_background.dart';
 import '../widgets/flux_controls.dart';
@@ -49,7 +49,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     if (page >= 3 && widget.enableModelDownload) {
       // Precautions and the final swipe give the mmap-backed engine time to
       // load before the user can type a first prompt.
-      unawaited(BonsaiInference.instance.prewarm());
+      unawaited(QwenInference.instance.prewarm());
     }
   }
 
@@ -446,7 +446,7 @@ class _AutomaticModelPage extends StatefulWidget {
 }
 
 class _AutomaticModelPageState extends State<_AutomaticModelPage> {
-  final _inference = BonsaiInference.instance;
+  final _inference = QwenInference.instance;
   bool _started = false;
   bool _ready = false;
   String? _error;
@@ -509,9 +509,10 @@ class _AutomaticModelPageState extends State<_AutomaticModelPage> {
           setState(() => _progress = index / models.length);
         }
         final model = models[index];
-        if (!await _inference.isInstalled(model)) {
-          await _inference.install(model);
-        }
+        // Calling install even for an existing language model also completes
+        // the post-model mmproj download after an upgrade or interrupted
+        // first run.
+        await _inference.install(model);
         if (!await _inference.isInstalled(model)) {
           throw const FormatException('Model verification failed');
         }
@@ -533,7 +534,7 @@ class _AutomaticModelPageState extends State<_AutomaticModelPage> {
   @override
   Widget build(BuildContext context) => _DetailPage(
     iconAsset: FigmaAssets.magic,
-    title: _ready ? 'Best model installed' : 'Installing the best model',
+    title: _ready ? 'Qwen 3.5 2B ready' : 'Installing Qwen 3.5 2B',
     contentTop: 79,
     onBack: widget.onBack,
     backEnabled: _ready,
@@ -561,7 +562,7 @@ class _AutomaticInstallPanel extends StatelessWidget {
     required this.onRetry,
   });
 
-  final List<BonsaiModel> models;
+  final List<QwenModel> models;
   final double progress;
   final bool ready;
   final bool started;
@@ -600,8 +601,8 @@ class _AutomaticInstallPanel extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               ready
-                  ? 'Installed on this device'
-                  : 'Best fit · ${model.parameterLabel} · ${model.sizeLabel}',
+                  ? 'Ready for private text chat on this device'
+                  : '${model.parameterLabel} · ${model.sizeLabel}',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.labelMedium?.copyWith(
                 color: FluxColors.mutedOf(context),
@@ -658,7 +659,7 @@ class _AutomaticInstallPanel extends StatelessWidget {
                           ? 'Model ready'
                           : started
                           ? '$status · ${(effectiveProgress * 100).round()}%'
-                          : 'Finding the best model for this device…',
+                          : 'Preparing Qwen 3.5 2B for this device…',
                       maxLines: 1,
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.labelMedium?.copyWith(

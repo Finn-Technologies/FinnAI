@@ -191,10 +191,22 @@ class WebSearchService {
   final Duration timeout;
   final Uri endpoint;
 
+  /// Searches only when the local policy says fresh or cited information is
+  /// useful. The query contains the latest user prompt only; history and
+  /// personalization never leave the device.
   Future<WebSearchResult?> searchIfNeeded(String prompt) async {
     if (!policy.shouldSearch(prompt)) return null;
+    return search(prompt);
+  }
+
+  /// Runs an explicit query. This is used after the local model emits a
+  /// SEARCH decision, so the decision pass and the policy share one retrieval
+  /// implementation.
+  Future<WebSearchResult?> search(String query) async {
+    final value = query.trim();
+    if (value.isEmpty) return null;
     try {
-      final uri = endpoint.replace(queryParameters: {'q': prompt});
+      final uri = endpoint.replace(queryParameters: {'q': value});
       final response = await _client
           .get(
             uri,
@@ -207,12 +219,42 @@ class WebSearchService {
       if (response.statusCode != 200) return null;
       final sources = parseResults(response.body);
       if (sources.isEmpty) return null;
-      return WebSearchResult(query: prompt, sources: sources);
+      return WebSearchResult(query: value, sources: sources);
     } on Object catch (error) {
       debugPrint('Web search unavailable: $error');
       return null;
     }
   }
+
+  /// Fetches a bounded visible-text excerpt from a verified HTTPS result.
+  /// Pages are optional enrichment: search snippets remain usable when a page
+  /// blocks automated requests or is unavailable.
+  Future<String?> fetchPageText(Uri url) async {
+    if (url.scheme != 'https' || url.host.isEmpty) return null;
+    try {
+      final response = await _client
+          .get(
+            url,
+            headers: const {
+              'Accept': 'text/html,text/plain',
+              'User-Agent': 'FinnAI/1.0 Android web search',
+            },
+          )
+          .timeout(timeout);
+      if (response.statusCode < 200 || response.statusCode >= 400) return null;
+      final text = _plainText(response.body);
+      if (text.isEmpty) return null;
+      return text.length > 1800 ? '${text.substring(0, 1800)}…' : text;
+    } on Object catch (error) {
+      debugPrint('Web page unavailable: $error');
+      return null;
+    }
+  }
+
+  void close() => _client.close();
+
+  @visibleForTesting
+  http.Client get client => _client;
 
   @visibleForTesting
   static List<WebSource> parseResults(String html) {
@@ -267,7 +309,13 @@ class WebSearchService {
   }
 
   static String _plainText(String value) => _decodeHtml(
-    value.replaceAll(RegExp(r'<[^>]+>'), ' ').replaceAll(RegExp(r'\s+'), ' '),
+    value
+        .replaceAll(
+          RegExp(r'<(?:script|style)[^>]*>[\s\S]*?</(?:script|style)>', caseSensitive: false),
+          ' ',
+        )
+        .replaceAll(RegExp(r'<[^>]+>'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' '),
   ).trim();
 
   static String _decodeHtml(String value) {

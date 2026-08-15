@@ -101,6 +101,16 @@ class MainActivity : FlutterActivity() {
                     result.success(null)
                 }
                 "status" -> result.success(ModelDownloadService.status(this))
+                "cancel" -> {
+                    val args = call.arguments as? Map<*, *>
+                    val target = args?.get("target") as? String
+                    if (target.isNullOrBlank()) {
+                        result.error("args", "Missing download target", null)
+                    } else {
+                        ModelDownloadService.cancel(this, target)
+                        result.success(null)
+                    }
+                }
                 else -> result.notImplemented()
             }
         }

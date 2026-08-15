@@ -1,11 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-
 import '../conversations/conversation_store.dart';
-import '../inference/bonsai_inference.dart';
+import '../inference/bonsai_inference.dart' as legacy;
+import '../inference/qwen_inference.dart';
 import '../inference/prompt_intent.dart';
 import '../inference/ttft_metrics.dart';
+import '../search/web_search_service.dart';
 
 enum ChatGenerationState { preparing, generating, stopping, complete, error }
 
@@ -25,6 +26,7 @@ class ChatGenerationJob {
     required this.epoch,
     this.finishReason,
     this.errorMessage,
+    this.sources = const [],
   });
 
   final String generationId;
@@ -34,11 +36,12 @@ class ChatGenerationJob {
   final String modelName;
   final ChatGenerationState state;
   final String responseText;
-  final GenerationFinishReason? finishReason;
+  final legacy.GenerationFinishReason? finishReason;
   final DateTime startedAt;
   final bool cancellationRequested;
   final int continuationCount;
   final int epoch;
+  final List<WebSource> sources;
   final String? errorMessage;
 
   bool get busy =>
@@ -50,9 +53,10 @@ class ChatGenerationJob {
     String? modelName,
     ChatGenerationState? state,
     String? responseText,
-    GenerationFinishReason? finishReason,
+    legacy.GenerationFinishReason? finishReason,
     bool? cancellationRequested,
     String? errorMessage,
+    List<WebSource>? sources,
   }) => ChatGenerationJob(
     generationId: generationId,
     conversationId: conversationId,
@@ -66,6 +70,7 @@ class ChatGenerationJob {
     cancellationRequested: cancellationRequested ?? this.cancellationRequested,
     continuationCount: continuationCount,
     epoch: epoch,
+    sources: sources ?? this.sources,
     errorMessage: errorMessage ?? this.errorMessage,
   );
 }
@@ -86,16 +91,16 @@ class CancellationMetrics {
 }
 
 abstract interface class ChatInferenceRuntime implements Listenable {
-  InferencePhase get phase;
+  legacy.InferencePhase get phase;
   String get status;
   String get selectedModelName;
   String get lastGeneratingModelName;
-  GenerationReport? get lastGenerationReport;
+  legacy.GenerationReport? get lastGenerationReport;
 
   Stream<String> generateReply(
     String prompt, {
     required String conversationId,
-    required List<LocalChatTurn> history,
+    required List<legacy.LocalChatTurn> history,
     required String systemContext,
     PromptAnalysis? promptAnalysis,
     TtftTrace? trace,
@@ -105,13 +110,19 @@ abstract interface class ChatInferenceRuntime implements Listenable {
   Future<void> resetAfterCancellationTimeout();
 }
 
-class BonsaiChatInferenceRuntime implements ChatInferenceRuntime {
-  BonsaiChatInferenceRuntime(this.inference);
+class QwenChatInferenceRuntime implements ChatInferenceRuntime {
+  QwenChatInferenceRuntime(this.inference);
 
-  final BonsaiInference inference;
+  final QwenInference inference;
 
   @override
-  InferencePhase get phase => inference.phase;
+  legacy.InferencePhase get phase => switch (inference.phase) {
+    InferencePhase.idle => legacy.InferencePhase.idle,
+    InferencePhase.downloading => legacy.InferencePhase.downloading,
+    InferencePhase.loading => legacy.InferencePhase.loading,
+    InferencePhase.generating => legacy.InferencePhase.generating,
+    InferencePhase.error => legacy.InferencePhase.error,
+  };
   @override
   String get status => inference.status;
   @override
@@ -119,7 +130,25 @@ class BonsaiChatInferenceRuntime implements ChatInferenceRuntime {
   @override
   String get lastGeneratingModelName => inference.lastGeneratingModel.name;
   @override
-  GenerationReport? get lastGenerationReport => inference.lastGenerationReport;
+  legacy.GenerationReport? get lastGenerationReport {
+    final report = inference.lastGenerationReport;
+    if (report == null) return null;
+    return legacy.GenerationReport(
+      model: legacy.bonsaiModels.first,
+      intent: report.intent,
+      route: legacy.BonsaiTier.lite,
+      outputBudget: report.outputBudget,
+      finishReason: legacy.GenerationFinishReason.values.byName(
+        report.finishReason.name,
+      ),
+      firstTokenLatency: report.firstTokenLatency,
+      totalGenerationTime: report.totalGenerationTime,
+      outputTokens: report.outputTokens,
+      tokensPerSecond: report.tokensPerSecond,
+    );
+  }
+  List<WebSource> get lastSources => inference.lastSources;
+  int get tokenPaintIntervalMs => inference.plan?.tokenPaintIntervalMs ?? 50;
 
   @override
   void addListener(VoidCallback listener) => inference.addListener(listener);
@@ -131,17 +160,37 @@ class BonsaiChatInferenceRuntime implements ChatInferenceRuntime {
   Stream<String> generateReply(
     String prompt, {
     required String conversationId,
-    required List<LocalChatTurn> history,
+    required List<legacy.LocalChatTurn> history,
     required String systemContext,
     PromptAnalysis? promptAnalysis,
     TtftTrace? trace,
-  }) => inference.generateReply(
+  }) => generateReplyWithContext(
     prompt,
     conversationId: conversationId,
     history: history,
     systemContext: systemContext,
     promptAnalysis: promptAnalysis,
     trace: trace,
+  );
+
+  Stream<String> generateReplyWithContext(
+    String prompt, {
+    required String conversationId,
+    required List<legacy.LocalChatTurn> history,
+    required String systemContext,
+    String groundedContext = '',
+    PromptAnalysis? promptAnalysis,
+    TtftTrace? trace,
+    bool enableSearchDecision = true,
+  }) => inference.generateReply(
+    prompt,
+    conversationId: conversationId,
+    history: history,
+    systemContext: systemContext,
+    groundedContext: groundedContext,
+    promptAnalysis: promptAnalysis,
+    trace: trace,
+    enableSearchDecision: enableSearchDecision,
   );
 
   @override
@@ -166,7 +215,7 @@ class ChatGenerationController extends ChangeNotifier {
 
   static final instance = ChatGenerationController(
     conversations: ConversationStore.instance,
-    runtime: BonsaiChatInferenceRuntime(BonsaiInference.instance),
+    runtime: QwenChatInferenceRuntime(QwenInference.instance),
   );
 
   final ConversationStore conversations;
@@ -200,22 +249,24 @@ class ChatGenerationController extends ChangeNotifier {
     final current = activeJob;
     if (current == null) return 'Ready';
     if (current.state == ChatGenerationState.stopping) return 'Stopping';
-    if (runtime.phase == InferencePhase.downloading ||
-        runtime.phase == InferencePhase.loading) {
+    if (runtime.phase == legacy.InferencePhase.downloading ||
+        runtime.phase == legacy.InferencePhase.loading) {
       return 'Preparing locally';
     }
     if (current.state == ChatGenerationState.preparing) {
       return 'Understanding your request';
     }
-    return 'Using ${current.modelName} · Generating response';
+    return 'Finn is typing…';
   }
 
   Future<ChatGenerationJob?> start({
     required String conversationId,
     required String prompt,
-    required List<LocalChatTurn> history,
+    required List<legacy.LocalChatTurn> history,
     required String systemContext,
+    String groundedContext = '',
     String responseSuffix = '',
+    List<WebSource> sources = const [],
     TtftTrace? trace,
   }) async {
     if (busy) return null;
@@ -237,7 +288,9 @@ class ChatGenerationController extends ChangeNotifier {
       runtimePrompt: prompt,
       history: history,
       systemContext: systemContext,
+      groundedContext: groundedContext,
       responseSuffix: responseSuffix,
+      sources: sources,
       analysis: analysis,
       initialText: '',
       continuationCount: 0,
@@ -249,8 +302,11 @@ class ChatGenerationController extends ChangeNotifier {
     required String conversationId,
     required String assistantMessageId,
     required String originalPrompt,
-    required List<LocalChatTurn> history,
+    required List<legacy.LocalChatTurn> history,
     required String systemContext,
+    String groundedContext = '',
+    String responseSuffix = '',
+    List<WebSource> sources = const [],
   }) async {
     if (busy) return null;
     final generationId = _nextId();
@@ -271,14 +327,143 @@ class ChatGenerationController extends ChangeNotifier {
       conversationId: conversationId,
       assistant: assistant,
       originalPrompt: originalPrompt,
-      runtimePrompt: BonsaiInference.continuationPrompt,
+      runtimePrompt: QwenInference.continuationPrompt,
       history: history,
       systemContext: systemContext,
-      responseSuffix: '',
+      groundedContext: groundedContext,
+      responseSuffix: responseSuffix,
+      sources: sources,
       analysis: analysis,
       initialText: assistant.text,
       continuationCount: assistant.continuationCount,
       trace: timing,
+      // Continuations reuse the original turn's search decision + sources
+      // (computed in the UI); the continuation prompt itself must not re-trigger
+      // the decision pass.
+      enableSearchDecision: false,
+    );
+  }
+
+  /// Re-runs the model on the same user turn, replacing the previous
+  /// assistant reply in place (see [ConversationStore.beginRegeneration]).
+  /// The search decision pass runs again so a bad answer can be re-grounded.
+  Future<ChatGenerationJob?> regenerate({
+    required String conversationId,
+    required String assistantMessageId,
+    required String originalPrompt,
+    required List<legacy.LocalChatTurn> history,
+    required String systemContext,
+    String groundedContext = '',
+    String responseSuffix = '',
+    List<WebSource> sources = const [],
+  }) async {
+    if (busy) return null;
+    final generationId = _nextId();
+    final timing = TtftTrace(
+      generationId: generationId,
+      conversationId: conversationId,
+    );
+    final analysis = const PromptIntentClassifier().classify(originalPrompt);
+    timing.mark(TtftPhase.intentClassified);
+    final assistant = conversations.beginRegeneration(
+      conversationId: conversationId,
+      messageId: assistantMessageId,
+      generationId: generationId,
+    );
+    if (assistant == null) return null;
+    return _listen(
+      generationId: generationId,
+      conversationId: conversationId,
+      assistant: assistant,
+      originalPrompt: originalPrompt,
+      runtimePrompt: originalPrompt,
+      history: history,
+      systemContext: systemContext,
+      groundedContext: groundedContext,
+      responseSuffix: responseSuffix,
+      sources: sources,
+      analysis: analysis,
+      initialText: '',
+      continuationCount: assistant.continuationCount,
+      trace: timing,
+    );
+  }
+
+  /// Answers an existing user turn (e.g. after an edit) by appending a new
+  /// assistant message, without adding a duplicate user message.
+  Future<ChatGenerationJob?> replyToExisting({
+    required String conversationId,
+    required String prompt,
+    required List<legacy.LocalChatTurn> history,
+    required String systemContext,
+    String groundedContext = '',
+    String responseSuffix = '',
+    List<WebSource> sources = const [],
+  }) async {
+    if (busy) return null;
+    final timing = TtftTrace(
+      generationId: _nextId(),
+      conversationId: conversationId,
+    );
+    final generationId = timing.generationId;
+    final analysis = const PromptIntentClassifier().classify(prompt);
+    timing.mark(TtftPhase.intentClassified);
+    final assistant = conversations.beginAssistantReply(
+      conversationId: conversationId,
+      generationId: generationId,
+      modelTier: runtime.selectedModelName,
+    );
+    if (assistant == null) return null;
+    return _listen(
+      generationId: generationId,
+      conversationId: conversationId,
+      assistant: assistant,
+      originalPrompt: prompt,
+      runtimePrompt: prompt,
+      history: history,
+      systemContext: systemContext,
+      groundedContext: groundedContext,
+      responseSuffix: responseSuffix,
+      sources: sources,
+      analysis: analysis,
+      initialText: '',
+      continuationCount: 0,
+      trace: timing,
+    );
+  }
+
+  Timer? _preparingGuard;
+
+  Stream<String> _generateWithContext(
+    String prompt, {
+    required String conversationId,
+    required List<legacy.LocalChatTurn> history,
+    required String systemContext,
+    required String groundedContext,
+    required PromptAnalysis analysis,
+    required TtftTrace trace,
+    required bool enableSearchDecision,
+  }) {
+    final current = runtime;
+    if (current is QwenChatInferenceRuntime) {
+      return current.generateReplyWithContext(
+        prompt,
+        conversationId: conversationId,
+        history: history,
+        systemContext: systemContext,
+        groundedContext: groundedContext,
+        promptAnalysis: analysis,
+        trace: trace,
+        enableSearchDecision: enableSearchDecision,
+      );
+    }
+    return current.generateReply(
+      prompt,
+      conversationId: conversationId,
+      history: history,
+      systemContext: systemContext,
+      promptAnalysis: analysis,
+      trace: trace,
     );
   }
 
@@ -288,13 +473,16 @@ class ChatGenerationController extends ChangeNotifier {
     required ConversationMessage assistant,
     required String originalPrompt,
     required String runtimePrompt,
-    required List<LocalChatTurn> history,
+    required List<legacy.LocalChatTurn> history,
     required String systemContext,
+    String groundedContext = '',
     required String responseSuffix,
+    required List<WebSource> sources,
     required PromptAnalysis analysis,
     required String initialText,
     required int continuationCount,
     required TtftTrace trace,
+    bool enableSearchDecision = true,
   }) {
     final epoch = ++_epoch;
     _lateTokenCount = 0;
@@ -311,17 +499,32 @@ class ChatGenerationController extends ChangeNotifier {
       cancellationRequested: false,
       continuationCount: continuationCount,
       epoch: epoch,
+      sources: sources,
     );
     if (!_disposed) notifyListeners();
+    _preparingGuard?.cancel();
+    _preparingGuard = Timer(const Duration(seconds: 30), () {
+      final current = _job;
+      if (current == null ||
+          current.generationId != generationId ||
+          current.epoch != epoch ||
+          !current.busy ||
+          current.state != ChatGenerationState.preparing) {
+        return;
+      }
+      debugPrint('FINN_PREPARING_GUARD fired generation=$generationId');
+      unawaited(_finishError(generationId, epoch, TimeoutException('Model did not start. Try again.')));
+    });
 
-    _subscription = runtime
-        .generateReply(
+    _subscription = _generateWithContext(
           runtimePrompt,
           conversationId: conversationId,
           history: history,
           systemContext: systemContext,
-          promptAnalysis: analysis,
+          groundedContext: groundedContext,
+          analysis: analysis,
           trace: trace,
+          enableSearchDecision: enableSearchDecision,
         )
         .listen(
           (token) => _token(generationId, epoch, token),
@@ -346,6 +549,10 @@ class ChatGenerationController extends ChangeNotifier {
         current.cancellationRequested) {
       _lateTokenCount++;
       return;
+    }
+    if (current.state == ChatGenerationState.preparing) {
+      _preparingGuard?.cancel();
+      _preparingGuard = null;
     }
     _job = current.copyWith(
       state: ChatGenerationState.generating,
@@ -373,7 +580,7 @@ class ChatGenerationController extends ChangeNotifier {
   void _runtimeChanged() {
     final current = activeJob;
     if (current == null || current.cancellationRequested) return;
-    final nextState = runtime.phase == InferencePhase.generating
+    final nextState = runtime.phase == legacy.InferencePhase.generating
         ? ChatGenerationState.generating
         : current.state;
     final nextModel = runtime.lastGeneratingModelName;
@@ -382,11 +589,23 @@ class ChatGenerationController extends ChangeNotifier {
     if (!_disposed) notifyListeners();
   }
 
+  List<WebSource> _runtimeSources() =>
+      runtime is QwenChatInferenceRuntime
+          ? (runtime as QwenChatInferenceRuntime).lastSources
+          : const [];
+
+  int _runtimeTokenPaintIntervalMs() =>
+      runtime is QwenChatInferenceRuntime
+          ? (runtime as QwenChatInferenceRuntime).tokenPaintIntervalMs
+          : 50;
+
   Future<void> _finish(
     String generationId,
     int epoch,
     String responseSuffix,
   ) async {
+    _preparingGuard?.cancel();
+    _preparingGuard = null;
     final current = _job;
     if (current == null ||
         current.generationId != generationId ||
@@ -397,35 +616,40 @@ class ChatGenerationController extends ChangeNotifier {
     }
     final reportedReason =
         runtime.lastGenerationReport?.finishReason ??
-        GenerationFinishReason.eos;
+        legacy.GenerationFinishReason.eos;
     // Some llama.cpp Android builds surface a normal stream termination as
     // StopUserAbort. Only this controller's explicit stop path is allowed to
     // label a message as user-cancelled; it invalidates the epoch and never
     // reaches _finish.
-    final reason = reportedReason == GenerationFinishReason.userCancellation
-        ? GenerationFinishReason.eos
+    final reason = reportedReason == legacy.GenerationFinishReason.userCancellation
+        ? legacy.GenerationFinishReason.eos
         : reportedReason;
     final status = switch (reason) {
-      GenerationFinishReason.eos => ConversationMessageStatus.complete,
-      GenerationFinishReason.tokenLimit =>
+      legacy.GenerationFinishReason.eos => ConversationMessageStatus.complete,
+      legacy.GenerationFinishReason.tokenLimit =>
         ConversationMessageStatus.tokenLimited,
-      GenerationFinishReason.userCancellation =>
+      legacy.GenerationFinishReason.userCancellation =>
         ConversationMessageStatus.stopped,
-      GenerationFinishReason.error => ConversationMessageStatus.failed,
+      legacy.GenerationFinishReason.error => ConversationMessageStatus.failed,
     };
     final completedText =
-        (reason == GenerationFinishReason.eos ||
-                reason == GenerationFinishReason.tokenLimit) &&
+        (reason == legacy.GenerationFinishReason.eos ||
+                reason == legacy.GenerationFinishReason.tokenLimit) &&
             responseSuffix.isNotEmpty
         ? '${current.responseText.trimRight()}$responseSuffix'
         : current.responseText;
     await _finishPersisted(
       current.copyWith(
-        state: reason == GenerationFinishReason.error
+        state: reason == legacy.GenerationFinishReason.error
             ? ChatGenerationState.error
             : ChatGenerationState.complete,
         finishReason: reason,
         responseText: completedText,
+        // Continuations carry pre-supplied sources on the job; the runtime's
+        // lastSources is only populated for model-driven search turns.
+        sources: _runtimeSources().isNotEmpty
+            ? _runtimeSources()
+            : current.sources,
       ),
       status,
     );
@@ -436,6 +660,8 @@ class ChatGenerationController extends ChangeNotifier {
     int epoch,
     Object error,
   ) async {
+    _preparingGuard?.cancel();
+    _preparingGuard = null;
     final current = _job;
     if (current == null ||
         current.generationId != generationId ||
@@ -447,7 +673,7 @@ class ChatGenerationController extends ChangeNotifier {
     await _finishPersisted(
       current.copyWith(
         state: ChatGenerationState.error,
-        finishReason: GenerationFinishReason.error,
+        finishReason: legacy.GenerationFinishReason.error,
         errorMessage: runtime.status,
       ),
       ConversationMessageStatus.failed,
@@ -472,6 +698,7 @@ class ChatGenerationController extends ChangeNotifier {
       status: status,
       finishReason: terminal.finishReason?.name,
       continuationCount: terminal.continuationCount,
+      sources: terminal.sources,
     );
     await conversations.flush();
     _job = terminal;
@@ -549,14 +776,15 @@ class ChatGenerationController extends ChangeNotifier {
         expectedGenerationId: latest.generationId,
         modelTier: latest.modelName,
         status: ConversationMessageStatus.stopped,
-        finishReason: GenerationFinishReason.userCancellation.name,
+        finishReason: legacy.GenerationFinishReason.userCancellation.name,
         continuationCount: latest.continuationCount,
+        sources: latest.sources,
       );
     }
     await conversations.flush();
     _job = latest.copyWith(
       state: ChatGenerationState.complete,
-      finishReason: GenerationFinishReason.userCancellation,
+      finishReason: legacy.GenerationFinishReason.userCancellation,
     );
     _lastCancellationMetrics = CancellationMetrics(
       nativeAcknowledgement: nativeAcknowledgement,
@@ -588,6 +816,7 @@ class ChatGenerationController extends ChangeNotifier {
       modelTier: current.modelName,
       status: current.busy ? ConversationMessageStatus.generating : null,
       continuationCount: current.continuationCount,
+      sources: current.sources,
       persistSoon: persistSoon,
       notify: false,
     );
@@ -605,10 +834,13 @@ class ChatGenerationController extends ChangeNotifier {
   }
 
   void _scheduleNotify() {
-    _notifyTimer ??= Timer(const Duration(milliseconds: 50), () {
+    _notifyTimer ??= Timer(
+      Duration(milliseconds: _runtimeTokenPaintIntervalMs()),
+      () {
       _notifyTimer = null;
-      if (!_disposed) notifyListeners();
-    });
+        if (!_disposed) notifyListeners();
+      },
+    );
   }
 
   String _nextId() => '${_clock().microsecondsSinceEpoch}-${_idSequence++}';
@@ -620,6 +852,7 @@ class ChatGenerationController extends ChangeNotifier {
     runtime.removeListener(_runtimeChanged);
     _persistenceTimer?.cancel();
     _notifyTimer?.cancel();
+    _preparingGuard?.cancel();
     if (activeJob != null) unawaited(flushActive());
     super.dispose();
   }

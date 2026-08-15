@@ -139,7 +139,7 @@ void main() {
       final bannerBox = tester.renderObject(bannerFinder) as RenderBox;
       expect(bannerBox.size.height, 0);
 
-      final sectionHeader = find.text('AI MODELS');
+      final sectionHeader = find.text('AI MODEL');
       expect(sectionHeader, findsOneWidget);
     });
 

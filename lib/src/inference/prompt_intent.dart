@@ -24,12 +24,14 @@ class PromptAnalysis {
     required this.language,
     this.advanced = false,
     this.hardwareGuidance = false,
+    this.recipeDish = '',
   });
 
   final PromptIntent intent;
   final PromptLanguage language;
   final bool advanced;
   final bool hardwareGuidance;
+  final String recipeDish;
 }
 
 /// Deterministic, multilingual policy used before any model is loaded.
@@ -388,6 +390,14 @@ class PromptIntentClassifier {
   static String _normalize(String value) =>
       value.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
 
+  static String recipeDishFrom(String prompt) {
+    final match = RegExp(
+      r'(?:recipe|ricetta|receta|rezept|recette)\s+(?:for|di|de|für|pour)?\s*(.+)$',
+      caseSensitive: false,
+    ).firstMatch(prompt.trim());
+    return match?.group(1)?.replaceAll(RegExp(r'[?.!]+$'), '').trim() ?? '';
+  }
+
   static bool _contains(String value, String term) {
     final index = value.indexOf(term);
     if (index < 0) return false;
@@ -460,6 +470,24 @@ class PromptIntentPolicy {
     PromptIntent.highStakes => 768,
     PromptIntent.creative => 512,
   };
+
+  /// A tiny, language-neutral contract for the optional local web-search
+  /// decision pass. Retrieval itself remains deterministic and policy-gated.
+  static String searchDecisionDirectiveFor(PromptLanguage language) =>
+      'Decide whether the latest user request needs current or verifiable web information. '
+      'Reply with exactly ANSWER if your general knowledge is sufficient, or '
+      'SEARCH: <short search query> when fresh sources would materially improve the answer. '
+      'Do not include explanations. Use ${language == PromptLanguage.unknown ? 'the user language' : language.name} for the query.';
+
+  static const IntentSamplerProfile searchDecisionSampler =
+      IntentSamplerProfile(
+        temperature: .05,
+        topK: 4,
+        topP: .50,
+        minP: .02,
+        repeatPenalty: 1.0,
+        penaltyLastN: 64,
+      );
 
   static IntentSamplerProfile sampler(PromptIntent intent) => switch (intent) {
     PromptIntent.quickQuestion ||

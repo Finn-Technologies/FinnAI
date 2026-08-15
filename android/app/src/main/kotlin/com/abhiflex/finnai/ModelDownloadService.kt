@@ -33,10 +33,21 @@ class ModelDownloadService : Service() {
                 "active" to prefs.getBoolean("active", false),
                 "complete" to prefs.getBoolean("complete", false),
                 "failed" to prefs.getBoolean("failed", false),
+                "cancelled" to prefs.getBoolean("cancelled", false),
                 "progress" to prefs.getFloat("progress", 0f).toDouble(),
+                "speedBps" to prefs.getLong("speedBps", 0L).toDouble(),
+                "remainingBytes" to prefs.getLong("remainingBytes", 0L),
                 "target" to (prefs.getString("target", "") ?: ""),
                 "error" to (prefs.getString("error", "") ?: ""),
             )
+        }
+
+        fun cancel(context: Context, target: String) {
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                .putBoolean("cancelled", true)
+                .putString("cancelTarget", target)
+                .apply()
+            context.stopService(Intent(context, ModelDownloadService::class.java))
         }
     }
 
@@ -47,15 +58,16 @@ class ModelDownloadService : Service() {
         val expectedBytes = intent.getLongExtra(EXTRA_EXPECTED_BYTES, 0L)
         val label = intent.getStringExtra(EXTRA_LABEL) ?: "AI model"
         createChannel()
-        updateStatus(active = true, complete = false, failed = false, progress = 0f, target = target)
+        updateStatus(active = true, complete = false, failed = false, cancelled = false, progress = 0f, target = target)
         startForeground(NOTIFICATION_ID, notification("Downloading $label", 0, false))
         thread(name = "FinnModelDownload") {
             try {
-                download(url, File("$target.part"), expectedBytes, label)
-                updateStatus(active = false, complete = true, failed = false, progress = 1f, target = target)
+                download(url, File("$target.part"), target, expectedBytes, label)
+                updateStatus(active = false, complete = true, failed = false, cancelled = false, progress = 1f, target = target)
                 notificationManager().notify(NOTIFICATION_ID, notification("$label downloaded", 100, true))
             } catch (error: Exception) {
-                updateStatus(active = false, complete = false, failed = true, progress = 0f, target = target, error = error.message ?: "Download failed")
+                val cancelled = wasCancelled(target)
+                updateStatus(active = false, complete = false, failed = !cancelled, cancelled = cancelled, progress = 0f, target = target, error = error.message ?: "Download failed")
                 notificationManager().notify(NOTIFICATION_ID, notification("Model download paused", 0, true))
             } finally {
                 stopForeground(STOP_FOREGROUND_DETACH)
@@ -65,7 +77,7 @@ class ModelDownloadService : Service() {
         return START_REDELIVER_INTENT
     }
 
-    private fun download(url: String, partial: File, expectedBytes: Long, label: String) {
+    private fun download(url: String, partial: File, target: String, expectedBytes: Long, label: String) {
         partial.parentFile?.mkdirs()
         var existing = if (partial.exists()) partial.length() else 0L
         var connection = openConnection(url, existing)
@@ -83,7 +95,10 @@ class ModelDownloadService : Service() {
                 val buffer = ByteArray(256 * 1024)
                 var received = existing
                 var lastUpdate = 0L
+                var lastSampleAt = System.currentTimeMillis()
+                var lastSampleBytes = existing
                 while (true) {
+                    if (wasCancelled(target)) throw IllegalStateException("Download paused")
                     val read = input.read(buffer)
                     if (read < 0) break
                     output.write(buffer, 0, read)
@@ -92,7 +107,12 @@ class ModelDownloadService : Service() {
                     if (now - lastUpdate >= 400) {
                         lastUpdate = now
                         val progress = if (total > 0) (received.toDouble() / total).coerceIn(0.0, 1.0) else 0.0
-                        updateStatus(active = true, complete = false, failed = false, progress = progress.toFloat(), target = partial.path.removeSuffix(".part"))
+                        val elapsedMs = (now - lastSampleAt).coerceAtLeast(1L)
+                        val speedBps = ((received - lastSampleBytes) * 1000L) / elapsedMs
+                        lastSampleAt = now
+                        lastSampleBytes = received
+                        val remainingBytes = (total - received).coerceAtLeast(0L)
+                        updateStatus(active = true, complete = false, failed = false, cancelled = false, progress = progress.toFloat(), speedBps = speedBps, remainingBytes = remainingBytes, target = partial.path.removeSuffix(".part"))
                         notificationManager().notify(NOTIFICATION_ID, notification("Downloading $label", (progress * 100).toInt(), false))
                     }
                 }
@@ -133,10 +153,34 @@ class ModelDownloadService : Service() {
 
     private fun notificationManager() = getSystemService(NotificationManager::class.java)
 
-    private fun updateStatus(active: Boolean, complete: Boolean, failed: Boolean, progress: Float, target: String, error: String = "") {
+    private fun wasCancelled(target: String): Boolean {
+        val prefs = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        return prefs.getBoolean("cancelled", false) &&
+            prefs.getString("cancelTarget", "") == target
+    }
+
+    private fun updateStatus(
+        active: Boolean,
+        complete: Boolean,
+        failed: Boolean,
+        cancelled: Boolean = false,
+        progress: Float,
+        speedBps: Long = 0L,
+        remainingBytes: Long = 0L,
+        target: String,
+        error: String = "",
+    ) {
         getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-            .putBoolean("active", active).putBoolean("complete", complete).putBoolean("failed", failed)
-            .putFloat("progress", progress).putString("target", target).putString("error", error).apply()
+            .putBoolean("active", active)
+            .putBoolean("complete", complete)
+            .putBoolean("failed", failed)
+            .putBoolean("cancelled", cancelled)
+            .putFloat("progress", progress)
+            .putLong("speedBps", speedBps)
+            .putLong("remainingBytes", remainingBytes)
+            .putString("target", target)
+            .putString("error", error)
+            .apply()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

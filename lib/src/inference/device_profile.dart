@@ -79,6 +79,11 @@ class InferencePlan {
 class DeviceProfiler {
   DeviceProfiler._();
 
+  static bool isLowEnd(DeviceProfile profile) =>
+      profile.lowMemory ||
+      (profile.totalRamBytes != null && profile.totalRamBytes! < 4 * 1000 * 1000 * 1000) ||
+      profile.processor == ProcessorClass.entry;
+
   static const _channel = MethodChannel('finn_ai/device_profile');
 
   static Future<DeviceProfile> read() async {

@@ -5,7 +5,7 @@ import 'package:path_provider/path_provider.dart';
 
 import 'conversations/conversation_store.dart';
 import 'creations/creation_store.dart';
-import 'inference/bonsai_inference.dart';
+import 'inference/qwen_inference.dart';
 import 'skills/skills_store.dart';
 import 'you/you_profile_store.dart';
 
@@ -53,7 +53,7 @@ class AppStateStore extends ChangeNotifier {
   /// Purges all local application data, models, keys, and settings.
   Future<DeletionResult> deleteAllData({
     ConversationStore? conversationStore,
-    BonsaiInference? bonsaiInference,
+    QwenInference? qwenInference,
     CreationStore? creationStore,
     YouProfileStore? youProfileStore,
     SkillsStore? skillsStore,
@@ -91,7 +91,7 @@ class AppStateStore extends ChangeNotifier {
 
     // 3. Delete downloaded AI models and partial downloads
     try {
-      final targetInference = bonsaiInference ?? BonsaiInference.instance;
+      final targetInference = qwenInference ?? QwenInference.instance;
       final modelFailures = await targetInference.removeAllModels();
       if (modelFailures.isNotEmpty) {
         failed.addAll(modelFailures);

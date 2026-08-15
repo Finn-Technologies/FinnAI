@@ -53,9 +53,9 @@ void main() {
     expect(find.text('Finn AI is Privacy-First'), findsOneWidget);
     expect(find.textContaining('proprietary software'), findsOneWidget);
     await moveForward();
-    expect(find.text('Installing the best model'), findsOneWidget);
+    expect(find.text('Installing Qwen 3.5 2B'), findsOneWidget);
     expect(
-      find.text('Finding the best model for this device…'),
+      find.text('Preparing Qwen 3.5 2B for this device…'),
       findsOneWidget,
     );
 

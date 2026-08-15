@@ -11,6 +11,7 @@ enum TtftPhase {
   modelReady,
   sessionReady,
   promptRendered,
+  decisionPass,
   generationRequested,
   nativeToken,
   sanitizedToken,

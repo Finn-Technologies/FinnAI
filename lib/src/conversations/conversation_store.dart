@@ -8,6 +8,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../search/web_search_service.dart';
+
 enum ConversationRole { user, assistant }
 
 enum ConversationMessageStatus {
@@ -31,6 +33,7 @@ class ConversationMessage {
     this.generationId,
     this.finishReason,
     this.continuationCount = 0,
+    this.sources = const [],
   });
 
   final String id;
@@ -42,6 +45,7 @@ class ConversationMessage {
   final String? generationId;
   final String? finishReason;
   final int continuationCount;
+  final List<WebSource> sources;
 
   ConversationMessage copyWith({
     String? text,
@@ -51,6 +55,8 @@ class ConversationMessage {
     String? finishReason,
     bool clearFinishReason = false,
     int? continuationCount,
+    List<WebSource>? sources,
+    bool clearSources = false,
   }) => ConversationMessage(
     id: id,
     role: role,
@@ -61,6 +67,7 @@ class ConversationMessage {
     generationId: generationId ?? this.generationId,
     finishReason: clearFinishReason ? null : finishReason ?? this.finishReason,
     continuationCount: continuationCount ?? this.continuationCount,
+    sources: clearSources ? const [] : sources ?? this.sources,
   );
 
   Map<String, Object?> toJson() => {
@@ -73,6 +80,15 @@ class ConversationMessage {
     if (generationId != null) 'generationId': generationId,
     if (finishReason != null) 'finishReason': finishReason,
     'continuationCount': continuationCount,
+    if (sources.isNotEmpty)
+      'sources': [
+        for (final source in sources)
+          {
+            'title': source.title,
+            'url': source.url.toString(),
+            'snippet': source.snippet,
+          },
+      ],
   };
 
   factory ConversationMessage.fromJson(Map<String, Object?> json) =>
@@ -89,7 +105,26 @@ class ConversationMessage {
         generationId: json['generationId'] as String?,
         finishReason: json['finishReason'] as String?,
         continuationCount: (json['continuationCount'] as int?) ?? 0,
+        sources: _sourcesFromJson(json['sources']),
       );
+}
+
+List<WebSource> _sourcesFromJson(Object? raw) {
+  if (raw is! List) return const [];
+  return [
+    for (final item in raw)
+      if (item is Map &&
+          item['title'] is String &&
+          item['url'] is String &&
+          item['snippet'] is String)
+        if (Uri.tryParse(item['url'] as String)
+            case final uri? when uri.scheme == 'https' && uri.host.isNotEmpty)
+          WebSource(
+            title: item['title'] as String,
+            url: uri,
+            snippet: item['snippet'] as String,
+          ),
+  ];
 }
 
 @immutable
@@ -628,6 +663,7 @@ class ConversationStore extends ChangeNotifier {
     ConversationMessageStatus? status,
     String? finishReason,
     int? continuationCount,
+    List<WebSource>? sources,
     bool persistSoon = false,
     bool notify = true,
   }) {
@@ -650,12 +686,99 @@ class ConversationStore extends ChangeNotifier {
       status: status,
       finishReason: finishReason,
       continuationCount: continuationCount,
+      sources: sources,
     );
     _replace(
       conversation.copyWith(updatedAt: DateTime.now(), messages: messages),
     );
     if (notify) notifyListeners();
     if (persistSoon) _scheduleSave();
+    return true;
+  }
+
+  /// Replaces an existing assistant turn in place for a regenerate action.
+  ConversationMessage? beginRegeneration({
+    required String conversationId,
+    required String messageId,
+    required String generationId,
+  }) {
+    final conversation = conversationById(conversationId);
+    if (conversation == null) return null;
+    final index = conversation.messages.indexWhere(
+      (message) =>
+          message.id == messageId &&
+          message.role == ConversationRole.assistant &&
+          message.status != ConversationMessageStatus.generating,
+    );
+    if (index < 0) return null;
+    final messages = [...conversation.messages];
+    messages[index] = messages[index].copyWith(
+      text: '',
+      generationId: generationId,
+      status: ConversationMessageStatus.generating,
+      clearFinishReason: true,
+      clearSources: true,
+    );
+    _replace(
+      conversation.copyWith(updatedAt: DateTime.now(), messages: messages),
+    );
+    _changed();
+    return messages[index];
+  }
+
+  /// Appends an assistant placeholder for an already-existing user turn.
+  ConversationMessage? beginAssistantReply({
+    required String conversationId,
+    required String generationId,
+    String modelTier = 'Finn AI',
+  }) {
+    final conversation = conversationById(conversationId);
+    if (conversation == null || conversation.messages.isEmpty) return null;
+    final now = DateTime.now();
+    final assistant = ConversationMessage(
+      id: '${now.microsecondsSinceEpoch}-assistant',
+      role: ConversationRole.assistant,
+      text: '',
+      createdAt: now,
+      modelTier: modelTier,
+      status: ConversationMessageStatus.generating,
+      generationId: generationId,
+    );
+    _replace(
+      conversation.copyWith(
+        updatedAt: now,
+        messages: [...conversation.messages, assistant],
+      ),
+    );
+    _changed();
+    return assistant;
+  }
+
+  /// Edits a user turn and removes all later turns so the reply can be
+  /// generated without duplicating the edited user message.
+  bool editUserMessage({
+    required String conversationId,
+    required String messageId,
+    required String newText,
+  }) {
+    final conversation = conversationById(conversationId);
+    if (conversation == null) return false;
+    final index = conversation.messages.indexWhere(
+      (message) =>
+          message.id == messageId && message.role == ConversationRole.user,
+    );
+    final value = newText.trim();
+    if (index < 0 || value.isEmpty) return false;
+    final edited = conversation.messages[index].copyWith(text: value);
+    final messages = [...conversation.messages.take(index), edited];
+    _replace(
+      conversation.copyWith(
+        title: index == 0 ? _title(value) : conversation.title,
+        updatedAt: DateTime.now(),
+        messages: messages,
+      ),
+    );
+    _changed();
     return true;
   }
 

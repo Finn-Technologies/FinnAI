@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../ads/banner_ad_widget.dart';
-import '../inference/bonsai_inference.dart';
+import '../inference/qwen_inference.dart';
 import '../theme/flux_theme.dart';
 import '../widgets/ambient_background.dart';
 import '../widgets/finn_page_header.dart';
@@ -27,7 +27,7 @@ class CreationsPage extends StatefulWidget {
 class _CreationsPageState extends State<CreationsPage> {
   late final CreationsController _controller;
   late final bool _ownsController;
-  final _inference = BonsaiInference.instance;
+  final _inference = QwenInference.instance;
   final _promptController = TextEditingController();
   final _focusNode = FocusNode();
   final ValueNotifier<double> _headerOffset = ValueNotifier(0);
@@ -38,7 +38,7 @@ class _CreationsPageState extends State<CreationsPage> {
     _ownsController = widget.controller == null;
     _controller =
         widget.controller ??
-        CreationsController(CreationStore(), BonsaiCreationGenerator());
+        CreationsController(CreationStore(), QwenCreationGenerator());
     _controller.addListener(_changed);
     _inference.addListener(_changed);
     _controller.load();
@@ -196,7 +196,7 @@ class _CreationsPageState extends State<CreationsPage> {
                               !_controller.loading &&
                               !_controller.generating &&
                               _controller.creations.isNotEmpty &&
-                              BonsaiInference.instance.phase !=
+                              QwenInference.instance.phase !=
                                   InferencePhase.generating &&
                               bottomInset == 0,
                           margin: const EdgeInsets.only(top: 2, bottom: 4),

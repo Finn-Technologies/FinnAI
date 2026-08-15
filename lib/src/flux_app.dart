@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'app_state_store.dart';
 import 'home/home_shell.dart';
 import 'onboarding/onboarding_flow.dart';
-import 'inference/bonsai_inference.dart';
+import 'inference/qwen_inference.dart';
 import 'theme/flux_theme.dart';
 import 'widgets/ambient_background.dart';
 
@@ -17,7 +17,7 @@ class FinnBootstrap extends StatefulWidget {
 class _FinnBootstrapState extends State<FinnBootstrap> {
   late final Future<void> _ready = Future.wait([
     AppStateStore.instance.initialize(),
-    BonsaiInference.instance.initialize(),
+    QwenInference.instance.initialize(),
   ]);
 
   @override
@@ -75,7 +75,7 @@ class FluxApp extends StatelessWidget {
       darkTheme: FluxTheme.dark,
       themeMode: ThemeMode.system,
       builder: FluxTheme.applySystemUi,
-      home: BonsaiInference.instance.isDeviceSupported
+      home: QwenInference.instance.isDeviceSupported
           ? onboardingComplete
                 ? const HomeShell()
                 : OnboardingFlow(
