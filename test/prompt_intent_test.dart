@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 
-import 'package:finn_ai/src/inference/bonsai_inference.dart';
 import 'package:finn_ai/src/inference/prompt_intent.dart';
+import 'package:finn_ai/src/inference/qwen_inference.dart';
 import 'package:finn_ai/src/widgets/safe_markdown_text.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:llama_cpp_dart/llama_cpp_dart.dart';
@@ -58,81 +58,46 @@ void main() {
     }
   });
 
-  test(
-    'intent routing promotes structured work without promoting greetings',
-    () {
-      final inference = BonsaiInference.instance;
-      expect(inference.fastRouteForTest('Ciao'), BonsaiTier.lite);
-      expect(
-        inference.fastRouteForTest('Come preparare una pizza margherita?'),
-        BonsaiTier.plus,
-      );
-      expect(
-        inference.fastRouteForTest(
-          'Come preparare una pizza margherita?',
-          highestTier: BonsaiTier.lite,
-        ),
-        BonsaiTier.lite,
-      );
-      expect(
-        inference.fastRouteForTest('Compare the two implementations.'),
-        BonsaiTier.plus,
-      );
-      expect(
-        inference.fastRouteForTest('How does the routing in Bridgetown work?'),
-        BonsaiTier.plus,
-      );
-      expect(
-        inference.fastRouteForTest(
-          'Perform an advanced security audit with deep reasoning.',
-          highestTier: BonsaiTier.pro,
-        ),
-        BonsaiTier.pro,
-      );
-    },
-  );
+  test('intent output budgets cover greetings through high-stakes work', () {
+    expect(PromptIntentPolicy.desiredOutputTokens(PromptIntent.greeting), 160);
+    expect(PromptIntentPolicy.desiredOutputTokens(PromptIntent.recipe), 320);
+    expect(PromptIntentPolicy.desiredOutputTokens(PromptIntent.howTo), 320);
+    expect(PromptIntentPolicy.desiredOutputTokens(PromptIntent.comparison), 512);
+    expect(PromptIntentPolicy.desiredOutputTokens(PromptIntent.analysis), 768);
+    expect(PromptIntentPolicy.desiredOutputTokens(PromptIntent.coding), 768);
+  });
 
-  test('intent budgets use tier ceilings and unsupported-device guard', () {
-    final inference = BonsaiInference.instance;
-    expect(inference.outputBudgetForTest('Hello'), 96);
-    expect(
-      inference.outputBudgetForTest(
-        'Come fare una torta di ricotta e fragole?',
-      ),
-      320,
-    );
-    expect(
-      inference.outputBudgetForTest(
-        'Can you tell me how to upgrade the RAM in my laptop?',
-        tier: BonsaiTier.plus,
-      ),
-      320,
-    );
-    expect(
-      inference.outputBudgetForTest(
-        'Write a careful comparison.',
-        tier: BonsaiTier.plus,
-      ),
-      512,
-    );
-    expect(
-      inference.outputBudgetForTest(
-        'Analyze this complex program.',
-        tier: BonsaiTier.pro,
-      ),
-      768,
-    );
-    expect(
-      inference.outputBudgetForTest(
-        'Come fare una torta di ricotta e fragole?',
-        supported: false,
-      ),
-      320,
-    );
+  test('search decision pass is skipped for self-contained intents', () {
+    const classifier = PromptIntentClassifier();
+    for (final prompt in [
+      'Write a short story about a robot.',
+      'Scrivi un messaggio per prenotare una visita.',
+      'Translate this sentence into Italian.',
+      'Write a python function to parse JSON.',
+      'What are the symptoms of a migraine?',
+      // Hardware guidance asks for the exact model instead of searching.
+      'Come posso aggiornare la RAM del portatile?',
+    ]) {
+      expect(
+        PromptIntentPolicy.needsSearchDecision(classifier.classify(prompt)),
+        isFalse,
+        reason: prompt,
+      );
+    }
+    for (final prompt in [
+      'Compare iPhone 14 and Redmi Note 12.',
+      'Tell me something useful for today.',
+    ]) {
+      expect(
+        PromptIntentPolicy.needsSearchDecision(classifier.classify(prompt)),
+        isTrue,
+        reason: prompt,
+      );
+    }
   });
 
   test('recipe prompt contract is Italian, structured, and private-aware', () {
-    final rendered = BonsaiInference.instance.renderPromptForTest(
+    final rendered = QwenInference.instance.renderPromptForTest(
       prompt: 'Come fare una torta di ricotta e fragole?',
       systemContext: 'Dietary preference: vegetarian.',
     );
@@ -145,7 +110,7 @@ void main() {
     expect(rendered, contains('Dietary preference: vegetarian.'));
     expect(rendered, contains('Respect dietary restrictions'));
     expect(
-      rendered.indexOf(BonsaiInference.finnSafetySystemPrompt.trim()),
+      rendered.indexOf(QwenInference.finnSafetySystemPrompt.trim()),
       lessThan(rendered.indexOf('Provide a practical recipe')),
     );
   });
@@ -165,7 +130,7 @@ void main() {
         final analysis = classifier.classify(prompt);
         expect(analysis.intent, PromptIntent.howTo, reason: prompt);
         expect(analysis.hardwareGuidance, isTrue, reason: prompt);
-        final rendered = BonsaiInference.instance.renderPromptForTest(
+        final rendered = QwenInference.instance.renderPromptForTest(
           prompt: prompt,
         );
         expect(rendered, contains('exact manufacturer and model'));
@@ -179,7 +144,7 @@ void main() {
   );
 
   test('repeat requests receive an explicit novelty constraint', () {
-    final rendered = BonsaiInference.instance.renderPromptForTest(
+    final rendered = QwenInference.instance.renderPromptForTest(
       prompt: 'Make a new joke or pun.',
       primed: true,
     );
@@ -192,15 +157,15 @@ void main() {
     final chat = PromptIntentPolicy.sampler(PromptIntent.quickQuestion);
     final creative = PromptIntentPolicy.sampler(PromptIntent.creative);
 
-    expect(recipe.temperature, .20);
-    expect(recipe.topK, 20);
-    expect(recipe.topP, .85);
-    expect(recipe.minP, .02);
+    expect(recipe.temperature, .30);
+    expect(recipe.topK, 30);
+    expect(recipe.topP, .90);
+    expect(recipe.minP, .05);
     expect(recipe.repeatPenalty, 1.05);
-    expect(chat.temperature, .20);
-    expect(chat.topP, .85);
-    expect(creative.temperature, .70);
-    expect(creative.topK, 40);
+    expect(chat.temperature, .30);
+    expect(chat.topP, .90);
+    expect(creative.temperature, .85);
+    expect(creative.topK, 60);
     expect(creative.topP, .95);
   });
 

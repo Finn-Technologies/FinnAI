@@ -129,6 +129,10 @@ final class LlamaEngine {
 
   LlamaEngine._(this._isolate, this._commandPort, this._responsePort);
 
+  /// FinnAI dev aid: when set before [spawn], the worker redirects
+  /// llama.cpp's stderr to this file (see [EngineBootstrap.nativeLogPath]).
+  static String? logCapturePath;
+
   /// Spawn a worker isolate that loads llama.cpp from a dylib path.
   ///
   /// For iOS / macOS apps where `llama.xcframework` was embedded via
@@ -187,6 +191,7 @@ final class LlamaEngine {
         contextParams: contextParams,
         multimodalParams: multimodalParams,
         backendDirectory: backendDirectory,
+        nativeLogPath: logCapturePath,
       ),
       errorsAreFatal: true,
       debugName: 'llama_cpp_dart.worker',

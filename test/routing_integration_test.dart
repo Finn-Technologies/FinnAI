@@ -1,7 +1,7 @@
 // Tests: model-tier persistence and report metadata propagation
 //
 // These tests operate entirely through ConversationStore (updateMessage +
-// flush + reload). They do NOT invoke BonsaiInference.generateReply or any
+// flush + reload). They do NOT invoke QwenInference.generateReply or any
 // real on-device model. They verify that:
 //   1. updateMessage() stamps the caller-supplied modelTier on the assistant
 //      message and that value is distinct from the default 'Finn AI'.
@@ -58,16 +58,13 @@ void main() {
         );
         await store.initialize();
 
-        // Simulate: user sends a prompt that triggers a routing decision and
-        // the routing layer decides the Pro model (Bonsai 8B) should answer.
         final assistant = store.beginExchange('Explain quantum entanglement');
 
         // The assistant placeholder starts with the default modelTier.
         expect(assistant.modelTier, 'Finn AI');
 
-        // After routing resolves, the inference layer calls updateMessage with
-        // the actual generating model.  Simulate that here.
-        const routedModelTier = 'Bonsai 8B';
+        // After inference resolves, the controller stamps the generating model.
+        const routedModelTier = 'Qwen 3.5 2B';
         store.updateMessage(
           assistant.id,
           'Quantum entanglement is…',
@@ -101,15 +98,14 @@ void main() {
         );
 
         // Simulate the report dialog receiving the message's modelTier.
-        // It must equal the routed model, NOT the default 'Finn AI'.
         final reportModelTier = reloaded.modelTier;
-        expect(reportModelTier, 'Bonsai 8B');
+        expect(reportModelTier, 'Qwen 3.5 2B');
         expect(reportModelTier, isNot(equals('Finn AI')));
       },
     );
 
     test(
-      'Lite-tier stamp (Bonsai 4B) is persisted and distinct from Pro-tier (Bonsai 8B)',
+      'a distinct modelTier stamp is persisted independently',
       () async {
         final store = ConversationStore(
           keyStorage: keyStore,
@@ -119,26 +115,24 @@ void main() {
 
         final assistant = store.beginExchange('What time is it?');
 
-        // Router decided Lite handles this — no escalation.
-        const liteModelTier = 'Bonsai 4B';
+        const modelTier = 'Qwen 3.5 2B (variant)';
         store.updateMessage(
           assistant.id,
           'It is currently…',
-          modelTier: liteModelTier,
+          modelTier: modelTier,
           persistSoon: true,
         );
         await store.flush();
 
         final reloaded = store.active!.messages.last;
-        expect(reloaded.modelTier, liteModelTier);
-        expect(reloaded.modelTier, isNot(equals('Bonsai 8B')));
+        expect(reloaded.modelTier, modelTier);
+        expect(reloaded.modelTier, isNot(equals('Qwen 3.5 2B')));
       },
     );
 
     test(
       'After cold reload, reloaded modelTier is used as report metadata — not the currently selected model',
       () async {
-        // Write a conversation with a known Pro-tier assistant message directly.
         final store = ConversationStore(
           keyStorage: keyStore,
           directoryProvider: () async => tempDir,
@@ -149,7 +143,7 @@ void main() {
         store.updateMessage(
           store.active!.messages.last.id,
           'War and Peace is…',
-          modelTier: 'Bonsai 8B',
+          modelTier: 'Qwen 3.5 2B',
           persistSoon: true,
         );
         await store.flush();
@@ -165,11 +159,10 @@ void main() {
             .where((m) => m.role == ConversationRole.assistant)
             .last;
 
-        // The value passed to ReportDialog must be the stored modelTier.
         final dialogModelTier = assistantMsg.modelTier;
         expect(
           dialogModelTier,
-          'Bonsai 8B',
+          'Qwen 3.5 2B',
           reason:
               'ReportDialog must receive the generating model stored with the message',
         );

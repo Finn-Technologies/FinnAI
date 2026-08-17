@@ -21,6 +21,11 @@ import 'library_loader.dart';
 final class LlamaLog {
   LlamaLog._();
 
+  /// FinnAI dev aid: when set before the engine worker starts, the worker
+  /// redirects llama.cpp's stderr to this file so native init/decode logs
+  /// become readable on Android (where stderr is not connected to logcat).
+  static String? capturePathOverride;
+
   static Pointer<NativeFunction<_LogCallbackC>>? _silentCallback;
   static String? _captureFilePath;
 

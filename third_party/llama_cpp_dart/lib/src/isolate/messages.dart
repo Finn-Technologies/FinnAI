@@ -31,6 +31,11 @@ final class EngineBootstrap {
   final ContextParams contextParams;
   final MultimodalParams? multimodalParams;
 
+  /// When set, the worker redirects llama.cpp's stderr to this file so
+  /// native init/decode logs are readable on Android (stderr is not
+  /// connected to logcat there).
+  final String? nativeLogPath;
+
   const EngineBootstrap({
     required this.replyPort,
     required this.libraryPath,
@@ -39,6 +44,7 @@ final class EngineBootstrap {
     this.useProcessSymbols = false,
     this.backendDirectory,
     this.multimodalParams,
+    this.nativeLogPath,
   });
 }
 

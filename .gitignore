@@ -56,3 +56,7 @@ app.*.map.json
 # Test artifacts
 test/failures/
 
+
+# Agent tooling state (never committed)
+.commandcode/
+.freebuff/

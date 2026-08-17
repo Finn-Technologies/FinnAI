@@ -1,6 +1,6 @@
 # FinnAI - On-Device AI Assistant for Android
 
-FinnAI is a private, on-device AI assistant built with Flutter, powered by local open-source Prism ML Bonsai GGUF models and `llama.cpp`.
+FinnAI is a private, on-device AI assistant built with Flutter, powered by the local open-source Qwen 3.5 2B GGUF model and `llama.cpp`.
 
 Package Identifier: `com.abhiflex.finnai`
 
@@ -8,8 +8,8 @@ Package Identifier: `com.abhiflex.finnai`
 
 ## Key Features
 
-- **On-Device Local Inference**: Powered by Prism ML Bonsai GGUF models (`Bonsai 1.7B`, `Bonsai 4B`, `Bonsai 8B`) running via C++ native binaries on worker isolates.
-- **Hardware-Adaptive Routing**: Device profiling chooses the safe model set and routes clear complex work directly while retaining Lite-model routing for ambiguous requests.
+- **On-Device Local Inference**: Powered by the Qwen 3.5 2B GGUF model running via C++ native binaries on worker isolates.
+- **Hardware-Adaptive Runtime**: Device profiling tunes context size, thread counts, and KV-cache compression for smooth on-device generation.
 - **Creations**: Generates and stores structured app, widget, and presentation concepts entirely on device.
 - **You & Skills**: Local personalization, response-style controls, built-in capabilities, and reusable custom instructions feed a private system context.
 - **AES-256-GCM Encrypted Storage**: Conversations are protected using AES-256-GCM authenticated encryption (`package:cryptography`) with master keys secured in Android KeyStore (`FlutterSecureStorage`).

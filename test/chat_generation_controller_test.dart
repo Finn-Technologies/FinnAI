@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:finn_ai/src/conversations/conversation_store.dart';
 import 'package:finn_ai/src/generation/chat_generation_controller.dart';
 import 'package:finn_ai/src/home/home_shell.dart';
-import 'package:finn_ai/src/inference/bonsai_inference.dart';
+import 'package:finn_ai/src/inference/qwen_inference.dart';
 import 'package:finn_ai/src/inference/prompt_intent.dart';
 import 'package:finn_ai/src/inference/ttft_metrics.dart';
 import 'package:finn_ai/src/theme/flux_theme.dart';
@@ -460,9 +460,9 @@ class _FakeRuntime extends ChangeNotifier implements ChatInferenceRuntime {
   String get status =>
       _phase == InferencePhase.error ? 'Simulated error' : 'Ready';
   @override
-  String get selectedModelName => 'Finn AI Lite';
+  String get selectedModelName => 'Qwen 3.5 2B';
   @override
-  String get lastGeneratingModelName => 'Finn AI Lite';
+  String get lastGeneratingModelName => 'Qwen 3.5 2B';
   @override
   GenerationReport? get lastGenerationReport => _report;
 
@@ -485,9 +485,9 @@ class _FakeRuntime extends ChangeNotifier implements ChatInferenceRuntime {
 
   Future<void> finish(GenerationFinishReason reason) async {
     _report = GenerationReport(
-      model: bonsaiModels.first,
+      model: qwenModels.first,
       intent: PromptIntent.quickQuestion,
-      route: BonsaiTier.lite,
+      route: QwenTier.standard,
       outputBudget: 320,
       finishReason: reason,
       firstTokenLatency: const Duration(milliseconds: 1),

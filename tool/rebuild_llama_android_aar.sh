@@ -85,6 +85,17 @@ else
   git -C "$SOURCE" apply "$CPU_VARIANTS_PATCH"
 fi
 
+# FinnAI performance patch: pin ggml threadpools to the fastest CPU cluster
+# (measured 52 ms/token decode vs 8.5 s when a worker lands on a throttled
+# efficiency core) plus gated per-op timing diagnostics (FINN_NATIVE_PERF).
+AFFINITY_PATCH="$ROOT/tool/llama_android_affinity.patch"
+if git -C "$SOURCE/src/llama.cpp" apply --reverse --check "$AFFINITY_PATCH" 2>/dev/null; then
+  echo "Android affinity/performance patch is already applied."
+else
+  git -C "$SOURCE/src/llama.cpp" apply --check "$AFFINITY_PATCH"
+  git -C "$SOURCE/src/llama.cpp" apply "$AFFINITY_PATCH"
+fi
+
 SDK_ROOT="${ANDROID_SDK_ROOT:-$HOME/Library/Android/sdk}"
 if ! command -v cmake >/dev/null || ! command -v ninja >/dev/null; then
   CMAKE_BIN="$(find "$SDK_ROOT/cmake" -mindepth 2 -maxdepth 2 -type d \

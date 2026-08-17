@@ -35,10 +35,10 @@ SOFTWARE.
 
 ---
 
-## 2. Prism ML Bonsai AI Models
-- **Models**: Bonsai 1.7B, Bonsai 4B, Bonsai 8B (GGUF format)
-- **Creator**: Prism ML
-- **Attribution**: Created using Bonsai models by Prism ML.
+## 2. Qwen AI Model
+- **Model**: Qwen 3.5 2B (GGUF format, Q4_K_M quantization)
+- **Creator**: Qwen (Alibaba Cloud); quantized and hosted by Unsloth
+- **Attribution**: Created using the Qwen 3.5 2B model, quantized to Q4_K_M.
 - **License**: Apache License, Version 2.0.
 
 ---

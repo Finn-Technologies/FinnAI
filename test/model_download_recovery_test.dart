@@ -1,12 +1,11 @@
 import 'dart:io';
 
-import 'package:crypto/crypto.dart';
-import 'package:finn_ai/src/inference/bonsai_inference.dart';
+import 'package:finn_ai/src/inference/qwen_inference.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test(
-    'a complete verified partial model is promoted without redownload',
+    'a complete partial model is promoted without redownload',
     () async {
       final directory = await Directory.systemTemp.createTemp(
         'finn-model-recovery-',
@@ -21,7 +20,6 @@ void main() {
         partial: partial,
         target: target,
         expectedBytes: bytes.length,
-        expectedSha256: sha256.convert(bytes).toString(),
       );
 
       expect(promoted, isTrue);
@@ -30,9 +28,9 @@ void main() {
     },
   );
 
-  test('a corrupt complete partial is removed before retry', () async {
+  test('a partial with the wrong size is not promoted', () async {
     final directory = await Directory.systemTemp.createTemp(
-      'finn-model-corrupt-',
+      'finn-model-incomplete-',
     );
     addTearDown(() => directory.delete(recursive: true));
     final partial = File('${directory.path}/model.gguf.part');
@@ -42,12 +40,11 @@ void main() {
     final promoted = await promoteVerifiedModelPartial(
       partial: partial,
       target: target,
-      expectedBytes: 4,
-      expectedSha256: sha256.convert(<int>[9, 9, 9, 9]).toString(),
+      expectedBytes: 9,
     );
 
     expect(promoted, isFalse);
-    expect(await partial.exists(), isFalse);
+    expect(await partial.exists(), isTrue);
     expect(await target.exists(), isFalse);
   });
 }

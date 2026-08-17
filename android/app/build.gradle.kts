@@ -74,7 +74,7 @@ android {
         versionName = flutter.versionName
 
         ndk {
-            // Bonsai's optimized mobile kernels target 64-bit ARM.
+            // The local inference runtime targets 64-bit ARM.
             abiFilters += listOf("arm64-v8a")
         }
     }

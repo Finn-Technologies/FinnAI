@@ -17,9 +17,8 @@ Android device.
 Your conversations and AI processing stay on your phone. For news, recipes,
 and other requests that need web information, FinnAI sends only the latest
 request as a search query and shows tappable sources. FinnAI automatically checks
-your device's memory and processor capabilities, then installs the best
-compatible Bonsai model. On supported hardware, its local router balances quick
-answers with more capable models for harder questions.
+your device's memory and processor capabilities, then installs a compact
+on-device model tuned for smooth, private answers.
 
 Use FinnAI to:
 

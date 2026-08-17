@@ -555,6 +555,15 @@ class ConversationStore extends ChangeNotifier {
     _changed();
   }
 
+  /// Switches to the blank compose slate without creating a conversation.
+  /// A conversation is only created once the user actually sends a message
+  /// (the send path uses `active ?? startNew()`).
+  void clearActive() {
+    if (_activeId == null) return;
+    _activeId = null;
+    _changed();
+  }
+
   ConversationMessage add(
     ConversationRole role,
     String text, {

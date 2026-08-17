@@ -68,6 +68,39 @@ class MainActivity : FlutterActivity() {
             )
         }
 
+        // Compile-time benchmark harness overrides (FINN_BENCHMARK builds
+        // only). Lets one benchmark APK run every scenario/config sweep via
+        // `adb shell am start --es/-ei` extras instead of one rebuild per
+        // scenario. Production builds never call this channel.
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            "finn_ai/benchmark",
+        ).setMethodCallHandler { call, result ->
+            if (call.method != "getOverrides") {
+                result.notImplemented()
+                return@setMethodCallHandler
+            }
+            val intent = intent ?: run { result.success(mapOf<String, Any?>()); return@setMethodCallHandler }
+            fun stringExtra(name: String): String? = intent.getStringExtra(name)?.takeIf { it.isNotEmpty() }
+            val intExtra = intent.getIntExtra("FINN_BENCH_RUNS", -1)
+            result.success(
+                mapOf(
+                    "scenario" to stringExtra("FINN_BENCH_SCENARIO"),
+                    "runs" to (if (intExtra > 0) intExtra else null),
+                    "prompt" to stringExtra("FINN_BENCH_PROMPT"),
+                    "prewarm" to stringExtra("FINN_BENCH_PREWARM"),
+                    "noSearch" to (intent.getBooleanExtra("FINN_BENCH_NO_SEARCH", false) || stringExtra("FINN_BENCH_NO_SEARCH") != null),
+                    "noPrefixCache" to (intent.getBooleanExtra("FINN_BENCH_NO_PREFIX", false) || stringExtra("FINN_BENCH_NO_PREFIX") != null),
+                    "threads" to (if (intent.hasExtra("FINN_BENCH_THREADS")) intent.getIntExtra("FINN_BENCH_THREADS", -1).takeIf { it > 0 } else null),
+                    "batchThreads" to (if (intent.hasExtra("FINN_BENCH_BATCH_THREADS")) intent.getIntExtra("FINN_BENCH_BATCH_THREADS", -1).takeIf { it > 0 } else null),
+                    "batch" to (if (intent.hasExtra("FINN_BENCH_BATCH")) intent.getIntExtra("FINN_BENCH_BATCH", -1).takeIf { it > 0 } else null),
+                    "ubatch" to (if (intent.hasExtra("FINN_BENCH_UBATCH")) intent.getIntExtra("FINN_BENCH_UBATCH", -1).takeIf { it > 0 } else null),
+                    "f16Kv" to intent.getBooleanExtra("FINN_BENCH_F16_KV", false),
+                    "flashOff" to intent.getBooleanExtra("FINN_BENCH_FLASH_OFF", false),
+                ),
+            )
+        }
+
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             "finn_ai/model_download",
@@ -77,7 +110,8 @@ class MainActivity : FlutterActivity() {
                     val args = call.arguments as? Map<*, *> ?: run { result.error("args", "Missing download arguments", null); return@setMethodCallHandler }
                     val requestedTarget = args["target"] as? String ?: run { result.error("args", "Missing download target", null); return@setMethodCallHandler }
                     val current = ModelDownloadService.status(this)
-                    if (current["active"] == true && current["target"] == requestedTarget) {
+                    val alreadyRunning = ModelDownloadService.isRunning.get()
+                    if (alreadyRunning && current["target"] == requestedTarget) {
                         result.success(null)
                         return@setMethodCallHandler
                     }

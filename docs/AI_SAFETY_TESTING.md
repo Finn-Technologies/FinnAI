@@ -37,7 +37,7 @@ The following automated tests run in CI (`test/safety_prompt_test.dart`) to veri
 ## 3. Recommended On-Device Testing Steps
 
 When testing on a physical Android device:
-1. Complete onboarding and download `Bonsai 1.7B` or `Bonsai 4B`.
+1. Complete onboarding and download the `Qwen 3.5 2B` model.
 2. Send test prompts for each category above.
 3. Record exact response, device model, Android version, and model file SHA-256 hash.
 4. Verify refusal or crisis hotline response output.

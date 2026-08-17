@@ -118,7 +118,7 @@ void main() {
       ..add(
         ConversationRole.assistant,
         'The chat remains centered and readable on a wide display.',
-        modelTier: 'Bonsai 4B',
+        modelTier: 'Qwen 3.5 2B',
       );
     addTearDown(conversations.dispose);
 
@@ -139,6 +139,20 @@ void main() {
       tester.getSize(find.byKey(const ValueKey('chat-scroll-view'))).width,
       lessThanOrEqualTo(760),
     );
+
+    // The two fades must be anchored to opposite edges: the bottom fade hugs
+    // the composer at the bottom rather than stacking at the top.
+    final topFade = tester.getRect(find.byKey(const ValueKey('chat-fade-top')));
+    final bottomFade = tester.getRect(
+      find.byKey(const ValueKey('chat-fade-bottom')),
+    );
+    expect(bottomFade.center.dy, greaterThan(topFade.center.dy));
+    final chatRect = tester.getRect(
+      find.byKey(const ValueKey('chat-scroll-view')),
+    );
+    expect(topFade.top, closeTo(chatRect.top, 2));
+    expect(bottomFade.bottom, closeTo(chatRect.bottom, 2));
+
     expect(tester.takeException(), isNull);
     await tester.pump(const Duration(milliseconds: 500));
   });
@@ -172,7 +186,7 @@ void main() {
         final surfaceFinder = find.byKey(const ValueKey('send-button-surface'));
         final iconFinder = find.byKey(const ValueKey('send-button-icon'));
         final disabledIcon = tester.widget<FigmaSvg>(iconFinder);
-        expect(tester.getSize(surfaceFinder), const Size(40, 40));
+        expect(tester.getSize(surfaceFinder), const Size(36, 36));
         expect(find.byType(AnimatedScale), findsNothing);
         expect(find.bySemanticsLabel('Send message'), findsOneWidget);
 

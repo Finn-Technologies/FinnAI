@@ -10,7 +10,6 @@ import 'package:llama_cpp_dart/llama_cpp_dart.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'device_profile.dart';
-import 'bonsai_inference.dart' as legacy;
 import 'prompt_intent.dart';
 import 'residency_policy.dart';
 import 'ttft_metrics.dart';
@@ -32,7 +31,13 @@ final math.Random _generationSeedRng = math.Random();
 
 int _nextGenerationSeed() => _generationSeedRng.nextInt(1 << 32);
 
-typedef LocalChatTurn = legacy.LocalChatTurn;
+@immutable
+class LocalChatTurn {
+  const LocalChatTurn({required this.role, required this.content});
+
+  final String role;
+  final String content;
+}
 
 enum InferencePhase { idle, downloading, loading, generating, error }
 
@@ -218,6 +223,12 @@ class QwenInference extends ChangeNotifier {
     'FINN_PREFIX_CACHE',
     defaultValue: true,
   );
+
+  /// Benchmark override: allows the device harness (and tests) to disable
+  /// prefix-state restore at runtime so the cached-KV path can be compared
+  /// against a fresh prefill on the same build.
+  @visibleForTesting
+  static bool debugDisablePrefixCache = false;
   static const _retiredModelFiles = <String>{
     'Bonsai-1.7B-Q1_0.gguf',
     'Bonsai-4B-Q1_0.gguf',
@@ -286,6 +297,31 @@ class QwenInference extends ChangeNotifier {
     return Duration(seconds: (remaining / _downloadSpeedBps).floor());
   }
 
+  /// Human-readable transfer speed for the active download; null when the
+  /// estimate is not ready yet. Shared by the install card and settings card.
+  String? get downloadSpeedLabel {
+    final bps = downloadSpeedBps;
+    if (bps <= 0) return null;
+    if (bps >= 1024 * 1024) {
+      return '${(bps / (1024 * 1024)).toStringAsFixed(1)} MB/s';
+    }
+    return '${(bps / 1024).toStringAsFixed(0)} KB/s';
+  }
+
+  /// Human-readable time remaining for the active download; null when the
+  /// estimate is not ready yet.
+  String? get downloadEtaLabel {
+    final eta = downloadEta;
+    if (eta == null) return null;
+    if (eta.inHours > 0) {
+      return '${eta.inHours}h ${eta.inMinutes % 60}m left';
+    }
+    if (eta.inMinutes > 0) {
+      return '${eta.inMinutes}m ${eta.inSeconds % 60}s left';
+    }
+    return '${eta.inSeconds}s left';
+  }
+
   /// Test hook: simulates a download progress tick so the speed/ETA math can
   /// be verified without a real network transfer.
   @visibleForTesting
@@ -321,6 +357,7 @@ class QwenInference extends ChangeNotifier {
   Future<void>? _installJob;
   HttpClient? _downloadClient;
   bool _cancelDownload = false;
+  bool _benchmarkRunning = false;
   final Set<QwenTier> _verifiedModels = <QwenTier>{};
   Future<Directory>? _modelDirectoryJob;
 
@@ -403,6 +440,31 @@ class QwenInference extends ChangeNotifier {
     // after the language model has been verified, but it is not loaded or
     // exposed as an input capability in this release.
     await _preinstallMmproj();
+  }
+
+  /// Resumes a partially-downloaded required model after an app restart,
+  /// without waiting for the user to reach the install screen again. Only a
+  /// model that already has bytes on disk is resumed, so a fresh install never
+  /// starts a surprise download. install() is idempotent, so this also no-ops
+  /// if the same model is already being installed by the onboarding flow.
+  Future<void> resumeInterruptedDownloads() async {
+    for (final model in requiredModels) {
+      final target = await _modelFile(model);
+      // Avoid the full SHA-256 verification here; a right-sized target is
+      // treated as installed and re-verified lazily when the engine loads it.
+      if (await target.exists() &&
+          await target.length() == model.expectedBytes) {
+        continue;
+      }
+      final partial = File('${target.path}.part');
+      if (!await partial.exists() || await partial.length() <= 0) continue;
+      unawaited(
+        install(model).catchError((Object _) {
+          // _runInstall already surfaced the failure through the status
+          // listener; this only prevents an unhandled async error at startup.
+        }),
+      );
+    }
   }
 
   Future<void> _preinstallMmproj() async {
@@ -855,7 +917,10 @@ class QwenInference extends ChangeNotifier {
       prompt: decisionPrompt,
       addSpecial: !primed && !basePrefixReady,
       parseSpecial: true,
-      maxTokens: 64,
+      // The decision is a fixed vocabulary (ANSWER / SEARCH: <query>); a
+      // short cap keeps the pass cheap on slow devices where every decode
+      // token is seconds, without truncating a real search query.
+      maxTokens: 12,
       sampler: PromptIntentPolicy.searchDecisionSampler.params.copyWith(
         seed: _nextGenerationSeed(),
       ),
@@ -1075,7 +1140,9 @@ class QwenInference extends ChangeNotifier {
           var effectiveGroundedContext = groundedContext;
           var effectiveSources = const <WebSource>[];
           final policyNeedsSearch = _searchAgent.policy.shouldSearch(prompt);
-          if (enableSearchDecision) {
+          final decisionEnabled = enableSearchDecision &&
+              PromptIntentPolicy.needsSearchDecision(promptAnalysis);
+          if (decisionEnabled) {
             final decision = await _runSearchDecision(
               session,
               prompt,
@@ -1215,6 +1282,7 @@ class QwenInference extends ChangeNotifier {
                   _setStatus(InferencePhase.error, _friendlyError(error));
                   output.addError(error, stack);
                   unawaited(output.close());
+                  unawaited(_recoverAfterError());
                 },
                 onDone: () {
                   _generation = null;
@@ -1250,6 +1318,7 @@ class QwenInference extends ChangeNotifier {
           _setStatus(InferencePhase.error, _friendlyError(error));
           output.addError(error, stack);
           await output.close();
+          unawaited(_recoverAfterError());
         }
       },
       onCancel: () async {
@@ -1306,6 +1375,254 @@ class QwenInference extends ChangeNotifier {
     _setStatus(InferencePhase.idle, 'Ready after runtime reset');
   }
 
+  /// Clears the in-flight generation state after a native error so the app
+  /// never stays stuck on the failed task.
+  ///
+  /// A decode or context-overflow failure leaves the affected session's KV
+  /// cache in an unknown (usually full) state, so conversation sessions are
+  /// dropped. The loaded engines stay resident and the next request simply
+  /// re-primes the shared prefix. The friendly error status is intentionally
+  /// left in place for the controller to surface on the failed message.
+  Future<void> _recoverAfterError() async {
+    try {
+      _generationEpoch++;
+      final generation = _generation;
+      _generation = null;
+      unawaited(generation?.cancel());
+      final output = _activeOutput;
+      _activeOutput = null;
+      if (output != null && !output.isClosed) await output.close();
+      await releaseConversationSessions();
+    } catch (_) {
+      // Recovery is best-effort; the controller already surfaces the original
+      // error on the failed message.
+    }
+  }
+
+  /// One-time, post-download benchmark that measures every available backend
+  /// and caches the fastest one. Runs the CPU baseline first so the app always
+  /// has a working engine even if every accelerator candidate fails.
+  ///
+  /// Callers surface the work through the normal [status] listener: the phase
+  /// is [InferencePhase.loading] and the status reads
+  /// "Setting up FinnAI for optimal performance…".
+  Future<void> optimizeForDevice() async {
+    if (_benchmarkRunning || _replyInFlight || _runtimes.isNotEmpty) return;
+    if (!Platform.isAndroid) return;
+    _benchmarkRunning = true;
+    final previousStatus = _status;
+    try {
+      _setStatus(
+        InferencePhase.loading,
+        'Setting up FinnAI for optimal performance…',
+      );
+      final model = selected;
+      if (!await isInstalled(model)) return;
+      final path = (await _modelFile(model)).path;
+      final profile = _deviceProfile ?? await DeviceProfiler.read();
+      _deviceProfile = profile;
+      final plan = _plan ?? DeviceProfiler.plan(profile);
+      final adaptive = AdaptiveInferenceEngine.instance;
+
+      // Discover the backends actually packaged with the runtime via a
+      // lightweight CPU probe. Its own load is not benchmarked.
+      final List<BackendDevice> devices;
+      final probe = await _spawnBenchmarkEngine(
+        model: model,
+        path: path,
+        config: runtimeConfigFromPlan(plan, profile),
+        profile: profile,
+        compactKv: plan.compactKv,
+      ).timeout(const Duration(seconds: 30));
+      try {
+        devices = probe.devices;
+      } finally {
+        await probe.dispose();
+      }
+
+      final cpuConfig = runtimeConfigFromPlan(plan, profile);
+      var bestTps = -1.0;
+      BackendSelection best = BackendSelection(
+        config: cpuConfig,
+        backend: ComputeBackend.cpu,
+        deviceName: 'CPU',
+        registryName: 'CPU',
+        reason: 'CPU baseline',
+      );
+
+      Future<double> run(RuntimeConfig config) => _benchmarkTokensPerSecond(
+        model,
+        path,
+        config,
+        profile,
+        compactKv: plan.compactKv,
+      ).timeout(const Duration(seconds: 25));
+
+      for (final device in devices) {
+        if (!device.isAccelerator ||
+            device.registryName.toLowerCase() == 'blas') {
+          continue;
+        }
+        if (!hasOffloadHeadroom(
+          profile: profile,
+          modelBytes: model.expectedBytes,
+        )) {
+          continue;
+        }
+        final config = acceleratedConfig(cpuConfig, device);
+        final double tps;
+        try {
+          tps = await run(config);
+        } catch (e) {
+          debugPrint(
+            'FINN_BENCH skip ${device.registryName}/${device.name}: $e',
+          );
+          continue;
+        }
+        debugPrint(
+          'FINN_BENCH ${device.registryName}/${device.name} '
+          '${tps.toStringAsFixed(2)} tok/s',
+        );
+        if (tps > bestTps) {
+          bestTps = tps;
+          best = BackendSelection(
+            config: config,
+            backend: classifyBackend(device),
+            deviceName: device.name,
+            registryName: device.registryName,
+            reason: 'Benchmarked fastest backend.',
+          );
+        }
+      }
+
+      // The CPU baseline is always measured so the winner has a real floor to
+      // beat; a failed CPU spawn still leaves the existing adaptive cache.
+      try {
+        final cpuTps = await run(cpuConfig);
+        debugPrint('FINN_BENCH CPU ${cpuTps.toStringAsFixed(2)} tok/s');
+        if (cpuTps > bestTps) {
+          bestTps = cpuTps;
+          best = BackendSelection(
+            config: cpuConfig,
+            backend: ComputeBackend.cpu,
+            deviceName: 'CPU',
+            registryName: 'CPU',
+            reason: 'CPU measured fastest.',
+          );
+        }
+      } catch (e) {
+        debugPrint('FINN_BENCH cpu baseline failed: $e');
+      }
+
+      // Persist the winner even when it is CPU so the benchmark does not run
+      // again on every launch of a CPU-only or CPU-fastest device.
+      await adaptive.recordBenchmark(
+        profile: profile,
+        modelSha256: model.sha256Digest,
+        selection: best,
+      );
+      debugPrint(
+        'FINN_BENCH selected ${best.backend.name} '
+        '${best.deviceName} at ${bestTps.toStringAsFixed(2)} tok/s',
+      );
+      _setStatus(InferencePhase.idle, 'Finn AI is optimized for this device');
+    } catch (e) {
+      debugPrint('FINN_BENCH failed, keeping CPU fallback: $e');
+      _setStatus(InferencePhase.idle, previousStatus);
+    } finally {
+      _benchmarkRunning = false;
+    }
+  }
+
+  /// True when the benchmark should run again: no valid cached backend
+  /// selection exists for this device, model, and app build (e.g. after an
+  /// app update that changed the runtime).
+  Future<bool> needsBenchmark() async {
+    final profile = _deviceProfile ?? await DeviceProfiler.read();
+    return AdaptiveInferenceEngine.instance.isBenchmarkStale(
+      profile: profile,
+      modelSha256: selected.sha256Digest,
+    );
+  }
+
+  Future<LlamaEngine> _spawnBenchmarkEngine({
+    required QwenModel model,
+    required String path,
+    required RuntimeConfig config,
+    required DeviceProfile profile,
+    required bool compactKv,
+  }) {
+    return LlamaEngine.spawn(
+      libraryPath: 'libllama.so',
+      backendDirectory: profile.nativeLibraryDir,        modelParams: ModelParams(
+          path: path,
+          gpuLayers: config.gpuLayers,
+          useMmap: true,
+          // Weights stay RAM-resident via the OS page cache with mmap alone
+          // (verified: zero major faults during decode). Locking 1.3 GB
+          // actively hurts on 8 GB-class devices by removing reclaimable
+          // headroom the OS needs for the KV cache and the app itself.
+          useMlock: false,
+          checkTensors: false,
+          devices: config.isCpu ? const [] : [config.deviceName],
+        ),
+      contextParams: ContextParams(
+        nCtx: config.contextSize,
+        nBatch: config.batchSize,
+        nUbatch: config.microBatchSize,
+        nThreads: config.threads,
+        nThreadsBatch: config.batchThreads,
+        nSeqMax: config.sessionCount,
+        flashAttn: config.flashAttention,
+        typeK: compactKv ? config.kvType : KvCacheType.f16,
+        typeV: compactKv ? config.kvType : KvCacheType.f16,
+        swaFull: false,
+        noPerf: false,
+      ),
+    );
+  }
+
+  Future<double> _benchmarkTokensPerSecond(
+    QwenModel model,
+    String path,
+    RuntimeConfig config,
+    DeviceProfile profile, {
+    required bool compactKv,
+  }) async {
+    final engine = await _spawnBenchmarkEngine(
+      model: model,
+      path: path,
+      config: config,
+      profile: profile,
+      compactKv: compactKv,
+    );
+    try {
+      final session = await engine.createSession(seqId: 0);
+      final watch = Stopwatch()..start();
+      var tokens = 0;
+      await for (final event in session.generate(
+        prompt: 'Hello',
+        addSpecial: true,
+        parseSpecial: true,
+        sampler: SamplerParams.greedyDefault,
+        maxTokens: 16,
+        shiftPolicy: engine.canShift
+            ? ContextShiftPolicy.auto
+            : ContextShiftPolicy.off,
+      )) {
+        if (event case DoneEvent(:final generatedCount)) {
+          tokens = generatedCount;
+        }
+      }
+      watch.stop();
+      await session.dispose();
+      if (watch.elapsedMilliseconds <= 0 || tokens <= 0) return 0;
+      return tokens * 1000 / watch.elapsedMilliseconds;
+    } finally {
+      await engine.dispose();
+    }
+  }
+
   void _markCancelled() {
     final previous = _lastGenerationReport;
     if (previous == null) return;
@@ -1346,7 +1663,6 @@ class QwenInference extends ChangeNotifier {
         partial: partial,
         target: target,
         expectedBytes: model.expectedBytes,
-        expectedSha256: model.sha256Digest,
       );
       if (promoted) {
         _verifiedModels.add(model.tier);
@@ -1369,7 +1685,6 @@ class QwenInference extends ChangeNotifier {
         target: target,
         partial: partial,
         expectedBytes: model.expectedBytes,
-        sha256Digest: model.sha256Digest,
         label: 'Finn AI model',
       );
     }
@@ -1440,11 +1755,6 @@ class QwenInference extends ChangeNotifier {
         await partial.delete();
         throw const FormatException('Downloaded model has an invalid size');
       }
-      final digest = await compute(_sha256File, partial.path);
-      if (digest != model.sha256Digest) {
-        await partial.delete();
-        throw const FormatException('Downloaded model failed verification');
-      }
       if (await target.exists()) await target.delete();
       await partial.rename(target.path);
       if (!await _looksLikeGguf(target)) {
@@ -1465,7 +1775,6 @@ class QwenInference extends ChangeNotifier {
     required File target,
     required File partial,
     required int expectedBytes,
-    required String sha256Digest,
     required String label,
   }) async {
     // A process can be killed after the final byte lands but before the
@@ -1479,7 +1788,6 @@ class QwenInference extends ChangeNotifier {
           partial: partial,
           target: target,
           expectedBytes: expectedBytes,
-          expectedSha256: sha256Digest,
         )) {
           return target;
         }
@@ -1494,12 +1802,22 @@ class QwenInference extends ChangeNotifier {
       progress: 0,
       totalBytes: expectedBytes,
     );
-    await _backgroundDownloadChannel.invokeMethod<void>('start', {
-      'url': url,
-      'target': target.path,
-      'expectedBytes': expectedBytes,
-      'label': label,
-    });
+    Future<void> requestStart() => _backgroundDownloadChannel.invokeMethod<void>(
+          'start',
+          {
+            'url': url,
+            'target': target.path,
+            'expectedBytes': expectedBytes,
+            'label': label,
+          },
+        );
+    await requestStart();
+    var restarts = 0;
+    DateTime? lastRestartAt;
+    bool restarting = false;
+    int? lastHeartbeat;
+    DateTime? lastProgressAt;
+    var sawProgress = false;
     while (true) {
       if (_cancelDownload) {
         await _cancelAndroidDownload(target.path);
@@ -1512,28 +1830,74 @@ class QwenInference extends ChangeNotifier {
       final progress = (raw['progress'] as num?)?.toDouble() ?? 0;
       final speedBps = (raw['speedBps'] as num?)?.toDouble() ?? 0;
       final remainingBytes = (raw['remainingBytes'] as num?)?.toInt() ?? 0;
-      _setStatus(
-        InferencePhase.downloading,
-        'Downloading $label',
-        progress: progress,
-        totalBytes: expectedBytes,
-        speedBps: speedBps,
-        remainingBytes: remainingBytes,
-      );
+      final active = raw['active'] == true;
+      final heartbeat = (raw['heartbeat'] as num?)?.toInt();
+      if (progress > 0) sawProgress = true;
+      if (!restarting) {
+        _setStatus(
+          InferencePhase.downloading,
+          'Downloading $label',
+          progress: progress,
+          totalBytes: expectedBytes,
+          speedBps: speedBps,
+          remainingBytes: remainingBytes,
+        );
+      }
       if (raw['failed'] == true) {
         throw HttpException((raw['error'] as String?) ?? 'Download failed');
       }
-      if (raw['cancelled'] == true) {
+      if (raw['cancelled'] == true && !restarting) {
         throw const HttpException('Download paused');
       }
       if (raw['complete'] == true) break;
+
+      // The Android service persists its status, so `active=true` can survive
+      // a killed process or an uncaught error. The Kotlin `status` gate now
+      // reports inactive once the service thread is gone, and the heartbeat
+      // freezes when a live-but-wedged service stops making progress. Either
+      // way, restart so the partial resumes from its persisted per-range
+      // progress instead of freezing the UI.
+      final now = DateTime.now();
+      if (heartbeat != null && heartbeat != lastHeartbeat) {
+        lastHeartbeat = heartbeat;
+        lastProgressAt = now;
+      }
+      final stalled = sawProgress &&
+          active &&
+          lastProgressAt != null &&
+          now.difference(lastProgressAt) > const Duration(seconds: 20);
+      if (!active || stalled) {
+        if (!restarting) {
+          if (lastRestartAt != null &&
+              now.difference(lastRestartAt) <= const Duration(seconds: 4)) {
+            continue;
+          }
+          restarts++;
+          if (restarts > 4) {
+            throw const HttpException('Model download kept stopping');
+          }
+          lastRestartAt = now;
+          restarting = true;
+          lastHeartbeat = null;
+          lastProgressAt = null;
+          sawProgress = false;
+          if (stalled) {
+            // Ask the wedged service to stop; it observes the cancel on its
+            // next read timeout and releases the liveness flag.
+            await _cancelAndroidDownload(target.path);
+          }
+        }
+        if (!active) {
+          restarting = false;
+          await requestStart();
+        }
+      }
     }
     _setStatus(InferencePhase.loading, 'Verifying $label');
     if (!await promoteVerifiedModelPartial(
       partial: partial,
       target: target,
       expectedBytes: expectedBytes,
-      expectedSha256: sha256Digest,
     )) {
       throw const FormatException('Downloaded file failed verification');
     }
@@ -1555,7 +1919,6 @@ class QwenInference extends ChangeNotifier {
     required String url,
     required File target,
     required int expectedBytes,
-    required String sha256Digest,
     required String label,
   }) async {
     final partial = File('${target.path}.part');
@@ -1565,14 +1928,14 @@ class QwenInference extends ChangeNotifier {
       existing = 0;
     }
     if (existing == expectedBytes) {
-      final digest = await compute(_sha256File, partial.path);
-      if (digest == sha256Digest) {
+      if (!await _looksLikeGguf(partial)) {
+        await partial.delete();
+        existing = 0;
+      } else {
         if (await target.exists()) await target.delete();
         await partial.rename(target.path);
         return target;
       }
-      await partial.delete();
-      existing = 0;
     }
     final client = HttpClient()
       ..connectionTimeout = const Duration(seconds: 20)
@@ -1626,11 +1989,6 @@ class QwenInference extends ChangeNotifier {
       if (await partial.length() != expectedBytes) {
         await partial.delete();
         throw const FormatException('Downloaded file has an invalid size');
-      }
-      final digest = await compute(_sha256File, partial.path);
-      if (digest != sha256Digest) {
-        await partial.delete();
-        throw const FormatException('Downloaded file failed verification');
       }
       if (await target.exists()) await target.delete();
       await partial.rename(target.path);
@@ -1880,60 +2238,138 @@ class QwenInference extends ChangeNotifier {
     adaptive.attachLlamaCppCommit(
       outcome.engine?.llamaCppCommit ?? _lastKnownLlamaCppCommit,
     );
-    final config = outcome.config;
-    final context = config.contextSize;
+    var config = outcome.config;
     // A benchmarked engine for the selected config can be reused directly.
     LlamaEngine? engine = outcome.engine;
 
-    Future<LlamaEngine> spawn({required bool compactKv}) async {
+    Future<LlamaEngine> spawnWith(
+      RuntimeConfig cfg, {
+      required bool compactKv,
+    }) async {
       return LlamaEngine.spawn(
         libraryPath: 'libllama.so',
         backendDirectory: profile.nativeLibraryDir,
         modelParams: ModelParams(
           path: path,
-          gpuLayers: config.gpuLayers,
+          gpuLayers: cfg.gpuLayers,
           useMmap: true,
+          // Weights stay RAM-resident via the OS page cache with mmap alone
+          // (verified: zero major faults during decode). Locking 1.3 GB
+          // actively hurts on 8 GB-class devices by removing reclaimable
+          // headroom the OS needs for the KV cache and the app itself.
           useMlock: false,
           checkTensors: false,
-          devices: config.isCpu ? const [] : [config.deviceName],
+          devices: cfg.isCpu ? const [] : [cfg.deviceName],
         ),
         contextParams: ContextParams(
-          nCtx: context,
-          nBatch: config.batchSize,
-          nUbatch: config.microBatchSize,
-          nThreads: config.threads,
-          nThreadsBatch: config.batchThreads,
-          nSeqMax: config.sessionCount,
-          flashAttn: config.flashAttention,
-          typeK: compactKv ? config.kvType : KvCacheType.f16,
-          typeV: compactKv ? config.kvType : KvCacheType.f16,
+          nCtx: cfg.contextSize,
+          nBatch: cfg.batchSize,
+          nUbatch: cfg.microBatchSize,
+          nThreads: cfg.threads,
+          nThreadsBatch: cfg.batchThreads,
+          nSeqMax: cfg.sessionCount,
+          flashAttn: cfg.flashAttention,
+          typeK: compactKv ? cfg.kvType : KvCacheType.f16,
+          typeV: compactKv ? cfg.kvType : KvCacheType.f16,
           swaFull: false,
-          noPerf: true,
+          noPerf: false,
         ),
       );
     }
 
     var compactKv = config.kvType == KvCacheType.q8_0;
+    var fellBackFromAccelerator = false;
     try {
-      engine ??= await spawn(compactKv: compactKv).timeout(const Duration(seconds: 30));
+      engine ??= await spawnWith(config, compactKv: compactKv)
+          .timeout(const Duration(seconds: 30));
     } on TimeoutException catch (e) {
       debugPrint('FINN_LOADMODEL spawn timeout: $e');
       throw TimeoutException('Model engine did not start in time. ${_friendlyError(e)}');
     } catch (e) {
       debugPrint('FINN_LOADMODEL_ERROR $e');
-      if (!compactKv) rethrow;
-      // Quantized KV/Flash Attention is not universal. The F16 retry is the
-      // compatibility baseline for older chips and vendor runtimes.
-      compactKv = false;
-      try {
-        engine = await spawn(compactKv: false).timeout(const Duration(seconds: 30));
-      } on TimeoutException catch (e2) {
-        debugPrint('FINN_LOADMODEL retry timeout: $e2');
-        throw TimeoutException('Model engine did not start in time. ${_friendlyError(e2)}');
+      if (!config.isCpu) {
+        // A stale cached accelerator config failed (driver changed or the
+        // backend was removed from the APK). Fall back to the guaranteed CPU
+        // baseline instead of failing startup.
+        config = runtimeConfigFromPlan(hardwarePlan, profile);
+        compactKv = config.kvType == KvCacheType.q8_0;
+        fellBackFromAccelerator = true;
+        try {
+          engine = await spawnWith(config, compactKv: compactKv)
+              .timeout(const Duration(seconds: 30));
+        } on TimeoutException catch (e2) {
+          debugPrint('FINN_LOADMODEL cpu fallback timeout: $e2');
+          throw TimeoutException('Model engine did not start in time. ${_friendlyError(e2)}');
+        }
+      } else if (compactKv) {
+        // Quantized KV/Flash Attention is not universal. The F16 retry is the
+        // compatibility baseline for older chips and vendor runtimes.
+        compactKv = false;
+        try {
+          engine = await spawnWith(config, compactKv: false)
+              .timeout(const Duration(seconds: 30));
+        } on TimeoutException catch (e2) {
+          debugPrint('FINN_LOADMODEL retry timeout: $e2');
+          throw TimeoutException('Model engine did not start in time. ${_friendlyError(e2)}');
+        }
+      } else {
+        rethrow;
       }
     }
+
+    final primaryEngine = engine;
+    _lastKnownLlamaCppCommit = primaryEngine.llamaCppCommit;
+    adaptive.attachLlamaCppCommit(_lastKnownLlamaCppCommit);
+
+    // The engine is now live. Inspect the backends the runtime actually
+    // loaded and upgrade to the best NPU/GPU when available. A failed
+    // accelerated spawn keeps the working CPU engine. Skip discovery when the
+    // benchmark already cached a decision (including a deliberate CPU pick) or
+    // when we just fell back from a cached accelerator that could not spawn.
+    if (outcome.selection == null && config.isCpu && !fellBackFromAccelerator) {
+      try {
+        final selection = await adaptive
+            .accelerateIfAvailable(
+              devices: primaryEngine.devices,
+              profile: profile,
+              plan: hardwarePlan,
+              modelSha256: model.sha256Digest,
+              modelBytes: model.expectedBytes,
+            )
+            .timeout(const Duration(seconds: 10));
+        if (selection != null) {
+          debugPrint(
+            'FINN_ADAPTIVE accelerating on ${selection.backend.name} '
+            '${selection.deviceName} (${selection.registryName})',
+          );
+          try {
+            final accelerated = await spawnWith(
+              selection.config,
+              compactKv: compactKv,
+            ).timeout(const Duration(seconds: 30));
+            await primaryEngine.dispose();
+            engine = accelerated;
+            config = selection.config;
+            _lastKnownLlamaCppCommit = accelerated.llamaCppCommit;
+            adaptive.attachLlamaCppCommit(_lastKnownLlamaCppCommit);
+          } catch (e) {
+            debugPrint('FINN_ADAPTIVE offload failed, keeping CPU: $e');
+          }
+        }
+      } catch (e) {
+        debugPrint('FINN_ADAPTIVE discovery failed: $e');
+      }
+    }
+
+    final liveEngine = engine!;
+    debugPrint(
+      'FINN_ENGINE threads=${config.threads} batchThreads=${config.batchThreads} '
+      'batch=${config.batchSize} ubatch=${config.microBatchSize} '
+      'kv=${compactKv ? "q8_0" : "f16"} flash=${config.flashAttention.name} '
+      'ctx=${config.contextSize}',
+    );
     if (epoch != _runtimeEpoch) {
-      await engine.dispose();
+      await liveEngine.dispose();
       throw StateError('Model loading was superseded by a memory release.');
     }
     final modelSha256 = model.sha256Digest.isEmpty
@@ -1941,9 +2377,9 @@ class QwenInference extends ChangeNotifier {
         : model.sha256Digest;
     final runtime = _ModelRuntime(
       model,
-      engine,
+      liveEngine,
       compactKv: compactKv,
-      contextSize: context,
+      contextSize: config.contextSize,
       modelSha256: modelSha256,
     );
     _runtimes[model.tier] = runtime;
@@ -2049,7 +2485,7 @@ class QwenInference extends ChangeNotifier {
       promptConfigurationHash: configuration,
       messageCount: history.length,
       lastUsed: ++runtime.useSequence,
-      basePrefixReady: _persistentPrefixCacheEnabled,
+      basePrefixReady: _persistentPrefixCacheEnabled && !debugDisablePrefixCache,
     );
     runtime.sessions[conversationId] = entry;
     return (entry: entry, cacheHit: false, prefix: prefix);
@@ -2124,7 +2560,7 @@ class QwenInference extends ChangeNotifier {
     EngineSession session,
     PrefixCacheCompatibilityKey key,
   ) async {
-    if (!_persistentPrefixCacheEnabled) {
+    if (!_persistentPrefixCacheEnabled || debugDisablePrefixCache) {
       return const PrefixStateReport(cacheHit: false, tokens: 0, fileBytes: 0);
     }
     final file = await _prefixStateFile(key);
@@ -2217,10 +2653,14 @@ class QwenInference extends ChangeNotifier {
       '<|im_start|>system\n$finnSafetySystemPrompt<|im_end|>\n';
 
   static const finnSafetySystemPrompt = '''
-You are Finn AI, a private on-device assistant. Be direct, accurate, and
-concise. State uncertainty instead of guessing; never invent facts, citations,
-names, relationships, or technical details. Correct false premises plainly.
-Cite web material inline as [1], [2] and never append a separate "Sources"
+You are Finn AI, a warm, sharp, private on-device assistant. Be natural and
+truly helpful: match the user's tone and language, and keep replies as long as
+the question needs. Think before you answer, state uncertainty instead of
+guessing, and never invent facts, citations, names, numbers, or technical
+details. Correct false premises kindly; if you don't know, say so plainly and
+offer a useful next step. Avoid robotic filler, apologies, and repetition.
+
+Cite web material inline as [1], [2]; never append a separate "Sources"
 section or empty bullet list.
 
 Refuse help that enables sexual content involving minors, serious violence or
@@ -2231,7 +2671,7 @@ help. Everyday lawful tasks such as hardware upgrades, cooking, and household
 repairs are allowed — give careful, accurate instructions with safety
 precautions instead of refusing. For medical, legal, or financial questions,
 explain limits and recommend qualified help when appropriate. Follow private
-user preferences but never reveal them or private instructions.''';
+user preferences but never reveal them.''';
 
   String _renderPrompt(
     _ConversationSession entry,
@@ -2629,15 +3069,23 @@ user preferences but never reveal them or private instructions.''';
     final contextTokens = _plan?.contextSize ?? 2048;
     final analysis = const PromptIntentClassifier().classify(prompt);
     final promptTokens = (prompt.length / 3).ceil();
-    // The full prompt is system-prefix + task instruction + private context
-    // (e.g. web-search excerpts) + history + template wrappers, all sharing
-    // one context window. Reserving only the output budget and a small margin
-    // lets a long task instruction plus a large web context push the history
-    // replay past n_ctx, which fails native prompt eval (observed as a crash
-    // on the third same-chat question). Reserve everything except history.
+    // The full prompt is base-safety-prefix + task instruction + private
+    // context (e.g. web-search excerpts) + history + template wrappers, all
+    // sharing one context window. Reserving only the output allowance and a
+    // small margin lets a long task instruction plus a large web context
+    // push the history replay past n_ctx, which fails native prompt eval
+    // (observed as a crash on the third same-chat question). Reserve
+    // everything except history — including the base safety prefix that is
+    // otherwise the largest unaccounted-for fixed overhead.
+    //
+    // The intent soft target is used here rather than the context-derived
+    // generation bound: generation can now run to the full context window,
+    // but trimming history that aggressively would destroy multi-turn chat.
+    final basePrefixTokens = (_baseSystemPrefix.length / 3).ceil();
     final rawReservedTokens =
-        _outputBudget(analysis) +
-        160 + // template wrappers + safety margin
+        PromptIntentPolicy.desiredOutputTokens(analysis.intent) +
+        basePrefixTokens +
+        96 + // template wrappers, think block, and safety margin
         (PromptIntentPolicy.taskInstruction(analysis).length / 3).ceil() +
         (systemContext.trim().length / 3).ceil() +
         promptTokens;
@@ -2662,11 +3110,16 @@ user preferences but never reveal them or private instructions.''';
   }
 
   int _outputBudget(PromptAnalysis analysis) {
-    // There is deliberately no device-class output ceiling: long-form answers
-    // (writing, coding, analysis) must not be truncated on lower-end devices.
-    // The intent-based budget is a soft target; maxTokens passed to generation
-    // is only a runaway-safety bound, generous enough for real answers.
-    return PromptIntentPolicy.desiredOutputTokens(analysis.intent);
+    // No per-intent output ceiling: long-form answers (writing, coding,
+    // analysis) must not be truncated mid-thought. The only bound is the
+    // device's context window, so maxTokens stays a runaway-safety bound
+    // rather than a truncation target — a normal answer ends at EOG long
+    // before this is reached.
+    final contextSize = _plan?.contextSize ?? 2048;
+    return math.max(
+      PromptIntentPolicy.desiredOutputTokens(analysis.intent),
+      contextSize - 96,
+    );
   }
 
   @visibleForTesting
@@ -2676,9 +3129,12 @@ user preferences but never reveal them or private instructions.''';
     bool supported = true,
   }) {
     // Mirrors _outputBudget: no device-class ceiling; the desired intent
-    // budget is the soft target.
-    return PromptIntentPolicy.desiredOutputTokens(
-      const PromptIntentClassifier().classify(prompt).intent,
+    // budget is only a floor beneath the context-derived bound.
+    final analysis = const PromptIntentClassifier().classify(prompt);
+    final contextSize = deviceCeiling ?? _plan?.contextSize ?? 2048;
+    return math.max(
+      PromptIntentPolicy.desiredOutputTokens(analysis.intent),
+      contextSize - 96,
     );
   }
 
@@ -2724,12 +3180,13 @@ user preferences but never reveal them or private instructions.''';
     );
   }
 
-  /// True when the reserved post-model artifact is downloaded and verified.
+  /// True when the reserved post-model artifact is downloaded. The transfer
+  /// enforces the exact byte count, so size is the integrity gate here;
+  /// full-file SHA-256 was dropped to keep verification fast on budget devices.
   Future<bool> isMmprojInstalled() async {
     final file = await _mmprojFile();
     if (!await file.exists()) return false;
-    if (await file.length() != qwenMmproj.expectedBytes) return false;
-    return await compute(_sha256File, file.path) == qwenMmproj.sha256Digest;
+    return await file.length() == qwenMmproj.expectedBytes;
   }
 
   /// Downloads and verifies the reserved Qwen3.5 projector artifact. It is
@@ -2747,7 +3204,6 @@ user preferences but never reveal them or private instructions.''';
         target: target,
         partial: partial,
         expectedBytes: qwenMmproj.expectedBytes,
-        sha256Digest: qwenMmproj.sha256Digest,
         label: 'Qwen multimodal component',
       );
       return;
@@ -2756,7 +3212,6 @@ user preferences but never reveal them or private instructions.''';
       url: qwenMmproj.downloadUrl,
       target: target,
       expectedBytes: qwenMmproj.expectedBytes,
-      sha256Digest: qwenMmproj.sha256Digest,
       label: 'Qwen multimodal component',
     );
   }
@@ -2807,8 +3262,7 @@ user preferences but never reveal them or private instructions.''';
     if (!await file.exists() || await file.length() != model.expectedBytes) {
       return false;
     }
-    if (!await _looksLikeGguf(file)) return false;
-    return await compute(_sha256File, file.path) == model.sha256Digest;
+    return _looksLikeGguf(file);
   }
 
   Future<bool> _looksLikeGguf(File file) async {
@@ -2913,8 +3367,29 @@ user preferences but never reveal them or private instructions.''';
   String _friendlyError(Object error) {
     debugPrint('FINN_RAW_ERROR $error');
     final text = error.toString();
+    final lower = text.toLowerCase();
+    if (text.contains('Unable to resolve host') ||
+        lower.contains('resolve host') ||
+        lower.contains('no address associated with hostname') ||
+        lower.contains('unknownhostexception') ||
+        lower.contains('name or service not known')) {
+      return 'Couldn\'t reach the model server. Check your internet or Wi-Fi and retry.';
+    }
     if (text.contains('SocketException') || text.contains('HttpException')) {
       return 'Could not download the model. Check your connection.';
+    }
+    if (text.contains('LlamaDecodeException') ||
+        text.contains('LlamaContextException') ||
+        lower.contains('context full') ||
+        lower.contains('decode failed') ||
+        lower.contains('prefill decode failed') ||
+        lower.contains('cannot shift')) {
+      return 'This chat got too long for this device. Start a new chat or shorten your message.';
+    }
+    if (text.contains('LlamaModelLoadException') ||
+        lower.contains('failed to load model') ||
+        lower.contains('load_model')) {
+      return 'The AI model couldn\'t load on this device. Try again, or remove and re-download the model.';
     }
     if (text.toLowerCase().contains('memory') || text.contains('alloc')) {
       return 'Not enough free memory. Close other apps and try again.';
@@ -2933,25 +3408,23 @@ user preferences but never reveal them or private instructions.''';
 Future<String> _sha256File(String path) async =>
     (await sha256.bind(File(path).openRead()).first).toString();
 
-/// Promotes a complete, verified resumable download without making another
-/// network request.
+/// Promotes a complete resumable download without making another network
+/// request.
 ///
 /// A process can be killed after the final byte is flushed but before the
-/// `.part` file is verified and renamed. Treating that state as another range
-/// request causes some CDNs to return an unsatisfiable range response.
+/// `.part` file is renamed. Treating that state as another range request
+/// causes some CDNs to return an unsatisfiable range response. The exact byte
+/// count enforced by the transfer is the integrity gate here, and callers
+/// verify the GGUF magic right after promotion. Full-file SHA-256 is
+/// deliberately skipped because it made the post-download "Verifying" step
+/// take tens of seconds on budget devices.
 @visibleForTesting
 Future<bool> promoteVerifiedModelPartial({
   required File partial,
   required File target,
   required int expectedBytes,
-  required String expectedSha256,
 }) async {
   if (!await partial.exists() || await partial.length() != expectedBytes) {
-    return false;
-  }
-  final digest = await _sha256File(partial.path);
-  if (digest != expectedSha256) {
-    await partial.delete();
     return false;
   }
   if (await target.exists()) await target.delete();

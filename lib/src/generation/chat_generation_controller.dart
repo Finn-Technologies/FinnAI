@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import '../conversations/conversation_store.dart';
-import '../inference/bonsai_inference.dart' as legacy;
 import '../inference/qwen_inference.dart';
 import '../inference/prompt_intent.dart';
 import '../inference/ttft_metrics.dart';
@@ -36,7 +35,7 @@ class ChatGenerationJob {
   final String modelName;
   final ChatGenerationState state;
   final String responseText;
-  final legacy.GenerationFinishReason? finishReason;
+  final GenerationFinishReason? finishReason;
   final DateTime startedAt;
   final bool cancellationRequested;
   final int continuationCount;
@@ -53,7 +52,7 @@ class ChatGenerationJob {
     String? modelName,
     ChatGenerationState? state,
     String? responseText,
-    legacy.GenerationFinishReason? finishReason,
+    GenerationFinishReason? finishReason,
     bool? cancellationRequested,
     String? errorMessage,
     List<WebSource>? sources,
@@ -91,16 +90,16 @@ class CancellationMetrics {
 }
 
 abstract interface class ChatInferenceRuntime implements Listenable {
-  legacy.InferencePhase get phase;
+  InferencePhase get phase;
   String get status;
   String get selectedModelName;
   String get lastGeneratingModelName;
-  legacy.GenerationReport? get lastGenerationReport;
+  GenerationReport? get lastGenerationReport;
 
   Stream<String> generateReply(
     String prompt, {
     required String conversationId,
-    required List<legacy.LocalChatTurn> history,
+    required List<LocalChatTurn> history,
     required String systemContext,
     PromptAnalysis? promptAnalysis,
     TtftTrace? trace,
@@ -116,12 +115,12 @@ class QwenChatInferenceRuntime implements ChatInferenceRuntime {
   final QwenInference inference;
 
   @override
-  legacy.InferencePhase get phase => switch (inference.phase) {
-    InferencePhase.idle => legacy.InferencePhase.idle,
-    InferencePhase.downloading => legacy.InferencePhase.downloading,
-    InferencePhase.loading => legacy.InferencePhase.loading,
-    InferencePhase.generating => legacy.InferencePhase.generating,
-    InferencePhase.error => legacy.InferencePhase.error,
+  InferencePhase get phase => switch (inference.phase) {
+    InferencePhase.idle => InferencePhase.idle,
+    InferencePhase.downloading => InferencePhase.downloading,
+    InferencePhase.loading => InferencePhase.loading,
+    InferencePhase.generating => InferencePhase.generating,
+    InferencePhase.error => InferencePhase.error,
   };
   @override
   String get status => inference.status;
@@ -130,23 +129,7 @@ class QwenChatInferenceRuntime implements ChatInferenceRuntime {
   @override
   String get lastGeneratingModelName => inference.lastGeneratingModel.name;
   @override
-  legacy.GenerationReport? get lastGenerationReport {
-    final report = inference.lastGenerationReport;
-    if (report == null) return null;
-    return legacy.GenerationReport(
-      model: legacy.bonsaiModels.first,
-      intent: report.intent,
-      route: legacy.BonsaiTier.lite,
-      outputBudget: report.outputBudget,
-      finishReason: legacy.GenerationFinishReason.values.byName(
-        report.finishReason.name,
-      ),
-      firstTokenLatency: report.firstTokenLatency,
-      totalGenerationTime: report.totalGenerationTime,
-      outputTokens: report.outputTokens,
-      tokensPerSecond: report.tokensPerSecond,
-    );
-  }
+  GenerationReport? get lastGenerationReport => inference.lastGenerationReport;
   List<WebSource> get lastSources => inference.lastSources;
   int get tokenPaintIntervalMs => inference.plan?.tokenPaintIntervalMs ?? 50;
 
@@ -160,7 +143,7 @@ class QwenChatInferenceRuntime implements ChatInferenceRuntime {
   Stream<String> generateReply(
     String prompt, {
     required String conversationId,
-    required List<legacy.LocalChatTurn> history,
+    required List<LocalChatTurn> history,
     required String systemContext,
     PromptAnalysis? promptAnalysis,
     TtftTrace? trace,
@@ -176,7 +159,7 @@ class QwenChatInferenceRuntime implements ChatInferenceRuntime {
   Stream<String> generateReplyWithContext(
     String prompt, {
     required String conversationId,
-    required List<legacy.LocalChatTurn> history,
+    required List<LocalChatTurn> history,
     required String systemContext,
     String groundedContext = '',
     PromptAnalysis? promptAnalysis,
@@ -249,8 +232,8 @@ class ChatGenerationController extends ChangeNotifier {
     final current = activeJob;
     if (current == null) return 'Ready';
     if (current.state == ChatGenerationState.stopping) return 'Stopping';
-    if (runtime.phase == legacy.InferencePhase.downloading ||
-        runtime.phase == legacy.InferencePhase.loading) {
+    if (runtime.phase == InferencePhase.downloading ||
+        runtime.phase == InferencePhase.loading) {
       return 'Preparing locally';
     }
     if (current.state == ChatGenerationState.preparing) {
@@ -262,7 +245,7 @@ class ChatGenerationController extends ChangeNotifier {
   Future<ChatGenerationJob?> start({
     required String conversationId,
     required String prompt,
-    required List<legacy.LocalChatTurn> history,
+    required List<LocalChatTurn> history,
     required String systemContext,
     String groundedContext = '',
     String responseSuffix = '',
@@ -302,7 +285,7 @@ class ChatGenerationController extends ChangeNotifier {
     required String conversationId,
     required String assistantMessageId,
     required String originalPrompt,
-    required List<legacy.LocalChatTurn> history,
+    required List<LocalChatTurn> history,
     required String systemContext,
     String groundedContext = '',
     String responseSuffix = '',
@@ -351,7 +334,7 @@ class ChatGenerationController extends ChangeNotifier {
     required String conversationId,
     required String assistantMessageId,
     required String originalPrompt,
-    required List<legacy.LocalChatTurn> history,
+    required List<LocalChatTurn> history,
     required String systemContext,
     String groundedContext = '',
     String responseSuffix = '',
@@ -394,7 +377,7 @@ class ChatGenerationController extends ChangeNotifier {
   Future<ChatGenerationJob?> replyToExisting({
     required String conversationId,
     required String prompt,
-    required List<legacy.LocalChatTurn> history,
+    required List<LocalChatTurn> history,
     required String systemContext,
     String groundedContext = '',
     String responseSuffix = '',
@@ -437,7 +420,7 @@ class ChatGenerationController extends ChangeNotifier {
   Stream<String> _generateWithContext(
     String prompt, {
     required String conversationId,
-    required List<legacy.LocalChatTurn> history,
+    required List<LocalChatTurn> history,
     required String systemContext,
     required String groundedContext,
     required PromptAnalysis analysis,
@@ -473,7 +456,7 @@ class ChatGenerationController extends ChangeNotifier {
     required ConversationMessage assistant,
     required String originalPrompt,
     required String runtimePrompt,
-    required List<legacy.LocalChatTurn> history,
+    required List<LocalChatTurn> history,
     required String systemContext,
     String groundedContext = '',
     required String responseSuffix,
@@ -580,7 +563,7 @@ class ChatGenerationController extends ChangeNotifier {
   void _runtimeChanged() {
     final current = activeJob;
     if (current == null || current.cancellationRequested) return;
-    final nextState = runtime.phase == legacy.InferencePhase.generating
+    final nextState = runtime.phase == InferencePhase.generating
         ? ChatGenerationState.generating
         : current.state;
     final nextModel = runtime.lastGeneratingModelName;
@@ -616,31 +599,31 @@ class ChatGenerationController extends ChangeNotifier {
     }
     final reportedReason =
         runtime.lastGenerationReport?.finishReason ??
-        legacy.GenerationFinishReason.eos;
+        GenerationFinishReason.eos;
     // Some llama.cpp Android builds surface a normal stream termination as
     // StopUserAbort. Only this controller's explicit stop path is allowed to
     // label a message as user-cancelled; it invalidates the epoch and never
     // reaches _finish.
-    final reason = reportedReason == legacy.GenerationFinishReason.userCancellation
-        ? legacy.GenerationFinishReason.eos
+    final reason = reportedReason == GenerationFinishReason.userCancellation
+        ? GenerationFinishReason.eos
         : reportedReason;
     final status = switch (reason) {
-      legacy.GenerationFinishReason.eos => ConversationMessageStatus.complete,
-      legacy.GenerationFinishReason.tokenLimit =>
+      GenerationFinishReason.eos => ConversationMessageStatus.complete,
+      GenerationFinishReason.tokenLimit =>
         ConversationMessageStatus.tokenLimited,
-      legacy.GenerationFinishReason.userCancellation =>
+      GenerationFinishReason.userCancellation =>
         ConversationMessageStatus.stopped,
-      legacy.GenerationFinishReason.error => ConversationMessageStatus.failed,
+      GenerationFinishReason.error => ConversationMessageStatus.failed,
     };
     final completedText =
-        (reason == legacy.GenerationFinishReason.eos ||
-                reason == legacy.GenerationFinishReason.tokenLimit) &&
+        (reason == GenerationFinishReason.eos ||
+                reason == GenerationFinishReason.tokenLimit) &&
             responseSuffix.isNotEmpty
         ? '${current.responseText.trimRight()}$responseSuffix'
         : current.responseText;
     await _finishPersisted(
       current.copyWith(
-        state: reason == legacy.GenerationFinishReason.error
+        state: reason == GenerationFinishReason.error
             ? ChatGenerationState.error
             : ChatGenerationState.complete,
         finishReason: reason,
@@ -673,7 +656,7 @@ class ChatGenerationController extends ChangeNotifier {
     await _finishPersisted(
       current.copyWith(
         state: ChatGenerationState.error,
-        finishReason: legacy.GenerationFinishReason.error,
+        finishReason: GenerationFinishReason.error,
         errorMessage: runtime.status,
       ),
       ConversationMessageStatus.failed,
@@ -776,7 +759,7 @@ class ChatGenerationController extends ChangeNotifier {
         expectedGenerationId: latest.generationId,
         modelTier: latest.modelName,
         status: ConversationMessageStatus.stopped,
-        finishReason: legacy.GenerationFinishReason.userCancellation.name,
+        finishReason: GenerationFinishReason.userCancellation.name,
         continuationCount: latest.continuationCount,
         sources: latest.sources,
       );
@@ -784,7 +767,7 @@ class ChatGenerationController extends ChangeNotifier {
     await conversations.flush();
     _job = latest.copyWith(
       state: ChatGenerationState.complete,
-      finishReason: legacy.GenerationFinishReason.userCancellation,
+      finishReason: GenerationFinishReason.userCancellation,
     );
     _lastCancellationMetrics = CancellationMetrics(
       nativeAcknowledgement: nativeAcknowledgement,

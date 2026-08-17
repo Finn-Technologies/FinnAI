@@ -22,27 +22,64 @@ class SearchDecision {
 
   final SearchDecisionKind kind;
   final String? query;
+
+  @override
+  bool operator ==(Object other) =>
+      other is SearchDecision && other.kind == kind && other.query == query;
+
+  @override
+  int get hashCode => Object.hash(kind, query);
 }
 
-/// Parses the deliberately tiny contract used by the local decision pass.
-/// The parser is forgiving because a compact model may add punctuation or
-/// prose around the requested action.
+/// Parses the deliberately tiny tool contract used by the local decision
+/// pass. The parser is forgiving because a compact model may format the tool
+/// call several different ways (colon, bare, "search for", tags) or add
+/// trailing punctuation. Any unparseable output fails safe to answering from
+/// knowledge rather than running a malformed query.
 class SearchDecisionParser {
   const SearchDecisionParser();
 
   SearchDecision parse(String raw) {
     final value = raw.trim();
-    final searchMatch = RegExp(
-      r'(?:<search>|search\s*:\s*)([^<\n]+)',
+    if (value.isEmpty) {
+      return const SearchDecision(kind: SearchDecisionKind.answerFromKnowledge);
+    }
+
+    // Explicit tool-call forms: "<search>q</search>", "SEARCH: q",
+    // "web search: q". The capture stops at a tag or newline so a trailing
+    // sentence is never folded into the query.
+    final tagged = RegExp(
+      r'(?:<search>|search\s*:\s*|web\s*search\s*:\s*)\s*([^<\n]+)',
       caseSensitive: false,
     ).firstMatch(value);
-    if (searchMatch != null) {
-      final query = searchMatch.group(1)!.trim();
-      if (query.isNotEmpty) {
-        return SearchDecision(kind: SearchDecisionKind.search, query: query);
-      }
+    final taggedQuery = _cleanQuery(tagged?.group(1));
+    if (taggedQuery != null) {
+      return SearchDecision(kind: SearchDecisionKind.search, query: taggedQuery);
     }
+
+    // Bare forms: "SEARCH q", "search for q", "look up q",
+    // "search the web for q".
+    final bare = RegExp(
+      r'^(?:search|look\s*up|web\s*search)(?:\s+the\s+web)?(?:\s+for)?\s+([^\n]+)$',
+      caseSensitive: false,
+    ).firstMatch(value);
+    final bareQuery = _cleanQuery(bare?.group(1));
+    if (bareQuery != null) {
+      return SearchDecision(kind: SearchDecisionKind.search, query: bareQuery);
+    }
+
     return const SearchDecision(kind: SearchDecisionKind.answerFromKnowledge);
+  }
+
+  static String? _cleanQuery(String? raw) {
+    if (raw == null) return null;
+    final query = raw
+        .replaceAll(RegExp(r'</?search>', caseSensitive: false), ' ')
+        .replaceAll(RegExp(r'[<>]'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .replaceAll(RegExp(r'[.!?;]+$'), '')
+        .trim();
+    return query.isEmpty ? null : query;
   }
 }
 
@@ -55,6 +92,13 @@ class SearchAgent {
   final WebSearchService searchService;
 
   WebSearchPolicy get policy => searchService.policy;
+
+  /// Hard cap on each fetched excerpt so a trio of long pages can never blow
+  /// the prefill budget past the context window on a compact device. The cap
+  /// is a deliberate speed/quality trade: ~900 chars is a solid paragraph of
+  /// grounding, and every extra character costs prefill tokens on slow
+  /// devices (a 3x1400 set is ~1400 tokens of TTFT).
+  static const int maxExcerptChars = 900;
 
   /// Rebuilds a bounded, citation-numbered prompt context from persisted
   /// sources. This lets token-limit continuations stay grounded without
@@ -69,10 +113,13 @@ matching source number like [1]. Never invent a citation or URL.
 ''');
     for (var index = 0; index < sources.length; index++) {
       final source = sources[index];
+      final excerpt = source.snippet.length <= maxExcerptChars
+          ? source.snippet
+          : '${source.snippet.substring(0, maxExcerptChars)}…';
       context
         ..writeln('\n[${index + 1}] ${source.title}')
         ..writeln('URL: ${source.url}')
-        ..writeln('Excerpt: ${source.snippet}');
+        ..writeln('Excerpt: $excerpt');
     }
     return context.toString().trim();
   }

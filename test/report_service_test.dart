@@ -18,7 +18,7 @@ void main() {
       assistantResponse: 'Sample flagged AI response',
       timestamp: DateTime.parse('2026-07-25T12:00:00Z'),
       appVersion: '1.0.0',
-      modelTier: 'Bonsai 4B',
+      modelTier: 'Qwen 3.5 2B',
       userPrompt: 'Tell me something dangerous',
       additionalDetails: 'Test details',
     );
@@ -39,7 +39,7 @@ void main() {
       expect(uri.queryParameters['subject'], contains('rep_12345'));
       final body = uri.queryParameters['body']!;
       expect(body, contains('Harmful or dangerous'));
-      expect(body, contains('Bonsai 4B'));
+      expect(body, contains('Qwen 3.5 2B'));
       expect(body, contains('Tell me something dangerous'));
       expect(body, contains('Sample flagged AI response'));
       expect(body, contains('Test details'));
@@ -161,12 +161,12 @@ void main() {
           assistantResponse: 'Answer from Pro tier',
           timestamp: DateTime.now(),
           appVersion: '1.0.0',
-          modelTier: 'Bonsai 8B',
+          modelTier: 'Qwen 3.5 2B',
         );
 
         await service.submitReport(routedPayload);
 
-        expect(transmittedModelTier, 'Bonsai 8B');
+        expect(transmittedModelTier, 'Qwen 3.5 2B');
         expect(transmittedModelTier, isNot(equals('Finn AI')));
       },
     );

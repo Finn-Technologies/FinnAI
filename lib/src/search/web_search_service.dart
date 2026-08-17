@@ -55,9 +55,12 @@ matching source number like [1]. Never invent a source or URL.
 
 /// Decides locally whether a request benefits from current internet results.
 ///
-/// The policy intentionally errs toward staying offline for ordinary writing,
-/// private questions, and timeless facts. Only the latest prompt becomes the
-/// search query; chat history and personalization are never transmitted.
+/// The policy is deliberately search-happy: a compact on-device model
+/// over-trusts its stale parametric knowledge, so factual/current/verifiable
+/// questions are resolved here instead of being left to the model's
+/// discretion. Only purely conversational, personal, or self-contained
+/// requests stay offline, and only the latest prompt ever becomes a search
+/// query — chat history and personalization are never transmitted.
 class WebSearchPolicy {
   const WebSearchPolicy();
 
@@ -68,48 +71,116 @@ class WebSearchPolicy {
         _freshness.any(value.contains) ||
         _news.any(value.contains) ||
         _recipes.any(value.contains) ||
-        _requiresTechnicalFactCheck(prompt, value);
+        _requiresFactCheck(value);
   }
 
-  static bool _requiresTechnicalFactCheck(String original, String value) {
-    final asksForFact = RegExp(
-      r'^(?:how|what|why|who|which|where|when|does|do|is|are|can)\b',
-    ).hasMatch(value);
-    if (!asksForFact) return false;
-    const technicalTerms = [
-      'routing',
-      'framework',
-      'library',
-      'static site generator',
-      'compiler',
-      'runtime',
-      'protocol',
-      'database',
-      ' api',
-      ' sdk',
-    ];
-    if (technicalTerms.any(value.contains)) return true;
-
-    // A capitalized identifier inside a factual question is often a named
-    // project/product that a compact offline model can easily confuse with a
-    // similar term. Verify it instead of rewarding a confident guess.
-    return RegExp(r'\b[A-Z][A-Za-z0-9.+#-]{2,}\b')
-        .allMatches(original)
-        .map((match) => match.group(0)!)
-        .any(
-          (word) => !const {
-            'How',
-            'What',
-            'Why',
-            'Who',
-            'Which',
-            'Where',
-            'When',
-            'Does',
-            'Can',
-          }.contains(word),
-        );
+  /// Every interrogative request that is not small talk, self-referential,
+  /// or a local translation/definition resolves to a web search. Imperatives
+  /// ("write …", "summarize …", "translate …") are left to the model, which
+  /// can still request a search through its own decision pass.
+  static bool _requiresFactCheck(String value) {
+    final stripped = value.replaceFirst(_leadingPunctuation, '');
+    if (!_questionOpener.hasMatch(stripped)) return false;
+    return !_conversationalQuestions.any(value.contains);
   }
+
+  /// Leading inverted question/exclamation marks and quotes (common in
+  /// Spanish) must not hide an otherwise interrogative sentence.
+  static final RegExp _leadingPunctuation = RegExp(r'^[¿¡«»“”‘’\s.!?,:;()\-]+');
+
+  /// Anchored, multilingual question openers mirroring the languages the
+  /// intent classifier understands. Non-question imperatives never match.
+  /// The trailing `(?!\w)` stands in for `\b` so openers that end in an
+  /// accented letter ("perché", "où", "qué") still match.
+  static final RegExp _questionOpener = RegExp(
+    r"^(?:"
+    r"how|what|why|who|which|where|when|does|do|is|are|can|could|should|"
+    r"come|cosa|che\s+cos|perché|perche|chi|quale|quali|dove|quando|"
+    r"cómo|como|qué|que\s+es|por\s+qué|por\s+que|quién|quien|cuál|cual|"
+    r"dónde|donde|cuándo|cuando|"
+    r"comment|qu'est|qu'est-ce|pourquoi|quel|quelle|où|combien|"
+    r"wie|was|warum|wer|welche|welcher|welches|wo|wann|wieso"
+    r")(?!\w)",
+    caseSensitive: false,
+  );
+
+  /// Small talk, self-referential questions, and local translations that must
+  /// never leave the device. The matching runs against the lowercased,
+  /// whitespace-normalised prompt, so each entry is a plain substring.
+  static const _conversationalQuestions = [
+    // English
+    'how are you',
+    'how are u',
+    'how is it going',
+    "how's it going",
+    'how do you do',
+    'how are you doing',
+    'how are you feeling',
+    'how do you feel',
+    'how do i feel',
+    "what's up",
+    'whats up',
+    'how was your day',
+    'what is your name',
+    "what's your name",
+    'who are you',
+    'what are you',
+    'what can you do',
+    'what do you do',
+    'how old are you',
+    'what is your favourite',
+    'what is your favorite',
+    'how do you say',
+    // Italian
+    'come stai',
+    'come va',
+    'come state',
+    'come andiamo',
+    'che si dice',
+    'chi sei',
+    'cosa puoi fare',
+    'quanti anni hai',
+    'come ti chiami',
+    // Spanish
+    'cómo estás',
+    'como estas',
+    'cómo está',
+    'como esta',
+    'qué tal',
+    'que tal',
+    'cómo te va',
+    'como te va',
+    'quién eres',
+    'quien eres',
+    'qué puedes hacer',
+    'que puedes hacer',
+    'cuántos años',
+    'cuantos anos',
+    'cómo te llamas',
+    'como te llamas',
+    // French
+    'comment ça va',
+    'comment ca va',
+    'comment vas-tu',
+    'comment allez-vous',
+    'quoi de neuf',
+    'qui es-tu',
+    'qui es tu',
+    'que peux-tu faire',
+    'quel âge',
+    'quel age',
+    "comment tu t'appelles",
+    // German
+    'wie geht es dir',
+    'wie gehts',
+    'wie geht es',
+    'was geht',
+    'wer bist du',
+    'was kannst du',
+    'wie alt bist du',
+    'wie heißt du',
+    'wie heisst du',
+  ];
 
   static const _explicit = [
     'search the web',

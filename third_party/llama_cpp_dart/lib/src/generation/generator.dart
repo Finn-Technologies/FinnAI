@@ -126,7 +126,18 @@ final class Generator implements Finalizable {
         // Commit token: feed back and decode so the next sample sees its logits.
         _batch.clear();
         _batch.add(token, pos, [request.seqId], wantLogits: true);
+        final decodeWatch = Stopwatch()..start();
         final rc = lib.llama_decode(context.pointer, _batch.raw);
+        decodeWatch.stop();
+        // FinnAI dev aid: per-decode attribution, active only when the
+        // harness build opts in (FINN_PERF_TRACE). Production never pays the
+        // per-token string/IO cost or log spam.
+        if (const bool.fromEnvironment('FINN_PERF_TRACE')) {
+          // ignore: avoid_print
+          print(
+            'FINN_DECODE_ALL gen=$generated decode_ms=${decodeWatch.elapsedMilliseconds}',
+          );
+        }
         if (rc != 0) {
           throw LlamaDecodeException(rc, 'decode failed at gen $generated');
         }
@@ -198,7 +209,15 @@ final class Generator implements Finalizable {
         // Inform stateful samplers (penalties etc) of the prompt context.
         sampler.accept(prompt[j]);
       }
+      final prefillWatch = Stopwatch()..start();
       final rc = lib.llama_decode(context.pointer, _batch.raw);
+      prefillWatch.stop();
+      if (const bool.fromEnvironment('FINN_PERF_TRACE')) {
+        // ignore: avoid_print
+        print(
+          'FINN_PREFILL_CHUNK tokens=${end - i} decode_ms=${prefillWatch.elapsedMilliseconds}',
+        );
+      }
       if (rc != 0) {
         throw LlamaDecodeException(
           rc,

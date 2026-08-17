@@ -1,9 +1,14 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:llama_cpp_dart/llama_cpp_dart.dart';
+import 'package:path_provider/path_provider.dart';
 
 import 'src/flux_app.dart';
+import 'src/inference/device_profile.dart';
 import 'src/inference/qwen_inference.dart';
 import 'src/inference/evaluation.dart';
 import 'src/inference/prompt_intent.dart';
@@ -11,16 +16,12 @@ import 'src/inference/ttft_metrics.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  if (const bool.fromEnvironment('FINN_BENCHMARK')) {
+  final benchmark = const bool.fromEnvironment('FINN_BENCHMARK');
+  if (benchmark || const bool.fromEnvironment('FINN_EVALUATION')) {
     await QwenInference.instance.initialize();
     if (const String.fromEnvironment('FINN_BENCH_TIER') == 'lite') {
       QwenInference.instance.select(QwenTier.standard);
     }
-    await _runDeviceBenchmark();
-  }
-  if (const bool.fromEnvironment('FINN_EVALUATION')) {
-    await QwenInference.instance.initialize();
-    await _runModelEvaluation();
   }
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   SystemChrome.setSystemUIOverlayStyle(
@@ -34,7 +35,39 @@ Future<void> main() async {
     ),
   );
 
-  runApp(const FinnBootstrap());
+  // The benchmark/eval harness must run AFTER the first frame: Android puts
+  // an app whose activity is never visible into the background cgroup, where
+  // MIUI throttles the big CPU cluster to ~700 MHz (measured: A78 cores at
+  // 691 MHz while A55s run at 1.8 GHz), collapsing decode ~45x. A visible
+  // activity keeps the process in top-app with full CPU, matching real use.
+  final bare = benchmark || const bool.fromEnvironment('FINN_EVALUATION');
+  runApp(bare ? const _BareBenchmarkApp() : const FinnBootstrap());
+  if (benchmark) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_runDeviceBenchmark());
+    });
+  } else if (const bool.fromEnvironment('FINN_EVALUATION')) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_runModelEvaluation());
+    });
+  }
+}
+
+/// Minimal visible shell for the device/eval harnesses. Keeping the real app
+/// out of the picture avoids double prewarm and UI contention during runs;
+/// a visible surface is what keeps the process out of the background cgroup.
+class _BareBenchmarkApp extends StatelessWidget {
+  const _BareBenchmarkApp();
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: const Scaffold(
+        body: Center(child: Text('benchmark')),
+      ),
+    );
+  }
 }
 
 /// Runs the multilingual quality suite against semicolon-delimited
@@ -47,6 +80,10 @@ Future<void> _runModelEvaluation() async {
     return;
   }
   const prompts = [
+    'Come fare una torta salata con zucchine per 3 persone?',
+    'Come fare una torta salata con prosciutto per 4 persone?',
+    'Come fare una torta di mele?',
+    'Come fare una torta di fragole?',
     'Come fare una torta di ricotta e fragole?',
     'Come preparare una pizza margherita?',
     'Spiegami come cambiare una lampadina.',
@@ -96,7 +133,7 @@ Future<void> _runModelEvaluation() async {
       final report = QwenInference.instance.lastGenerationReport;
       final response = answer.toString();
       debugPrint(
-        'FINN_EVAL ${jsonEncode({'selectedModel': label, 'intent': analysis.intent.name, 'route': report?.route.name, 'outputBudget': report?.outputBudget, 'finishReason': report?.finishReason.name, 'firstTokenLatencyMs': report?.firstTokenLatency?.inMilliseconds, 'totalGenerationTimeMs': report?.totalGenerationTime.inMilliseconds, 'outputTokens': report?.outputTokens, 'tokensPerSecond': report?.tokensPerSecond, if (index == 0) 'recipeAcceptance': assessRicottaStrawberryCake(response).toJson(), if (prompt == 'Can you tell me how to upgrade the RAM in my laptop?') 'hardwareAcceptance': assessLaptopRamGuidance(response).toJson(), if (prompt == 'How does the routing in Bridgetown work?') 'bridgetownAcceptance': assessBridgetownRouting(response).toJson(), if (prompt == 'How do living ants know that an ant has died?') 'antNecrophoresisAcceptance': assessAntNecrophoresis(response).toJson(), 'response': response})}',
+        'FINN_EVAL ${jsonEncode({'selectedModel': label, 'intent': analysis.intent.name, 'route': report?.route.name, 'outputBudget': report?.outputBudget, 'finishReason': report?.finishReason.name, 'firstTokenLatencyMs': report?.firstTokenLatency?.inMilliseconds, 'totalGenerationTimeMs': report?.totalGenerationTime.inMilliseconds, 'outputTokens': report?.outputTokens, 'tokensPerSecond': report?.tokensPerSecond,        if (prompt == 'Come fare una torta di ricotta e fragole?') 'recipeAcceptance': assessRicottaStrawberryCake(response).toJson(), if (prompt == 'Can you tell me how to upgrade the RAM in my laptop?') 'hardwareAcceptance': assessLaptopRamGuidance(response).toJson(), if (prompt == 'How does the routing in Bridgetown work?') 'bridgetownAcceptance': assessBridgetownRouting(response).toJson(), if (prompt == 'How do living ants know that an ant has died?') 'antNecrophoresisAcceptance': assessAntNecrophoresis(response).toJson(), 'response': response})}',
       );
     }
     await QwenInference.instance.releaseMemory();
@@ -106,16 +143,66 @@ Future<void> _runModelEvaluation() async {
 /// Compile-time gated device harness. It is absent from normal release builds
 /// and lets performance changes be verified through ADB without UI timing
 /// noise or synthetic native binaries.
+///
+/// Scenario, runs, prompt, prewarm, and search-decision overrides can be
+/// supplied either as compile-time dart-defines (the defaults) or as Android
+/// intent extras via `adb shell am start --es/--ei/--ez` so one benchmark APK
+/// can sweep every scenario and engine config without rebuilding.
 Future<void> _runDeviceBenchmark() async {
   final inference = QwenInference.instance;
+  Map<Object?, Object?> runtimeOverrides = const {};
+  try {
+    runtimeOverrides = await const MethodChannel(
+      'finn_ai/benchmark',
+    ).invokeMapMethod<Object?, Object?>('getOverrides') ?? const {};
+  } catch (_) {
+    // Non-Android hosts have no intent extras; dart-defines apply.
+  }
+  // Surface llama.cpp's native logs (engine init, graph, perf) to a file the
+  // host can tail via `run-as` — Android's stderr is not connected to logcat.
+  final supportDir = await getApplicationSupportDirectory();
+  LlamaEngine.logCapturePath =
+      '${supportDir.path}${Platform.pathSeparator}llama_native.log';
+  Object? override(String name) => runtimeOverrides[name];
   const scenario = String.fromEnvironment(
     'FINN_BENCH_SCENARIO',
     defaultValue: 'model_warm',
   );
+  final scenarioValue =
+      override('scenario') is String && (override('scenario') as String).isNotEmpty
+      ? override('scenario') as String
+      : scenario;
   const runs = int.fromEnvironment('FINN_BENCH_RUNS', defaultValue: 5);
+  final runsValue = override('runs') is int
+      ? (override('runs') as int).clamp(1, 25)
+      : runs;
   const prewarm = String.fromEnvironment(
     'FINN_BENCH_PREWARM',
     defaultValue: 'selected',
+  );
+  final prewarmValue =
+      override('prewarm') is String && (override('prewarm') as String).isNotEmpty
+      ? override('prewarm') as String
+      : prewarm;
+  const noSearchDefine = bool.fromEnvironment('FINN_BENCH_NO_SEARCH');
+  final noSearch = override('noSearch') == true || noSearchDefine;
+  if (override('noPrefixCache') == true ||
+      const bool.fromEnvironment('FINN_BENCH_NO_PREFIX')) {
+    QwenInference.debugDisablePrefixCache = true;
+  }
+  // Engine-config sweep overrides (intent extras): threads / batch threads /
+  // batch / ubatch / KV type / flash attention, applied to the heuristic plan.
+  DeviceProfiler.planOverrides = PlanOverrides(
+    threads: override('threads') is int ? (override('threads') as int) : null,
+    batchThreads: override('batchThreads') is int
+        ? (override('batchThreads') as int)
+        : null,
+    batchSize: override('batch') is int ? (override('batch') as int) : null,
+    microBatchSize: override('ubatch') is int
+        ? (override('ubatch') as int)
+        : null,
+    compactKv: override('f16Kv') == true ? false : null,
+    flashAttention: override('flashOff') == true ? false : null,
   );
   const candidatePath = String.fromEnvironment('FINN_BENCH_MODEL_PATH');
   const candidateLabel = String.fromEnvironment(
@@ -123,22 +210,27 @@ Future<void> _runDeviceBenchmark() async {
     defaultValue: 'benchmark-candidate',
   );
   const promptOverride = String.fromEnvironment('FINN_BENCH_PROMPT');
-  final prompt = promptOverride.isNotEmpty
+  final promptExtra = override('prompt') is String
+      ? (override('prompt') as String).trim()
+      : '';
+  final prompt = promptExtra.isNotEmpty
+      ? promptExtra
+      : promptOverride.isNotEmpty
       ? promptOverride
-      : switch (scenario) {
+      : switch (scenarioValue) {
           'direct_plus' => 'Write five short sentences about Rome.',
           'ambiguous' => 'Tell me something useful for today.',
           _ => 'Reply with exactly one word: ready.',
         };
 
-  if (scenario != 'true_cold') {
-    if (prewarm == 'lite' || prewarm == 'both') {
+  if (scenarioValue != 'true_cold') {
+    if (prewarmValue == 'lite' || prewarmValue == 'both') {
       await inference.prewarmTier(QwenTier.standard);
     }
-    if (prewarm == 'plus' || prewarm == 'both') {
+    if (prewarmValue == 'plus' || prewarmValue == 'both') {
       await inference.prewarmTier(QwenTier.standard);
     }
-    if (prewarm == 'selected') await inference.prewarm();
+    if (prewarmValue == 'selected') await inference.prewarm();
   }
 
   final ttftValues = <int>[];
@@ -155,6 +247,7 @@ Future<void> _runDeviceBenchmark() async {
           conversationId: conversationId,
           history: history,
           trace: trace,
+          enableSearchDecision: !noSearch,
         )
       : inference.generateEvaluationReply(
           input,
@@ -165,7 +258,7 @@ Future<void> _runDeviceBenchmark() async {
           history: history,
           trace: trace,
         );
-  if (scenario == 'conversation_warm') {
+  if (scenarioValue == 'conversation_warm') {
     final warmup = StringBuffer();
     await for (final token in generate(
       prompt,
@@ -177,20 +270,20 @@ Future<void> _runDeviceBenchmark() async {
       ..add(LocalChatTurn(role: 'user', content: prompt))
       ..add(LocalChatTurn(role: 'assistant', content: warmup.toString()));
   }
-  for (var run = 0; run < runs; run++) {
-    if (scenario == 'true_cold') {
+  for (var run = 0; run < runsValue; run++) {
+    if (scenarioValue == 'true_cold') {
       await inference.releaseMemory();
-    } else if (scenario == 'model_warm' ||
-        scenario == 'prefix_warm' ||
-        scenario == 'direct_plus' ||
-        scenario == 'ambiguous') {
+    } else if (scenarioValue == 'model_warm' ||
+        scenarioValue == 'prefix_warm' ||
+        scenarioValue == 'direct_plus' ||
+        scenarioValue == 'ambiguous') {
       await inference.releaseConversationSessions();
     }
-    final conversationId = scenario == 'conversation_warm'
+    final conversationId = scenarioValue == 'conversation_warm'
         ? warmConversationId
-        : 'benchmark-$scenario-$run';
+        : 'benchmark-$scenarioValue-$run';
     final trace = TtftTrace(
-      generationId: 'benchmark-$scenario-$run',
+      generationId: 'benchmark-$scenarioValue-$run',
       conversationId: conversationId,
     );
     var first = '';
@@ -209,7 +302,7 @@ Future<void> _runDeviceBenchmark() async {
       }
       answer.write(token);
     }
-    if (scenario == 'conversation_warm') {
+    if (scenarioValue == 'conversation_warm') {
       conversationHistory
         ..add(LocalChatTurn(role: 'user', content: prompt))
         ..add(LocalChatTurn(role: 'assistant', content: answer.toString()));
@@ -218,7 +311,7 @@ Future<void> _runDeviceBenchmark() async {
     final total = metrics['total_ttft_ms'];
     if (total is int) ttftValues.add(total);
     debugPrint(
-      'FINN_BENCH ${jsonEncode({'scenario': scenario, 'run': run, 'first_visible_characters': first.length, ...metrics})}',
+      'FINN_BENCH ${jsonEncode({'scenario': scenarioValue, 'run': run, 'first_visible_characters': first.length, ...metrics})}',
     );
   }
   if (ttftValues.isNotEmpty) {
@@ -229,7 +322,7 @@ Future<void> _runDeviceBenchmark() async {
     }
 
     debugPrint(
-      'FINN_BENCH_SUMMARY ${jsonEncode({'scenario': scenario, 'runs': ttftValues.length, 'min_ms': ttftValues.first, 'p50_ms': percentile(.50), 'p90_ms': percentile(.90), 'p95_ms': percentile(.95), 'max_ms': ttftValues.last})}',
+      'FINN_BENCH_SUMMARY ${jsonEncode({'scenario': scenarioValue, 'runs': ttftValues.length, 'min_ms': ttftValues.first, 'p50_ms': percentile(.50), 'p90_ms': percentile(.90), 'p95_ms': percentile(.95), 'max_ms': ttftValues.last})}',
     );
   }
   await inference.releaseMemory();

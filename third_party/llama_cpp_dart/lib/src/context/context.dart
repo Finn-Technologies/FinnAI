@@ -34,8 +34,6 @@ final class LlamaContext implements Finalizable {
     final b = LlamaLibrary.bindings;
 
     final cp = b.llama_context_default_params();
-    final defaultThreads = cp.n_threads;
-    final defaultThreadsBatch = cp.n_threads_batch;
     cp
       ..n_ctx = params.nCtx
       ..n_batch = params.nBatch
@@ -72,47 +70,21 @@ final class LlamaContext implements Finalizable {
       );
     }
 
-    _Threadpools? threadpools;
-    var attached = false;
-    try {
-      try {
-        threadpools = _createThreadpools(
-          b,
-          nThreads: _effectiveThreadCount(params.nThreads, defaultThreads),
-          nThreadsBatch:
-              _effectiveThreadCount(params.nThreadsBatch, defaultThreadsBatch),
-        );
-        b.llama_attach_threadpool(
-          ptr,
-          threadpools.decode,
-          threadpools.batch,
-        );
-        attached = true;
-      } on ArgumentError {
-        // With GGML_BACKEND_DL the threadpool constructors live in the
-        // selected CPU module rather than libllama's symbol namespace. Keep
-        // llama.cpp's built-in transient-pool path for that configuration.
-        threadpools = null;
-      }
-      return LlamaContext._(
-        model,
-        params,
-        ptr,
-        threadpools?.decode ?? nullptr,
-        threadpools?.batch ?? nullptr,
-      );
-    } catch (_) {
-      try {
-        if (attached) b.llama_detach_threadpool(ptr);
-      } finally {
-        try {
-          b.llama_free(ptr);
-        } finally {
-          threadpools?.free(b);
-        }
-      }
-      rethrow;
-    }
+    // FinnAI: use llama.cpp's built-in transient threadpools instead of
+    // attaching custom Dart-managed pools. On this AAR (GGML_BACKEND_DL)
+    // the custom pools are created from symbols in the CPU module and the
+    // graph executor pays a large per-node sync cost when 1400+ node graphs
+    // are dispatched through them (measured ~9s/single-token decode vs the
+    // built-in pool path). With null pools, llama.cpp sizes its own
+    // transient pools from n_threads / n_threads_batch — the same battle-
+    // tested path llama-cli uses.
+    return LlamaContext._(
+      model,
+      params,
+      ptr,
+      nullptr,
+      nullptr,
+    );
   }
 
   Pointer<llama_context> get pointer {

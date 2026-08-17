@@ -4,8 +4,6 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
-import 'bonsai_inference.dart';
-
 enum ProcessorClass { entry, balanced, flagship }
 
 @immutable
@@ -50,34 +48,65 @@ class DeviceProfile {
 @immutable
 class InferencePlan {
   const InferencePlan({
-    required this.tier,
     required this.contextSize,
     required this.threads,
     required this.batchThreads,
     required this.batchSize,
     required this.microBatchSize,
     required this.compactKv,
-    required this.maxOutputTokens,
     required this.tokenPaintIntervalMs,
     required this.sessionCacheEntries,
     required this.flashAttention,
   });
 
-  final BonsaiTier tier;
   final int contextSize;
   final int threads;
   final int batchThreads;
   final int batchSize;
   final int microBatchSize;
   final bool compactKv;
-  final int maxOutputTokens;
   final int tokenPaintIntervalMs;
   final int sessionCacheEntries;
   final bool flashAttention;
 }
 
+/// Benchmark-only overrides applied by the device harness (see
+/// `main.dart`), so engine configs can be swept without rebuilding or
+/// editing the adaptive backend cache. Null values leave the plan intact.
+@immutable
+class PlanOverrides {
+  const PlanOverrides({
+    this.threads,
+    this.batchThreads,
+    this.batchSize,
+    this.microBatchSize,
+    this.compactKv,
+    this.flashAttention,
+  });
+
+  final int? threads;
+  final int? batchThreads;
+  final int? batchSize;
+  final int? microBatchSize;
+  final bool? compactKv;
+  final bool? flashAttention;
+
+  bool get isEmpty =>
+      threads == null &&
+      batchThreads == null &&
+      batchSize == null &&
+      microBatchSize == null &&
+      compactKv == null &&
+      flashAttention == null;
+}
+
 class DeviceProfiler {
   DeviceProfiler._();
+
+  /// Set by the benchmark harness before any engine spawn. Only honored in
+  /// FINN_BENCHMARK builds; production never sets this.
+  @visibleForTesting
+  static PlanOverrides planOverrides = const PlanOverrides();
 
   static bool isLowEnd(DeviceProfile profile) =>
       profile.lowMemory ||
@@ -142,53 +171,32 @@ class DeviceProfiler {
     final ramGb = ram / 1000000000;
     final processor = profile.processor;
 
-    final tier = switch (processor) {
-      ProcessorClass.entry => BonsaiTier.lite,
-      ProcessorClass.balanced =>
-        ramGb >= 5.5 && !_prefersLiteModel(profile.soc)
-            ? BonsaiTier.plus
-            : BonsaiTier.lite,
-      ProcessorClass.flagship =>
-        ramGb >= 7.5
-            ? BonsaiTier.pro
-            : ramGb >= 5
-            ? BonsaiTier.plus
-            : BonsaiTier.lite,
+    // A single Qwen 3.5 2B model replaces the old tiered catalog. Compact KV
+    // keeps longer contexts affordable: entry-class devices stay at 2K/4K so
+    // the KV cache never competes with the model for RAM, while balanced and
+    // flagship devices with enough headroom run an 8K context so long answers
+    // and grounded web excerpts do not overflow the window mid-generation.
+    final context = switch (processor) {
+      ProcessorClass.entry => ramGb >= 5.5 ? 4096 : 2048,
+      ProcessorClass.balanced => ramGb >= 7.0 ? 8192 : 4096,
+      ProcessorClass.flagship => ramGb >= 7.0 ? 8192 : 4096,
     };
 
-    final context = switch ((tier, processor, ramGb)) {
-      (BonsaiTier.lite, ProcessorClass.entry, >= 5.5) => 4096,
-      (BonsaiTier.lite, ProcessorClass.entry, _) => 2048,
-      (BonsaiTier.lite, _, >= 4.5) => 4096,
-      (BonsaiTier.plus, ProcessorClass.flagship, >= 11.5) => 12288,
-      // 4K keeps the KV cache compact on mid-range SoCs. Conversation
-      // shifting preserves long chats without paying the 8K memory/bandwidth
-      // cost on every generated token.
-      (BonsaiTier.plus, ProcessorClass.balanced, _) => 4096,
-      (BonsaiTier.plus, _, >= 7.5) => 8192,
-      (BonsaiTier.plus, _, _) => 4096,
-      (BonsaiTier.pro, _, >= 11.5) => 8192,
-      (BonsaiTier.pro, _, _) => 4096,
-      _ => 2048,
-    };
-
-    final decodeCeiling = switch (processor) {
-      ProcessorClass.entry => 3,
-      ProcessorClass.balanced => 5,
-      ProcessorClass.flagship => 6,
-    };
-    final batchCeiling = switch (processor) {
-      ProcessorClass.entry => 4,
-      ProcessorClass.balanced => 8,
-      ProcessorClass.flagship => 8,
-    };
+    // Measured on SM7325 (4x A78 + 4x A55, Qwen 3.5 2B, full CPU): decode
+    // scales to 4 threads (52 ms/token @ 4 threads), and the threadpools are
+    // affinity-pinned to the fastest cluster by the native AAR, so extra
+    // threads beyond that cluster only add contention. Batch (prefill) is
+    // fastest with the same 4 threads (1.9 s for a 213-token warm prompt);
+    // 8 batch threads on the pinned 4 cores measured slower (2.5 s).
+    final decodeCeiling = 4;
+    final batchCeiling = 4;
     const threadOverride = int.fromEnvironment(
       'FINN_BENCH_THREADS',
       defaultValue: 0,
     );
     final normalThreads = threadOverride > 0
         ? threadOverride
-        : math.max(1, math.min(decodeCeiling, profile.cores - 2));
+        : math.max(1, math.min(decodeCeiling, profile.cores));
     final threads = normalThreads;
     const batchThreadOverride = int.fromEnvironment(
       'FINN_BENCH_BATCH_THREADS',
@@ -229,19 +237,20 @@ class DeviceProfiler {
         : normalMicroBatchSize;
     const f16Kv = bool.fromEnvironment('FINN_BENCH_F16_KV');
     const flashOff = bool.fromEnvironment('FINN_BENCH_FLASH_OFF');
+    final overrides = planOverrides;
+    final effectiveThreads = overrides.threads ?? threads;
+    final effectiveBatchThreads = overrides.batchThreads ?? batchThreads;
+    final effectiveBatch = overrides.batchSize ?? batchSize;
+    final effectiveMicroBatch = overrides.microBatchSize ?? microBatchSize;
+    final effectiveCompactKv = overrides.compactKv ?? !f16Kv;
+    final effectiveFlash = overrides.flashAttention ?? !flashOff;
     return InferencePlan(
-      tier: tier,
       contextSize: context,
-      threads: threads,
-      batchThreads: batchThreads,
-      batchSize: batchSize,
-      microBatchSize: microBatchSize,
-      compactKv: !f16Kv,
-      maxOutputTokens: switch (tier) {
-        BonsaiTier.lite => 2048,
-        BonsaiTier.plus => 4096,
-        BonsaiTier.pro => 8092,
-      },
+      threads: effectiveThreads,
+      batchThreads: effectiveBatchThreads,
+      batchSize: effectiveBatch,
+      microBatchSize: effectiveMicroBatch,
+      compactKv: effectiveCompactKv,
       tokenPaintIntervalMs: switch (processor) {
         ProcessorClass.entry => 80,
         ProcessorClass.balanced => 50,
@@ -252,7 +261,7 @@ class DeviceProfiler {
         ProcessorClass.balanced => 2,
         ProcessorClass.flagship => 3,
       },
-      flashAttention: !flashOff,
+      flashAttention: effectiveFlash,
     );
   }
 
@@ -323,14 +332,6 @@ class DeviceProfiler {
       return ProcessorClass.entry;
     }
     return cores >= 8 ? ProcessorClass.balanced : ProcessorClass.entry;
-  }
-
-  static bool _prefersLiteModel(String raw) {
-    final value = raw.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), ' ');
-    // These older mid-range SoCs have enough RAM for the 4B model but their
-    // CPU prefill is too slow for an acceptable default-chat startup. Plus
-    // remains available as a manual selection.
-    return const ['sm7150', 'sm7250', 'sdm730', 'sdm765'].any(value.contains);
   }
 
   static int? _asInt(Object? value) => value is int ? value : null;

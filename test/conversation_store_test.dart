@@ -392,7 +392,7 @@ void main() {
         expect(store.active?.id, 'conv_1');
 
         // Adding a message appends to migrated conversation rather than overwriting
-        store.add(ConversationRole.user, 'New message', modelTier: 'Bonsai 4B');
+        store.add(ConversationRole.user, 'New message', modelTier: 'Qwen 3.5 2B');
         await store.flush();
 
         expect(store.conversations.first.messages.length, 2);
@@ -409,7 +409,7 @@ void main() {
       );
       await store1.initialize();
 
-      store1.add(ConversationRole.user, 'Hello', modelTier: 'Bonsai 4B');
+      store1.add(ConversationRole.user, 'Hello', modelTier: 'Qwen 3.5 2B');
       await store1.flush();
 
       final store2 = ConversationStore(
@@ -418,7 +418,7 @@ void main() {
       );
       await store2.initialize();
 
-      expect(store2.conversations.first.messages.first.modelTier, 'Bonsai 4B');
+      expect(store2.conversations.first.messages.first.modelTier, 'Qwen 3.5 2B');
     });
 
     test(
@@ -464,5 +464,37 @@ void main() {
         expect(await tmpFile.exists(), isFalse);
       },
     );
+
+    test('clearActive shows the blank slate without creating a conversation', () async {
+      final keyStore = FakeKeyStorage();
+      final store = ConversationStore(
+        keyStorage: keyStore,
+        directoryProvider: () async => tempDir,
+      );
+      await store.initialize();
+
+      store.clearActive();
+
+      expect(store.active, isNull);
+      expect(store.conversations, isEmpty);
+    });
+
+    test('clearActive deselects a conversation without deleting it', () async {
+      final keyStore = FakeKeyStorage();
+      final store = ConversationStore(
+        keyStorage: keyStore,
+        directoryProvider: () async => tempDir,
+      );
+      await store.initialize();
+      final conversation = store.startNew();
+      store.add(ConversationRole.user, 'hello');
+
+      store.clearActive();
+
+      expect(store.active, isNull);
+      expect(store.conversations.length, 1);
+      expect(store.conversations.single.id, conversation.id);
+      expect(store.conversations.single.messages, isNotEmpty);
+    });
   });
 }

@@ -517,6 +517,8 @@ class _AutomaticModelPageState extends State<_AutomaticModelPage> {
           throw const FormatException('Model verification failed');
         }
       }
+      // Measure the best CPU/GPU/NPU backend now that the model is present.
+      await _inference.optimizeForDevice();
       if (!mounted) return;
       setState(() {
         _progress = 1;
@@ -576,9 +578,22 @@ class _AutomaticInstallPanel extends StatelessWidget {
     final reduced = MediaQuery.disableAnimationsOf(context);
     final effectiveProgress = ready ? 1.0 : progress.clamp(.02, .98);
     final isDark = FluxColors.isDark(context);
+    final inference = QwenInference.instance;
+    final downloading = !ready && started &&
+        inference.phase == InferencePhase.downloading;
+    final meta = [
+      if (downloading && inference.downloadSpeedLabel != null)
+        inference.downloadSpeedLabel!,
+      if (downloading && inference.downloadEtaLabel != null)
+        inference.downloadEtaLabel!,
+    ].join(' · ');
 
+    // The download card sits on top of the detail page's card, so its own
+    // background is dropped in dark mode to avoid a nested dark slab.
     return FluxGlass(
       radius: 24,
+      color: isDark ? Colors.transparent : null,
+      borderColor: isDark ? Colors.transparent : null,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
         child: Column(
@@ -680,6 +695,23 @@ class _AutomaticInstallPanel extends StatelessWidget {
                       : Colors.black.withValues(alpha: .08),
                 ),
               ),
+              if (meta.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                AnimatedSwitcher(
+                  duration: reduced
+                      ? Duration.zero
+                      : const Duration(milliseconds: 220),
+                  child: Text(
+                    meta,
+                    key: ValueKey(meta),
+                    maxLines: 1,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: FluxColors.mutedOf(context),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ],
         ),
@@ -758,6 +790,144 @@ class _Precautions extends StatelessWidget {
           }),
         );
       },
+    );
+  }
+}
+
+class SoftwareUpgradeScreen extends StatefulWidget {
+  const SoftwareUpgradeScreen({super.key});
+
+  @override
+  State<SoftwareUpgradeScreen> createState() => _SoftwareUpgradeScreenState();
+}
+
+/// Blocking screen shown when a returning user's required model is missing —
+/// for example after the app upgrades from the retired tiered catalog to the
+/// single Qwen model. It reuses the onboarding download panel and only
+/// continues to the home screen once the new model is installed.
+class _SoftwareUpgradeScreenState extends State<SoftwareUpgradeScreen> {
+  final _inference = QwenInference.instance;
+  bool _started = false;
+  bool _ready = false;
+  String? _error;
+  double _progress = .02;
+
+  @override
+  void initState() {
+    super.initState();
+    _inference.addListener(_inferenceChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) => start());
+  }
+
+  @override
+  void dispose() {
+    _inference.removeListener(_inferenceChanged);
+    super.dispose();
+  }
+
+  void _inferenceChanged() {
+    if (!mounted) return;
+    final reported = _inference.downloadProgress;
+    setState(() {
+      if (reported != null) {
+        _progress = reported.clamp(_progress, .97);
+      } else if (_inference.phase == InferencePhase.loading && _started) {
+        _progress = _progress.clamp(0, .98);
+      }
+    });
+  }
+
+  Future<void> start() async {
+    if (_started || _ready) return;
+    setState(() {
+      _started = true;
+      _error = null;
+      _progress = .02;
+    });
+    _inference.useAutomaticSelection();
+    try {
+      for (final model in _inference.requiredModels) {
+        await _inference.install(model);
+        if (!await _inference.isInstalled(model)) {
+          throw const FormatException('Model verification failed');
+        }
+      }
+      // Measure the best CPU/GPU/NPU backend now that the new model is ready.
+      await _inference.optimizeForDevice();
+      if (!mounted) return;
+      setState(() {
+        _progress = 1;
+        _ready = true;
+      });
+      unawaited(_inference.prewarm());
+      await Future<void>.delayed(const Duration(milliseconds: 450));
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          PageRouteBuilder<void>(
+            transitionDuration: const Duration(milliseconds: 350),
+            reverseTransitionDuration: const Duration(milliseconds: 280),
+            pageBuilder: (_, animation, _) => const HomeShell(),
+            transitionsBuilder: (context, animation, _, page) => FadeTransition(
+              opacity: animation,
+              child: page,
+            ),
+          ),
+        );
+      }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _started = false;
+        _error = _inference.status;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return Scaffold(
+      body: AmbientBackground(
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: 32,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'FinnAI Software Upgrade',
+                    textAlign: TextAlign.center,
+                    style: textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Finn AI now runs a newer on-device model. Download it to '
+                    'continue chatting privately.',
+                    textAlign: TextAlign.center,
+                    style: textTheme.bodyMedium?.copyWith(
+                      color: FluxColors.mutedOf(context),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  _AutomaticInstallPanel(
+                    models: _inference.requiredModels,
+                    progress: _progress,
+                    ready: _ready,
+                    started: _started,
+                    error: _error,
+                    status: _inference.status,
+                    onRetry: start,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

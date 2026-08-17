@@ -5,12 +5,15 @@ import 'dart:isolate';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show debugPrint;
+
 import '../batch/batch.dart';
 import '../chat/chat_template.dart';
 import '../context/context.dart';
 import '../ffi/backends.dart';
 import '../ffi/bindings.dart';
 import '../ffi/library_loader.dart';
+import '../ffi/log.dart';
 import '../generation/batch_embedder.dart';
 import '../generation/context_shift.dart';
 import '../generation/event.dart';
@@ -35,6 +38,8 @@ Future<void> runEngineWorker(EngineBootstrap bootstrap) async {
   final reply = bootstrap.replyPort;
   final commandRx = ReceivePort();
 
+  final capture = bootstrap.nativeLogPath;
+
   final LlamaModel model;
   final LlamaContext context;
 
@@ -46,6 +51,17 @@ Future<void> runEngineWorker(EngineBootstrap bootstrap) async {
         path: bootstrap.libraryPath,
         backendDirectory: bootstrap.backendDirectory,
       );
+    }
+    // Redirect llama.cpp's stderr to a host-readable file so native
+    // init/graph logs are visible on Android. Must run after the library
+    // is loaded (captureToFile re-enables the default log callback).
+    if (capture != null && capture.isNotEmpty) {
+      try {
+        LlamaLog.captureToFile(capture, append: true);
+        debugPrint('FINN_LLAMA_LOG capture=$capture');
+      } catch (e) {
+        debugPrint('FINN_LLAMA_LOG capture failed: $e');
+      }
     }
     // NOTE: LlamaLog.silence() is NOT called here. Pointer.fromFunction
     // callbacks are bound to a single isolate and crash when ggml's
@@ -868,12 +884,26 @@ Future<void> _streamSessionGenerate({
   ContextShift shift = ContextShift.defaults,
 }) async {
   var cancelled = false;
+  var perfCount = 0;
   await for (final event in session.generate(
     sampler: sampler,
     maxTokens: maxTokens,
     shiftPolicy: shiftPolicy,
     shift: shift,
   )) {
+    // FinnAI dev aid: periodically dump llama.cpp's own perf counters so
+    // on-device decode/prefill rates can be attributed without guessing.
+    // Gated behind the harness build flag; production skips it entirely.
+    if (const bool.fromEnvironment('FINN_PERF_TRACE') &&
+        perfCount++ % 25 == 0 &&
+        event is TokenEvent) {
+      final p = state.context.perf();
+      debugPrint(
+        'FINN_NATIVE_PERF p_eval_ms=${p.promptEvalMs.toStringAsFixed(1)} '
+        'n_p_eval=${p.promptTokens} eval_ms=${p.evalMs.toStringAsFixed(1)} '
+        'n_eval=${p.generatedTokens} reused=${p.reusedTokens}',
+      );
+    }
     if (state.cancelledRequests.remove(requestId)) {
       cancelled = true;
       break;

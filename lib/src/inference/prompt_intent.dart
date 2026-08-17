@@ -461,7 +461,7 @@ class PromptIntentPolicy {
   const PromptIntentPolicy._();
 
   static int desiredOutputTokens(PromptIntent intent) => switch (intent) {
-    PromptIntent.greeting => 96,
+    PromptIntent.greeting => 160,
     PromptIntent.quickQuestion || PromptIntent.translation => 224,
     PromptIntent.recipe || PromptIntent.howTo => 320,
     PromptIntent.writing || PromptIntent.comparison => 512,
@@ -471,13 +471,35 @@ class PromptIntentPolicy {
     PromptIntent.creative => 512,
   };
 
-  /// A tiny, language-neutral contract for the optional local web-search
+  /// Whether a turn should run the model-driven web-search decision pass.
+  ///
+  /// The deterministic policy already searches for explicit, freshness,
+  /// news, recipe, and interrogative prompts. The model decision pass only
+  /// adds value for imperative prompts that could still benefit from fresh
+  /// data (comparisons, analyses, general how-tos). For intents whose answers
+  /// are self-contained creative or knowledge work, the pass is pure overhead:
+  /// one full prefill plus a short generation before the real answer, which
+  /// dominates first-token latency on slow devices.
+  static bool needsSearchDecision(PromptAnalysis analysis) =>
+      switch (analysis.intent) {
+        PromptIntent.greeting ||
+        PromptIntent.writing ||
+        PromptIntent.coding ||
+        PromptIntent.creative ||
+        PromptIntent.translation ||
+        PromptIntent.highStakes => false,
+        // Hardware guidance deliberately asks for the exact model instead of
+        // guessing device-specific details, so fresh web data adds no value.
+        PromptIntent.howTo => !analysis.hardwareGuidance,
+        _ => true,
+      };
+
+  /// A tiny, language-neutral tool contract for the optional local web-search
   /// decision pass. Retrieval itself remains deterministic and policy-gated.
   static String searchDecisionDirectiveFor(PromptLanguage language) =>
-      'Decide whether the latest user request needs current or verifiable web information. '
-      'Reply with exactly ANSWER if your general knowledge is sufficient, or '
-      'SEARCH: <short search query> when fresh sources would materially improve the answer. '
-      'Do not include explanations. Use ${language == PromptLanguage.unknown ? 'the user language' : language.name} for the query.';
+      'Tool: web_search. If the latest request needs current or verifiable information, '
+      'reply exactly: SEARCH: <short query>. Otherwise reply exactly: ANSWER. '
+      'Output only that, in ${language == PromptLanguage.unknown ? 'the user language' : language.name}.';
 
   static const IntentSamplerProfile searchDecisionSampler =
       IntentSamplerProfile(
@@ -498,28 +520,28 @@ class PromptIntentPolicy {
     PromptIntent.coding ||
     PromptIntent.analysis ||
     PromptIntent.highStakes => const IntentSamplerProfile(
-      temperature: .20,
-      topK: 20,
-      topP: .85,
-      minP: .02,
+      temperature: .30,
+      topK: 30,
+      topP: .90,
+      minP: .05,
       repeatPenalty: 1.05,
-      penaltyLastN: 128,
+      penaltyLastN: 256,
     ),
     PromptIntent.creative => const IntentSamplerProfile(
-      temperature: .70,
-      topK: 40,
+      temperature: .85,
+      topK: 60,
       topP: .95,
-      minP: .02,
+      minP: .03,
       repeatPenalty: 1.05,
-      penaltyLastN: 128,
+      penaltyLastN: 256,
     ),
     _ => const IntentSamplerProfile(
-      temperature: .50,
-      topK: 20,
+      temperature: .70,
+      topK: 40,
       topP: .90,
-      minP: .02,
-      repeatPenalty: 1.03,
-      penaltyLastN: 128,
+      minP: .05,
+      repeatPenalty: 1.05,
+      penaltyLastN: 256,
     ),
   };
 
@@ -528,23 +550,24 @@ class PromptIntentPolicy {
         ? 'the language of the latest user message'
         : analysis.language.name;
     final common =
-        'Reply in $language unless the user explicitly requests another language. ';
+        'Reply in $language unless asked otherwise. '
+        'Be warm, natural, and conversational: match the user\'s tone and length '
+        'and avoid robotic preamble. ';
     final task = switch (analysis.intent) {
       PromptIntent.recipe =>
-        'Provide a practical recipe using common, appropriate ingredients and realistic quantities. '
-            'Determine whether the dish is sweet or savoury. Include servings, preparation time, cooking '
-            'time, oven temperature when relevant, an ingredient list, and numbered instructions. '
+        'Provide a practical recipe with common, appropriate ingredients and realistic quantities. '
+            'Determine whether the dish is sweet or savoury. Include servings, prep and cooking '
+            'time, oven temperature when relevant, an ingredient list, and numbered steps. '
             '${analysis.language == PromptLanguage.italian ? 'Use metric measurements. ' : ''}'
             'Respect dietary restrictions in the private configuration. If an essential detail is ambiguous, '
-            'ask one concise clarification question. Do not introduce unrelated ingredients or list the '
-            'finished dish itself as an ingredient.',
+            'ask one concise clarification question. Do not list the finished dish itself as an ingredient.',
       PromptIntent.howTo =>
         analysis.hardwareGuidance
-            ? 'For hardware repair or upgrade guidance, explain that compatibility and serviceability depend on the exact manufacturer and model. '
-                  'Ask for the exact model before device-specific disassembly or compatibility steps, and recommend its manufacturer specifications '
-                  'or service manual. For memory questions, explain that RAM may be soldered, socketed, or a combination; never assume two slots. '
-                  'Do not invent slot labels, slot sizes, screw locations, component layouts, or capacity limits. Give only cautious general steps, '
-                  'including electrostatic precautions and disconnecting external and internal power when appropriate.'
+            ? 'For hardware repair or upgrade guidance, first ask for the exact manufacturer and model before giving device-specific steps, '
+                  'and recommend its service manual or manufacturer specifications. For memory questions, explain that RAM may be soldered, '
+                  'socketed, or a combination; never assume two slots. Do not invent slot labels, slot sizes, screw locations, component layouts, '
+                  'or capacity limits. Give only cautious general steps, including electrostatic precautions and disconnecting external and '
+                  'internal power when appropriate. Never add citation numbers like [1] without real web sources.'
             : 'Give practical, ordered steps, include prerequisites and relevant safety cautions, and do not omit the final step.',
       PromptIntent.translation =>
         'Translate faithfully into the requested language. Preserve meaning, tone, names, and formatting; add no commentary unless asked.',

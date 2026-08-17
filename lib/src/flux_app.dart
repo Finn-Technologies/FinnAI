@@ -15,10 +15,42 @@ class FinnBootstrap extends StatefulWidget {
 }
 
 class _FinnBootstrapState extends State<FinnBootstrap> {
-  late final Future<void> _ready = Future.wait([
-    AppStateStore.instance.initialize(),
-    QwenInference.instance.initialize(),
-  ]);
+  late final Future<void> _ready = _initialize();
+  bool _modelInstalled = false;
+
+  Future<void> _initialize() async {
+    await Future.wait([
+      AppStateStore.instance.initialize(),
+      QwenInference.instance.initialize(),
+    ]);
+    // Resume any partially-downloaded model right away instead of waiting for
+    // the user to reach the install screen again. A resume failure must never
+    // block the app from reaching the home screen.
+    try {
+      await QwenInference.instance.resumeInterruptedDownloads();
+    } catch (error, stack) {
+      debugPrint('FINN_RESUME failed: $error\n$stack');
+    }
+    // A returning user whose model is missing (for example after upgrading
+    // from the retired tiered catalog) is sent to the blocking upgrade screen
+    // instead of a home screen that cannot answer.
+    final inference = QwenInference.instance;
+    if (inference.isDeviceSupported) {
+      _modelInstalled = await inference.isInstalled(inference.selected);
+      // After a software update the cached backend choice is invalidated by
+      // the new app version, so re-measure the fastest CPU/GPU/NPU backend
+      // before the home screen becomes interactive.
+      if (_modelInstalled) {
+        try {
+          if (await inference.needsBenchmark()) {
+            await inference.optimizeForDevice();
+          }
+        } catch (error, stack) {
+          debugPrint('FINN_BENCH bootstrap failed: $error\n$stack');
+        }
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) => FutureBuilder<void>(
@@ -27,6 +59,7 @@ class _FinnBootstrapState extends State<FinnBootstrap> {
       if (snapshot.connectionState == ConnectionState.done) {
         return FluxApp(
           onboardingComplete: AppStateStore.instance.onboardingComplete,
+          modelInstalled: _modelInstalled,
         );
       }
       return MaterialApp(
@@ -39,14 +72,21 @@ class _FinnBootstrapState extends State<FinnBootstrap> {
         home: Scaffold(
           body: AmbientBackground(
             child: Center(
-              child: Text(
-                'Finn AI',
-                style: TextStyle(
-                  fontFamily: 'InstrumentSans',
-                  fontSize: 22,
-                  fontWeight: FontWeight.w400,
-                  color: FluxColors.inkOf(context).withValues(alpha: .65),
-                ),
+              child: ListenableBuilder(
+                listenable: QwenInference.instance,
+                builder: (context, _) {
+                  final status = QwenInference.instance.status;
+                  return Text(
+                    status == 'Ready' ? 'Finn AI' : status,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontFamily: 'InstrumentSans',
+                      fontSize: 22,
+                      fontWeight: FontWeight.w400,
+                      color: FluxColors.inkOf(context).withValues(alpha: .65),
+                    ),
+                  );
+                },
               ),
             ),
           ),
@@ -61,10 +101,12 @@ class FluxApp extends StatelessWidget {
     super.key,
     this.enableModelDownload = true,
     this.onboardingComplete = false,
+    this.modelInstalled = true,
   });
 
   final bool enableModelDownload;
   final bool onboardingComplete;
+  final bool modelInstalled;
 
   @override
   Widget build(BuildContext context) {
@@ -77,7 +119,9 @@ class FluxApp extends StatelessWidget {
       builder: FluxTheme.applySystemUi,
       home: QwenInference.instance.isDeviceSupported
           ? onboardingComplete
-                ? const HomeShell()
+                ? modelInstalled
+                      ? const HomeShell()
+                      : const SoftwareUpgradeScreen()
                 : OnboardingFlow(
                     enableModelDownload: enableModelDownload,
                     onComplete: AppStateStore.instance.completeOnboarding,

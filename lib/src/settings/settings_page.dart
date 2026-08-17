@@ -923,8 +923,17 @@ class _ModelRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final model = state.model;
 
+    final inference = QwenInference.instance;
+    final downloading = inference.phase == InferencePhase.downloading &&
+        inference.workingModel?.tier == state.model.tier;
+    final progress = downloading ? (inference.downloadProgress ?? 0) : 0.0;
+    final speedLabel = downloading ? inference.downloadSpeedLabel : null;
+    final etaLabel = downloading ? inference.downloadEtaLabel : null;
+
     final activeAndInstalled = isActive && state.installed;
-    final statusLabel = activeAndInstalled
+    final statusLabel = downloading
+        ? '${(progress * 100).round()}%'
+        : activeAndInstalled
         ? 'Active'
         : state.installed
         ? 'Installed'
@@ -932,13 +941,17 @@ class _ModelRow extends StatelessWidget {
         ? 'Partial'
         : 'Not installed';
 
-    final statusColor = activeAndInstalled
+    final statusColor = downloading
+        ? const Color(0xFF3B82F6)
+        : activeAndInstalled
         ? const Color(0xFF3B82F6)
         : state.installed
         ? const Color(0xFF22C55E)
         : state.resumable
         ? const Color(0xFFF59E0B)
         : FluxColors.mutedOf(context);
+
+    final transferInfo = [?speedLabel, ?etaLabel].join(' · ');
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -969,6 +982,16 @@ class _ModelRow extends StatelessWidget {
                     color: FluxColors.mutedOf(context),
                   ),
                 ),
+                if (downloading && transferInfo.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    transferInfo,
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: const Color(0xFF3B82F6),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
