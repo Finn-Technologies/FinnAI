@@ -5,6 +5,7 @@ import 'dart:isolate';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
+import 'package:ffi/ffi.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
 
 import '../batch/batch.dart';
@@ -44,6 +45,33 @@ Future<void> runEngineWorker(EngineBootstrap bootstrap) async {
   final LlamaContext context;
 
   try {
+    // FinnAI dev aids. The env vars are read lazily by ggml/llama (see the
+    // FINN_NATIVE_PERF gates in ggml-cpu.c and the repack-cache hooks in
+    // llama-model-loader.cpp), so they must be set before the library loads.
+    try {
+      final libc = DynamicLibrary.process();
+      final setenv = libc.lookupFunction<
+        Int32 Function(Pointer<Utf8>, Pointer<Utf8>, Int32),
+        int Function(Pointer<Utf8>, Pointer<Utf8>, int)
+      >('setenv');
+      if (const bool.fromEnvironment('FINN_PERF_TRACE')) {
+        final name = 'FINN_NATIVE_PERF'.toNativeUtf8();
+        final value = '1'.toNativeUtf8();
+        setenv(name, value, 1);
+        malloc.free(name);
+        malloc.free(value);
+      }
+      final repackDir = bootstrap.repackCacheDir;
+      if (repackDir != null && repackDir.isNotEmpty) {
+        final name = 'FINN_REPACK_CACHE_DIR'.toNativeUtf8();
+        final value = repackDir.toNativeUtf8();
+        setenv(name, value, 1);
+        malloc.free(name);
+        malloc.free(value);
+      }
+    } catch (_) {
+      // setenv unavailable on this host; the dev aids simply stay off.
+    }
     if (bootstrap.useProcessSymbols) {
       LlamaLibrary.loadFromProcess();
     } else {
@@ -168,9 +196,16 @@ Future<void> _dispatch(
           );
           return;
         }
+        // Lookahead (self-speculative) decoding: derive the window from the
+        // recurrent-state snapshots the context was created with. nRsSeq=0
+        // (clamped by llama.cpp for non-hybrid models) disables it.
+        final laWindow = state.context.nRsSeq > 0
+            ? math.min(state.context.nRsSeq + 1, 16)
+            : 0;
         state.sessions[cmd.sessionId] = LlamaSession(
           state.context,
           seqId: cmd.seqId,
+          lookaheadWindow: laWindow,
         );
         reply.send(EngineAckResponse(cmd.requestId));
 

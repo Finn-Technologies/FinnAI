@@ -15,12 +15,12 @@ void main() {
     final plan = DeviceProfiler.plan(profile);
 
     expect(plan.contextSize, 8192);
-    // Threadpools are affinity-pinned to the fastest cluster by the native
-    // AAR, so the plan matches that cluster size: 4 decode threads measured
-    // 52 ms/token decode on SM7325 with full CPU (vs 8.5 s when a background
-    // cgroup throttled the big cores and threads spilled onto A55s).
+    // Decode is bandwidth-bound and pinned to the 4 fast cores (52 ms/token
+    // on SM7325). Batch/lookahead passes are compute-bound and the native
+    // AAR now spills oversized threadpools onto the small cores, so batch
+    // uses all cores.
     expect(plan.threads, 4);
-    expect(plan.batchThreads, 4);
+    expect(plan.batchThreads, 8);
   });
 
   test('entry processor caps context and threads even with ample RAM', () {
@@ -37,7 +37,7 @@ void main() {
 
     expect(plan.contextSize, 4096);
     expect(plan.threads, 4);
-    expect(plan.batchThreads, 4);
+    expect(plan.batchThreads, 8);
     expect(plan.batchSize, 256);
     expect(plan.tokenPaintIntervalMs, 80);
   });

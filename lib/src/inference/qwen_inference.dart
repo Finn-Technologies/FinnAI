@@ -229,6 +229,19 @@ class QwenInference extends ChangeNotifier {
   /// against a fresh prefill on the same build.
   @visibleForTesting
   static bool debugDisablePrefixCache = false;
+
+  /// Benchmark override: forces the CPU engine. Skips accelerator discovery
+  /// benchmarks and the post-spawn upgrade. Used by the harness because some
+  /// vendor GPU drivers silently corrupt quantized matmuls (Adreno + Q5_K),
+  /// which no benchmark would catch.
+  @visibleForTesting
+  static bool debugForceCpu = false;
+
+  /// Benchmark-harness only: the candidate model has no stored digest, so
+  /// hashing the 1.3 GB file adds tens of seconds to every TTFT measurement
+  /// while contributing nothing (production models carry their digest from
+  /// the download verification). When set, a stable placeholder is used.
+  static bool debugSkipSha256 = false;
   static const _retiredModelFiles = <String>{
     'Bonsai-1.7B-Q1_0.gguf',
     'Bonsai-4B-Q1_0.gguf',
@@ -275,8 +288,35 @@ class QwenInference extends ChangeNotifier {
   DateTime? _downloadSampleAt;
   double _downloadSpeedBps = 0;
 
+  /// Expected bytes of the complete install run (language model + the
+  /// post-model multimodal component), or 0 when no install is active. The
+  /// two artifacts download sequentially, so the install card can show one
+  /// honest total and one progress bar instead of jumping back to ~0% (or
+  /// appearing finished) when the second artifact starts.
+  int _installTotalBytes = 0;
+
+  /// Bytes of artifacts that finished downloading in the current install run.
+  int _installCompletedBytes = 0;
+
   int get downloadTotalBytes => _downloadTotalBytes;
   int get downloadReceivedBytes => _downloadReceivedBytes.round();
+
+  /// Aggregate progress (0..1) across every artifact of the current install
+  /// run; null when no install is running.
+  double? get installProgress {
+    if (_installTotalBytes <= 0) return null;
+    return ((_installCompletedBytes + _downloadReceivedBytes)
+                .clamp(0, _installTotalBytes) /
+            _installTotalBytes);
+  }
+
+  /// Bytes fully downloaded so far in the current install run.
+  int get installReceivedBytes =>
+      _installCompletedBytes + _downloadReceivedBytes.round();
+
+  /// Bytes still to download in the current install run.
+  int get installRemainingBytes =>
+      math.max(0, _installTotalBytes - installReceivedBytes);
 
   /// Bytes-per-second for the active download; 0 when idle. On Android this is
   /// the foreground service's own estimate, so it matches the notification.
@@ -469,6 +509,16 @@ class QwenInference extends ChangeNotifier {
 
   Future<void> _preinstallMmproj() async {
     if (await isMmprojInstalled()) return;
+    // Standalone projector install (the language model was already verified):
+    // size the aggregate progress to this artifact alone. When called from
+    // _runInstall the total was already set to model + component, so this
+    // guard leaves it untouched.
+    var trackedStandalone = false;
+    if (_installTotalBytes <= 0) {
+      _installTotalBytes = qwenMmproj.expectedBytes;
+      _installCompletedBytes = 0;
+      trackedStandalone = true;
+    }
     try {
       await installMmproj();
     } catch (error, stack) {
@@ -478,11 +528,25 @@ class QwenInference extends ChangeNotifier {
           _phase == InferencePhase.loading) {
         _setStatus(InferencePhase.idle, 'AI model is ready');
       }
+    } finally {
+      if (trackedStandalone) {
+        _installTotalBytes = 0;
+        _installCompletedBytes = 0;
+      }
     }
   }
 
   Future<void> _runInstall(QwenModel model) async {
     try {
+      // Size the aggregate progress across every artifact this install must
+      // fetch: the language model (unless already verified) plus the
+      // post-model multimodal component (unless already present).
+      final modelAlreadyInstalled = await isInstalled(model);
+      final componentAlreadyInstalled = await isMmprojInstalled();
+      _installTotalBytes =
+          (modelAlreadyInstalled ? 0 : model.expectedBytes) +
+          (componentAlreadyInstalled ? 0 : qwenMmproj.expectedBytes);
+      _installCompletedBytes = 0;
       await _ensureDownloaded(model);
       _verifiedModels.add(model.tier);
       // Keep the projector out of the runtime for now, but install it as the
@@ -502,7 +566,17 @@ class QwenInference extends ChangeNotifier {
       _installJob = null;
       _downloadClient = null;
       _cancelDownload = false;
+      _installTotalBytes = 0;
+      _installCompletedBytes = 0;
     }
+  }
+
+  /// Records a fully-downloaded artifact in the aggregate install progress so
+  /// the next artifact's bytes count on top of it instead of restarting the
+  /// bar at zero.
+  void _completeInstallArtifact(int expectedBytes) {
+    _installCompletedBytes += expectedBytes;
+    _downloadReceivedBytes = 0;
   }
 
   void pauseDownload() {
@@ -1459,6 +1533,7 @@ class QwenInference extends ChangeNotifier {
       ).timeout(const Duration(seconds: 25));
 
       for (final device in devices) {
+        if (debugForceCpu) break;
         if (!device.isAccelerator ||
             device.registryName.toLowerCase() == 'blas') {
           continue;
@@ -1564,7 +1639,12 @@ class QwenInference extends ChangeNotifier {
           // headroom the OS needs for the KV cache and the app itself.
           useMlock: false,
           checkTensors: false,
-          devices: config.isCpu ? const [] : [config.deviceName],
+          // Explicit device list: an EMPTY devices array means "use every
+          // loaded backend" (llama.cpp default), which pulls the Vulkan
+          // backend into CPU configs and allocates GPU compute buffers +
+          // triggers driver shader compiles. Pin CPU configs to the CPU
+          // device by name.
+          devices: config.isCpu ? const ['CPU'] : [config.deviceName],
         ),
       contextParams: ContextParams(
         nCtx: config.contextSize,
@@ -1578,6 +1658,8 @@ class QwenInference extends ChangeNotifier {
         typeV: compactKv ? config.kvType : KvCacheType.f16,
         swaFull: false,
         noPerf: false,
+        // Recurrent-state snapshots for lookahead decoding rollback.
+        nRsSeq: DeviceProfiler.lookaheadSnapshots(profile),
       ),
     );
   }
@@ -1666,6 +1748,7 @@ class QwenInference extends ChangeNotifier {
       );
       if (promoted) {
         _verifiedModels.add(model.tier);
+        _completeInstallArtifact(model.expectedBytes);
         return target;
       }
       existing = 0;
@@ -1764,6 +1847,7 @@ class QwenInference extends ChangeNotifier {
         );
       }
       _verifiedModels.add(model.tier);
+      _completeInstallArtifact(model.expectedBytes);
       return target;
     } finally {
       client.close(force: true);
@@ -1789,6 +1873,7 @@ class QwenInference extends ChangeNotifier {
           target: target,
           expectedBytes: expectedBytes,
         )) {
+          _completeInstallArtifact(expectedBytes);
           return target;
         }
         if (partialLength > expectedBytes && await partial.exists()) {
@@ -1831,6 +1916,8 @@ class QwenInference extends ChangeNotifier {
       final speedBps = (raw['speedBps'] as num?)?.toDouble() ?? 0;
       final remainingBytes = (raw['remainingBytes'] as num?)?.toInt() ?? 0;
       final active = raw['active'] == true;
+      final failed = raw['failed'] == true;
+      final cancelled = raw['cancelled'] == true;
       final heartbeat = (raw['heartbeat'] as num?)?.toInt();
       if (progress > 0) sawProgress = true;
       if (!restarting) {
@@ -1843,54 +1930,72 @@ class QwenInference extends ChangeNotifier {
           remainingBytes: remainingBytes,
         );
       }
-      if (raw['failed'] == true) {
-        throw HttpException((raw['error'] as String?) ?? 'Download failed');
-      }
-      if (raw['cancelled'] == true && !restarting) {
-        throw const HttpException('Download paused');
-      }
       if (raw['complete'] == true) break;
 
-      // The Android service persists its status, so `active=true` can survive
-      // a killed process or an uncaught error. The Kotlin `status` gate now
-      // reports inactive once the service thread is gone, and the heartbeat
-      // freezes when a live-but-wedged service stops making progress. Either
-      // way, restart so the partial resumes from its persisted per-range
-      // progress instead of freezing the UI.
       final now = DateTime.now();
-      if (heartbeat != null && heartbeat != lastHeartbeat) {
-        lastHeartbeat = heartbeat;
-        lastProgressAt = now;
-      }
+      // A dead, wedged, or failed service is restarted so the partial resumes
+      // from its persisted per-range progress. Restarts are cheap, and only a
+      // string of quick consecutive failures surfaces as an error — a single
+      // transient blip (a read timeout, a dropped connection, a momentary DNS
+      // miss) must never interrupt an in-flight download with an internet
+      // error. The heartbeat advances only while a transfer is actually
+      // writing bytes, so fresh progress also resets the failure counter.
       final stalled = sawProgress &&
           active &&
           lastProgressAt != null &&
           now.difference(lastProgressAt) > const Duration(seconds: 20);
-      if (!active || stalled) {
-        if (!restarting) {
-          if (lastRestartAt != null &&
-              now.difference(lastRestartAt) <= const Duration(seconds: 4)) {
-            continue;
-          }
-          restarts++;
-          if (restarts > 4) {
-            throw const HttpException('Model download kept stopping');
-          }
-          lastRestartAt = now;
-          restarting = true;
-          lastHeartbeat = null;
-          lastProgressAt = null;
-          sawProgress = false;
-          if (stalled) {
-            // Ask the wedged service to stop; it observes the cancel on its
-            // next read timeout and releases the liveness flag.
-            await _cancelAndroidDownload(target.path);
-          }
+      final needsRestart =
+          !active || stalled || failed || cancelled;
+      if (!needsRestart) {
+        if (heartbeat != null && heartbeat != lastHeartbeat) {
+          lastHeartbeat = heartbeat;
+          lastProgressAt = now;
+          restarts = 0;
         }
+        continue;
+      }
+      if (restarting) {
+        // A restart is already in flight. The service ignores a start while
+        // its old thread is still alive (the Kotlin isRunning guard), so wait
+        // for the thread to die — visible as active=false — before starting
+        // the replacement.
         if (!active) {
           restarting = false;
           await requestStart();
         }
+        continue;
+      }
+      if (lastRestartAt != null &&
+          now.difference(lastRestartAt) < const Duration(seconds: 4)) {
+        // Backoff: the replacement service may still be starting up.
+        continue;
+      }
+      restarts++;
+      if (restarts > 6) {
+        throw HttpException(
+          (raw['error'] as String?) ?? 'Model download kept stopping',
+        );
+      }
+      lastRestartAt = now;
+      restarting = true;
+      lastHeartbeat = null;
+      lastProgressAt = null;
+      sawProgress = false;
+      if (failed) {
+        // The thread already finished (failure was recorded); a replacement
+        // can start immediately.
+        restarting = false;
+        await requestStart();
+        continue;
+      }
+      if (stalled) {
+        // Ask the wedged service to stop; it observes the cancel on its next
+        // read timeout and releases the liveness flag.
+        await _cancelAndroidDownload(target.path);
+      }
+      if (!active) {
+        restarting = false;
+        await requestStart();
       }
     }
     _setStatus(InferencePhase.loading, 'Verifying $label');
@@ -1905,15 +2010,16 @@ class QwenInference extends ChangeNotifier {
       await target.delete();
       throw const FormatException('Downloaded file is not a valid GGUF file');
     }
+    _completeInstallArtifact(expectedBytes);
     return target;
   }
 
   /// Number of parallel HTTP range segments for non-Android downloads.
   /// The Android path uses the foreground service's own segment count; this
-  /// keeps desktop/macOS model + projector transfers fast too. Twelve
+  /// keeps desktop/macOS model + projector transfers fast too. Sixteen
   /// segments keeps high-latency and lossy links saturated the way the
   /// Android foreground service does.
-  static const int _dartDownloadSegments = 12;
+  static const int _dartDownloadSegments = 16;
 
   Future<File> _ensureArtifactDart({
     required String url,
@@ -1934,6 +2040,7 @@ class QwenInference extends ChangeNotifier {
       } else {
         if (await target.exists()) await target.delete();
         await partial.rename(target.path);
+        _completeInstallArtifact(expectedBytes);
         return target;
       }
     }
@@ -1996,6 +2103,7 @@ class QwenInference extends ChangeNotifier {
         await target.delete();
         throw const FormatException('Downloaded file is not a valid GGUF file');
       }
+      _completeInstallArtifact(expectedBytes);
       return target;
     } finally {
       client.close(force: true);
@@ -2259,7 +2367,9 @@ class QwenInference extends ChangeNotifier {
           // headroom the OS needs for the KV cache and the app itself.
           useMlock: false,
           checkTensors: false,
-          devices: cfg.isCpu ? const [] : [cfg.deviceName],
+          // See _spawnBenchmarkEngine: empty devices = all backends (Vulkan
+          // included); pin CPU configs to the CPU device by name.
+          devices: cfg.isCpu ? const ['CPU'] : [cfg.deviceName],
         ),
         contextParams: ContextParams(
           nCtx: cfg.contextSize,
@@ -2273,6 +2383,8 @@ class QwenInference extends ChangeNotifier {
           typeV: compactKv ? cfg.kvType : KvCacheType.f16,
           swaFull: false,
           noPerf: false,
+          // Recurrent-state snapshots for lookahead decoding rollback.
+          nRsSeq: DeviceProfiler.lookaheadSnapshots(profile),
         ),
       );
     }
@@ -2284,13 +2396,32 @@ class QwenInference extends ChangeNotifier {
           .timeout(const Duration(seconds: 30));
     } on TimeoutException catch (e) {
       debugPrint('FINN_LOADMODEL spawn timeout: $e');
-      throw TimeoutException('Model engine did not start in time. ${_friendlyError(e)}');
+      if (!config.isCpu) {
+        // A cached accelerator hung at spawn (e.g. a broken driver's slow
+        // shader compilation). Drop the bad cached pick, fall back to the
+        // guaranteed CPU baseline, and make sure the next launch does not
+        // retry the same broken backend.
+        await adaptive.invalidateCachedSelection();
+        config = runtimeConfigFromPlan(hardwarePlan, profile);
+        compactKv = config.kvType == KvCacheType.q8_0;
+        fellBackFromAccelerator = true;
+        try {
+          engine = await spawnWith(config, compactKv: compactKv)
+              .timeout(const Duration(seconds: 30));
+        } on TimeoutException catch (e2) {
+          debugPrint('FINN_LOADMODEL cpu fallback timeout: $e2');
+          throw TimeoutException('Model engine did not start in time. ${_friendlyError(e2)}');
+        }
+      } else {
+        throw TimeoutException('Model engine did not start in time. ${_friendlyError(e)}');
+      }
     } catch (e) {
       debugPrint('FINN_LOADMODEL_ERROR $e');
       if (!config.isCpu) {
         // A stale cached accelerator config failed (driver changed or the
         // backend was removed from the APK). Fall back to the guaranteed CPU
         // baseline instead of failing startup.
+        await adaptive.invalidateCachedSelection();
         config = runtimeConfigFromPlan(hardwarePlan, profile);
         compactKv = config.kvType == KvCacheType.q8_0;
         fellBackFromAccelerator = true;
@@ -2326,7 +2457,10 @@ class QwenInference extends ChangeNotifier {
     // accelerated spawn keeps the working CPU engine. Skip discovery when the
     // benchmark already cached a decision (including a deliberate CPU pick) or
     // when we just fell back from a cached accelerator that could not spawn.
-    if (outcome.selection == null && config.isCpu && !fellBackFromAccelerator) {
+    if (!debugForceCpu &&
+        outcome.selection == null &&
+        config.isCpu &&
+        !fellBackFromAccelerator) {
       try {
         final selection = await adaptive
             .accelerateIfAvailable(
@@ -2366,14 +2500,17 @@ class QwenInference extends ChangeNotifier {
       'FINN_ENGINE threads=${config.threads} batchThreads=${config.batchThreads} '
       'batch=${config.batchSize} ubatch=${config.microBatchSize} '
       'kv=${compactKv ? "q8_0" : "f16"} flash=${config.flashAttention.name} '
-      'ctx=${config.contextSize}',
+      'ctx=${config.contextSize} gpu=${config.gpuLayers} '
+      'dev=${config.deviceName} cpu=${config.isCpu}',
     );
     if (epoch != _runtimeEpoch) {
       await liveEngine.dispose();
       throw StateError('Model loading was superseded by a memory release.');
     }
     final modelSha256 = model.sha256Digest.isEmpty
-        ? await compute(_sha256File, path)
+        ? (debugSkipSha256
+              ? 'benchmark-skip-sha256'
+              : await compute(_sha256File, path))
         : model.sha256Digest;
     final runtime = _ModelRuntime(
       model,

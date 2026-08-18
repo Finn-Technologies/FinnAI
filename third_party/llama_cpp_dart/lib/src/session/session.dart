@@ -28,7 +28,13 @@ final class LlamaSession {
   final List<int> _tokens = <int>[];
   int _kvHead = 0;
 
-  LlamaSession(this.context, {this.seqId = 0})
+  /// Lookahead (self-speculative) decode window in tokens. `0` disables it.
+  /// Requires the context to have been created with `nRsSeq >= window - 1`
+  /// (recurrent/hybrid models) for rejected-draft rollback; the Generator
+  /// silently falls back to plain decoding when the context can't roll back.
+  final int lookaheadWindow;
+
+  LlamaSession(this.context, {this.seqId = 0, this.lookaheadWindow = 0})
       : tokenizer = Tokenizer(context.model.vocab);
 
   /// Full token history (prompt + generated).
@@ -129,6 +135,10 @@ final class LlamaSession {
       startPos: pendingStart,
       shiftPolicy: shiftPolicy,
       shift: shift,
+      // Verified tokens before the pending prompt — seed for the lookahead
+      // n-gram table so drafts exist from the very first generated token.
+      historyTokens: _tokens.sublist(0, pendingStart),
+      lookaheadWindow: lookaheadWindow,
     );
 
     final generator = Generator(context, tokenizer);

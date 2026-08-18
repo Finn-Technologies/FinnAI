@@ -367,6 +367,20 @@ class AdaptiveInferenceEngine {
     required String modelSha256,
   }) async => (await _readCachedSelection(profile, modelSha256)) == null;
 
+  /// Drops a persisted accelerator decision (e.g. after a cached backend
+  /// failed or timed out at spawn). The next cold start re-runs discovery
+  /// instead of retrying the broken backend.
+  Future<void> invalidateCachedSelection() async {
+    _config = null;
+    _selection = null;
+    try {
+      final file = await _cacheFile();
+      if (await file.exists()) await file.delete();
+    } catch (_) {
+      // Best-effort: a stale cache simply gets ignored on the next read.
+    }
+  }
+
   /// Persists the measured benchmark winner so later cold starts reuse it.
   Future<void> recordBenchmark({
     required DeviceProfile profile,

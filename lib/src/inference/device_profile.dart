@@ -82,6 +82,7 @@ class PlanOverrides {
     this.microBatchSize,
     this.compactKv,
     this.flashAttention,
+    this.nRsSeq,
   });
 
   final int? threads;
@@ -90,6 +91,7 @@ class PlanOverrides {
   final int? microBatchSize;
   final bool? compactKv;
   final bool? flashAttention;
+  final int? nRsSeq;
 
   bool get isEmpty =>
       threads == null &&
@@ -97,7 +99,8 @@ class PlanOverrides {
       batchSize == null &&
       microBatchSize == null &&
       compactKv == null &&
-      flashAttention == null;
+      flashAttention == null &&
+      nRsSeq == null;
 }
 
 class DeviceProfiler {
@@ -183,13 +186,14 @@ class DeviceProfiler {
     };
 
     // Measured on SM7325 (4x A78 + 4x A55, Qwen 3.5 2B, full CPU): decode
-    // scales to 4 threads (52 ms/token @ 4 threads), and the threadpools are
-    // affinity-pinned to the fastest cluster by the native AAR, so extra
-    // threads beyond that cluster only add contention. Batch (prefill) is
-    // fastest with the same 4 threads (1.9 s for a 213-token warm prompt);
-    // 8 batch threads on the pinned 4 cores measured slower (2.5 s).
+    // is bandwidth-bound and scales to 4 threads (52 ms/token @ 4 threads) —
+    // extra decode threads only add contention, so decode stays pinned to
+    // the fastest cluster. Batch (prefill) and lookahead batches are
+    // compute-bound, so they use all cores: the native AAR affinity patch
+    // spills threadpools with more threads than the fast cluster onto the
+    // small cores (8 threads on 4xA78 + 4xA55 ≈ 1.35x prefill throughput).
     final decodeCeiling = 4;
-    final batchCeiling = 4;
+    final batchCeiling = math.max(4, profile.cores);
     const threadOverride = int.fromEnvironment(
       'FINN_BENCH_THREADS',
       defaultValue: 0,
@@ -263,6 +267,25 @@ class DeviceProfiler {
       },
       flashAttention: effectiveFlash,
     );
+  }
+
+  /// Number of recurrent-state snapshots (n_rs_seq) to allocate so
+  /// lookahead decoding can roll back rejected drafts on hybrid/recurrent
+  /// models. Each snapshot costs one extra recurrent-state buffer (~39 MiB
+  /// for Qwen 3.5 2B); the lookahead window is nRsSeq + 1 tokens.
+  ///
+  /// Disabled by default: on-device measurement (SM7325, Qwen 3.5 2B, full
+  /// CPU) showed n-gram drafts match the model's argmax ~0.1% of the time,
+  /// so lookahead paid ~2x decode cost (n_rs_seq=15: ~207 ms/token vs
+  /// ~100 ms/token baseline) with effectively zero accepted batches, and the
+  /// K-slot recurrent-state buffers added ~580 MiB RSS. `FINN_BENCH_NRS`
+  /// (int) or the harness PlanOverrides re-enable it for experiments.
+  static int lookaheadSnapshots(DeviceProfile profile) {
+    final harness = planOverrides.nRsSeq;
+    if (harness != null) return harness; // 0 explicitly disables snapshots
+    const define = int.fromEnvironment('FINN_BENCH_NRS', defaultValue: 0);
+    if (define > 0) return define;
+    return 0;
   }
 
   static ProcessorClass _classifyProcessor(String raw, int cores) {

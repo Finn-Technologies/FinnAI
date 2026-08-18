@@ -36,6 +36,11 @@ final class EngineBootstrap {
   /// connected to logcat there).
   final String? nativeLogPath;
 
+  /// When set, llama.cpp writes its repacked-weight cache (FINN_REPACK_CACHE_DIR)
+  /// into this directory instead of next to the model file. Needed when the
+  /// model lives on storage the app cannot write to.
+  final String? repackCacheDir;
+
   const EngineBootstrap({
     required this.replyPort,
     required this.libraryPath,
@@ -45,6 +50,7 @@ final class EngineBootstrap {
     this.backendDirectory,
     this.multimodalParams,
     this.nativeLogPath,
+    this.repackCacheDir,
   });
 }
 

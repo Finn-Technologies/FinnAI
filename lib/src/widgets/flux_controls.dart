@@ -70,6 +70,7 @@ class FigmaSvg extends StatelessWidget {
     this.colorBlendMode = BlendMode.srcIn,
     this.isNavTile = false,
     this.invertForDark = false,
+    this.preserveColors = false,
   });
 
   final String asset;
@@ -79,6 +80,11 @@ class FigmaSvg extends StatelessWidget {
   final BlendMode colorBlendMode;
   final bool isNavTile;
   final bool invertForDark;
+
+  /// Render the SVG's own colors even in dark mode. Use for icons designed to
+  /// sit on light surfaces (like the white composer pill), where the automatic
+  /// dark-mode tint would make them invisible.
+  final bool preserveColors;
 
   static const List<double> _darkNavTileMatrix = <double>[
     -1.082,
@@ -132,10 +138,10 @@ class FigmaSvg extends StatelessWidget {
     ColorFilter? filter;
     if (color != null) {
       filter = ColorFilter.mode(color!, colorBlendMode);
-    } else if (isDark && invertForDark) {
-      filter = const ColorFilter.matrix(_invertMatrix);
-    } else if (isDark) {
-      if (isNavTile) {
+    } else if (isDark && !preserveColors) {
+      if (invertForDark) {
+        filter = const ColorFilter.matrix(_invertMatrix);
+      } else if (isNavTile) {
         filter = const ColorFilter.matrix(_darkNavTileMatrix);
       } else {
         filter = ColorFilter.mode(FluxColors.darkInk, BlendMode.srcIn);
@@ -360,4 +366,28 @@ class FluxGlass extends StatelessWidget {
       child: child,
     );
   }
+}
+
+/// iOS-style bouncing with a much lighter touch. Overscroll drags meet about
+/// 40% more resistance, and the bounce-back spring is stiffer and more damped,
+/// so fast flings no longer throw headings or text far past the top and bottom
+/// edges before settling back into view.
+class FluxBouncingScrollPhysics extends BouncingScrollPhysics {
+  const FluxBouncingScrollPhysics({super.parent});
+
+  @override
+  FluxBouncingScrollPhysics applyTo(ScrollPhysics? ancestor) =>
+      FluxBouncingScrollPhysics(parent: buildParent(ancestor));
+
+  @override
+  double frictionFactor(double overscrollFraction) =>
+      math.pow(1 - overscrollFraction, 2) * 0.3;
+
+  @override
+  SpringDescription get spring => const SpringDescription(
+    mass: 0.5,
+    stiffness: 200,
+    // Damping ratio 1.8 against the stiffer 200 stiffness.
+    damping: 36,
+  );
 }

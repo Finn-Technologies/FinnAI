@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollCacheExtent;
@@ -52,6 +53,8 @@ class _HomeShellState extends State<HomeShell>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   final _composer = TextEditingController();
   final _focusNode = FocusNode();
+  final ScrollController _chatScrollController = ScrollController();
+  final ValueNotifier<bool> _chatScrolledAway = ValueNotifier<bool>(false);
   late final _inference = widget.inference ?? QwenInference.instance;
   late final _conversations =
       widget.conversationStore ?? ConversationStore.instance;
@@ -64,9 +67,10 @@ class _HomeShellState extends State<HomeShell>
   bool _sidebarEverOpened = false;
   bool _sidebarAdVisible = false;
   bool _preparing = false;
-  String _preparingLabel = 'Preparing';
   bool _dismissedSearchNotice = false;
   late bool _storesReady = !widget.initializeServices;
+  static int _welcomeSession = 0;
+  late int _welcomeRotation;
   late final AnimationController _sidebarController = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 340),
@@ -85,6 +89,7 @@ class _HomeShellState extends State<HomeShell>
     super.initState();
     _generation.addListener(_generationChanged);
     _conversations.addListener(_conversationChanged);
+    _chatScrollController.addListener(_onChatScroll);
     WidgetsBinding.instance.addObserver(this);
     if (widget.initializeServices) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -92,6 +97,9 @@ class _HomeShellState extends State<HomeShell>
         unawaited(AdConsentService.instance.initializeConsentAndAds());
       });
     }
+    // Each fresh home screen shows a different "Try asking" suggestion set so
+    // the welcome slate never feels stale across app re-opens.
+    _welcomeRotation = _welcomeSession++;
   }
 
   @override
@@ -146,6 +154,10 @@ class _HomeShellState extends State<HomeShell>
       SkillsStore.instance.initialize(),
     ]);
     if (!mounted) return;
+    // Every cold start lands on the welcome slate instead of dropping the
+    // user back into the last conversation. History stays in the sidebar;
+    // tapping a past chat re-activates it.
+    _conversations.clearActive();
     setState(() => _storesReady = true);
     _schedulePrewarm();
   }
@@ -169,6 +181,9 @@ class _HomeShellState extends State<HomeShell>
   void dispose() {
     _generation.removeListener(_generationChanged);
     _conversations.removeListener(_conversationChanged);
+    _chatScrollController.removeListener(_onChatScroll);
+    _chatScrollController.dispose();
+    _chatScrolledAway.dispose();
     WidgetsBinding.instance.removeObserver(this);
     _memoryReleaseTimer?.cancel();
     _prewarmTimer?.cancel();
@@ -178,6 +193,32 @@ class _HomeShellState extends State<HomeShell>
     _composer.dispose();
     _focusNode.dispose();
     super.dispose();
+  }
+
+  /// How far (in pixels) the user must scroll away from the newest message
+  /// before the composer collapses to its compact size.
+  static const _chatBottomThreshold = 140.0;
+
+  void _onChatScroll() {
+    if (!_chatScrollController.hasClients) return;
+    final position = _chatScrollController.position;
+    _chatScrolledAway.value =
+        position.hasContentDimensions && position.pixels > _chatBottomThreshold;
+  }
+
+  void _returnToLatest() {
+    if (!_chatScrollController.hasClients || !_chatScrolledAway.value) return;
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _chatScrollController.jumpTo(0);
+    } else {
+      unawaited(
+        _chatScrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 260),
+          curve: Curves.easeOutCubic,
+        ),
+      );
+    }
   }
 
   void _schedulePrewarm() {
@@ -221,18 +262,23 @@ class _HomeShellState extends State<HomeShell>
 
     setState(() {
       _preparing = true;
-      _preparingLabel = 'Preparing locally';
     });
     debugPrint('FINN_SEND preparing started');
     try {
-      final initialization = Future.wait([
-        _conversations.initialize(),
-        YouProfileStore.instance.initialize(),
-        SkillsStore.instance.initialize(),
-      ]).timeout(const Duration(seconds: 12), onTimeout: () {
-        debugPrint('FINN_SEND store init timeout — proceeding with available stores');
-        return <void>[];
-      });
+      final initialization =
+          Future.wait([
+            _conversations.initialize(),
+            YouProfileStore.instance.initialize(),
+            SkillsStore.instance.initialize(),
+          ]).timeout(
+            const Duration(seconds: 12),
+            onTimeout: () {
+              debugPrint(
+                'FINN_SEND store init timeout — proceeding with available stores',
+              );
+              return <void>[];
+            },
+          );
       await initialization;
       if (!mounted) return;
       _storesReady = true;
@@ -367,7 +413,8 @@ class _HomeShellState extends State<HomeShell>
     // attempted for requests that clearly need current information.
     final continuationSources =
         continuationGrounded?.search.sources ?? assistant.sources;
-    final groundedContext = continuationGrounded?.groundedContext ??
+    final groundedContext =
+        continuationGrounded?.groundedContext ??
         SearchAgent.groundedContextForSources(continuationSources);
     await _generation.continueResponse(
       conversationId: conversation.id,
@@ -480,8 +527,10 @@ class _HomeShellState extends State<HomeShell>
   void _newConversation() {
     unawaited(_generation.flushActive());
     // Compose just shows the blank slate — no conversation is created until
-    // the user actually sends a first message.
+    // the user actually sends a first message. Fresh suggestions each time so
+    // a new chat always starts with a new prompt set.
     _conversations.clearActive();
+    _welcomeRotation = _welcomeSession++;
     _setSidebar(false);
     setState(() {});
   }
@@ -579,7 +628,7 @@ class _HomeShellState extends State<HomeShell>
                 intensity: 1,
                 child: Stack(
                   children: [
-                    // 1. The scrolling chat list, full-bleed so content can
+                    // 0. The scrolling chat list, full-bleed so content can
                     // slide beneath the glass regions at the very top and
                     // very bottom.
                     Positioned(
@@ -599,13 +648,14 @@ class _HomeShellState extends State<HomeShell>
                         onSuggestion: _applySuggestion,
                         onOpenConversation: _activateConversation,
                         preparing: _preparing,
-                        preparingLabel: _preparingLabel,
+                        welcomeRotation: _welcomeRotation,
                         // First message starts below the header; newest
                         // message sits above the composer.
                         topInset: 125 * sy,
                         bottomInset:
                             safeBottom +
-                            (constraints.maxHeight < 650 ? 78 : 88),
+                            (constraints.maxHeight < 650 ? 68 : 78),
+                        scrollController: _chatScrollController,
                       ),
                     ),
                     // 2. Floating notices (drawn above the list/glass, below
@@ -672,15 +722,21 @@ class _HomeShellState extends State<HomeShell>
                     ),
                     Positioned(
                       left: contentLeft,
-                      width: contentWidth,
                       bottom:
                           safeBottom + (constraints.maxHeight < 650 ? 20 : 30),
-                      child: ChatComposer(
-                        controller: _composer,
-                        focusNode: _focusNode,
-                        blocked: _preparing || !_storesReady,
-                        busy: _generation.busy,
-                        onSend: _send,
+                      child: ValueListenableBuilder<bool>(
+                        valueListenable: _chatScrolledAway,
+                        builder: (context, scrolledAway, _) => ChatComposer(
+                          controller: _composer,
+                          focusNode: _focusNode,
+                          blocked: _preparing || !_storesReady,
+                          busy: _generation.busy,
+                          compact: scrolledAway,
+                          onReturnToLatest: _returnToLatest,
+                          width: contentWidth,
+                          onSend: _send,
+                          onStop: _stopReply,
+                        ),
                       ),
                     ),
                   ],
@@ -790,28 +846,23 @@ class _HomeHeader extends StatelessWidget {
 }
 
 /// A static soft-edge fade that sits over the scrolling chat list so messages
-/// appear to slide beneath the header and composer. It replaces the old
-/// progressive backdrop blur with a plain gradient — effectively free per
-/// scroll frame — and never reaches full opacity, so the outermost row of the
-/// chat stays faintly visible at the screen edges. The header and composer are
-/// drawn above these fades in the shell Stack, so they stay crisp and tappable.
+/// appear to slide beneath the header at the top and fade into the very bottom
+/// edge of the screen below the composer. It replaces the old progressive
+/// backdrop blur with a plain gradient — effectively free per scroll frame —
+/// and never reaches full opacity, so the outermost row of the chat stays
+/// faintly visible at the screen edges. The header and composer are drawn
+/// above these fades in the shell Stack, so they stay crisp and tappable.
 class _ChatEdgeFade extends StatelessWidget {
-  const _ChatEdgeFade({super.key, required this.top, this.peakFraction});
+  const _ChatEdgeFade({super.key, required this.top});
 
   /// True for the fade under the header at the top of the screen, false for
-  /// the fade around the composer at the bottom.
+  /// the fade hugging the very bottom edge of the screen.
   final bool top;
-
-  /// For the bottom fade only: where along the band (0..1 from the screen
-  /// bottom) the fade is strongest — the composer's top edge. When null the
-  /// fade is a plain edge fade strongest at the very edge.
-  final double? peakFraction;
 
   @override
   Widget build(BuildContext context) {
     final isDark = FluxColors.isDark(context);
     final color = isDark ? FluxColors.darkCanvas : FluxColors.canvas;
-    final peak = peakFraction;
     return DecoratedBox(
       decoration: BoxDecoration(
         // Progressive: mostly transparent across the band and easing smoothly
@@ -819,18 +870,13 @@ class _ChatEdgeFade extends StatelessWidget {
         gradient: LinearGradient(
           begin: top ? Alignment.topCenter : Alignment.bottomCenter,
           end: top ? Alignment.bottomCenter : Alignment.topCenter,
-          stops: peak == null ? const [0.0, 0.5, 1.0] : [0.0, peak, 1.0],
-          colors: peak == null
-              ? [
-                  color.withValues(alpha: 0.9),
-                  color.withValues(alpha: 0.22),
-                  color.withValues(alpha: 0.0),
-                ]
-              : [
-                  color.withValues(alpha: 0.0),
-                  color.withValues(alpha: 0.9),
-                  color.withValues(alpha: 0.0),
-                ],
+          stops: const [0.0, 0.35, 0.7, 1.0],
+          colors: [
+            color.withValues(alpha: 0.93),
+            color.withValues(alpha: 0.64),
+            color.withValues(alpha: 0.25),
+            color.withValues(alpha: 0.0),
+          ],
         ),
       ),
       child: const SizedBox.expand(),
@@ -839,18 +885,42 @@ class _ChatEdgeFade extends StatelessWidget {
 }
 
 /// Cold-start welcome shown when the active conversation has no messages yet:
-/// a short greeting plus tappable suggestions that pre-fill the composer.
+/// a friendly intro plus tappable suggestions that pre-fill the composer.
+/// Clean canvas only — no gradient, no brand mark, no feature pills.
 class _ConversationEmpty extends StatelessWidget {
-  const _ConversationEmpty({required this.onSuggestion});
+  const _ConversationEmpty({
+    required this.onSuggestion,
+    required this.rotation,
+  });
 
   final ValueChanged<String> onSuggestion;
 
-  static const _suggestions = [
+  /// Advances each time the home screen opens so the "Try asking" chips
+  /// show a different set on every re-open.
+  final int rotation;
+
+  static const _suggestionPool = [
     'Summarize a web article for me',
     'Explain a complex topic simply',
     'Plan my day in three steps',
     'Draft a short email',
+    'Brainstorm names for my new project',
+    'Turn a rough idea into a step-by-step plan',
+    'Help me debug a confusing error',
+    'Write a quick goodbye note',
+    'Compare two options before I decide',
+    'Give me a fresh perspective on a problem',
   ];
+
+  /// Four suggestions, windowed through the pool so consecutive opens share
+  /// only a little overlap.
+  List<String> get _suggestions {
+    final start = (rotation * 3) % _suggestionPool.length;
+    return [
+      for (var i = 0; i < 4; i++)
+        _suggestionPool[(start + i) % _suggestionPool.length],
+    ];
+  }
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
@@ -864,22 +934,31 @@ class _ConversationEmpty extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'How can I help today?',
+                  "Hi, I'm Finn.",
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w400,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Ask anything — everything runs privately on this device.',
+                  'Ask me anything — I run entirely on this device, so your\n'
+                  'conversations never leave your phone.',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: FluxColors.mutedOf(context),
-                    height: 1.4,
+                    height: 1.45,
                   ),
                 ),
-                const SizedBox(height: 22),
+                const SizedBox(height: 30),
+                Text(
+                  'Try asking',
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: FluxColors.mutedOf(context),
+                    letterSpacing: .4,
+                  ),
+                ),
+                const SizedBox(height: 12),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
@@ -889,12 +968,21 @@ class _ConversationEmpty extends StatelessWidget {
                       ActionChip(
                         label: Text(suggestion),
                         onPressed: () => onSuggestion(suggestion),
-                        backgroundColor: FluxColors.cardOf(context),
-                        side: BorderSide(color: FluxColors.lineOf(context)),
+                        backgroundColor: FluxColors.cardOf(context).withValues(
+                          alpha: FluxColors.isDark(context) ? .5 : .62,
+                        ),
+                        side: BorderSide(
+                          color: FluxColors.lineOf(context).withValues(
+                            alpha: FluxColors.isDark(context) ? .45 : .8,
+                          ),
+                        ),
                         labelStyle: Theme.of(context).textTheme.labelMedium,
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 4,
+                          horizontal: 8,
+                          vertical: 6,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(999),
                         ),
                       ),
                   ],
@@ -921,9 +1009,10 @@ class _Conversation extends StatefulWidget {
     required this.onSuggestion,
     required this.onOpenConversation,
     required this.preparing,
-    required this.preparingLabel,
+    required this.welcomeRotation,
     required this.topInset,
     required this.bottomInset,
+    required this.scrollController,
   });
   final List<ConversationMessage> messages;
   final String? activeConversationId;
@@ -936,7 +1025,10 @@ class _Conversation extends StatefulWidget {
   final ValueChanged<String> onSuggestion;
   final ValueChanged<String> onOpenConversation;
   final bool preparing;
-  final String preparingLabel;
+
+  /// Advances each time the home screen opens so the welcome slate shows a
+  /// fresh "Try asking" suggestion set.
+  final int welcomeRotation;
 
   /// Vertical insets so the first message clears the header and the newest
   /// message clears the composer, while the list still bleeds beneath both
@@ -944,12 +1036,15 @@ class _Conversation extends StatefulWidget {
   final double topInset;
   final double bottomInset;
 
+  /// Scroll controller owned by the shell so it can observe the scroll
+  /// position (to collapse the composer) and jump back to the latest message.
+  final ScrollController scrollController;
+
   @override
   State<_Conversation> createState() => _ConversationState();
 }
 
 class _ConversationState extends State<_Conversation> {
-  final ScrollController _scrollController = ScrollController();
   Timer? _scrollSettleTimer;
   String _contentSignature = '';
 
@@ -978,17 +1073,17 @@ class _ConversationState extends State<_Conversation> {
   void _queueLatestAlignment() {
     _scrollSettleTimer?.cancel();
     _scrollSettleTimer = Timer(const Duration(milliseconds: 70), () {
-      if (!mounted || !_scrollController.hasClients) return;
-      final position = _scrollController.position;
+      if (!mounted || !widget.scrollController.hasClients) return;
+      final position = widget.scrollController.position;
       // Reverse lists place the latest response at offset zero. Follow new
       // output only while the user is already near it; never pull someone
       // away from an older message they are reading.
       if (position.pixels > 140 || position.pixels <= .5) return;
       if (MediaQuery.disableAnimationsOf(context)) {
-        _scrollController.jumpTo(0);
+        widget.scrollController.jumpTo(0);
       } else {
         unawaited(
-          _scrollController.animateTo(
+          widget.scrollController.animateTo(
             0,
             duration: const Duration(milliseconds: 320),
             curve: Curves.easeOutQuart,
@@ -1001,7 +1096,6 @@ class _ConversationState extends State<_Conversation> {
   @override
   void dispose() {
     _scrollSettleTimer?.cancel();
-    _scrollController.dispose();
     super.dispose();
   }
 
@@ -1023,7 +1117,10 @@ class _ConversationState extends State<_Conversation> {
         !widget.preparing) {
       return Padding(
         padding: EdgeInsets.fromLTRB(0, widget.topInset, 0, widget.bottomInset),
-        child: _ConversationEmpty(onSuggestion: widget.onSuggestion),
+        child: _ConversationEmpty(
+          onSuggestion: widget.onSuggestion,
+          rotation: widget.welcomeRotation,
+        ),
       );
     }
     final streamingMessageId = ownsGeneration
@@ -1040,19 +1137,22 @@ class _ConversationState extends State<_Conversation> {
       children: [
         ListView.builder(
           key: const ValueKey('chat-scroll-view'),
-          controller: _scrollController,
+          controller: widget.scrollController,
           reverse: true,
           // Content bleeds into the soft edge fades so messages fade out as
-          // they reach the top edge and slide beneath the composer.
+          // they reach the top edge and fade into the bottom screen edge
+          // beneath the composer. The top inset parks the oldest message below
+          // the header instead of against the status bar; the bottom inset
+          // keeps the newest message close above the composer.
           padding: EdgeInsets.fromLTRB(
             0,
-            32,
+            widget.topInset,
             0,
-            widget.bottomInset + 30,
+            widget.bottomInset + 20,
           ),
           scrollCacheExtent: const ScrollCacheExtent.pixels(700),
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-          physics: const BouncingScrollPhysics(
+          physics: const FluxBouncingScrollPhysics(
             parent: AlwaysScrollableScrollPhysics(),
           ),
           itemCount: visibleMessages.length + 1,
@@ -1061,30 +1161,10 @@ class _ConversationState extends State<_Conversation> {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (ownsGeneration && activeJob.responseText.isNotEmpty)
-                    _CompleteReply(
-                      text: activeJob.responseText,
-                      showActions: false,
-                      streaming: true,
-                    ),
                   if (ownsGeneration)
-                    _ModelResponseLoader(
-                      key: ValueKey(activeJob.state),
-                      // Once text is streaming the answer itself is the
-                      // progress; drop the "Finn is typing…" label so the
-                      // indicator only occupies the pre-token wait.
-                      label: activeJob.responseText.isEmpty
-                          ? widget.generation.progressLabel
-                          : '',
-                      stopping: activeJob.state == ChatGenerationState.stopping,
-                      onStop: widget.onStop,
-                    )
+                    _StreamingReply(text: activeJob.responseText)
                   else if (widget.preparing)
-                    _ModelResponseLoader(
-                      label: widget.preparingLabel,
-                      stopping: false,
-                      onStop: widget.onStop,
-                    )
+                    const _StreamingReply(text: '')
                   else if (activeJob != null)
                     OtherChatGenerationNotice(
                       title:
@@ -1155,14 +1235,14 @@ class _ConversationState extends State<_Conversation> {
         ),
         // Fixed overlay bands (Positioned, not Align) so they are anchored to
         // the real top and bottom edges of the viewport. The top band is tall
-        // enough to wash over the header; the bottom band reaches the very
-        // bottom of the screen and peaks at the composer's top edge so
-        // messages fade as they slide beneath the input.
+        // enough to wash over the header; the bottom band fades content into
+        // the very bottom edge of the screen and completes exactly at the
+        // composer's top edge, so messages stay crisp right up to the input.
         Positioned(
           top: 0,
           left: 0,
           right: 0,
-          height: 150,
+          height: 160,
           child: IgnorePointer(
             child: const _ChatEdgeFade(
               key: ValueKey('chat-fade-top'),
@@ -1174,12 +1254,11 @@ class _ConversationState extends State<_Conversation> {
           bottom: 0,
           left: 0,
           right: 0,
-          height: widget.bottomInset + 90,
+          height: widget.bottomInset,
           child: IgnorePointer(
-            child: _ChatEdgeFade(
-              key: const ValueKey('chat-fade-bottom'),
+            child: const _ChatEdgeFade(
+              key: ValueKey('chat-fade-bottom'),
               top: false,
-              peakFraction: widget.bottomInset / (widget.bottomInset + 90),
             ),
           ),
         ),
@@ -1312,10 +1391,7 @@ class _MessageBubbleState extends State<_MessageBubble> {
     final isDark = FluxColors.isDark(context);
     final bubble = Container(
       constraints: BoxConstraints(
-        maxWidth: math.min(
-          MediaQuery.sizeOf(context).width * .82,
-          620,
-        ),
+        maxWidth: math.min(MediaQuery.sizeOf(context).width * .82, 620),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
@@ -1339,7 +1415,9 @@ class _MessageBubbleState extends State<_MessageBubble> {
               ],
         border: widget.user
             ? null
-            : Border.all(color: FluxColors.lineOf(context).withValues(alpha: 0.06)),
+            : Border.all(
+                color: FluxColors.lineOf(context).withValues(alpha: 0.06),
+              ),
       ),
       child: widget.childBuilder(_selecting),
     );
@@ -1390,62 +1468,72 @@ class _MessageBubbleState extends State<_MessageBubble> {
                     borderRadius: BorderRadius.circular(18),
                     child: ConstrainedBox(
                       constraints: BoxConstraints(
-                        maxWidth: math.min(178, MediaQuery.sizeOf(context).width - 64),
+                        maxWidth: math.min(
+                          178,
+                          MediaQuery.sizeOf(context).width - 64,
+                        ),
                       ),
                       child: Container(
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(18),
-                          border: Border.all(color: FluxColors.lineOf(context).withValues(alpha: 0.08)),
+                          border: Border.all(
+                            color: FluxColors.lineOf(
+                              context,
+                            ).withValues(alpha: 0.08),
+                          ),
                         ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (widget.onEdit != null) ...[
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (widget.onEdit != null) ...[
+                              _InlineMessageAction(
+                                icon: FluxIcons.edit,
+                                label: 'Edit',
+                                onTap: () {
+                                  setState(() => _actionsVisible = false);
+                                  widget.onEdit?.call();
+                                },
+                              ),
+                              Divider(
+                                height: 1,
+                                color: FluxColors.lineOf(context),
+                              ),
+                            ],
                             _InlineMessageAction(
-                              icon: FluxIcons.edit,
-                              label: 'Edit',
-                              onTap: () {
-                                setState(() => _actionsVisible = false);
-                                widget.onEdit?.call();
-                              },
+                              icon: FluxIcons.copy,
+                              label: 'Copy',
+                              onTap: _copy,
                             ),
                             Divider(
                               height: 1,
                               color: FluxColors.lineOf(context),
                             ),
+                            _InlineMessageAction(
+                              icon: FluxIcons.edit,
+                              label: 'Select',
+                              onTap: () => setState(() {
+                                _selecting = true;
+                                _actionsVisible = false;
+                              }),
+                            ),
+                            Divider(
+                              height: 1,
+                              color: FluxColors.lineOf(context),
+                            ),
+                            _InlineMessageAction(
+                              icon: FluxIcons.flag,
+                              label: 'Report',
+                              onTap: () {
+                                setState(() => _actionsVisible = false);
+                                ReportDialog.show(
+                                  context,
+                                  assistantResponse: widget.text,
+                                  userPrompt: null,
+                                  modelTier: widget.modelTier,
+                                );
+                              },
+                            ),
                           ],
-                          _InlineMessageAction(
-                            icon: FluxIcons.copy,
-                            label: 'Copy',
-                            onTap: _copy,
-                          ),
-                          Divider(
-                            height: 1,
-                            color: FluxColors.lineOf(context),
-                          ),
-                          _InlineMessageAction(
-                            icon: FluxIcons.edit,
-                            label: 'Select',
-                            onTap: () => setState(() {
-                              _selecting = true;
-                              _actionsVisible = false;
-                            }),
-                          ),
-                          Divider(height: 1, color: FluxColors.lineOf(context)),
-                          _InlineMessageAction(
-                            icon: FluxIcons.flag,
-                            label: 'Report',
-                            onTap: () {
-                              setState(() => _actionsVisible = false);
-                              ReportDialog.show(
-                                context,
-                                assistantResponse: widget.text,
-                                userPrompt: null,
-                                modelTier: widget.modelTier,
-                              );
-                            },
-                          ),
-                        ],
                         ),
                       ),
                     ),
@@ -1485,129 +1573,73 @@ class _InlineMessageAction extends StatelessWidget {
   );
 }
 
-class _ModelResponseLoader extends StatefulWidget {
-  const _ModelResponseLoader({
-    super.key,
-    required this.label,
-    required this.stopping,
-    required this.onStop,
-  });
+/// The live AI response while it is being generated: the streaming text (if
+/// any) followed by a softly blinking caret. Replaces the old "Finn is
+/// typing…" bar and its stop affordance with a caret-only treatment.
+class _StreamingReply extends StatefulWidget {
+  const _StreamingReply({required this.text});
 
-  final String label;
-  final bool stopping;
-  final VoidCallback onStop;
+  final String text;
 
   @override
-  State<_ModelResponseLoader> createState() => _ModelResponseLoaderState();
+  State<_StreamingReply> createState() => _StreamingReplyState();
 }
 
-class _ModelResponseLoaderState extends State<_ModelResponseLoader>
+class _StreamingReplyState extends State<_StreamingReply>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
+  late final AnimationController _caret = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 1050),
+    duration: const Duration(milliseconds: 530),
   );
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (MediaQuery.disableAnimationsOf(context)) {
-      _controller.stop();
-      _controller.value = .42;
-    } else if (!_controller.isAnimating) {
-      _controller.repeat();
+      _caret.stop();
+      _caret.value = 1;
+    } else if (!_caret.isAnimating) {
+      _caret.repeat(reverse: true);
     }
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _caret.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) => Semantics(
-    label: widget.label,
-    hint: widget.stopping ? null : 'Tap to stop generation',
-    button: true,
-    enabled: !widget.stopping,
     liveRegion: true,
-    child: Align(
-      alignment: Alignment.centerLeft,
-      child: RepaintBoundary(
-        child: Material(
-          color: FluxColors.cardOf(context).withValues(alpha: .8),
-          borderRadius: BorderRadius.circular(19),
-          child: InkWell(
-            onTap: widget.stopping ? null : widget.onStop,
-            borderRadius: BorderRadius.circular(19),
-            child: Container(
-              constraints: const BoxConstraints(minHeight: 36, maxWidth: 300),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(19),
-                border: Border.all(color: FluxColors.lineOf(context)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(
-                    width: 26,
-                    child: AnimatedBuilder(
-                      animation: _controller,
-                      builder: (context, _) => Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: List.generate(3, (index) {
-                          final wave =
-                              (math.sin(
-                                    _controller.value * math.pi * 2 -
-                                        index * .9,
-                                  ) +
-                                  1) /
-                              2;
-                          return Transform.scale(
-                            scale: .65 + wave * .5,
-                            child: Opacity(
-                              opacity: .3 + wave * .7,
-                              child: DecoratedBox(
-                                decoration: BoxDecoration(
-                                  color: FluxColors.inkOf(context),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const SizedBox.square(dimension: 5),
-                              ),
-                            ),
-                          );
-                        }),
-                      ),
+    label: widget.text.isEmpty ? 'Finn is generating…' : null,
+    child: Text.rich(
+      TextSpan(
+        children: [
+          if (widget.text.isNotEmpty) TextSpan(text: widget.text),
+          WidgetSpan(
+            alignment: PlaceholderAlignment.baseline,
+            baseline: TextBaseline.alphabetic,
+            child: ExcludeSemantics(
+              child: AnimatedBuilder(
+                animation: _caret,
+                builder: (context, _) => Opacity(
+                  opacity: .3 + .7 * _caret.value,
+                  child: Container(
+                    width: 2.2,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      color: FluxColors.inkOf(context),
+                      borderRadius: BorderRadius.circular(1.1),
                     ),
                   ),
-                  if (widget.label.isNotEmpty) ...[
-                    const SizedBox(width: 8),
-                    Flexible(
-                      child: Text(
-                        widget.label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.labelMedium
-                            ?.copyWith(color: FluxColors.mutedOf(context)),
-                      ),
-                    ),
-                  ],
-                  if (!widget.stopping) ...[
-                    const SizedBox(width: 7),
-                    FluxIcon(
-                      icon: FluxIcons.close,
-                      size: 13,
-                      color: FluxColors.mutedOf(context),
-                    ),
-                  ],
-                ],
+                ),
               ),
             ),
           ),
-        ),
+        ],
       ),
+      style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.38),
     ),
   );
 }
@@ -1661,7 +1693,6 @@ class _CompleteReply extends StatelessWidget {
     this.modelTier = 'Finn AI',
     this.status = ConversationMessageStatus.complete,
     this.showActions = true,
-    this.streaming = false,
     this.onContinue,
     this.onRegenerate,
     this.sources = const [],
@@ -1672,7 +1703,6 @@ class _CompleteReply extends StatelessWidget {
   final String modelTier;
   final ConversationMessageStatus status;
   final bool showActions;
-  final bool streaming;
   final VoidCallback? onContinue;
   final VoidCallback? onRegenerate;
   final List<WebSource> sources;
@@ -1683,14 +1713,8 @@ class _CompleteReply extends StatelessWidget {
     children: [
       // The assistant answer sits directly on the canvas — no bubble — and its
       // text is natively selectable.
-      if (streaming)
-        Text(
-          text,
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.38),
-        )
-      else
-        SelectionArea(child: SafeMarkdownText(text: text)),
-      if (showActions && !streaming) ...[
+      SelectionArea(child: SafeMarkdownText(text: text)),
+      if (showActions) ...[
         const SizedBox(height: 6),
         _ReplyActions(
           text: text,
@@ -1983,6 +2007,10 @@ class ChatComposer extends StatefulWidget {
     required this.blocked,
     required this.onSend,
     this.busy = false,
+    this.compact = false,
+    this.onReturnToLatest,
+    this.width,
+    this.onStop,
   });
   final TextEditingController controller;
   final FocusNode focusNode;
@@ -1993,37 +2021,57 @@ class ChatComposer extends StatefulWidget {
   /// draft the next message, but sending is disabled until the turn ends.
   final bool busy;
 
+  /// When true the whole pill scales down to 55% around its center — used
+  /// while the user scrolls away from the newest message. Restored to full
+  /// size near the bottom.
+  final bool compact;
+
+  /// Invoked when the field is tapped or focused so the shell can scroll the
+  /// chat back to the latest message.
+  final VoidCallback? onReturnToLatest;
+
+  /// Full-size width of the pill. When null the pill fills its constraints.
+  final double? width;
+
+  /// Invoked while a reply is generating to stop it — the send button becomes
+  /// a stop control while [busy] is true.
+  final VoidCallback? onStop;
+
   @override
   State<ChatComposer> createState() => _ChatComposerState();
 }
 
 class _ChatComposerState extends State<ChatComposer> {
   late bool _hasText;
-  late bool _focused;
 
   @override
   void initState() {
     super.initState();
     _hasText = widget.controller.text.trim().isNotEmpty;
-    _focused = widget.focusNode.hasFocus;
     widget.controller.addListener(_changed);
-    widget.focusNode.addListener(_changed);
+    widget.focusNode.addListener(_onFocusChanged);
   }
 
   void _changed() {
     final hasText = widget.controller.text.trim().isNotEmpty;
-    final focused = widget.focusNode.hasFocus;
-    if (_hasText == hasText && _focused == focused) return;
+    if (_hasText == hasText) return;
     setState(() {
       _hasText = hasText;
-      _focused = focused;
     });
+  }
+
+  void _onFocusChanged() {
+    // Tapping the field pops the keyboard and returns the user to the latest
+    // message, so the pill expands back to full size.
+    if (widget.focusNode.hasFocus) {
+      widget.onReturnToLatest?.call();
+    }
   }
 
   @override
   void dispose() {
     widget.controller.removeListener(_changed);
-    widget.focusNode.removeListener(_changed);
+    widget.focusNode.removeListener(_onFocusChanged);
     super.dispose();
   }
 
@@ -2031,20 +2079,45 @@ class _ChatComposerState extends State<ChatComposer> {
   Widget build(BuildContext context) {
     final canSend = _hasText && !widget.blocked && !widget.busy;
     final reducedMotion = MediaQuery.disableAnimationsOf(context);
-    return AnimatedContainer(
-      key: const ValueKey('chat-composer-motion'),
-      duration: reducedMotion ? Duration.zero : const Duration(milliseconds: 180),
+    // Frosted white pill: the field is always the same white whether focused
+    // or not, with a light backdrop blur so content scrolling beneath it reads
+    // softly through the translucency. The blur sigma stays modest so low-end
+    // devices are not taxed.
+    // The whole pill condenses around its own center while scrolled away:
+    // height scales to 90% and width to ~81% (90% of the scaled width), so
+    // it reads as a slimmer capsule. Full size is restored at the bottom.
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(end: widget.compact ? 1.0 : 0.0),
+      duration: reducedMotion
+          ? Duration.zero
+          : const Duration(milliseconds: 220),
       curve: Curves.easeOutCubic,
-      decoration: BoxDecoration(
-        color: _focused
-            ? FluxColors.cardOf(context)
-            : FluxColors.surfaceOf(context),
-        borderRadius: BorderRadius.circular(20),
+      builder: (context, shrink, child) => Transform(
+        alignment: Alignment.center,
+        transform: Matrix4.diagonal3Values(
+          1 - 0.19 * shrink,
+          1 - 0.1 * shrink,
+          1,
+        ),
+        child: child,
       ),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 48, maxHeight: 190),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 8, 6, 8),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(999),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: AnimatedContainer(
+            key: const ValueKey('chat-composer-motion'),
+            duration: reducedMotion
+                ? Duration.zero
+                : const Duration(milliseconds: 180),
+            curve: Curves.easeOutCubic,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.85),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            width: widget.width,
+            constraints: const BoxConstraints(minHeight: 42, maxHeight: 190),
+            padding: const EdgeInsets.fromLTRB(12, 6, 6, 6),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2059,53 +2132,101 @@ class _ChatComposerState extends State<ChatComposer> {
                         child: TextField(
                           controller: widget.controller,
                           focusNode: widget.focusNode,
-                          inputFormatters: [LengthLimitingTextInputFormatter(4000)],
+                          inputFormatters: [
+                            LengthLimitingTextInputFormatter(4000),
+                          ],
                           enabled: !widget.blocked,
                           minLines: 1,
                           maxLines: 5,
                           keyboardType: TextInputType.multiline,
                           textInputAction: TextInputAction.send,
                           onSubmitted: (_) => canSend ? widget.onSend() : null,
-                          style: Theme.of(context).textTheme.bodyMedium,
+                          onTap: () => widget.onReturnToLatest?.call(),
+                          // The field is always white, so pin dark ink for
+                          // text, hint and cursor in both light and dark mode.
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(color: FluxColors.ink),
+                          cursorColor: FluxColors.ink,
                           decoration: InputDecoration.collapsed(
-                            hintText: widget.blocked ? 'Finn is typing…' : 'Ask anything',
-                            hintStyle: Theme.of(context)
-                                .textTheme
-                                .bodyMedium
-                                ?.copyWith(color: FluxColors.mutedOf(context)),
+                            hintText: widget.blocked
+                                ? 'Finn is typing…'
+                                : 'Ask anything',
+                            hintStyle: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(color: FluxColors.muted),
                           ),
                         ),
                       ),
                     ),
                     const SizedBox(width: 6),
-                    Semantics(
-                      button: true,
-                      enabled: canSend,
-                      label: 'Send message',
-                      child: SizedBox.square(
-                        key: const ValueKey('send-button-surface'),
-                        dimension: 36,
+                    if (widget.busy)
+                      // While a reply is generating the send button becomes a
+                      // stop control: a black rounded square with a white stop
+                      // glyph that cancels generation on tap.
+                      Semantics(
+                        button: true,
+                        label: 'Stop generating',
                         child: InkWell(
-                          onTap: canSend ? widget.onSend : null,
+                          key: const ValueKey('stop-button-surface'),
+                          onTap: widget.onStop,
                           customBorder: const CircleBorder(),
-                          child: Center(
-                            child: FigmaSvg(
-                              asset: canSend ? FigmaAssets.activeSend : FigmaAssets.send,
-                              key: const ValueKey('send-button-icon'),
-                              width: 30,
-                              height: 30,
-                              invertForDark: FluxColors.isDark(context),
+                          child: Container(
+                            width: 36,
+                            height: 36,
+                            decoration: const BoxDecoration(
+                              color: Colors.black,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Center(
+                              child: SizedBox.square(
+                                dimension: 12,
+                                child: DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.all(
+                                      Radius.circular(3),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      )
+                    else
+                      Semantics(
+                        button: true,
+                        enabled: canSend,
+                        label: 'Send message',
+                        child: SizedBox.square(
+                          key: const ValueKey('send-button-surface'),
+                          dimension: 36,
+                          child: InkWell(
+                            onTap: canSend ? widget.onSend : null,
+                            customBorder: const CircleBorder(),
+                            child: Center(
+                              child: FigmaSvg(
+                                asset: canSend
+                                    ? FigmaAssets.activeSend
+                                    : FigmaAssets.send,
+                                key: const ValueKey('send-button-icon'),
+                                width: 30,
+                                height: 30,
+                                // The send glyph is designed as a dark circle on
+                                // a light surface, so keep its own colors on the
+                                // white pill in dark mode too.
+                                preserveColors: true,
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
                   ],
                 ),
               ],
             ),
           ),
         ),
+      ),
     );
   }
 }
@@ -2194,7 +2315,7 @@ class _SidebarState extends State<_Sidebar> {
               Positioned.fill(
                 child: CustomScrollView(
                   controller: _scrollController,
-                  physics: const BouncingScrollPhysics(
+                  physics: const FluxBouncingScrollPhysics(
                     parent: AlwaysScrollableScrollPhysics(),
                   ),
                   slivers: [

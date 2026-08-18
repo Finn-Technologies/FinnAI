@@ -257,7 +257,7 @@ class _CreationsPageState extends State<CreationsPage> {
         return GridView.builder(
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           padding: const EdgeInsets.fromLTRB(20, 2, 20, 12),
-          physics: const BouncingScrollPhysics(),
+          physics: const FluxBouncingScrollPhysics(),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: columns,
             mainAxisExtent: 164,

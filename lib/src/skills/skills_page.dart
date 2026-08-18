@@ -141,7 +141,7 @@ class _SkillsPageState extends State<SkillsPage> {
                           .toList();
                       return ListView(
                         controller: _scrollController,
-                        physics: const BouncingScrollPhysics(),
+                        physics: const FluxBouncingScrollPhysics(),
                         padding: EdgeInsets.fromLTRB(
                           20,
                           metrics.contentTop + 10,

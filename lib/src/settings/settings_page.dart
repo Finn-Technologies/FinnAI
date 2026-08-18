@@ -306,14 +306,13 @@ class _SettingsPageState extends State<SettingsPage>
                       final totalChats =
                           ConversationStore.instance.conversations.length;
                       final states = _storageStates;
-                      final selectedTier =
-                          QwenInference.instance.selected.tier;
+                      final selectedTier = QwenInference.instance.selected.tier;
                       final isPrivacyOptionsNeeded =
                           AdConsentService.instance.isPrivacyOptionsRequired;
 
                       final scrollView = CustomScrollView(
                         controller: _scrollController,
-                        physics: const BouncingScrollPhysics(
+                        physics: const FluxBouncingScrollPhysics(
                           parent: AlwaysScrollableScrollPhysics(),
                         ),
                         slivers: [
@@ -333,6 +332,9 @@ class _SettingsPageState extends State<SettingsPage>
                               adUnitId: AdService.settingsBannerAdUnitId,
                             ),
                           ),
+                          // Breathing room between the ad and the first
+                          // section heading below it.
+                          const SliverToBoxAdapter(child: SizedBox(height: 24)),
 
                           // ── AI MODELS section ──
                           SliverToBoxAdapter(
@@ -924,9 +926,15 @@ class _ModelRow extends StatelessWidget {
     final model = state.model;
 
     final inference = QwenInference.instance;
-    final downloading = inference.phase == InferencePhase.downloading &&
+    final downloading =
+        inference.phase == InferencePhase.downloading &&
         inference.workingModel?.tier == state.model.tier;
-    final progress = downloading ? (inference.downloadProgress ?? 0) : 0.0;
+    // Prefer the aggregate install progress (language model + multimodal
+    // component) so the row keeps advancing when the second artifact starts
+    // instead of resetting toward zero.
+    final progress = downloading
+        ? (inference.installProgress ?? inference.downloadProgress ?? 0)
+        : 0.0;
     final speedLabel = downloading ? inference.downloadSpeedLabel : null;
     final etaLabel = downloading ? inference.downloadEtaLabel : null;
 

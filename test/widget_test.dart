@@ -54,10 +54,7 @@ void main() {
     expect(find.textContaining('proprietary software'), findsOneWidget);
     await moveForward();
     expect(find.text('Installing Qwen 3.5 2B'), findsOneWidget);
-    expect(
-      find.text('Preparing Qwen 3.5 2B for this device…'),
-      findsOneWidget,
-    );
+    expect(find.text('Preparing Qwen 3.5 2B for this device…'), findsOneWidget);
 
     tester.widget<PageView>(find.byType(PageView)).controller!.jumpToPage(3);
     await tester.pump();
@@ -187,7 +184,16 @@ void main() {
         final iconFinder = find.byKey(const ValueKey('send-button-icon'));
         final disabledIcon = tester.widget<FigmaSvg>(iconFinder);
         expect(tester.getSize(surfaceFinder), const Size(36, 36));
-        expect(find.byType(AnimatedScale), findsNothing);
+        // The composer-wide shrink transform animates the whole pill down to
+        // 90% while scrolled away; at rest it must be full size, and the send
+        // button itself is never individually scaled.
+        final composerShrink = tester.widget<TweenAnimationBuilder<double>>(
+          find.ancestor(
+            of: surfaceFinder,
+            matching: find.byType(TweenAnimationBuilder<double>),
+          ),
+        );
+        expect(composerShrink.tween.end, 0.0);
         expect(find.bySemanticsLabel('Send message'), findsOneWidget);
 
         await tester.enterText(find.byType(TextField), 'Ready');
@@ -247,11 +253,13 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 100));
     await tester.tap(find.byTooltip('Open menu'));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('Chat History'), findsOneWidget);
 
     await tester.binding.handlePopRoute();
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
 
     expect(find.byType(HomeShell), findsOneWidget);
     expect(find.byTooltip('Open menu'), findsOneWidget);

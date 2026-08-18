@@ -451,8 +451,6 @@ class _AutomaticModelPageState extends State<_AutomaticModelPage> {
   bool _ready = false;
   String? _error;
   double _progress = .02;
-  int _installIndex = 0;
-  int _installCount = 1;
 
   @override
   void initState() {
@@ -479,15 +477,14 @@ class _AutomaticModelPageState extends State<_AutomaticModelPage> {
 
   void _inferenceChanged() {
     if (!mounted) return;
-    final reported = _inference.downloadProgress;
     setState(() {
-      if (reported != null) {
-        final aggregate = (_installIndex + reported) / _installCount;
-        _progress = aggregate.clamp(_progress, .97);
-      }
-      if (_inference.phase == InferencePhase.loading && _started) {
-        final aggregate = (_installIndex + .98) / _installCount;
-        _progress = aggregate.clamp(_progress, .98);
+      final aggregate = _inference.installProgress;
+      if (aggregate != null) {
+        // Aggregate progress spans the language model AND the post-model
+        // multimodal component, so the bar keeps advancing across the
+        // artifact switch instead of jumping to ~97% with half the data
+        // still to fetch.
+        _progress = aggregate;
       }
     });
   }
@@ -501,10 +498,8 @@ class _AutomaticModelPageState extends State<_AutomaticModelPage> {
     });
     _inference.useAutomaticSelection();
     final models = _inference.requiredModels;
-    _installCount = models.length;
     try {
       for (var index = 0; index < models.length; index++) {
-        _installIndex = index;
         if (mounted) {
           setState(() => _progress = index / models.length);
         }
@@ -581,7 +576,14 @@ class _AutomaticInstallPanel extends StatelessWidget {
     final inference = QwenInference.instance;
     final downloading = !ready && started &&
         inference.phase == InferencePhase.downloading;
-    final meta = [
+    // The whole install is one honest number: language model + multimodal
+    // component, downloaded bytes so far, and what is left.
+    final totalBytes = model.expectedBytes + qwenMmproj.expectedBytes;
+    final receivedBytes = inference.installReceivedBytes;
+    final remainingBytes = inference.installRemainingBytes;
+    final transferMeta = [
+      if (downloading) '${_formatBytes(receivedBytes)} of ${_formatBytes(totalBytes)}',
+      if (downloading && remainingBytes > 0) '${_formatBytes(remainingBytes)} left',
       if (downloading && inference.downloadSpeedLabel != null)
         inference.downloadSpeedLabel!,
       if (downloading && inference.downloadEtaLabel != null)
@@ -589,131 +591,142 @@ class _AutomaticInstallPanel extends StatelessWidget {
     ].join(' · ');
 
     // The download card sits on top of the detail page's card, so its own
-    // background is dropped in dark mode to avoid a nested dark slab.
+    // background is dropped in dark mode to avoid a nested dark slab. The
+    // content scrolls vertically on very short screens instead of overflowing.
     return FluxGlass(
       radius: 24,
       color: isDark ? Colors.transparent : null,
       borderColor: isDark ? Colors.transparent : null,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AnimatedSwitcher(
-              duration: reduced
-                  ? Duration.zero
-                  : const Duration(milliseconds: 360),
-              transitionBuilder: (child, animation) =>
-                  ScaleTransition(scale: animation, child: child),
-              child: FluxIcon(
-                key: ValueKey('${ready}_icon'),
-                icon: ready ? FluxIcons.check : FluxIcons.chip,
-                size: 28,
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedSwitcher(
+                duration: reduced
+                    ? Duration.zero
+                    : const Duration(milliseconds: 360),
+                transitionBuilder: (child, animation) =>
+                    ScaleTransition(scale: animation, child: child),
+                child: FluxIcon(
+                  key: ValueKey('${ready}_icon'),
+                  icon: ready ? FluxIcons.check : FluxIcons.chip,
+                  size: 26,
+                ),
               ),
-            ),
-            const SizedBox(height: 10),
-            Text(model.name, style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 4),
-            Text(
-              ready
-                  ? 'Ready for private text chat on this device'
-                  : '${model.parameterLabel} · ${model.sizeLabel}',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: FluxColors.mutedOf(context),
+              const SizedBox(height: 8),
+              Text(model.name, style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 3),
+              Text(
+                ready
+                    ? 'Ready for private text chat on this device'
+                    : '${model.name} + multimodal component · '
+                          '${_formatBytes(totalBytes)}',
+                maxLines: 2,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: FluxColors.mutedOf(context),
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            AnimatedSwitcher(
-              duration: reduced
-                  ? Duration.zero
-                  : const Duration(milliseconds: 320),
-              switchInCurve: Curves.easeOutCubic,
-              child: error != null
-                  ? Column(
-                      key: const ValueKey('error'),
-                      children: [
-                        Text(
-                          error!,
-                          maxLines: 2,
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.labelMedium
-                              ?.copyWith(color: FluxColors.mutedOf(context)),
-                        ),
-                        const SizedBox(height: 10),
-                        Semantics(
-                          button: true,
-                          label: 'Retry model download',
-                          child: Material(
-                            color: FluxColors.surfaceOf(context),
-                            borderRadius: BorderRadius.circular(99),
-                            child: InkWell(
-                              onTap: onRetry,
+              const SizedBox(height: 10),
+              AnimatedSwitcher(
+                duration: reduced
+                    ? Duration.zero
+                    : const Duration(milliseconds: 320),
+                switchInCurve: Curves.easeOutCubic,
+                child: error != null
+                    ? Column(
+                        key: const ValueKey('error'),
+                        children: [
+                          Text(
+                            error!,
+                            maxLines: 2,
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.labelMedium
+                                ?.copyWith(color: FluxColors.mutedOf(context)),
+                          ),
+                          const SizedBox(height: 10),
+                          Semantics(
+                            button: true,
+                            label: 'Retry model download',
+                            child: Material(
+                              color: FluxColors.surfaceOf(context),
                               borderRadius: BorderRadius.circular(99),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 9,
-                                ),
-                                child: Text(
-                                  'Retry',
-                                  style: Theme.of(context).textTheme.labelMedium
-                                      ?.copyWith(
-                                        color: FluxColors.inkOf(context),
-                                      ),
+                              child: InkWell(
+                                onTap: onRetry,
+                                borderRadius: BorderRadius.circular(99),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 9,
+                                  ),
+                                  child: Text(
+                                    'Retry',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelMedium
+                                        ?.copyWith(
+                                          color: FluxColors.inkOf(context),
+                                        ),
+                                  ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
-                    )
-                  : Text(
-                      key: ValueKey(ready),
-                      ready
-                          ? 'Model ready'
-                          : started
-                          ? '$status · ${(effectiveProgress * 100).round()}%'
-                          : 'Preparing Qwen 3.5 2B for this device…',
-                      maxLines: 1,
+                        ],
+                      )
+                    : Text(
+                        key: ValueKey(ready),
+                        ready
+                            ? 'Model ready'
+                            : started
+                            ? '$status · ${(effectiveProgress * 100).round()}%'
+                            : 'Preparing Qwen 3.5 2B for this device…',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.labelMedium
+                            ?.copyWith(
+                              color: FluxColors.mutedOf(context),
+                              height: 1.3,
+                            ),
+                      ),
+              ),
+              if (!ready && started) ...[
+                const SizedBox(height: 12),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(99),
+                  child: LinearProgressIndicator(
+                    value: effectiveProgress,
+                    minHeight: 4,
+                    color: isDark ? FluxColors.darkInk : FluxColors.ink,
+                    backgroundColor: isDark
+                        ? Colors.white.withValues(alpha: .12)
+                        : Colors.black.withValues(alpha: .08),
+                  ),
+                ),
+                if (transferMeta.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  AnimatedSwitcher(
+                    duration: reduced
+                        ? Duration.zero
+                        : const Duration(milliseconds: 220),
+                    child: Text(
+                      transferMeta,
+                      key: ValueKey(transferMeta),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.labelMedium?.copyWith(
                         color: FluxColors.mutedOf(context),
                       ),
                     ),
-            ),
-            if (!ready && started) ...[
-              const SizedBox(height: 14),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(99),
-                child: LinearProgressIndicator(
-                  value: effectiveProgress,
-                  minHeight: 4,
-                  color: isDark ? FluxColors.darkInk : FluxColors.ink,
-                  backgroundColor: isDark
-                      ? Colors.white.withValues(alpha: .12)
-                      : Colors.black.withValues(alpha: .08),
-                ),
-              ),
-              if (meta.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                AnimatedSwitcher(
-                  duration: reduced
-                      ? Duration.zero
-                      : const Duration(milliseconds: 220),
-                  child: Text(
-                    meta,
-                    key: ValueKey(meta),
-                    maxLines: 1,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: FluxColors.mutedOf(context),
-                    ),
                   ),
-                ),
+                ],
               ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -827,12 +840,10 @@ class _SoftwareUpgradeScreenState extends State<SoftwareUpgradeScreen> {
 
   void _inferenceChanged() {
     if (!mounted) return;
-    final reported = _inference.downloadProgress;
     setState(() {
-      if (reported != null) {
-        _progress = reported.clamp(_progress, .97);
-      } else if (_inference.phase == InferencePhase.loading && _started) {
-        _progress = _progress.clamp(0, .98);
+      final aggregate = _inference.installProgress;
+      if (aggregate != null) {
+        _progress = aggregate;
       }
     });
   }
@@ -989,4 +1000,13 @@ class _FinishPage extends StatelessWidget {
       ),
     ),
   );
+}
+
+/// Compact human-readable size used by the download card, e.g. "1.28 GB" or
+/// "668 MB".
+String _formatBytes(int bytes) {
+  if (bytes >= 1000 * 1000 * 1000) {
+    return '${(bytes / 1000 / 1000 / 1000).toStringAsFixed(2)} GB';
+  }
+  return '${(bytes / 1000 / 1000).round()} MB';
 }

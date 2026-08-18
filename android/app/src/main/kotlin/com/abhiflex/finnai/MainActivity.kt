@@ -18,6 +18,12 @@ class MainActivity : FlutterActivity() {
         val args = super.getFlutterShellArgs()
         val memory = ActivityManager.MemoryInfo()
         (getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager).getMemoryInfo(memory)
+        // Devices in the 7-8 GB RAM class (e.g. the Xiaomi 12T used in
+        // on-device benchmarks) pair a midrange Adreno with a Vulkan driver
+        // that hangs Impeller's cold-cache shader compilation and silently
+        // fails llama.cpp compute shaders. Falling back to the GLES renderer
+        // avoids both failure modes; the app is UI-light so the older path
+        // is not a perceptible regression.
         val prefersCompatibilityRenderer =
             Build.VERSION.SDK_INT <= Build.VERSION_CODES.S_V2 ||
                 memory.totalMem < 7_000_000_000L
@@ -82,6 +88,15 @@ class MainActivity : FlutterActivity() {
             }
             val intent = intent ?: run { result.success(mapOf<String, Any?>()); return@setMethodCallHandler }
             fun stringExtra(name: String): String? = intent.getStringExtra(name)?.takeIf { it.isNotEmpty() }
+            // Safe for both `--es NAME true` and `--ez NAME true` invocations;
+            // getBooleanExtra / getStringExtra throw ClassCastException when
+            // the extra was passed with the other type.
+            fun boolExtra(name: String): Boolean =
+                when (val v = intent.extras?.get(name)) {
+                    is String -> v.isNotEmpty()
+                    is Boolean -> v
+                    else -> false
+                }
             val intExtra = intent.getIntExtra("FINN_BENCH_RUNS", -1)
             result.success(
                 mapOf(
@@ -89,14 +104,17 @@ class MainActivity : FlutterActivity() {
                     "runs" to (if (intExtra > 0) intExtra else null),
                     "prompt" to stringExtra("FINN_BENCH_PROMPT"),
                     "prewarm" to stringExtra("FINN_BENCH_PREWARM"),
-                    "noSearch" to (intent.getBooleanExtra("FINN_BENCH_NO_SEARCH", false) || stringExtra("FINN_BENCH_NO_SEARCH") != null),
-                    "noPrefixCache" to (intent.getBooleanExtra("FINN_BENCH_NO_PREFIX", false) || stringExtra("FINN_BENCH_NO_PREFIX") != null),
+                    "noSearch" to boolExtra("FINN_BENCH_NO_SEARCH"),
+                    "noPrefixCache" to boolExtra("FINN_BENCH_NO_PREFIX"),
                     "threads" to (if (intent.hasExtra("FINN_BENCH_THREADS")) intent.getIntExtra("FINN_BENCH_THREADS", -1).takeIf { it > 0 } else null),
                     "batchThreads" to (if (intent.hasExtra("FINN_BENCH_BATCH_THREADS")) intent.getIntExtra("FINN_BENCH_BATCH_THREADS", -1).takeIf { it > 0 } else null),
                     "batch" to (if (intent.hasExtra("FINN_BENCH_BATCH")) intent.getIntExtra("FINN_BENCH_BATCH", -1).takeIf { it > 0 } else null),
                     "ubatch" to (if (intent.hasExtra("FINN_BENCH_UBATCH")) intent.getIntExtra("FINN_BENCH_UBATCH", -1).takeIf { it > 0 } else null),
-                    "f16Kv" to intent.getBooleanExtra("FINN_BENCH_F16_KV", false),
-                    "flashOff" to intent.getBooleanExtra("FINN_BENCH_FLASH_OFF", false),
+                    "nrs" to (if (intent.hasExtra("FINN_BENCH_NRS")) intent.getIntExtra("FINN_BENCH_NRS", -1).takeIf { it >= 0 } else null),
+                    "noSha" to boolExtra("FINN_BENCH_NO_SHA"),
+                    "cpu" to boolExtra("FINN_BENCH_CPU"),
+                    "f16Kv" to boolExtra("FINN_BENCH_F16_KV"),
+                    "flashOff" to boolExtra("FINN_BENCH_FLASH_OFF"),
                 ),
             )
         }

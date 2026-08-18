@@ -35,11 +35,15 @@ class ModelDownloadService : Service() {
         private const val CHANNEL_ID = "model_downloads"
         private const val NOTIFICATION_ID = 4102
         private const val PREFS = "model_download_status"
-        private const val SEGMENT_COUNT = 12
+        private const val SEGMENT_COUNT = 16
         private const val REPORT_INTERVAL_MS = 400L
-        private const val PERSIST_INTERVAL_MS = 1500L
+        // `channel.force(true)` is a synchronous fsync on the socket-read
+        // thread, so persisting too often stalls the transfer on slow flash.
+        // 4s balances crash-resume safety (worst case: a redownload) against
+        // keeping the pipe full.
+        private const val PERSIST_INTERVAL_MS = 4000L
         private const val SPEED_SAMPLE_INTERVAL_MS = 1000L
-        private const val BUFFER_SIZE = 256 * 1024
+        private const val BUFFER_SIZE = 512 * 1024
 
         /**
          * Process-local liveness flag. SharedPreferences persist `active=true`
@@ -176,6 +180,33 @@ class ModelDownloadService : Service() {
         label: String,
         target: String,
     ) {
+        // A single connection can drop mid-transfer for a transient reason
+        // (radio handoff, proxy hiccup). Without byte-range support there is
+        // no way to resume, but retrying from zero beats failing the whole
+        // download over one blip.
+        var attempt = 0
+        while (true) {
+            try {
+                downloadSingleStreamOnce(url, partial, existing, total, expectedBytes, label, target)
+                return
+            } catch (error: Exception) {
+                if (wasCancelled(target)) throw error
+                if (attempt >= 2) throw error
+                attempt++
+                Thread.sleep(600L * attempt)
+            }
+        }
+    }
+
+    private fun downloadSingleStreamOnce(
+        url: String,
+        partial: File,
+        existing: Long,
+        total: Long,
+        expectedBytes: Long,
+        label: String,
+        target: String,
+    ) {
         var current = existing
         var connection = openConnection(url, if (current > 0) current else 0L, -1L)
         if (current > 0 && connection.responseCode == HttpURLConnection.HTTP_OK) {
@@ -296,7 +327,7 @@ class ModelDownloadService : Service() {
         fun noteProgress(now: Long) {
             synchronized(reportLock) {
                 val receivedNow = received.get()
-                // The twelve segments report at staggered offsets, so an
+                // The segments report at staggered offsets, so an
                 // instantaneous sample covers only a few tens of milliseconds
                 // and makes the speed label bounce wildly. Use a fixed 1s
                 // window and blend each sample into a stable estimate.
@@ -373,12 +404,16 @@ class ModelDownloadService : Service() {
                         failure.set(IllegalStateException("Download paused"))
                         return
                     }
-                    if (attempt >= 2) {
+                    // Retry a flaky range several times with backoff so a
+                    // transient drop never kills the whole transfer; the
+                    // Dart-side supervisor additionally restarts the service
+                    // (resuming persisted ranges) for anything that escapes.
+                    if (attempt >= 4) {
                         failure.set(error)
                         return
                     }
                     attempt++
-                    Thread.sleep(400L * attempt)
+                    Thread.sleep(500L * attempt)
                 }
             }
         }

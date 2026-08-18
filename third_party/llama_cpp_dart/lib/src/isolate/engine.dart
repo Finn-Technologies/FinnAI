@@ -133,6 +133,11 @@ final class LlamaEngine {
   /// llama.cpp's stderr to this file (see [EngineBootstrap.nativeLogPath]).
   static String? logCapturePath;
 
+  /// FinnAI dev aid: when set before [spawn], llama.cpp writes its
+  /// repacked-weight cache into this directory instead of next to the
+  /// model file (needed when the model is on read-only storage).
+  static String? repackCacheDir;
+
   /// Spawn a worker isolate that loads llama.cpp from a dylib path.
   ///
   /// For iOS / macOS apps where `llama.xcframework` was embedded via
@@ -192,6 +197,7 @@ final class LlamaEngine {
         multimodalParams: multimodalParams,
         backendDirectory: backendDirectory,
         nativeLogPath: logCapturePath,
+        repackCacheDir: repackCacheDir,
       ),
       errorsAreFatal: true,
       debugName: 'llama_cpp_dart.worker',

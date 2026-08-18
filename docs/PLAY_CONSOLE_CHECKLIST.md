@@ -81,6 +81,21 @@ Follow these steps in the [Google Play Console](https://play.google.com/console)
 ### 5. Final Production Build
 - [ ] Configure the permanent Play upload key in `android/key.properties` or
   the four supported `KEYSTORE_*` environment variables.
+- [ ] **Back up the keystore and `key.properties`** (encrypted vault / offline
+  storage, never git). If the upload key is lost, Google Play must reset it via
+  support and no upload is accepted in the meantime.
+- [ ] **Verify the keystore fingerprint before uploading**: run
+  `./tool/export_upload_key_cert.sh` and confirm the printed SHA1 matches the
+  upload key certificate registered in Play Console (Setup > App signing >
+  Upload key). A mismatch is rejected at upload time with a "signed with the
+  wrong key" error.
+- [x] **Upload key reset handoff**: the upload key reset is **in progress** —
+  the new keystore (`android/release-keystore.jks`, alias `finn`) is
+  configured, its certificate (`build/upload-key-cert.pem`, SHA1
+  `DF:D5:96:…:7B:A3`) was submitted to Google Play for the reset, and we are
+  waiting for Play's confirmation before building/uploading. Follow
+  `docs/UPLOAD_KEY_RESET.md` for the remaining steps (verify fingerprint,
+  bump versionCode, build AAB, upload).
 - [ ] Confirm all four default `finn-org.vercel.app` routes are live; override
   them only for a deliberate alternate environment.
 - [ ] Run `./tool/build_play_release.sh`. Do not upload an AAB produced by

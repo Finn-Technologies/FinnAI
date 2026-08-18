@@ -17,8 +17,13 @@ import 'src/inference/ttft_metrics.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final benchmark = const bool.fromEnvironment('FINN_BENCHMARK');
-  if (benchmark || const bool.fromEnvironment('FINN_EVALUATION')) {
+  final evaluation = const bool.fromEnvironment('FINN_EVALUATION');
+  if (benchmark || evaluation) {
+    // ignore: avoid_print
+    print('FINN_MAIN start');
     await QwenInference.instance.initialize();
+    // ignore: avoid_print
+    print('FINN_MAIN initialized');
     if (const String.fromEnvironment('FINN_BENCH_TIER') == 'lite') {
       QwenInference.instance.select(QwenTier.standard);
     }
@@ -40,13 +45,19 @@ Future<void> main() async {
   // MIUI throttles the big CPU cluster to ~700 MHz (measured: A78 cores at
   // 691 MHz while A55s run at 1.8 GHz), collapsing decode ~45x. A visible
   // activity keeps the process in top-app with full CPU, matching real use.
-  final bare = benchmark || const bool.fromEnvironment('FINN_EVALUATION');
+  final bare = benchmark || evaluation;
+  if (benchmark || evaluation) {
+    // ignore: avoid_print
+    print('FINN_MAIN runApp');
+  }
   runApp(bare ? const _BareBenchmarkApp() : const FinnBootstrap());
   if (benchmark) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // ignore: avoid_print
+      print('FINN_MAIN postFrame');
       unawaited(_runDeviceBenchmark());
     });
-  } else if (const bool.fromEnvironment('FINN_EVALUATION')) {
+  } else if (evaluation) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(_runModelEvaluation());
     });
@@ -149,6 +160,8 @@ Future<void> _runModelEvaluation() async {
 /// intent extras via `adb shell am start --es/--ei/--ez` so one benchmark APK
 /// can sweep every scenario and engine config without rebuilding.
 Future<void> _runDeviceBenchmark() async {
+  // ignore: avoid_print
+  print('FINN_HARNESS begin');
   final inference = QwenInference.instance;
   Map<Object?, Object?> runtimeOverrides = const {};
   try {
@@ -163,6 +176,17 @@ Future<void> _runDeviceBenchmark() async {
   final supportDir = await getApplicationSupportDirectory();
   LlamaEngine.logCapturePath =
       '${supportDir.path}${Platform.pathSeparator}llama_native.log';
+  // Benchmark builds: also mirror the native log to the app's own external
+  // files dir so an adb shell can read it without run-as (release builds are
+  // not debuggable). The benchmark model lives on /data/local/tmp, which
+  // SELinux keeps read-only for the app, so the repacked-weight cache is
+  // redirected into the same app-writable dir.
+  if (const bool.fromEnvironment('FINN_BENCHMARK')) {
+    LlamaEngine.logCapturePath =
+        '/sdcard/Android/data/com.abhiflex.finnai/files/llama_native.log';
+    LlamaEngine.repackCacheDir =
+        '/sdcard/Android/data/com.abhiflex.finnai/files';
+  }
   Object? override(String name) => runtimeOverrides[name];
   const scenario = String.fromEnvironment(
     'FINN_BENCH_SCENARIO',
@@ -190,6 +214,18 @@ Future<void> _runDeviceBenchmark() async {
       const bool.fromEnvironment('FINN_BENCH_NO_PREFIX')) {
     QwenInference.debugDisablePrefixCache = true;
   }
+  if (override('cpu') == true || const bool.fromEnvironment('FINN_BENCH_CPU')) {
+    QwenInference.debugForceCpu = true;
+  }
+  if (override('noSha') == true ||
+      const bool.fromEnvironment('FINN_BENCH_NO_SHA')) {
+    QwenInference.debugSkipSha256 = true;
+  }
+  debugPrint(
+    'FINN_HARNESS overrides=${jsonEncode(runtimeOverrides)} '
+    'forceCpu=${QwenInference.debugForceCpu} '
+    'nRsSeq=${DeviceProfiler.lookaheadSnapshots(await DeviceProfiler.read())}',
+  );
   // Engine-config sweep overrides (intent extras): threads / batch threads /
   // batch / ubatch / KV type / flash attention, applied to the heuristic plan.
   DeviceProfiler.planOverrides = PlanOverrides(
@@ -203,6 +239,7 @@ Future<void> _runDeviceBenchmark() async {
         : null,
     compactKv: override('f16Kv') == true ? false : null,
     flashAttention: override('flashOff') == true ? false : null,
+    nRsSeq: override('nrs') is int ? (override('nrs') as int) : null,
   );
   const candidatePath = String.fromEnvironment('FINN_BENCH_MODEL_PATH');
   const candidateLabel = String.fromEnvironment(

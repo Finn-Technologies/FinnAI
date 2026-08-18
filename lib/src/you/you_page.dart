@@ -109,7 +109,7 @@ class _YouPageState extends State<YouPage> {
                           controller: _scrollController,
                           keyboardDismissBehavior:
                               ScrollViewKeyboardDismissBehavior.onDrag,
-                          physics: const BouncingScrollPhysics(),
+                          physics: const FluxBouncingScrollPhysics(),
                           padding: EdgeInsets.fromLTRB(
                             20,
                             metrics.contentTop + 10,
