@@ -5,6 +5,11 @@ set -euo pipefail
 # pinned llama_cpp_dart Dart package. NDK r28+ emits 16 KB-compatible ELF
 # LOAD segments by default. The finished AAR is rejected unless every shared
 # library passes tool/verify_native_alignment.py.
+#
+# The Vulkan build config (llama_android_build.patch) requires Homebrew
+# packages on the build machine: vulkan-headers, shaderc, spirv-headers.
+# The AAR is arm64-v8a only and ships the CPU variants plus the Vulkan
+# backend (libggml-vulkan.so).
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PACKAGE_COMMIT="1a8c7563cb5382e23bcd20dc5720fc8d8099ec58"
@@ -77,23 +82,39 @@ if [[ "$(git -C "$SOURCE/src/llama.cpp" rev-parse HEAD)" != "$LLAMA_COMMIT" ]]; 
   exit 1
 fi
 
-CPU_VARIANTS_PATCH="$ROOT/tool/llama_android_cpu_variants.patch"
-if git -C "$SOURCE" apply --reverse --check "$CPU_VARIANTS_PATCH" 2>/dev/null; then
-  echo "Android CPU-variant build patch is already applied."
+# Build-config patch for llama_cpp_dart's tool/build_android_aar.sh:
+#  - build all CPU feature variants (GGML_CPU_ALL_VARIANTS) and ship them
+#    (runtime picks the best match via GGML_BACKEND_DL)
+#  - enable the Vulkan backend with the android-28 loader stub (platform 28
+#    for Vulkan 1.1 symbols) while the packaged AAR manifest keeps minSdk 26
+#  - include libggml-vulkan.so and every libggml-cpu*.so variant in the AAR
+BUILD_PATCH="$ROOT/tool/llama_android_build.patch"
+if git -C "$SOURCE" apply --reverse --check "$BUILD_PATCH" 2>/dev/null; then
+  echo "Android build-config patch is already applied."
 else
-  git -C "$SOURCE" apply --check "$CPU_VARIANTS_PATCH"
-  git -C "$SOURCE" apply "$CPU_VARIANTS_PATCH"
+  git -C "$SOURCE" apply --check "$BUILD_PATCH"
+  git -C "$SOURCE" apply "$BUILD_PATCH"
 fi
 
-# FinnAI performance patch: pin ggml threadpools to the fastest CPU cluster
-# (measured 52 ms/token decode vs 8.5 s when a worker lands on a throttled
-# efficiency core) plus gated per-op timing diagnostics (FINN_NATIVE_PERF).
-AFFINITY_PATCH="$ROOT/tool/llama_android_affinity.patch"
-if git -C "$SOURCE/src/llama.cpp" apply --reverse --check "$AFFINITY_PATCH" 2>/dev/null; then
-  echo "Android affinity/performance patch is already applied."
+# FinnAI native performance patch (supersedes the old llama_android_affinity.patch):
+#  - repack disk cache: warm model load 26 s -> 2.5 s (keyed by model size,
+#    CPU features, ggml version; cache dir via FINN_REPACK_CACHE_DIR)
+#  - fused GDN pad fast path: zero-stride aliasing view instead of a padded
+#    K*D copy (~46 ms saved per decode on recurrent models, CPU path)
+#  - Vulkan: getBufferDeviceAddress trampoline no longer hard-crashes Adreno;
+#    pipeline-compile failures fall back instead of aborting
+#  - thread affinity: pin ggml threadpools to the fastest CPU cluster
+#    (measured 52 ms/token decode vs 8.5 s when a worker lands on a throttled
+#    efficiency core)
+#  - fused GDN disabled for hybrid/recurrent models with GPU offload (the
+#    fused op cannot handle CPU-resident recurrent tensors on GPU backends)
+#  - gated per-op timing diagnostics (FINN_NATIVE_PERF)
+NATIVE_PATCH="$ROOT/tool/llama_android_native.patch"
+if git -C "$SOURCE/src/llama.cpp" apply --reverse --check "$NATIVE_PATCH" 2>/dev/null; then
+  echo "Android native performance patch is already applied."
 else
-  git -C "$SOURCE/src/llama.cpp" apply --check "$AFFINITY_PATCH"
-  git -C "$SOURCE/src/llama.cpp" apply "$AFFINITY_PATCH"
+  git -C "$SOURCE/src/llama.cpp" apply --check "$NATIVE_PATCH"
+  git -C "$SOURCE/src/llama.cpp" apply "$NATIVE_PATCH"
 fi
 
 SDK_ROOT="${ANDROID_SDK_ROOT:-$HOME/Library/Android/sdk}"

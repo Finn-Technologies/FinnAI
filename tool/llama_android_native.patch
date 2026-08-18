@@ -1,0 +1,826 @@
+diff --git a/ggml/src/ggml-cpu/ggml-cpu.c b/ggml/src/ggml-cpu/ggml-cpu.c
+index af7827a..da98846 100644
+--- a/ggml/src/ggml-cpu/ggml-cpu.c
++++ b/ggml/src/ggml-cpu/ggml-cpu.c
+@@ -2657,6 +2657,41 @@ static bool ggml_thread_cpumask_is_valid(const bool * mask) {
+     return false;
+ }
+ 
++// FinnAI: detect the fastest CPU cluster (big cores) from sysfs so inference
++// threads can be pinned off the efficiency cores. On big.LITTLE SoCs a
++// worker that lands on an A55 becomes the straggler every per-node barrier
++// waits for: the 4th decode thread on SM7325 collapses decode from ~190 ms
++// to ~8.5 s per token. Only cores matching the global max frequency are
++// selected, which on tri-cluster parts picks just the top cluster.
++// Returns false when detection is unavailable (non-Linux or no sysfs).
++static bool ggml_detect_fastest_cluster(bool * mask) {
++    memset(mask, 0, GGML_MAX_N_THREADS * sizeof(bool));
++    long freqs[GGML_MAX_N_THREADS];
++    int n_cpu = 0;
++    long max_freq = -1;
++    for (int i = 0; i < GGML_MAX_N_THREADS; i++) {
++        char path[96];
++        snprintf(path, sizeof(path),
++                 "/sys/devices/system/cpu/cpu%d/cpufreq/cpuinfo_max_freq", i);
++        FILE * f = fopen(path, "r");
++        if (f == NULL) break;
++        long fv = -1;
++        if (fscanf(f, "%ld", &fv) != 1) {
++            fclose(f);
++            break;
++        }
++        fclose(f);
++        freqs[i] = fv;
++        if (fv > max_freq) max_freq = fv;
++        n_cpu++;
++    }
++    if (n_cpu == 0 || max_freq <= 0) return false;
++    for (int i = 0; i < n_cpu; i++) {
++        if (freqs[i] == max_freq) mask[i] = true;
++    }
++    return true;
++}
++
+ static void ggml_thread_cpumask_next(const bool * global_mask, bool * local_mask, bool strict, int32_t* iter) {
+     if (!strict) {
+         memcpy(local_mask, global_mask, GGML_MAX_N_THREADS);
+@@ -3043,6 +3078,16 @@ static thread_ret_t ggml_graph_compute_thread(void * data) {
+     GGML_PRINT_DEBUG("thread #%d compute-start cplan %p last-graph %d\n", state->ith, (const void *)cplan, state->last_graph);
+ #endif
+ 
++    // FinnAI dev aid: per-op timing on thread 0, printed at graph end. Gated
++    // behind FINN_NATIVE_PERF so shipping builds pay zero per-node overhead.
++    struct finn_op_stat { const char * name; double ms; int64_t count; };
++    struct finn_op_stat finn_stats[80];
++    int finn_stats_n = 0;
++    const bool finn_timing = state->ith == 0 && getenv("FINN_NATIVE_PERF") != NULL;
++    const int64_t finn_graph_start = finn_timing ? ggml_time_us() : 0;
++    int64_t finn_barrier_us = 0;
++    int64_t finn_barrier_count = 0;
++
+     for (int node_n = 0; node_n < cgraph->n_nodes && atomic_load_explicit(&tp->abort, memory_order_relaxed) != node_n; node_n++) {
+         struct ggml_tensor * node = cgraph->nodes[node_n];
+ 
+@@ -3055,6 +3100,7 @@ static thread_ret_t ggml_graph_compute_thread(void * data) {
+             continue;
+         }
+ 
++        const int64_t finn_t0 = finn_timing ? ggml_time_us() : 0;
+         // TODO: move fused-op detection into ggml_graph_plan so fusion decisions are made once at planning time
+         // Try fused ops, fall back to normal compute
+         const int n_fused = ggml_cpu_try_fuse_ops(cgraph, node_n, &params, cplan);
+@@ -3064,6 +3110,27 @@ static thread_ret_t ggml_graph_compute_thread(void * data) {
+             ggml_compute_forward(&params, node);
+         }
+ 
++        if (finn_timing) {
++            const int64_t finn_dt = ggml_time_us() - finn_t0;
++            if (finn_dt >= 1000) {
++                const char * finn_nm = ggml_op_name(node->op);
++                int finn_idx = -1;
++                for (int k = 0; k < finn_stats_n; k++) {
++                    if (strcmp(finn_stats[k].name, finn_nm) == 0) { finn_idx = k; break; }
++                }
++                if (finn_idx < 0 && finn_stats_n < 80) {
++                    finn_idx = finn_stats_n++;
++                    finn_stats[finn_idx].name = finn_nm;
++                    finn_stats[finn_idx].ms = 0.0;
++                    finn_stats[finn_idx].count = 0;
++                }
++                if (finn_idx >= 0) {
++                    finn_stats[finn_idx].ms += finn_dt / 1000.0;
++                    finn_stats[finn_idx].count++;
++                }
++            }
++        }
++
+         if (state->ith == 0 && cplan->abort_callback &&
+                 cplan->abort_callback(cplan->abort_callback_data)) {
+             atomic_store_explicit(&tp->abort, node_n + 1, memory_order_relaxed);
+@@ -3071,7 +3138,27 @@ static thread_ret_t ggml_graph_compute_thread(void * data) {
+         }
+ 
+         if (node_n + 1 < cgraph->n_nodes) {
++            const int64_t finn_b0 = finn_timing ? ggml_time_us() : 0;
+             ggml_barrier(state->threadpool);
++            if (finn_timing) {
++                finn_barrier_us += ggml_time_us() - finn_b0;
++                finn_barrier_count++;
++            }
++        }
++    }
++
++    if (finn_timing) {
++        const int64_t finn_total = ggml_time_us() - finn_graph_start;
++        fprintf(stderr, "FINN_GRAPH nodes=%d total_ms=%.1f barrier_ms=%.1f barrier_n=%lld\n", cgraph->n_nodes, finn_total / 1000.0, finn_barrier_us / 1000.0, (long long) finn_barrier_count);
++        // simple insertion sort by ms, print top 12
++        for (int k = 0; k < finn_stats_n; k++) {
++            for (int j = k + 1; j < finn_stats_n; j++) {
++                if (finn_stats[j].ms > finn_stats[k].ms) {
++                    struct finn_op_stat tmp = finn_stats[k]; finn_stats[k] = finn_stats[j]; finn_stats[j] = tmp;
++                }
++            }
++            if (k >= 12) break;
++            fprintf(stderr, "FINN_OP %s ms=%.1f n=%lld\n", finn_stats[k].name, finn_stats[k].ms, (long long) finn_stats[k].count);
+         }
+     }
+ 
+@@ -3278,6 +3365,38 @@ static struct ggml_threadpool * ggml_threadpool_new_impl(
+     // Spin the threads for all workers, and update CPU placements.
+     // Place the main thread last (towards the higher numbered CPU cores).
+ 
++    // FinnAI: when the caller left the default (all-zero) cpumask, pin the
++    // pool to the fastest CPU cluster so no worker runs on an efficiency
++    // core. A worker that lands on an A55 becomes the straggler every
++    // per-node barrier waits for, collapsing decode. Pools whose thread
++    // count exceeds the fast-cluster size (e.g. 8 batch/prefill threads on
++    // a 4-core big cluster) are instead left unpinned so they spread across
++    // ALL cores: prefill is embarrassingly parallel per token row, so the
++    // efficiency cores genuinely add throughput there, while decode stays
++    // on the fast cluster.
++    if (!ggml_thread_cpumask_is_valid(tpp->cpumask)) {
++        bool perf_mask[GGML_MAX_N_THREADS];
++        int fast_cores = 0;
++        if (ggml_detect_fastest_cluster(perf_mask)) {
++            for (int i = 0; i < GGML_MAX_N_THREADS; i++) {
++                if (perf_mask[i]) fast_cores++;
++            }
++            if (tpp->n_threads <= fast_cores) {
++                memcpy(tpp->cpumask, perf_mask, sizeof(perf_mask));
++            } else {
++                memset(tpp->cpumask, 1, sizeof(perf_mask));
++            }
++            if (getenv("FINN_NATIVE_PERF") != NULL) {
++                fprintf(stderr, "FINN_AFFINITY pool n_threads=%d fast_cores=%d mask=%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d\n",
++                        tpp->n_threads, fast_cores,
++                        tpp->cpumask[0], tpp->cpumask[1], tpp->cpumask[2], tpp->cpumask[3],
++                        tpp->cpumask[4], tpp->cpumask[5], tpp->cpumask[6], tpp->cpumask[7],
++                        tpp->cpumask[8], tpp->cpumask[9], tpp->cpumask[10], tpp->cpumask[11],
++                        tpp->cpumask[12], tpp->cpumask[13], tpp->cpumask[14], tpp->cpumask[15]);
++            }
++        }
++    }
++
+     int32_t cpumask_iter = 0;
+ 
+     for (int j = 1; j < tpp->n_threads; j++) {
+diff --git a/ggml/src/ggml-cpu/ggml-cpu.cpp b/ggml/src/ggml-cpu/ggml-cpu.cpp
+index 128883b..64c9b6d 100644
+--- a/ggml/src/ggml-cpu/ggml-cpu.cpp
++++ b/ggml/src/ggml-cpu/ggml-cpu.cpp
+@@ -675,6 +675,16 @@ static void * ggml_backend_cpu_get_proc_address(ggml_backend_reg_t reg, const ch
+         return (void *)ggml_backend_cpu_set_threadpool;
+     }
+ 
++#ifdef GGML_USE_CPU_REPACK
++    // FinnAI: persistent repack cache hooks (resolved by llama_model_loader)
++    if (strcmp(name, "ggml_backend_cpu_repack_set_cache") == 0) {
++        return (void *)ggml_backend_cpu_repack_set_cache;
++    }
++    if (strcmp(name, "ggml_backend_cpu_repack_clear_cache") == 0) {
++        return (void *)ggml_backend_cpu_repack_clear_cache;
++    }
++#endif
++
+     return NULL;
+ 
+     GGML_UNUSED(reg);
+diff --git a/ggml/src/ggml-cpu/ops.cpp b/ggml/src/ggml-cpu/ops.cpp
+index 86842e5..cfde2af 100644
+--- a/ggml/src/ggml-cpu/ops.cpp
++++ b/ggml/src/ggml-cpu/ops.cpp
+@@ -10607,7 +10607,11 @@ static void ggml_compute_forward_gated_delta_net_one_chunk(
+     GGML_ASSERT(ggml_is_contiguous_rows(src_v));
+     GGML_ASSERT(ggml_is_contiguous(src_g));
+     GGML_ASSERT(ggml_is_contiguous(src_beta));
+-    GGML_ASSERT(ggml_is_contiguous(src_state));
++    // state may be a zero-stride aliasing view (nb[1] == 0) on the fused CPU
++    // path; only slot 0 of each sequence is read. Accept either layout.
++    GGML_ASSERT(src_state->nb[0] == sizeof(float));
++    GGML_ASSERT(src_state->nb[1] == 0 || src_state->nb[1] == src_state->ne[0] * sizeof(float));
++    GGML_ASSERT(src_state->nb[2] >= src_state->ne[0] * sizeof(float));
+ 
+     GGML_ASSERT(src_g->ne[0] == 1 || src_g->ne[0] == S_v);
+     GGML_ASSERT(src_beta->ne[0] == 1);
+diff --git a/ggml/src/ggml-cpu/repack.cpp b/ggml/src/ggml-cpu/repack.cpp
+index f18758f..64142ea 100644
+--- a/ggml/src/ggml-cpu/repack.cpp
++++ b/ggml/src/ggml-cpu/repack.cpp
+@@ -15,6 +15,7 @@
+ #include <cstring>
+ #include <cassert>
+ #include <cstdio>  // for GGML_ASSERT
++#include <mutex>
+ 
+ #include "repack.h"
+ 
+@@ -4723,6 +4724,93 @@ static const ggml::cpu::tensor_traits * ggml_repack_get_optimal_repack_type(cons
+     return nullptr;
+ }
+ 
++// ---------------------------------------------------------------------------
++// FinnAI: persistent disk cache for repacked weights
++//
++// The repack conversion is single-threaded and can take tens of seconds for a
++// multi-GiB model. The repacked layout is a pure function of (CPU caps, model
++// bytes, tensor shapes), so we persist it next to the model file and replay it
++// on subsequent loads. Only one repack buffer exists per process (model loads
++// are sequential); a mutex guards the shared state for safety.
++// ---------------------------------------------------------------------------
++
++#define FINN_REPACK_MAGIC "FNRPK001"
++#define FINN_REPACK_KEY_LEN 64
++
++struct finn_repack_cache_state {
++    std::mutex  mtx;
++    std::string path;
++    std::string key;
++    FILE      * f        = nullptr; // open cache file (read or write mode)
++    bool        reading  = false;   // stream-read mode: cache validated, replay bytes
++    bool        writing  = false;   // stream-write mode: repack + append bytes
++};
++
++static finn_repack_cache_state finn_repack_cache;
++
++void ggml_backend_cpu_repack_set_cache(const char * path, const char * key) {
++    std::lock_guard<std::mutex> lock(finn_repack_cache.mtx);
++    if (finn_repack_cache.f) {
++        fflush(finn_repack_cache.f);
++        fclose(finn_repack_cache.f);
++        finn_repack_cache.f = nullptr;
++    }
++    finn_repack_cache.reading = false;
++    finn_repack_cache.writing = false;
++    if (path && path[0] && key && key[0]) {
++        finn_repack_cache.path = path;
++        // The loader supplies a NUL-terminated hex key; the on-disk header is
++        // a fixed FINN_REPACK_KEY_LEN-byte field. Normalize to exactly that
++        // width (pad with '0') so the written header is deterministic and the
++        // next launch's memcmp always sees identical bytes.
++        char kbuf[FINN_REPACK_KEY_LEN];
++        const size_t len = strnlen(key, FINN_REPACK_KEY_LEN);
++        memcpy(kbuf, key, len);
++        memset(kbuf + len, '0', FINN_REPACK_KEY_LEN - len);
++        finn_repack_cache.key.assign(kbuf, FINN_REPACK_KEY_LEN);
++    } else {
++        finn_repack_cache.path.clear();
++        finn_repack_cache.key.clear();
++    }
++}
++
++void ggml_backend_cpu_repack_clear_cache(void) {
++    ggml_backend_cpu_repack_set_cache(nullptr, nullptr);
++}
++
++// open the cache file for reading; validate magic + key. Returns FILE* or nullptr.
++static FILE * finn_repack_cache_open_read(const std::string & path, const std::string & key) {
++    FILE * f = fopen(path.c_str(), "rb");
++    if (!f) {
++        return nullptr;
++    }
++    char magic[8];
++    char kbuf[FINN_REPACK_KEY_LEN];
++    bool ok = fread(magic, 1, 8, f) == 8 && memcmp(magic, FINN_REPACK_MAGIC, 8) == 0 &&
++              fread(kbuf, 1, FINN_REPACK_KEY_LEN, f) == FINN_REPACK_KEY_LEN &&
++              memcmp(kbuf, key.data(), FINN_REPACK_KEY_LEN) == 0;
++    if (!ok) {
++        fclose(f);
++        return nullptr;
++    }
++    return f;
++}
++
++// (re)create the cache file for writing; write magic + key header. Returns FILE* or nullptr.
++static FILE * finn_repack_cache_open_write(const std::string & path, const std::string & key) {
++    FILE * f = fopen(path.c_str(), "wb");
++    if (!f) {
++        return nullptr;
++    }
++    if (fwrite(FINN_REPACK_MAGIC, 1, 8, f) != 8 ||
++        fwrite(key.data(), 1, FINN_REPACK_KEY_LEN, f) != FINN_REPACK_KEY_LEN) {
++        fclose(f);
++        remove(path.c_str());
++        return nullptr;
++    }
++    return f;
++}
++
+ static enum ggml_status ggml_backend_cpu_repack_buffer_init_tensor(ggml_backend_buffer_t buffer, struct ggml_tensor * tensor) {
+     tensor->extra = (void *) const_cast<ggml::cpu::tensor_traits *>(ggml_repack_get_optimal_repack_type(tensor));
+ 
+@@ -4736,9 +4824,43 @@ static void ggml_backend_cpu_repack_buffer_set_tensor(ggml_backend_buffer_t buff
+     GGML_ASSERT(size == ggml_nbytes(tensor));
+ 
+     auto tensor_traits = (ggml::cpu::repack::tensor_traits_base *) tensor->extra;
+-    auto OK            = tensor_traits->repack(tensor, data, size);
+ 
++    std::lock_guard<std::mutex> lock(finn_repack_cache.mtx);
++
++    // Cache hit path: replay the previously repacked bytes.
++    if (finn_repack_cache.reading && finn_repack_cache.f) {
++        uint64_t nbytes = 0;
++        if (fread(&nbytes, 8, 1, finn_repack_cache.f) == 1 &&
++            nbytes == (uint64_t) size &&
++            fread(tensor->data, size, 1, finn_repack_cache.f) == 1) {
++            return;
++        }
++        // Stream mismatch (truncated or stale cache): fall back to writing.
++        fclose(finn_repack_cache.f);
++        finn_repack_cache.f = nullptr;
++        finn_repack_cache.reading = false;
++        if (!finn_repack_cache.path.empty() && !finn_repack_cache.key.empty()) {
++            finn_repack_cache.f       = finn_repack_cache_open_write(finn_repack_cache.path, finn_repack_cache.key);
++            finn_repack_cache.writing = finn_repack_cache.f != nullptr;
++        }
++    }
++
++    auto OK = tensor_traits->repack(tensor, data, size);
+     GGML_ASSERT(OK == 0);
++
++    // Cache write path: append [nbytes][repacked data].
++    if (finn_repack_cache.writing && finn_repack_cache.f) {
++        uint64_t nbytes = size;
++        if (fwrite(&nbytes, 8, 1, finn_repack_cache.f) != 1 ||
++            fwrite(tensor->data, size, 1, finn_repack_cache.f) != 1) {
++            // Disk full / I/O error: disable caching for the remainder.
++            fclose(finn_repack_cache.f);
++            finn_repack_cache.f = nullptr;
++            finn_repack_cache.writing = false;
++            remove(finn_repack_cache.path.c_str());
++        }
++    }
++
+     GGML_UNUSED(buffer);
+ }
+ 
+@@ -4760,6 +4882,28 @@ static ggml_backend_buffer_t ggml_backend_cpu_repack_buffer_type_alloc_buffer(gg
+     buffer->iface.set_tensor  = ggml_backend_cpu_repack_buffer_set_tensor;
+     buffer->iface.get_tensor  = nullptr;
+     buffer->iface.cpy_tensor  = nullptr;
++
++    // FinnAI repack cache: initialize the shared stream state. Zero-sized
++    // buffers are transient capability probes (see weight_buft_supported) and
++    // must not touch the cache file. Only the first real buffer manages the
++    // cache; a second buffer (not expected) silently skips caching.
++    if (size > 0) {
++        std::lock_guard<std::mutex> lock(finn_repack_cache.mtx);
++        if (finn_repack_cache.f == nullptr && !finn_repack_cache.path.empty() && !finn_repack_cache.key.empty()) {
++            finn_repack_cache.f = finn_repack_cache_open_read(finn_repack_cache.path, finn_repack_cache.key);
++            if (finn_repack_cache.f) {
++                finn_repack_cache.reading = true;
++                fprintf(stderr, "FINN_REPACK cache hit: replaying repacked weights from %s\n", finn_repack_cache.path.c_str());
++            } else {
++                finn_repack_cache.f       = finn_repack_cache_open_write(finn_repack_cache.path, finn_repack_cache.key);
++                finn_repack_cache.writing = finn_repack_cache.f != nullptr;
++                if (finn_repack_cache.writing) {
++                    fprintf(stderr, "FINN_REPACK cache miss: repacking weights (cached to %s)\n", finn_repack_cache.path.c_str());
++                }
++            }
++        }
++    }
++
+     return buffer;
+ }
+ 
+diff --git a/ggml/src/ggml-cpu/repack.h b/ggml/src/ggml-cpu/repack.h
+index cb21edf..329d2d7 100644
+--- a/ggml/src/ggml-cpu/repack.h
++++ b/ggml/src/ggml-cpu/repack.h
+@@ -10,6 +10,15 @@
+ 
+ ggml_backend_buffer_type_t ggml_backend_cpu_repack_buffer_type(void);
+ 
++// FinnAI: persistent disk cache for repacked (interleaved) weights.
++// The model loader calls this once before tensors are loaded; the repack
++// buffer then reads repacked bytes from the cache file instead of recomputing
++// the (single-threaded, multi-second) layout conversion on every cold start.
++// `key` must be a stable identifier of the source model + CPU capabilities.
++// Passing NULL/empty disables the cache (restores default behavior).
++void ggml_backend_cpu_repack_set_cache(const char * path, const char * key);
++void ggml_backend_cpu_repack_clear_cache(void);
++
+ template <int K> constexpr int QK_0() {
+     if constexpr (K == 4) {
+         return QK4_0;
+diff --git a/ggml/src/ggml-vulkan/ggml-vulkan.cpp b/ggml/src/ggml-vulkan/ggml-vulkan.cpp
+index 22405f2..5092dc9 100644
+--- a/ggml/src/ggml-vulkan/ggml-vulkan.cpp
++++ b/ggml/src/ggml-vulkan/ggml-vulkan.cpp
+@@ -175,6 +175,9 @@ struct vk_pipeline_struct {
+     uint32_t align;
+     // true if fields have been set by ggml_vk_create_pipeline
+     bool initialized {};
++    // true when every compile attempt failed (mobile driver shader
++    // compilation errors). Callers fall back to a simpler variant.
++    bool failed {};
+     // true while a compile is in flight, used to dedupe concurrent claims.
+     // Protected by device->compile_mutex.
+     bool compile_pending {};
+@@ -202,7 +205,8 @@ struct vk_matmul_pipeline_struct {
+     // We only check for unaligned variants since one of the unaligned pipelines must exist
+     // while aligned pipelines are optional
+     bool is_empty() const {
+-        return l == nullptr && m == nullptr && s == nullptr;
++        auto dead = [](const vk_pipeline& p) { return p == nullptr || p->failed; };
++        return dead(l) && dead(m) && dead(s);
+     }
+ };
+ typedef std::shared_ptr<vk_matmul_pipeline_struct> vk_matmul_pipeline;
+@@ -2512,12 +2516,65 @@ static void ggml_vk_create_pipeline_func(vk_device& device, vk_pipeline& pipelin
+     }
+ #endif
+ 
+-    try {
+-        pipeline->pipeline = device->device.createComputePipeline(VK_NULL_HANDLE, compute_pipeline_create_info).value;
+-    } catch (const vk::SystemError& e) {
+-        std::cerr << "ggml_vulkan: Compute pipeline creation failed for " << pipeline->name << std::endl;
+-        std::cerr << "ggml_vulkan: " << e.what() << std::endl;
+-        throw e;
++    // FinnAI: some mobile drivers (Adreno 642L, Android 14) fail to compile
++    // specific shaders (observed: matmul_q5_k_*_aligned_l) when optional
++    // pipeline features are enabled, and an uncaught vk::SystemError aborts
++    // the process. Retry with progressively fewer optional features instead;
++    // if every attempt fails, mark the pipeline failed so callers can fall
++    // back to a simpler variant (e.g. unaligned matmul).
++    const vk::PipelineShaderStageCreateFlags stage_flags = pipeline_shader_create_info.flags;
++    bool pipeline_ok = false;
++    for (int attempt = 0; attempt < 4; attempt++) {
++        const bool use_required_subgroup =
++            attempt == 0 && device->subgroup_size_control && required_subgroup_size > 0;
++        const bool use_robustness =
++            attempt <= 1 && device->pipeline_robustness && disable_robustness;
++        const bool use_64b = attempt <= 2;
++        const bool use_full_subgroups = attempt == 0;
++        vk::PipelineShaderStageCreateInfo stage = pipeline_shader_create_info;
++        vk::ComputePipelineCreateInfo create_info = compute_pipeline_create_info;
++        stage.flags = stage_flags;
++        if (!use_full_subgroups) {
++            stage.flags &= ~vk::PipelineShaderStageCreateFlagBits::eRequireFullSubgroupsEXT;
++        }
++        stage.setPNext(nullptr);
++        create_info.setPNext(nullptr);
++        create_info.stage = stage;
++        if (use_required_subgroup) {
++            stage.setPNext(&pipeline_shader_stage_required_subgroup_size_create_info);
++            create_info.stage = stage;
++        }
++        if (use_robustness) {
++            create_info.setPNext(&rci);
++        }
++#if defined(VK_EXT_shader_64bit_indexing)
++        if (use_64b && pipeline->is_64b_indexing) {
++            pipelineFlags2CreateInfo.setPNext(create_info.pNext);
++            create_info.setPNext(&pipelineFlags2CreateInfo);
++        }
++#endif
++        try {
++            pipeline->pipeline = device->device.createComputePipeline(VK_NULL_HANDLE, create_info).value;
++            pipeline_ok = true;
++            if (attempt > 0) {
++                std::cerr << "ggml_vulkan: Compute pipeline recovered on retry " << attempt
++                          << " for " << pipeline->name << std::endl;
++            }
++            break;
++        } catch (const vk::SystemError& e) {
++            std::cerr << "ggml_vulkan: Compute pipeline creation failed for " << pipeline->name
++                      << " (attempt " << attempt << "): " << e.what() << std::endl;
++            pipeline->pipeline = VK_NULL_HANDLE;
++            if (attempt == 3) {
++                pipeline->failed = true;
++                std::cerr << "ggml_vulkan: marking pipeline failed; callers will use a simpler variant" << std::endl;
++            }
++        }
++    }
++    if (!pipeline_ok) {
++        // Do not abort. Compiled/compile_pending are flipped below so any
++        // waiter proceeds; callers check the failed flag.
++        return;
+     }
+ 
+     if (vk_instance.debug_utils_support) {
+@@ -3013,7 +3070,8 @@ static vk_buffer ggml_vk_create_buffer(vk_device& device, size_t size, const std
+     buf->device = device;
+     buf->size = size;
+ 
+-    if (device->buffer_device_address) {
++    if (device->buffer_device_address &&
++        ggml_vk_default_dispatcher().vkGetBufferDeviceAddress != nullptr) {
+         const vk::BufferDeviceAddressInfo addressInfo(buf->buffer);
+         buf->bda_addr = device->device.getBufferAddress(addressInfo);
+     }
+@@ -5895,7 +5953,14 @@ static vk_device ggml_vk_get_device(size_t idx) {
+                             getenv("GGML_VK_DISABLE_MULTI_ADD") == nullptr;
+ 
+         device->shader_int64 = device_features2.features.shaderInt64;
+-        device->buffer_device_address = vk12_features.bufferDeviceAddress;
++        // FinnAI: some mobile drivers (Adreno 642L on Android 14) report the
++        // Vulkan 1.2 bufferDeviceAddress feature while the dynamic dispatcher
++        // fails to resolve vkGetBufferDeviceAddress, which crashes with a
++        // null function-pointer call on the first device-local buffer
++        // allocation. Verify the entry point actually exists before enabling
++        // BDA, and fall back to non-BDA buffers otherwise.
++        device->buffer_device_address = vk12_features.bufferDeviceAddress &&
++                                        ggml_vk_default_dispatcher().vkGetBufferDeviceAddress != nullptr;
+         device->vulkan_memory_model = vk12_features.vulkanMemoryModel;
+ 
+         if (device->subgroup_size_control) {
+@@ -6154,6 +6219,27 @@ static vk_device ggml_vk_get_device(size_t idx) {
+         device_create_info.setPNext(&device_features2);
+         device->device = device->physical_device.createDevice(device_create_info);
+ 
++        // FinnAI: probe the actual vkGetBufferDeviceAddress entry point.
++        // Some mobile drivers (Adreno 642L on Android 14) report the Vulkan
++        // 1.2 bufferDeviceAddress feature yet do not implement the core 1.2
++        // function name — only VK_KHR_buffer_device_address — so calling the
++        // loader trampoline crashes with a null function pointer on the first
++        // device-local buffer allocation. Without a resolvable entry point,
++        // fall back to non-BDA buffers (slower but functional).
++        if (device->buffer_device_address) {
++            // Only the core 1.2 entry point can be used: the vk::Device
++            // dispatcher resolves "vkGetBufferDeviceAddress" through the
++            // loader. A driver that only implements the KHR alias would
++            // crash the trampoline, so probe the exact name we will call.
++            const VkDevice dev_h = static_cast<VkDevice>(device->device);
++            const bool resolvable =
++                vkGetDeviceProcAddr(dev_h, "vkGetBufferDeviceAddress") != nullptr;
++            device->buffer_device_address = resolvable;
++            if (!resolvable) {
++                std::cerr << "ggml_vulkan: buffer device address advertised but entry point missing; disabling BDA" << std::endl;
++            }
++        }
++
+         // Queues
+         ggml_vk_create_queue(device, device->compute_queue, compute_queue_family_index, 0, { vk::PipelineStageFlagBits::eComputeShader | vk::PipelineStageFlagBits::eTransfer }, false);
+ 
+@@ -7900,13 +7986,30 @@ static vk_pipeline ggml_vk_guess_matmul_pipeline(ggml_backend_vk_context * ctx,
+         return aligned ? mmp->a_s : mmp->s;
+     }
+ 
++    // FinnAI: skip pipelines whose shaders failed to compile on the device
++    // (mobile drivers); fall back to the next usable variant. If every
++    // variant is unusable the caller's is_empty() check routes to the
++    // f16-dequant family instead.
++    auto usable = [](const vk_pipeline& p) { return p != nullptr && !p->failed; };
+     if ((mm_s && (m <= 32 || n <= 32)) || (!mm_m && !mm_l)) {
+-        return aligned ? mmp->a_s : mmp->s;
++        if (aligned && usable(mmp->a_s)) return mmp->a_s;
++        if (usable(mmp->s)) return mmp->s;
++        if (usable(mmp->m)) return mmp->m;
++        if (usable(mmp->l)) return mmp->l;
++        return mmp->s;
+     }
+     if ((mm_m && (m <= 64 || n <= 64)) || !mm_l) {
+-        return aligned ? mmp->a_m : mmp->m;
++        if (aligned && usable(mmp->a_m)) return mmp->a_m;
++        if (usable(mmp->m)) return mmp->m;
++        if (usable(mmp->l)) return mmp->l;
++        if (usable(mmp->s)) return mmp->s;
++        return mmp->m;
+     }
+-    return aligned ? mmp->a_l : mmp->l;
++    if (aligned && usable(mmp->a_l)) return mmp->a_l;
++    if (usable(mmp->l)) return mmp->l;
++    if (usable(mmp->m)) return mmp->m;
++    if (usable(mmp->s)) return mmp->s;
++    return mmp->l;
+ }
+ 
+ static uint32_t ggml_vk_guess_matmul_pipeline_align(ggml_backend_vk_context * ctx, vk_matmul_pipeline& mmp, int m, int n, ggml_type src0_type, ggml_type src1_type) {
+@@ -7987,13 +8090,30 @@ static vk_pipeline ggml_vk_guess_matmul_id_pipeline(ggml_backend_vk_context * ct
+         return aligned ? mmp->a_s : mmp->s;
+     }
+ 
++    // FinnAI: skip pipelines whose shaders failed to compile on the device
++    // (mobile drivers); fall back to the next usable variant. If every
++    // variant is unusable the caller's is_empty() check routes to the
++    // f16-dequant family instead.
++    auto usable = [](const vk_pipeline& p) { return p != nullptr && !p->failed; };
+     if ((mm_s && (m <= 32 || n <= 32)) || (!mm_m && !mm_l)) {
+-        return aligned ? mmp->a_s : mmp->s;
++        if (aligned && usable(mmp->a_s)) return mmp->a_s;
++        if (usable(mmp->s)) return mmp->s;
++        if (usable(mmp->m)) return mmp->m;
++        if (usable(mmp->l)) return mmp->l;
++        return mmp->s;
+     }
+     if ((mm_m && (m <= 64 || n <= 64)) || !mm_l) {
+-        return aligned ? mmp->a_m : mmp->m;
+-    }
+-    return aligned ? mmp->a_l : mmp->l;
++        if (aligned && usable(mmp->a_m)) return mmp->a_m;
++        if (usable(mmp->m)) return mmp->m;
++        if (usable(mmp->l)) return mmp->l;
++        if (usable(mmp->s)) return mmp->s;
++        return mmp->m;
++    }
++    if (aligned && usable(mmp->a_l)) return mmp->a_l;
++    if (usable(mmp->l)) return mmp->l;
++    if (usable(mmp->m)) return mmp->m;
++    if (usable(mmp->s)) return mmp->s;
++    return mmp->l;
+ }
+ 
+ static uint32_t ggml_vk_guess_matmul_id_pipeline_align(ggml_backend_vk_context * ctx, vk_matmul_pipeline& mmp, int m, int n, ggml_type src0_type, ggml_type src1_type) {
+diff --git a/ggml/src/ggml.c b/ggml/src/ggml.c
+index 18a5ebd..620a3b6 100644
+--- a/ggml/src/ggml.c
++++ b/ggml/src/ggml.c
+@@ -6229,7 +6229,12 @@ struct ggml_tensor * ggml_gated_delta_net(
+     GGML_ASSERT(ggml_is_contiguous_rows(v));
+     GGML_ASSERT(ggml_is_contiguous(g));
+     GGML_ASSERT(ggml_is_contiguous(beta));
+-    GGML_ASSERT(ggml_is_contiguous(state));
++    // state may be a zero-stride aliasing view (nb[1] == 0) on the fused CPU
++    // path: the kernels only read slot 0 of each sequence. Accept either that
++    // or the regular contiguous K-slot layout.
++    GGML_ASSERT(state->nb[0] == sizeof(float));
++    GGML_ASSERT(state->nb[1] == 0 || state->nb[1] == state->ne[0] * sizeof(float));
++    GGML_ASSERT(state->nb[2] >= state->ne[0] * sizeof(float));
+ 
+     GGML_ASSERT(q->type == GGML_TYPE_F32);
+     GGML_ASSERT(k->type == GGML_TYPE_F32);
+diff --git a/src/llama-context.cpp b/src/llama-context.cpp
+index 9a40c43..1c55864 100644
+--- a/src/llama-context.cpp
++++ b/src/llama-context.cpp
+@@ -504,6 +504,22 @@ void llama_context::sched_reserve() {
+         cparams.auto_fa = false;
+     }
+ 
++    // FinnAI: fused GDN crashes (null dispatch, SIGSEGV) when the model's
++    // recurrent-state buffers live on CPU but a GPU backend also holds
++    // layers — the fused op is assigned to the accelerator, whose graph
++    // builder cannot handle the CPU-resident recurrent tensors (observed on
++    // Adreno via ggml-vulkan during the auto_fgdn support probe). Unfused
++    // GDN ops follow their layer's device (CPU for recurrent layers), which
++    // is correct, so fused GDN is enabled only for single-device contexts.
++    if (cparams.auto_fgdn &&
++        (llama_model_is_hybrid(&model) || llama_model_is_recurrent(&model)) &&
++        model.n_gpu_layers() > 0) {
++        cparams.fused_gdn_ar = false;
++        cparams.fused_gdn_ch = false;
++        cparams.auto_fgdn    = false;
++        LLAMA_LOG_WARN("%s: recurrent model with GPU offload; fused GDN disabled\n", __func__);
++    }
++
+     if (cparams.auto_fgdn) {
+         LLAMA_LOG_INFO("%s: resolving fused Gated Delta Net support:\n", __func__);
+ 
+diff --git a/src/llama-model-loader.cpp b/src/llama-model-loader.cpp
+index 0d1cf3c..24e5345 100644
+--- a/src/llama-model-loader.cpp
++++ b/src/llama-model-loader.cpp
+@@ -12,6 +12,7 @@
+ #include <cstring>
+ #include <future>
+ #include <regex>
++#include <sys/stat.h>
+ 
+ static const size_t kiB = 1024;
+ static const size_t MiB = 1024*kiB;
+@@ -817,6 +818,106 @@ llama_model_loader::llama_model_loader(
+     this->use_direct_io = use_direct_io;
+     this->check_tensors = check_tensors;
+     this->no_alloc = no_alloc;
++
++    // FinnAI: persistent repack cache.
++    // The repacked weight layout is a pure function of (model bytes, tensor
++    // shapes, CPU capabilities), so we persist it next to the model file and
++    // replay it on subsequent loads instead of recomputing the multi-second
++    // single-threaded conversion. The hook is resolved through the CPU
++    // backend's proc table because GGML_USE_CPU_REPACK is private to ggml-cpu.
++    if (!fname.empty() && !no_alloc) {
++        ggml_backend_dev_t cpu_dev = ggml_backend_dev_by_type(GGML_BACKEND_DEVICE_TYPE_CPU);
++        if (cpu_dev) {
++            ggml_backend_reg_t reg = ggml_backend_dev_backend_reg(cpu_dev);
++            typedef void (*set_cache_fn)(const char *, const char *);
++            set_cache_fn set_cache = (set_cache_fn) ggml_backend_reg_get_proc_address(reg, "ggml_backend_cpu_repack_set_cache");
++            if (set_cache) {
++                uint64_t h = 1469598103934665603ULL; // FNV-1a 64
++                auto mix = [&h](const char * s) {
++                    for (const unsigned char * p = (const unsigned char *) s; *p; ++p) {
++                        h ^= *p;
++                        h *= 1099511628211ULL;
++                    }
++                };
++                auto mix64 = [&h](uint64_t v) {
++                    for (int i = 0; i < 8; ++i) {
++                        h ^= (v >> (8 * i)) & 0xff;
++                        h *= 1099511628211ULL;
++                    }
++                };
++                auto stat_mix = [&mix64](const std::string & p) {
++                    struct stat st;
++                    if (stat(p.c_str(), &st) == 0) {
++                        mix64((uint64_t) st.st_size);
++                        mix64((uint64_t) st.st_mtime);
++                    }
++                };
++
++                mix(fname.c_str());
++                for (const auto & sp : splits) {
++                    mix(sp.c_str());
++                }
++                stat_mix(fname);
++                for (const auto & sp : splits) {
++                    stat_mix(sp);
++                }
++                for (const auto & f : files) {
++                    mix64(f->size());
++                }
++
++                // Runtime CPU capabilities as reported by the (dlopen'd)
++                // ggml-cpu backend: NEON / DOTPROD / MATMUL_INT8 / SVE / etc.
++                // — exactly the set that drives repack layout selection.
++                typedef ggml_backend_feature * (*get_features_fn)(ggml_backend_reg_t);
++                get_features_fn get_features = (get_features_fn) ggml_backend_reg_get_proc_address(reg, "ggml_backend_get_features");
++                if (get_features) {
++                    for (ggml_backend_feature * f = get_features(reg); f && f->name; ++f) {
++                        mix(f->name);
++                        mix("=");
++                        mix(f->value);
++                        mix(";");
++                    }
++                }
++                mix("ver=");
++                mix(ggml_version());
++
++                char keybuf[65];
++                memset(keybuf, '0', 64);
++                keybuf[64] = '\0';
++                snprintf(keybuf, 17, "%016llx", (unsigned long long) h);
++
++                // Cache next to the model file by default (app-private model
++                // dirs are writable). A benchmark harness whose model lives on
++                // read-only storage can redirect the cache into app storage
++                // with FINN_REPACK_CACHE_DIR.
++                std::string cache_path;
++                const char * cache_dir = getenv("FINN_REPACK_CACHE_DIR");
++                if (cache_dir && cache_dir[0]) {
++                    const size_t slash = fname.find_last_of("/\\");
++                    const std::string base = slash == std::string::npos
++                        ? fname
++                        : fname.substr(slash + 1);
++                    cache_path = std::string(cache_dir) + "/" + base + ".finn_repack";
++                } else {
++                    cache_path = fname + ".finn_repack";
++                }
++                set_cache(cache_path.c_str(), keybuf);
++                LLAMA_LOG_INFO("%s: FinnAI repack cache enabled: %s\n", __func__, cache_path.c_str());
++            }
++        }
++    }
++}
++
++llama_model_loader::~llama_model_loader() {
++    ggml_backend_dev_t cpu_dev = ggml_backend_dev_by_type(GGML_BACKEND_DEVICE_TYPE_CPU);
++    if (cpu_dev) {
++        ggml_backend_reg_t reg = ggml_backend_dev_backend_reg(cpu_dev);
++        typedef void (*clear_cache_fn)(void);
++        clear_cache_fn clear_cache = (clear_cache_fn) ggml_backend_reg_get_proc_address(reg, "ggml_backend_cpu_repack_clear_cache");
++        if (clear_cache) {
++            clear_cache();
++        }
++    }
+ }
+ 
+ std::string llama_model_loader::get_arch_name() const {
+diff --git a/src/llama-model-loader.h b/src/llama-model-loader.h
+index c476026..99b1abf 100644
+--- a/src/llama-model-loader.h
++++ b/src/llama-model-loader.h
+@@ -133,6 +133,8 @@ struct llama_model_loader {
+         const llama_model_kv_override * param_overrides_p,
+         const llama_model_tensor_buft_override * param_tensor_buft_overrides_p);
+ 
++    ~llama_model_loader();
++
+     template<typename T>
+     typename std::enable_if<std::is_integral<T>::value, bool>::type
+     get_arr_n(const std::string & key, T & result, bool required = true);
+diff --git a/src/models/delta-net-base.cpp b/src/models/delta-net-base.cpp
+index 4f4c7ca..b94922b 100644
+--- a/src/models/delta-net-base.cpp
++++ b/src/models/delta-net-base.cpp
+@@ -565,8 +565,19 @@ ggml_tensor * llm_build_delta_net_base::build_recurrent_attn(
+     const int64_t K = cparams.n_rs_seq + 1;
+ 
+     // TODO: remove pad + simplify
+-    ggml_tensor * s_3d     = ggml_reshape_3d(ctx0, s, D, 1, n_seqs);
+-    ggml_tensor * s_3d_pad = ggml_pad       (ctx0, s_3d, 0, K - 1, 0, 0);
++    ggml_tensor * s_3d = ggml_reshape_3d(ctx0, s, D, 1, n_seqs);
++    // FinnAI: on the CPU-only fused path, the GDN kernels only ever read slot 0
++    // of the (D, K, n_seqs) state, so a zero-stride aliasing view (nb[1] = 0)
++    // replaces the materialized pad. This removes ~K writes of D floats per
++    // layer per decode (the pad dominated decode time at large K). GPU kernels
++    // assume a contiguous K*D per-seq stride, so the pad is kept when fused GDN
++    // is disabled (i.e. any GPU offload is active for this recurrent model).
++    ggml_tensor * s_3d_pad;
++    if (cparams.fused_gdn_ar || cparams.fused_gdn_ch) {
++        s_3d_pad = ggml_view_3d(ctx0, s_3d, s_3d->ne[0], K, s_3d->ne[2], 0, s_3d->nb[1], 0);
++    } else {
++        s_3d_pad = ggml_pad(ctx0, s_3d, 0, K - 1, 0, 0);
++    }
+ 
+     ggml_tensor * gdn_out = ggml_gated_delta_net(ctx0, q, k, v, g, b, s_3d_pad);
+     if (n_seq_tokens > 1) {
