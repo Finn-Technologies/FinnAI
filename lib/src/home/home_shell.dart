@@ -720,13 +720,23 @@ class _HomeShellState extends State<HomeShell>
                       top: 71 * sy,
                       child: _HomeHeader(onMenu: () => _setSidebar(true)),
                     ),
-                    Positioned(
-                      left: contentLeft,
-                      bottom:
-                          safeBottom + (constraints.maxHeight < 650 ? 20 : 30),
-                      child: ValueListenableBuilder<bool>(
-                        valueListenable: _chatScrolledAway,
-                        builder: (context, scrolledAway, _) => ChatComposer(
+                    ValueListenableBuilder<bool>(
+                      valueListenable: _chatScrolledAway,
+                      builder: (context, scrolledAway, _) => AnimatedPositioned(
+                        left: contentLeft,
+                        // When scrolled away the pill condenses and sits a
+                        // touch lower on screen; full size is restored at the
+                        // bottom, so the resting position stays as-is.
+                        bottom:
+                            safeBottom +
+                            (scrolledAway
+                                ? (constraints.maxHeight < 650 ? 10 : 20)
+                                : (constraints.maxHeight < 650 ? 20 : 30)),
+                        duration: MediaQuery.disableAnimationsOf(context)
+                            ? Duration.zero
+                            : const Duration(milliseconds: 220),
+                        curve: Curves.easeOutCubic,
+                        child: ChatComposer(
                           controller: _composer,
                           focusNode: _focusNode,
                           blocked: _preparing || !_storesReady,
@@ -1093,6 +1103,22 @@ class _ConversationState extends State<_Conversation> {
     });
   }
 
+  /// Counter-balances the reverse list's bottom anchor while a sources list
+  /// grows: expanding the message pushes the content above it up by [delta],
+  /// so the scroll position is nudged by the same amount to keep the answer
+  /// anchored while the actions below the sources slide down.
+  void _compensateSourcesGrowth(double delta) {
+    if (!widget.scrollController.hasClients || delta == 0) return;
+    final position = widget.scrollController.position;
+    final target = (position.pixels + delta).clamp(
+      0.0,
+      position.maxScrollExtent,
+    );
+    if (target != position.pixels) {
+      widget.scrollController.jumpTo(target);
+    }
+  }
+
   @override
   void dispose() {
     _scrollSettleTimer?.cancel();
@@ -1217,6 +1243,7 @@ class _ConversationState extends State<_Conversation> {
                         modelTier: message.modelTier,
                         status: message.status,
                         sources: message.sources,
+                        onSourcesHeightDelta: _compensateSourcesGrowth,
                         showActions: true,
                         onContinue:
                             message.status ==
@@ -1696,6 +1723,7 @@ class _CompleteReply extends StatelessWidget {
     this.onContinue,
     this.onRegenerate,
     this.sources = const [],
+    this.onSourcesHeightDelta,
   });
 
   final String text;
@@ -1707,6 +1735,10 @@ class _CompleteReply extends StatelessWidget {
   final VoidCallback? onRegenerate;
   final List<WebSource> sources;
 
+  /// Forwards the animated growth of the sources list in pixels so the chat
+  /// can keep the answer anchored while the actions below slide down.
+  final ValueChanged<double>? onSourcesHeightDelta;
+
   @override
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1714,6 +1746,15 @@ class _CompleteReply extends StatelessWidget {
       // The assistant answer sits directly on the canvas — no bubble — and its
       // text is natively selectable.
       SelectionArea(child: SafeMarkdownText(text: text)),
+      // Sources live between the answer and the reply actions: expanding the
+      // list pushes only the actions below it, never the answer above it.
+      if (sources.isNotEmpty) ...[
+        const SizedBox(height: 6),
+        _SourceList(
+          sources: sources,
+          onHeightDelta: onSourcesHeightDelta ?? (_) {},
+        ),
+      ],
       if (showActions) ...[
         const SizedBox(height: 6),
         _ReplyActions(
@@ -1722,12 +1763,6 @@ class _CompleteReply extends StatelessWidget {
           modelTier: modelTier,
           onRegenerate: onRegenerate,
         ),
-      ],
-      if (sources.isNotEmpty) ...[
-        const SizedBox(height: 6),
-        _SourceChips(sources: sources),
-      ],
-      if (showActions) ...[
         if (status == ConversationMessageStatus.generating) ...[
           const SizedBox(height: 5),
           Text(
@@ -1843,11 +1878,71 @@ class _ReplyActionButton extends StatelessWidget {
   }
 }
 
-/// Horizontal row of clickable source chips shown under a web-grounded answer.
-class _SourceChips extends StatelessWidget {
-  const _SourceChips({required this.sources});
+/// ChatGPT-style collapsible sources list shown under a web-grounded answer:
+/// a compact pill showing up to two website icons, a "Sources" label and a
+/// chevron that points right when collapsed and rotates down when expanded to
+/// reveal the tappable list of sources. The list has no card background — it
+/// reads as a plain list, and its growth is reported per frame so the chat
+/// can keep the answer above anchored while only the content below slides.
+class _SourceList extends StatefulWidget {
+  const _SourceList({required this.sources, required this.onHeightDelta});
 
   final List<WebSource> sources;
+
+  /// Per-frame growth (or shrink) of the expanded list in pixels.
+  final ValueChanged<double> onHeightDelta;
+
+  @override
+  State<_SourceList> createState() => _SourceListState();
+}
+
+class _SourceListState extends State<_SourceList>
+    with SingleTickerProviderStateMixin {
+  static const Duration _duration = Duration(milliseconds: 220);
+
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: _duration,
+    reverseDuration: _duration,
+  )..addListener(_onFrame);
+
+  late final CurvedAnimation _factor = CurvedAnimation(
+    parent: _controller,
+    curve: Curves.easeOutCubic,
+  );
+
+  final GlobalKey _contentKey = GlobalKey();
+  double? _fullHeight;
+  double _lastHeight = 0;
+
+  bool get _expanded => _controller.value > 0;
+
+  void _onFrame() {
+    final full = _fullHeight;
+    if (full == null) return;
+    final current = full * _factor.value;
+    final delta = current - _lastHeight;
+    if (delta == 0) return;
+    _lastHeight = current;
+    widget.onHeightDelta(delta);
+    setState(() {});
+  }
+
+  void _toggle() {
+    final size = _contentKey.currentContext?.size;
+    if (size == null) return;
+    _fullHeight = size.height;
+    _lastHeight = size.height * _controller.value;
+    if (MediaQuery.disableAnimationsOf(context)) {
+      setState(() => _controller.value = _expanded ? 0 : 1);
+    } else if (_controller.isAnimating) {
+      _controller.reverse();
+    } else if (_controller.isDismissed) {
+      _controller.forward();
+    } else {
+      _controller.reverse();
+    }
+  }
 
   Future<void> _open(BuildContext context, WebSource source) async {
     final uri = source.url;
@@ -1857,32 +1952,160 @@ class _SourceChips extends StatelessWidget {
   }
 
   @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 30,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        shrinkWrap: true,
-        itemCount: sources.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 6),
-        itemBuilder: (context, index) {
-          final source = sources[index];
-          return ActionChip(
-            avatar: const Icon(Icons.public, size: 15),
-            label: Text(
-              source.title.isEmpty ? source.url.host : source.title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.labelSmall,
+    final muted = FluxColors.mutedOf(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Semantics(
+          button: true,
+          label: _expanded ? 'Hide sources' : 'Show sources',
+          child: InkWell(
+            onTap: _toggle,
+            borderRadius: BorderRadius.circular(999),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(10, 6, 8, 6),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // At least one website icon, and a second one when there are
+                  // two or more sources.
+                  for (var i = 0; i < math.min(2, widget.sources.length); i++) ...[
+                    if (i > 0) const SizedBox(width: 4),
+                    _SourceFavicon(source: widget.sources[i], size: 18),
+                  ],
+                  const SizedBox(width: 7),
+                  Text(
+                    'Sources',
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: muted,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(width: 2),
+                  AnimatedRotation(
+                    turns: _expanded ? 0.25 : 0.0,
+                    duration: MediaQuery.disableAnimationsOf(context)
+                        ? Duration.zero
+                        : const Duration(milliseconds: 180),
+                    curve: Curves.easeOutCubic,
+                    child: Icon(Icons.chevron_right, size: 18, color: muted),
+                  ),
+                ],
+              ),
             ),
-            onPressed: () => _open(context, source),
-            visualDensity: VisualDensity.compact,
-            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            side: BorderSide(color: FluxColors.lineOf(context)),
-            backgroundColor: FluxColors.cardOf(context),
-            labelPadding: const EdgeInsets.symmetric(horizontal: 6),
-          );
-        },
+          ),
+        ),
+        // The list is always laid out (so its full height can be measured)
+        // but clipped to the animated height factor: it grows downward from
+        // the button without a card background. Semantics are excluded while
+        // collapsed so the hidden rows are not announced.
+        ExcludeSemantics(
+          excluding: !_expanded,
+          child: ClipRect(
+            child: Align(
+              heightFactor: _factor.value,
+              alignment: Alignment.topCenter,
+              child: Column(
+                key: _contentKey,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (final source in widget.sources)
+                    _SourceRow(
+                      source: source,
+                      onTap: () => _open(context, source),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SourceRow extends StatelessWidget {
+  const _SourceRow({required this.source, required this.onTap});
+
+  final WebSource source;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        child: Row(
+          children: [
+            _SourceFavicon(source: source, size: 18),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                source.title.isEmpty ? source.url.host : source.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelMedium,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Deterministic stand-in for the website's favicon: a circle tinted from the
+/// hostname with the domain's initial letter, so sources are easy to tell
+/// apart without fetching anything over the network.
+class _SourceFavicon extends StatelessWidget {
+  const _SourceFavicon({required this.source, this.size = 18});
+
+  final WebSource source;
+  final double size;
+
+  static const List<Color> _palette = [
+    Color(0xFF4A7CF3),
+    Color(0xFFE05D3B),
+    Color(0xFF2FA36B),
+    Color(0xFF9B59B6),
+    Color(0xFFE2A12E),
+    Color(0xFF3BA7C9),
+    Color(0xFFE05C8A),
+    Color(0xFF5F6B7A),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final host = source.url.host.replaceFirst('www.', '');
+    final letter = host.isEmpty ? '?' : host[0].toUpperCase();
+    final color = _palette[host.hashCode.abs() % _palette.length];
+
+    return Container(
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+      ),
+      child: Text(
+        letter,
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: size * 0.55,
+          fontWeight: FontWeight.w600,
+          height: 1,
+        ),
       ),
     );
   }
@@ -2021,9 +2244,9 @@ class ChatComposer extends StatefulWidget {
   /// draft the next message, but sending is disabled until the turn ends.
   final bool busy;
 
-  /// When true the whole pill scales down to 55% around its center — used
-  /// while the user scrolls away from the newest message. Restored to full
-  /// size near the bottom.
+  /// When true the whole pill scales down uniformly to 85% around its
+  /// center — used while the user scrolls away from the newest message.
+  /// Restored to full size near the bottom.
   final bool compact;
 
   /// Invoked when the field is tapped or focused so the shell can scroll the
@@ -2079,26 +2302,23 @@ class _ChatComposerState extends State<ChatComposer> {
   Widget build(BuildContext context) {
     final canSend = _hasText && !widget.blocked && !widget.busy;
     final reducedMotion = MediaQuery.disableAnimationsOf(context);
-    // Frosted white pill: the field is always the same white whether focused
-    // or not, with a light backdrop blur so content scrolling beneath it reads
-    // softly through the translucency. The blur sigma stays modest so low-end
-    // devices are not taxed.
-    // The whole pill condenses around its own center while scrolled away:
-    // height scales to 90% and width to ~81% (90% of the scaled width), so
-    // it reads as a slimmer capsule. Full size is restored at the bottom.
+    // Frosted pill: white on light surfaces, dark glass in dark mode, with a
+    // light backdrop blur so content scrolling beneath it reads softly through
+    // the translucency. The blur sigma stays modest so low-end devices are not
+    // taxed.
+    // The whole pill condenses around its own center while scrolled away: it
+    // scales down uniformly to 85%, so the length shortens a bit while the
+    // items inside shrink proportionally — nothing gets stretched or squished.
+    // Full size is restored at the bottom.
     return TweenAnimationBuilder<double>(
       tween: Tween<double>(end: widget.compact ? 1.0 : 0.0),
       duration: reducedMotion
           ? Duration.zero
           : const Duration(milliseconds: 220),
       curve: Curves.easeOutCubic,
-      builder: (context, shrink, child) => Transform(
+      builder: (context, shrink, child) => Transform.scale(
         alignment: Alignment.center,
-        transform: Matrix4.diagonal3Values(
-          1 - 0.19 * shrink,
-          1 - 0.1 * shrink,
-          1,
-        ),
+        scale: 1 - 0.15 * shrink,
         child: child,
       ),
       child: ClipRRect(
@@ -2112,8 +2332,13 @@ class _ChatComposerState extends State<ChatComposer> {
                 : const Duration(milliseconds: 180),
             curve: Curves.easeOutCubic,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.85),
+              color: FluxColors.isDark(context)
+                  ? const Color(0xCC18181B)
+                  : Colors.white.withValues(alpha: 0.85),
               borderRadius: BorderRadius.circular(999),
+              border: FluxColors.isDark(context)
+                  ? Border.all(color: const Color(0x28FFFFFF))
+                  : null,
             ),
             width: widget.width,
             constraints: const BoxConstraints(minHeight: 42, maxHeight: 190),
@@ -2142,17 +2367,15 @@ class _ChatComposerState extends State<ChatComposer> {
                           textInputAction: TextInputAction.send,
                           onSubmitted: (_) => canSend ? widget.onSend() : null,
                           onTap: () => widget.onReturnToLatest?.call(),
-                          // The field is always white, so pin dark ink for
-                          // text, hint and cursor in both light and dark mode.
                           style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(color: FluxColors.ink),
-                          cursorColor: FluxColors.ink,
+                              ?.copyWith(color: FluxColors.inkOf(context)),
+                          cursorColor: FluxColors.inkOf(context),
                           decoration: InputDecoration.collapsed(
                             hintText: widget.blocked
                                 ? 'Finn is typing…'
                                 : 'Ask anything',
                             hintStyle: Theme.of(context).textTheme.bodyMedium
-                                ?.copyWith(color: FluxColors.muted),
+                                ?.copyWith(color: FluxColors.mutedOf(context)),
                           ),
                         ),
                       ),
@@ -2161,29 +2384,42 @@ class _ChatComposerState extends State<ChatComposer> {
                     if (widget.busy)
                       // While a reply is generating the send button becomes a
                       // stop control: a black rounded square with a white stop
-                      // glyph that cancels generation on tap.
+                      // glyph that cancels generation on tap. In dark mode the
+                      // colors flip so the control stays visible on the pill.
+                      // The visible circle matches the send icon (30×30) with
+                      // the same 36×36 tappable surface, so the two controls
+                      // read as the same size.
                       Semantics(
                         button: true,
                         label: 'Stop generating',
-                        child: InkWell(
+                        child: SizedBox.square(
                           key: const ValueKey('stop-button-surface'),
-                          onTap: widget.onStop,
-                          customBorder: const CircleBorder(),
-                          child: Container(
-                            width: 36,
-                            height: 36,
-                            decoration: const BoxDecoration(
-                              color: Colors.black,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Center(
-                              child: SizedBox.square(
-                                dimension: 12,
-                                child: DecoratedBox(
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.all(
-                                      Radius.circular(3),
+                          dimension: 36,
+                          child: InkWell(
+                            onTap: widget.onStop,
+                            customBorder: const CircleBorder(),
+                            child: Center(
+                              child: Container(
+                                width: 30,
+                                height: 30,
+                                decoration: BoxDecoration(
+                                  color: FluxColors.isDark(context)
+                                      ? Colors.white
+                                      : Colors.black,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Center(
+                                  child: SizedBox.square(
+                                    dimension: 12,
+                                    child: DecoratedBox(
+                                      decoration: BoxDecoration(
+                                        color: FluxColors.isDark(context)
+                                            ? Colors.black
+                                            : Colors.white,
+                                        borderRadius: const BorderRadius.all(
+                                          Radius.circular(3),
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -2211,10 +2447,11 @@ class _ChatComposerState extends State<ChatComposer> {
                                 key: const ValueKey('send-button-icon'),
                                 width: 30,
                                 height: 30,
-                                // The send glyph is designed as a dark circle on
-                                // a light surface, so keep its own colors on the
-                                // white pill in dark mode too.
-                                preserveColors: true,
+                                // The send glyph is a dark circle on a light
+                                // surface; on the dark pill it flips to a
+                                // light circle so it stays visible in dark
+                                // mode.
+                                invertForDark: true,
                               ),
                             ),
                           ),

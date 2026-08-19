@@ -2,6 +2,7 @@ import 'package:finn_ai/src/conversations/conversation_store.dart';
 import 'package:finn_ai/src/creations/creations_page.dart';
 import 'package:finn_ai/src/flux_app.dart';
 import 'package:finn_ai/src/home/home_shell.dart';
+import 'package:finn_ai/src/search/web_search_service.dart';
 import 'package:finn_ai/src/settings/settings_page.dart';
 import 'package:finn_ai/src/skills/skills_page.dart';
 import 'package:finn_ai/src/theme/flux_theme.dart';
@@ -152,6 +153,113 @@ void main() {
 
     expect(tester.takeException(), isNull);
     await tester.pump(const Duration(milliseconds: 500));
+  });
+
+  testWidgets('expanding sources anchors the answer and slides actions below', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final conversations = ConversationStore();
+    addTearDown(conversations.dispose);
+    // Build a conversation taller than the viewport so the reverse list has
+    // scroll range for the anchored expansion to work against.
+    var assistant = conversations.beginExchange('first question?');
+    conversations.updateMessageInConversation(
+      conversations.active!.id,
+      assistant.id,
+      'A longer first answer that spans several lines so the conversation '
+      'comfortably exceeds the viewport height and leaves scroll range for '
+      'the anchored sources expansion.',
+    );
+    for (var i = 0; i < 3; i++) {
+      assistant = conversations.beginExchange('question ${i + 2}?');
+      conversations.updateMessageInConversation(
+        conversations.active!.id,
+        assistant.id,
+        'Another multi-line answer repeated here to keep the conversation '
+        'taller than the screen so the list can scroll while the sources '
+        'list expands and collapses.',
+      );
+    }
+    conversations.updateMessageInConversation(
+      conversations.active!.id,
+      assistant.id,
+      'Here is a grounded answer with sources.',
+      sources: [
+        WebSource(
+          title: 'First Site',
+          url: Uri.parse('https://one.example.com'),
+          snippet: 'First excerpt.',
+        ),
+        WebSource(
+          title: 'Second Site',
+          url: Uri.parse('https://two.example.com'),
+          snippet: 'Second excerpt.',
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: FluxTheme.light,
+        home: HomeShell(
+          conversationStore: conversations,
+          initializeServices: false,
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    final answer = find.textContaining('Here is a grounded answer');
+    // The newest message is index zero in the reversed list, so its actions
+    // are the first "Copy" tooltip in the tree.
+    final copy = find.byTooltip('Copy').first;
+    final answerTopBefore = tester.getRect(answer).top;
+    final copyTopBefore = tester.getRect(copy).top;
+    final positionBefore = tester
+        .state<ScrollableState>(
+          find
+              .descendant(
+                of: find.byKey(const ValueKey('chat-scroll-view')),
+                matching: find.byType(Scrollable),
+              )
+              .first,
+        )
+        .position
+        .pixels;
+
+    await tester.tap(find.text('Sources'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    // The list reveals the source titles without a card background.
+    expect(find.text('First Site'), findsOneWidget);
+    expect(find.text('Second Site'), findsOneWidget);
+
+    // The answer above the sources list stays anchored on screen…
+    expect(tester.getRect(answer).top, closeTo(answerTopBefore, 1));
+    // …the actions below it slide down…
+    expect(tester.getRect(copy).top, greaterThan(copyTopBefore));
+    // …and the reverse list compensates its scroll offset by the growth.
+    final positionAfter = tester
+        .state<ScrollableState>(
+          find
+              .descendant(
+                of: find.byKey(const ValueKey('chat-scroll-view')),
+                matching: find.byType(Scrollable),
+              )
+              .first,
+        )
+        .position
+        .pixels;
+    expect(positionAfter, greaterThan(positionBefore));
+    expect(tester.takeException(), isNull);
   });
 
   for (final brightness in [Brightness.light, Brightness.dark]) {
