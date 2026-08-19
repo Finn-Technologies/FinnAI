@@ -52,10 +52,18 @@ You retain full control over your local data at any time:
 - **Purge AI Memory**: Unloads AI models from device RAM immediately.
 - **Android backups disabled**: FinnAI disables Android application backup so private local AI data is not copied into platform backup archives.
 
-## 4. Children's Privacy
-FinnAI does not knowingly collect personal information from children under the age of 13.
+## 4. Generative AI Disclosure
 
-## 5. Contact & Policy Availability
+FinnAI includes generative AI features that run locally on your device. AI outputs may be inaccurate, incomplete, or outdated. Review important information before acting on AI responses.
+
+Flag inappropriate AI outputs from within the app via the Report feature so we can review and improve safety.
+
+We moderate generative AI content in accordance with Google Play's Generative AI policy. Prohibited content, policy violations, and misuse can be reported to `finn_org@proton.me`.
+
+## 5. Children's Privacy
+FinnAI is not directed to children under 13 and does not knowingly collect personal information from children under that age.
+
+## 6. Contact & Policy Availability
 - **Public Policy URL**: `https://finn-org.vercel.app/privacy`
 - **Support Contact**: `https://finn-org.vercel.app/support`
 - **Support Email**: `finn_org@proton.me`

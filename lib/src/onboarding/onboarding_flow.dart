@@ -574,16 +574,18 @@ class _AutomaticInstallPanel extends StatelessWidget {
     final effectiveProgress = ready ? 1.0 : progress.clamp(.02, .98);
     final isDark = FluxColors.isDark(context);
     final inference = QwenInference.instance;
-    final downloading = !ready && started &&
-        inference.phase == InferencePhase.downloading;
+    final downloading =
+        !ready && started && inference.phase == InferencePhase.downloading;
     // The whole install is one honest number: language model + multimodal
     // component, downloaded bytes so far, and what is left.
     final totalBytes = model.expectedBytes + qwenMmproj.expectedBytes;
     final receivedBytes = inference.installReceivedBytes;
     final remainingBytes = inference.installRemainingBytes;
     final transferMeta = [
-      if (downloading) '${_formatBytes(receivedBytes)} of ${_formatBytes(totalBytes)}',
-      if (downloading && remainingBytes > 0) '${_formatBytes(remainingBytes)} left',
+      if (downloading)
+        '${_formatBytes(receivedBytes)} of ${_formatBytes(totalBytes)}',
+      if (downloading && remainingBytes > 0)
+        '${_formatBytes(remainingBytes)} left',
       if (downloading && inference.downloadSpeedLabel != null)
         inference.downloadSpeedLabel!,
       if (downloading && inference.downloadEtaLabel != null)
@@ -878,10 +880,8 @@ class _SoftwareUpgradeScreenState extends State<SoftwareUpgradeScreen> {
             transitionDuration: const Duration(milliseconds: 350),
             reverseTransitionDuration: const Duration(milliseconds: 280),
             pageBuilder: (_, animation, _) => const HomeShell(),
-            transitionsBuilder: (context, animation, _, page) => FadeTransition(
-              opacity: animation,
-              child: page,
-            ),
+            transitionsBuilder: (context, animation, _, page) =>
+                FadeTransition(opacity: animation, child: page),
           ),
         );
       }
@@ -902,10 +902,7 @@ class _SoftwareUpgradeScreenState extends State<SoftwareUpgradeScreen> {
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 32,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [

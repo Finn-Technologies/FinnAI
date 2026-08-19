@@ -54,7 +54,10 @@ class SearchDecisionParser {
     ).firstMatch(value);
     final taggedQuery = _cleanQuery(tagged?.group(1));
     if (taggedQuery != null) {
-      return SearchDecision(kind: SearchDecisionKind.search, query: taggedQuery);
+      return SearchDecision(
+        kind: SearchDecisionKind.search,
+        query: taggedQuery,
+      );
     }
 
     // Bare forms: "SEARCH q", "search for q", "look up q",

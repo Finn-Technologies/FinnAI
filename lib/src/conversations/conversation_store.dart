@@ -117,8 +117,8 @@ List<WebSource> _sourcesFromJson(Object? raw) {
           item['title'] is String &&
           item['url'] is String &&
           item['snippet'] is String)
-        if (Uri.tryParse(item['url'] as String)
-            case final uri? when uri.scheme == 'https' && uri.host.isNotEmpty)
+        if (Uri.tryParse(item['url'] as String) case final uri?
+            when uri.scheme == 'https' && uri.host.isNotEmpty)
           WebSource(
             title: item['title'] as String,
             url: uri,

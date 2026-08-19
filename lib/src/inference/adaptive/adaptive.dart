@@ -216,14 +216,8 @@ bool hasOffloadHeadroom({
 
 /// Upgrades the CPU baseline to offload onto [device]. Uses a negative layer
 /// count so llama.cpp offloads every layer onto the accelerator.
-RuntimeConfig acceleratedConfig(
-  RuntimeConfig cpu,
-  BackendDevice device,
-) => cpu.copyWith(
-  gpuLayers: -1,
-  deviceName: device.name,
-  isCpu: false,
-);
+RuntimeConfig acceleratedConfig(RuntimeConfig cpu, BackendDevice device) =>
+    cpu.copyWith(gpuLayers: -1, deviceName: device.name, isCpu: false);
 
 class SelectionOutcome {
   const SelectionOutcome({
@@ -346,7 +340,8 @@ class AdaptiveInferenceEngine {
       backend: backend,
       deviceName: device.name,
       registryName: device.registryName,
-      reason: 'Discovered ${backend.name} device ${device.name} '
+      reason:
+          'Discovered ${backend.name} device ${device.name} '
           '(${device.registryName}).',
     );
     _config = selection.config;
@@ -414,16 +409,15 @@ class AdaptiveInferenceEngine {
     ready: _config != null,
     message: _config == null
         ? 'Profile not selected'
-        : (_selection == null ? 'Ready (CPU)' : 'Ready (${_selection!.backend.name})'),
+        : (_selection == null
+              ? 'Ready (CPU)'
+              : 'Ready (${_selection!.backend.name})'),
   );
 
   @visibleForTesting
   BackendSelection? get selectionForTest => _selection;
 
-  Future<String> _fingerprint(
-    DeviceProfile profile,
-    String modelSha256,
-  ) async {
+  Future<String> _fingerprint(DeviceProfile profile, String modelSha256) async {
     // The app version invalidates the cache after a software update so the
     // benchmark re-runs against the newly shipped runtime.
     if (_appVersion == null) {
@@ -442,9 +436,7 @@ class AdaptiveInferenceEngine {
 
   Future<File> _cacheFile() async {
     final root = await getApplicationSupportDirectory();
-    return File(
-      '${root.path}${Platform.pathSeparator}adaptive_backend.json',
-    );
+    return File('${root.path}${Platform.pathSeparator}adaptive_backend.json');
   }
 
   Future<BackendSelection?> _readCachedSelection(
@@ -454,7 +446,8 @@ class AdaptiveInferenceEngine {
     try {
       final file = await _cacheFile();
       if (!await file.exists()) return null;
-      final data = jsonDecode(await file.readAsString()) as Map<String, Object?>;
+      final data =
+          jsonDecode(await file.readAsString()) as Map<String, Object?>;
       if (data['fingerprint'] != await _fingerprint(profile, modelSha256)) {
         return null;
       }

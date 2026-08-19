@@ -104,31 +104,28 @@ void main() {
       },
     );
 
-    test(
-      'a distinct modelTier stamp is persisted independently',
-      () async {
-        final store = ConversationStore(
-          keyStorage: keyStore,
-          directoryProvider: () async => tempDir,
-        );
-        await store.initialize();
+    test('a distinct modelTier stamp is persisted independently', () async {
+      final store = ConversationStore(
+        keyStorage: keyStore,
+        directoryProvider: () async => tempDir,
+      );
+      await store.initialize();
 
-        final assistant = store.beginExchange('What time is it?');
+      final assistant = store.beginExchange('What time is it?');
 
-        const modelTier = 'Qwen 3.5 2B (variant)';
-        store.updateMessage(
-          assistant.id,
-          'It is currently…',
-          modelTier: modelTier,
-          persistSoon: true,
-        );
-        await store.flush();
+      const modelTier = 'Qwen 3.5 2B (variant)';
+      store.updateMessage(
+        assistant.id,
+        'It is currently…',
+        modelTier: modelTier,
+        persistSoon: true,
+      );
+      await store.flush();
 
-        final reloaded = store.active!.messages.last;
-        expect(reloaded.modelTier, modelTier);
-        expect(reloaded.modelTier, isNot(equals('Qwen 3.5 2B')));
-      },
-    );
+      final reloaded = store.active!.messages.last;
+      expect(reloaded.modelTier, modelTier);
+      expect(reloaded.modelTier, isNot(equals('Qwen 3.5 2B')));
+    });
 
     test(
       'After cold reload, reloaded modelTier is used as report metadata — not the currently selected model',

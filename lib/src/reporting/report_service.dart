@@ -15,6 +15,7 @@ enum ReportCategory {
   selfHarm('Self-harm concern'),
   illegalOrDeceptive('Illegal or deceptive guidance'),
   falseOrMisleading('False or misleading response'),
+  spamOrScam('Spam or scam'),
   other('Other');
 
   const ReportCategory(this.displayName);

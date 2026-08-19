@@ -61,8 +61,7 @@ final class Generator implements Finalizable {
     // (`nRsSeq > 0`) on hybrid/recurrent models so rejected drafts can be
     // rolled back; on pure-attention models the KV rollback always works but
     // we still gate on nRsSeq to stay conservative.
-    final useLookahead =
-        request.lookaheadWindow > 0 && context.nRsSeq > 0;
+    final useLookahead = request.lookaheadWindow > 0 && context.nRsSeq > 0;
     // Greedy (filtered-argmax) twin of the request's sampler chain: same
     // logit-bias / penalties / top-k / top-p / min-p stages, but argmax
     // instead of temperature+dist. Drafts are verified against its picks,

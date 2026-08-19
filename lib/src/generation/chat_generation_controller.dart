@@ -496,10 +496,17 @@ class ChatGenerationController extends ChangeNotifier {
         return;
       }
       debugPrint('FINN_PREPARING_GUARD fired generation=$generationId');
-      unawaited(_finishError(generationId, epoch, TimeoutException('Model did not start. Try again.')));
+      unawaited(
+        _finishError(
+          generationId,
+          epoch,
+          TimeoutException('Model did not start. Try again.'),
+        ),
+      );
     });
 
-    _subscription = _generateWithContext(
+    _subscription =
+        _generateWithContext(
           runtimePrompt,
           conversationId: conversationId,
           history: history,
@@ -508,8 +515,7 @@ class ChatGenerationController extends ChangeNotifier {
           analysis: analysis,
           trace: trace,
           enableSearchDecision: enableSearchDecision,
-        )
-        .listen(
+        ).listen(
           (token) => _token(generationId, epoch, token),
           onError: (Object error, StackTrace stack) {
             unawaited(_finishError(generationId, epoch, error));
@@ -572,15 +578,13 @@ class ChatGenerationController extends ChangeNotifier {
     if (!_disposed) notifyListeners();
   }
 
-  List<WebSource> _runtimeSources() =>
-      runtime is QwenChatInferenceRuntime
-          ? (runtime as QwenChatInferenceRuntime).lastSources
-          : const [];
+  List<WebSource> _runtimeSources() => runtime is QwenChatInferenceRuntime
+      ? (runtime as QwenChatInferenceRuntime).lastSources
+      : const [];
 
-  int _runtimeTokenPaintIntervalMs() =>
-      runtime is QwenChatInferenceRuntime
-          ? (runtime as QwenChatInferenceRuntime).tokenPaintIntervalMs
-          : 50;
+  int _runtimeTokenPaintIntervalMs() => runtime is QwenChatInferenceRuntime
+      ? (runtime as QwenChatInferenceRuntime).tokenPaintIntervalMs
+      : 50;
 
   Future<void> _finish(
     String generationId,
@@ -820,7 +824,7 @@ class ChatGenerationController extends ChangeNotifier {
     _notifyTimer ??= Timer(
       Duration(milliseconds: _runtimeTokenPaintIntervalMs()),
       () {
-      _notifyTimer = null;
+        _notifyTimer = null;
         if (!_disposed) notifyListeners();
       },
     );

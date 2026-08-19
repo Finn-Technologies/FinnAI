@@ -74,9 +74,7 @@ class _BareBenchmarkApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: const Scaffold(
-        body: Center(child: Text('benchmark')),
-      ),
+      home: const Scaffold(body: Center(child: Text('benchmark'))),
     );
   }
 }
@@ -130,21 +128,20 @@ Future<void> _runModelEvaluation() async {
     for (final index in selectedCases) {
       final prompt = prompts[index];
       final answer = StringBuffer();
-      await for (final token
-          in QwenInference.instance.generateEvaluationReply(
-            prompt,
-            path: path,
-            modelLabel: label,
-            tier: QwenTier.standard,
-            conversationId: 'eval-$label-$index',
-          )) {
+      await for (final token in QwenInference.instance.generateEvaluationReply(
+        prompt,
+        path: path,
+        modelLabel: label,
+        tier: QwenTier.standard,
+        conversationId: 'eval-$label-$index',
+      )) {
         answer.write(token);
       }
       final analysis = const PromptIntentClassifier().classify(prompt);
       final report = QwenInference.instance.lastGenerationReport;
       final response = answer.toString();
       debugPrint(
-        'FINN_EVAL ${jsonEncode({'selectedModel': label, 'intent': analysis.intent.name, 'route': report?.route.name, 'outputBudget': report?.outputBudget, 'finishReason': report?.finishReason.name, 'firstTokenLatencyMs': report?.firstTokenLatency?.inMilliseconds, 'totalGenerationTimeMs': report?.totalGenerationTime.inMilliseconds, 'outputTokens': report?.outputTokens, 'tokensPerSecond': report?.tokensPerSecond,        if (prompt == 'Come fare una torta di ricotta e fragole?') 'recipeAcceptance': assessRicottaStrawberryCake(response).toJson(), if (prompt == 'Can you tell me how to upgrade the RAM in my laptop?') 'hardwareAcceptance': assessLaptopRamGuidance(response).toJson(), if (prompt == 'How does the routing in Bridgetown work?') 'bridgetownAcceptance': assessBridgetownRouting(response).toJson(), if (prompt == 'How do living ants know that an ant has died?') 'antNecrophoresisAcceptance': assessAntNecrophoresis(response).toJson(), 'response': response})}',
+        'FINN_EVAL ${jsonEncode({'selectedModel': label, 'intent': analysis.intent.name, 'route': report?.route.name, 'outputBudget': report?.outputBudget, 'finishReason': report?.finishReason.name, 'firstTokenLatencyMs': report?.firstTokenLatency?.inMilliseconds, 'totalGenerationTimeMs': report?.totalGenerationTime.inMilliseconds, 'outputTokens': report?.outputTokens, 'tokensPerSecond': report?.tokensPerSecond, if (prompt == 'Come fare una torta di ricotta e fragole?') 'recipeAcceptance': assessRicottaStrawberryCake(response).toJson(), if (prompt == 'Can you tell me how to upgrade the RAM in my laptop?') 'hardwareAcceptance': assessLaptopRamGuidance(response).toJson(), if (prompt == 'How does the routing in Bridgetown work?') 'bridgetownAcceptance': assessBridgetownRouting(response).toJson(), if (prompt == 'How do living ants know that an ant has died?') 'antNecrophoresisAcceptance': assessAntNecrophoresis(response).toJson(), 'response': response})}',
       );
     }
     await QwenInference.instance.releaseMemory();
@@ -165,9 +162,11 @@ Future<void> _runDeviceBenchmark() async {
   final inference = QwenInference.instance;
   Map<Object?, Object?> runtimeOverrides = const {};
   try {
-    runtimeOverrides = await const MethodChannel(
-      'finn_ai/benchmark',
-    ).invokeMapMethod<Object?, Object?>('getOverrides') ?? const {};
+    runtimeOverrides =
+        await const MethodChannel(
+          'finn_ai/benchmark',
+        ).invokeMapMethod<Object?, Object?>('getOverrides') ??
+        const {};
   } catch (_) {
     // Non-Android hosts have no intent extras; dart-defines apply.
   }
@@ -193,7 +192,8 @@ Future<void> _runDeviceBenchmark() async {
     defaultValue: 'model_warm',
   );
   final scenarioValue =
-      override('scenario') is String && (override('scenario') as String).isNotEmpty
+      override('scenario') is String &&
+          (override('scenario') as String).isNotEmpty
       ? override('scenario') as String
       : scenario;
   const runs = int.fromEnvironment('FINN_BENCH_RUNS', defaultValue: 5);
@@ -205,7 +205,8 @@ Future<void> _runDeviceBenchmark() async {
     defaultValue: 'selected',
   );
   final prewarmValue =
-      override('prewarm') is String && (override('prewarm') as String).isNotEmpty
+      override('prewarm') is String &&
+          (override('prewarm') as String).isNotEmpty
       ? override('prewarm') as String
       : prewarm;
   const noSearchDefine = bool.fromEnvironment('FINN_BENCH_NO_SEARCH');

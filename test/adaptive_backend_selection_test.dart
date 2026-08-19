@@ -87,7 +87,10 @@ void main() {
       cores: 8,
       lowMemory: false,
     );
-    final cpuConfig = runtimeConfigFromPlan(DeviceProfiler.plan(profile), profile);
+    final cpuConfig = runtimeConfigFromPlan(
+      DeviceProfiler.plan(profile),
+      profile,
+    );
     final accelerated = acceleratedConfig(cpuConfig, hexagon);
 
     expect(accelerated.isCpu, isFalse);
@@ -115,14 +118,8 @@ void main() {
       lowMemory: false,
     );
 
-    expect(
-      hasOffloadHeadroom(profile: tight, modelBytes: modelBytes),
-      isFalse,
-    );
-    expect(
-      hasOffloadHeadroom(profile: roomy, modelBytes: modelBytes),
-      isTrue,
-    );
+    expect(hasOffloadHeadroom(profile: tight, modelBytes: modelBytes), isFalse);
+    expect(hasOffloadHeadroom(profile: roomy, modelBytes: modelBytes), isTrue);
   });
 
   test('RuntimeConfig survives a JSON round trip', () {

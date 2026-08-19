@@ -103,10 +103,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     // The gradient layer is gone permanently.
-    expect(
-      find.byKey(const ValueKey('welcome-gradient-fade')),
-      findsNothing,
-    );
+    expect(find.byKey(const ValueKey('welcome-gradient-fade')), findsNothing);
     expect(find.text("Hi, I'm Finn."), findsOneWidget);
 
     conversations

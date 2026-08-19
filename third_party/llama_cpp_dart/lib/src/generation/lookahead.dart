@@ -24,7 +24,8 @@ final class NGramTable {
   /// conversations; drafts simply disappear for a short while).
   final int maxKeys;
 
-  final Map<_GramKey, List<_Continuation>> _table = <_GramKey, List<_Continuation>>{};
+  final Map<_GramKey, List<_Continuation>> _table =
+      <_GramKey, List<_Continuation>>{};
   final List<int> _window = <int>[];
 
   /// Total number of entries currently stored.
@@ -119,8 +120,8 @@ final class _Continuation {
 /// Value-equality wrapper so `List<int>` keys work in a Dart map.
 final class _GramKey {
   _GramKey(List<int> tokens)
-    : tokens = List<int>.unmodifiable(tokens),
-      _hash = _fold(tokens);
+      : tokens = List<int>.unmodifiable(tokens),
+        _hash = _fold(tokens);
 
   final List<int> tokens;
   final int _hash;

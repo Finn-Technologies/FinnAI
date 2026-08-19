@@ -382,7 +382,10 @@ class WebSearchService {
   static String _plainText(String value) => _decodeHtml(
     value
         .replaceAll(
-          RegExp(r'<(?:script|style)[^>]*>[\s\S]*?</(?:script|style)>', caseSensitive: false),
+          RegExp(
+            r'<(?:script|style)[^>]*>[\s\S]*?</(?:script|style)>',
+            caseSensitive: false,
+          ),
           ' ',
         )
         .replaceAll(RegExp(r'<[^>]+>'), ' ')

@@ -106,14 +106,12 @@ class PlanOverrides {
 class DeviceProfiler {
   DeviceProfiler._();
 
-  /// Set by the benchmark harness before any engine spawn. Only honored in
-  /// FINN_BENCHMARK builds; production never sets this.
-  @visibleForTesting
   static PlanOverrides planOverrides = const PlanOverrides();
 
   static bool isLowEnd(DeviceProfile profile) =>
       profile.lowMemory ||
-      (profile.totalRamBytes != null && profile.totalRamBytes! < 4 * 1000 * 1000 * 1000) ||
+      (profile.totalRamBytes != null &&
+          profile.totalRamBytes! < 4 * 1000 * 1000 * 1000) ||
       profile.processor == ProcessorClass.entry;
 
   static const _channel = MethodChannel('finn_ai/device_profile');

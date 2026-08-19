@@ -49,8 +49,7 @@ class QwenArtifact {
   final int expectedBytes;
   final String sha256Digest;
 
-  String get sizeLabel =>
-      '${(expectedBytes / 1000 / 1000).round()} MB';
+  String get sizeLabel => '${(expectedBytes / 1000 / 1000).round()} MB';
 }
 
 /// Q4_K_M is a practical quality/size choice for the supported ARM64 mobile

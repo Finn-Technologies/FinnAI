@@ -392,7 +392,11 @@ void main() {
         expect(store.active?.id, 'conv_1');
 
         // Adding a message appends to migrated conversation rather than overwriting
-        store.add(ConversationRole.user, 'New message', modelTier: 'Qwen 3.5 2B');
+        store.add(
+          ConversationRole.user,
+          'New message',
+          modelTier: 'Qwen 3.5 2B',
+        );
         await store.flush();
 
         expect(store.conversations.first.messages.length, 2);
@@ -418,7 +422,10 @@ void main() {
       );
       await store2.initialize();
 
-      expect(store2.conversations.first.messages.first.modelTier, 'Qwen 3.5 2B');
+      expect(
+        store2.conversations.first.messages.first.modelTier,
+        'Qwen 3.5 2B',
+      );
     });
 
     test(
@@ -465,19 +472,22 @@ void main() {
       },
     );
 
-    test('clearActive shows the blank slate without creating a conversation', () async {
-      final keyStore = FakeKeyStorage();
-      final store = ConversationStore(
-        keyStorage: keyStore,
-        directoryProvider: () async => tempDir,
-      );
-      await store.initialize();
+    test(
+      'clearActive shows the blank slate without creating a conversation',
+      () async {
+        final keyStore = FakeKeyStorage();
+        final store = ConversationStore(
+          keyStorage: keyStore,
+          directoryProvider: () async => tempDir,
+        );
+        await store.initialize();
 
-      store.clearActive();
+        store.clearActive();
 
-      expect(store.active, isNull);
-      expect(store.conversations, isEmpty);
-    });
+        expect(store.active, isNull);
+        expect(store.conversations, isEmpty);
+      },
+    );
 
     test('clearActive deselects a conversation without deleting it', () async {
       final keyStore = FakeKeyStorage();

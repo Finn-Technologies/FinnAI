@@ -224,17 +224,15 @@ class QwenInference extends ChangeNotifier {
     defaultValue: true,
   );
 
-  /// Benchmark override: allows the device harness (and tests) to disable
+  /// Benchmark harness flag: allows the device harness to disable
   /// prefix-state restore at runtime so the cached-KV path can be compared
-  /// against a fresh prefill on the same build.
-  @visibleForTesting
+  /// against a fresh prefill on the same build. No effect in normal release.
   static bool debugDisablePrefixCache = false;
 
-  /// Benchmark override: forces the CPU engine. Skips accelerator discovery
-  /// benchmarks and the post-spawn upgrade. Used by the harness because some
-  /// vendor GPU drivers silently corrupt quantized matmuls (Adreno + Q5_K),
-  /// which no benchmark would catch.
-  @visibleForTesting
+  /// Benchmark harness flag: forces the CPU engine. Skips accelerator
+  /// discovery benchmarks and the post-spawn upgrade. Used by the harness
+  /// because some vendor GPU drivers silently corrupt quantized matmuls
+  /// (Adreno + Q5_K), which no benchmark would catch.
   static bool debugForceCpu = false;
 
   /// Benchmark-harness only: the candidate model has no stored digest, so
@@ -305,9 +303,11 @@ class QwenInference extends ChangeNotifier {
   /// run; null when no install is running.
   double? get installProgress {
     if (_installTotalBytes <= 0) return null;
-    return ((_installCompletedBytes + _downloadReceivedBytes)
-                .clamp(0, _installTotalBytes) /
-            _installTotalBytes);
+    return ((_installCompletedBytes + _downloadReceivedBytes).clamp(
+          0,
+          _installTotalBytes,
+        ) /
+        _installTotalBytes);
   }
 
   /// Bytes fully downloaded so far in the current install run.
@@ -1178,7 +1178,7 @@ class QwenInference extends ChangeNotifier {
             analysis: promptAnalysis,
             includeTaskInstruction: includeTaskInstruction,
             primeEmptyThinking: primeEmptyThinking,
-            );
+          );
           // The token-breakdown re-renders the prompt a second time purely
           // for diagnostics. Skip it (and the full-prompt log) in release
           // builds: it is duplicate prefill-side work on every generation,
@@ -1214,7 +1214,8 @@ class QwenInference extends ChangeNotifier {
           var effectiveGroundedContext = groundedContext;
           var effectiveSources = const <WebSource>[];
           final policyNeedsSearch = _searchAgent.policy.shouldSearch(prompt);
-          final decisionEnabled = enableSearchDecision &&
+          final decisionEnabled =
+              enableSearchDecision &&
               PromptIntentPolicy.needsSearchDecision(promptAnalysis);
           if (decisionEnabled) {
             final decision = await _runSearchDecision(
@@ -1285,7 +1286,7 @@ class QwenInference extends ChangeNotifier {
                 sampler: PromptIntentPolicy.sampler(
                   promptAnalysis.intent,
                 ).params.copyWith(seed: _nextGenerationSeed()),
-                    )
+              )
               .listen(
                 (event) {
                   if (generationEpoch != _generationEpoch) return;
@@ -1629,23 +1630,24 @@ class QwenInference extends ChangeNotifier {
   }) {
     return LlamaEngine.spawn(
       libraryPath: 'libllama.so',
-      backendDirectory: profile.nativeLibraryDir,        modelParams: ModelParams(
-          path: path,
-          gpuLayers: config.gpuLayers,
-          useMmap: true,
-          // Weights stay RAM-resident via the OS page cache with mmap alone
-          // (verified: zero major faults during decode). Locking 1.3 GB
-          // actively hurts on 8 GB-class devices by removing reclaimable
-          // headroom the OS needs for the KV cache and the app itself.
-          useMlock: false,
-          checkTensors: false,
-          // Explicit device list: an EMPTY devices array means "use every
-          // loaded backend" (llama.cpp default), which pulls the Vulkan
-          // backend into CPU configs and allocates GPU compute buffers +
-          // triggers driver shader compiles. Pin CPU configs to the CPU
-          // device by name.
-          devices: config.isCpu ? const ['CPU'] : [config.deviceName],
-        ),
+      backendDirectory: profile.nativeLibraryDir,
+      modelParams: ModelParams(
+        path: path,
+        gpuLayers: config.gpuLayers,
+        useMmap: true,
+        // Weights stay RAM-resident via the OS page cache with mmap alone
+        // (verified: zero major faults during decode). Locking 1.3 GB
+        // actively hurts on 8 GB-class devices by removing reclaimable
+        // headroom the OS needs for the KV cache and the app itself.
+        useMlock: false,
+        checkTensors: false,
+        // Explicit device list: an EMPTY devices array means "use every
+        // loaded backend" (llama.cpp default), which pulls the Vulkan
+        // backend into CPU configs and allocates GPU compute buffers +
+        // triggers driver shader compiles. Pin CPU configs to the CPU
+        // device by name.
+        devices: config.isCpu ? const ['CPU'] : [config.deviceName],
+      ),
       contextParams: ContextParams(
         nCtx: config.contextSize,
         nBatch: config.batchSize,
@@ -1887,15 +1889,13 @@ class QwenInference extends ChangeNotifier {
       progress: 0,
       totalBytes: expectedBytes,
     );
-    Future<void> requestStart() => _backgroundDownloadChannel.invokeMethod<void>(
-          'start',
-          {
-            'url': url,
-            'target': target.path,
-            'expectedBytes': expectedBytes,
-            'label': label,
-          },
-        );
+    Future<void> requestStart() =>
+        _backgroundDownloadChannel.invokeMethod<void>('start', {
+          'url': url,
+          'target': target.path,
+          'expectedBytes': expectedBytes,
+          'label': label,
+        });
     await requestStart();
     var restarts = 0;
     DateTime? lastRestartAt;
@@ -1940,12 +1940,12 @@ class QwenInference extends ChangeNotifier {
       // miss) must never interrupt an in-flight download with an internet
       // error. The heartbeat advances only while a transfer is actually
       // writing bytes, so fresh progress also resets the failure counter.
-      final stalled = sawProgress &&
+      final stalled =
+          sawProgress &&
           active &&
           lastProgressAt != null &&
           now.difference(lastProgressAt) > const Duration(seconds: 20);
-      final needsRestart =
-          !active || stalled || failed || cancelled;
+      final needsRestart = !active || stalled || failed || cancelled;
       if (!needsRestart) {
         if (heartbeat != null && heartbeat != lastHeartbeat) {
           lastHeartbeat = heartbeat;
@@ -2049,11 +2049,7 @@ class QwenInference extends ChangeNotifier {
       ..maxConnectionsPerHost = _dartDownloadSegments + 2;
     _downloadClient = client;
     try {
-      _setStatus(
-        InferencePhase.downloading,
-        'Downloading $label',
-        progress: 0,
-      );
+      _setStatus(InferencePhase.downloading, 'Downloading $label', progress: 0);
 
       // Probe for range support + total size.
       final probeRequest = await client.getUrl(Uri.parse(url));
@@ -2392,8 +2388,10 @@ class QwenInference extends ChangeNotifier {
     var compactKv = config.kvType == KvCacheType.q8_0;
     var fellBackFromAccelerator = false;
     try {
-      engine ??= await spawnWith(config, compactKv: compactKv)
-          .timeout(const Duration(seconds: 30));
+      engine ??= await spawnWith(
+        config,
+        compactKv: compactKv,
+      ).timeout(const Duration(seconds: 30));
     } on TimeoutException catch (e) {
       debugPrint('FINN_LOADMODEL spawn timeout: $e');
       if (!config.isCpu) {
@@ -2406,14 +2404,20 @@ class QwenInference extends ChangeNotifier {
         compactKv = config.kvType == KvCacheType.q8_0;
         fellBackFromAccelerator = true;
         try {
-          engine = await spawnWith(config, compactKv: compactKv)
-              .timeout(const Duration(seconds: 30));
+          engine = await spawnWith(
+            config,
+            compactKv: compactKv,
+          ).timeout(const Duration(seconds: 30));
         } on TimeoutException catch (e2) {
           debugPrint('FINN_LOADMODEL cpu fallback timeout: $e2');
-          throw TimeoutException('Model engine did not start in time. ${_friendlyError(e2)}');
+          throw TimeoutException(
+            'Model engine did not start in time. ${_friendlyError(e2)}',
+          );
         }
       } else {
-        throw TimeoutException('Model engine did not start in time. ${_friendlyError(e)}');
+        throw TimeoutException(
+          'Model engine did not start in time. ${_friendlyError(e)}',
+        );
       }
     } catch (e) {
       debugPrint('FINN_LOADMODEL_ERROR $e');
@@ -2426,22 +2430,30 @@ class QwenInference extends ChangeNotifier {
         compactKv = config.kvType == KvCacheType.q8_0;
         fellBackFromAccelerator = true;
         try {
-          engine = await spawnWith(config, compactKv: compactKv)
-              .timeout(const Duration(seconds: 30));
+          engine = await spawnWith(
+            config,
+            compactKv: compactKv,
+          ).timeout(const Duration(seconds: 30));
         } on TimeoutException catch (e2) {
           debugPrint('FINN_LOADMODEL cpu fallback timeout: $e2');
-          throw TimeoutException('Model engine did not start in time. ${_friendlyError(e2)}');
+          throw TimeoutException(
+            'Model engine did not start in time. ${_friendlyError(e2)}',
+          );
         }
       } else if (compactKv) {
         // Quantized KV/Flash Attention is not universal. The F16 retry is the
         // compatibility baseline for older chips and vendor runtimes.
         compactKv = false;
         try {
-          engine = await spawnWith(config, compactKv: false)
-              .timeout(const Duration(seconds: 30));
+          engine = await spawnWith(
+            config,
+            compactKv: false,
+          ).timeout(const Duration(seconds: 30));
         } on TimeoutException catch (e2) {
           debugPrint('FINN_LOADMODEL retry timeout: $e2');
-          throw TimeoutException('Model engine did not start in time. ${_friendlyError(e2)}');
+          throw TimeoutException(
+            'Model engine did not start in time. ${_friendlyError(e2)}',
+          );
         }
       } else {
         rethrow;
@@ -2525,8 +2537,8 @@ class QwenInference extends ChangeNotifier {
 
   /// Human-readable adaptive engine diagnostics (device, model, backends,
   /// benchmarks, selected config, reason).
-  String diagnostics() => AdaptiveInferenceEngine.instance.diagnostics()
-      .toDiagnosticsString();
+  String diagnostics() =>
+      AdaptiveInferenceEngine.instance.diagnostics().toDiagnosticsString();
 
   /// The adaptive engine's current device profile.
   Future<DeviceProfile> deviceInfo() =>
@@ -2622,7 +2634,8 @@ class QwenInference extends ChangeNotifier {
       promptConfigurationHash: configuration,
       messageCount: history.length,
       lastUsed: ++runtime.useSequence,
-      basePrefixReady: _persistentPrefixCacheEnabled && !debugDisablePrefixCache,
+      basePrefixReady:
+          _persistentPrefixCacheEnabled && !debugDisablePrefixCache,
     );
     runtime.sessions[conversationId] = entry;
     return (entry: entry, cacheHit: false, prefix: prefix);
@@ -3332,7 +3345,9 @@ user preferences but never reveal them.''';
     if (await isMmprojInstalled()) return;
     final target = await _mmprojFile();
     if (!await isInstalled(qwenModels.single)) {
-      throw StateError('Download the Qwen language model before its component.');
+      throw StateError(
+        'Download the Qwen language model before its component.',
+      );
     }
     if (Platform.isAndroid) {
       final partial = File('${target.path}.part');

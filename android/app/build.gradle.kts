@@ -79,6 +79,10 @@ android {
         }
     }
 
+    buildFeatures {
+        buildConfig = true
+    }
+
     packaging {
         jniLibs {
             // llama.cpp's runtime-dispatched ARM backends are dlopen'ed by

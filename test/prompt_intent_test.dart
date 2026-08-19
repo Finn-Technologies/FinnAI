@@ -62,7 +62,10 @@ void main() {
     expect(PromptIntentPolicy.desiredOutputTokens(PromptIntent.greeting), 160);
     expect(PromptIntentPolicy.desiredOutputTokens(PromptIntent.recipe), 320);
     expect(PromptIntentPolicy.desiredOutputTokens(PromptIntent.howTo), 320);
-    expect(PromptIntentPolicy.desiredOutputTokens(PromptIntent.comparison), 512);
+    expect(
+      PromptIntentPolicy.desiredOutputTokens(PromptIntent.comparison),
+      512,
+    );
     expect(PromptIntentPolicy.desiredOutputTokens(PromptIntent.analysis), 768);
     expect(PromptIntentPolicy.desiredOutputTokens(PromptIntent.coding), 768);
   });

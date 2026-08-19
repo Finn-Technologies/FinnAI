@@ -946,9 +946,9 @@ class _ConversationEmpty extends StatelessWidget {
                 Text(
                   "Hi, I'm Finn.",
                   textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w500),
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -1977,7 +1977,11 @@ class _SourceListState extends State<_SourceList>
                 children: [
                   // At least one website icon, and a second one when there are
                   // two or more sources.
-                  for (var i = 0; i < math.min(2, widget.sources.length); i++) ...[
+                  for (
+                    var i = 0;
+                    i < math.min(2, widget.sources.length);
+                    i++
+                  ) ...[
                     if (i > 0) const SizedBox(width: 4),
                     _SourceFavicon(source: widget.sources[i], size: 18),
                   ],
@@ -2094,10 +2098,7 @@ class _SourceFavicon extends StatelessWidget {
       width: size,
       height: size,
       alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
-      ),
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
       child: Text(
         letter,
         style: TextStyle(

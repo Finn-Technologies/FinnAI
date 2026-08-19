@@ -36,34 +36,22 @@ void main() {
     },
   );
 
-  test(
-    'search-happy policy searches factual questions in any language',
-    () {
-      expect(
-        policy.shouldSearch('What is the capital of France?'),
-        isTrue,
-      );
-      expect(policy.shouldSearch('Who wrote Hamlet?'), isTrue);
-      expect(policy.shouldSearch('When did Rome fall?'), isTrue);
-      expect(policy.shouldSearch('Why is the sky blue?'), isTrue);
-      expect(
-        policy.shouldSearch('Come funziona il routing in Bridgetown?'),
-        isTrue,
-      );
-      expect(
-        policy.shouldSearch('¿Cómo funciona el motor de un coche?'),
-        isTrue,
-      );
-      expect(
-        policy.shouldSearch('Comment fonctionne un moteur ?'),
-        isTrue,
-      );
-      expect(
-        policy.shouldSearch('Wie funktioniert ein Verbrennungsmotor?'),
-        isTrue,
-      );
-    },
-  );
+  test('search-happy policy searches factual questions in any language', () {
+    expect(policy.shouldSearch('What is the capital of France?'), isTrue);
+    expect(policy.shouldSearch('Who wrote Hamlet?'), isTrue);
+    expect(policy.shouldSearch('When did Rome fall?'), isTrue);
+    expect(policy.shouldSearch('Why is the sky blue?'), isTrue);
+    expect(
+      policy.shouldSearch('Come funziona il routing in Bridgetown?'),
+      isTrue,
+    );
+    expect(policy.shouldSearch('¿Cómo funciona el motor de un coche?'), isTrue);
+    expect(policy.shouldSearch('Comment fonctionne un moteur ?'), isTrue);
+    expect(
+      policy.shouldSearch('Wie funktioniert ein Verbrennungsmotor?'),
+      isTrue,
+    );
+  });
 
   test('small talk, personal, and self-referential questions stay offline', () {
     expect(policy.shouldSearch('How are you?'), isFalse);
