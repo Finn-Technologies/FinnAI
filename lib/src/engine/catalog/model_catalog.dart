@@ -52,20 +52,19 @@ class QwenArtifact {
   String get sizeLabel => '${(expectedBytes / 1000 / 1000).round()} MB';
 }
 
-/// QAD (Quantization-Aware Distillation) Q4_0 provides near-FP16 quality (~97%
-/// accuracy recovery) with an ultra-compact ~892 MB footprint, while the LFM2.5-VL
-/// multimodal projector adds high-precision OCR and document understanding.
+/// LFM2.5-VL 1.6B Q4_0 provides ultra-compact on-device multimodal intelligence,
+/// paired with the SigLIP2 vision projector for high-precision OCR and document understanding.
 const qwenModels = <QwenModel>[
   QwenModel(
     tier: QwenTier.standard,
     name: 'LFM2.5-VL 1.6B',
-    parameterLabel: 'LFM2.5-VL · 1.6B · QAD-4',
-    fileName: 'LFM2.5-VL-1.6B-QAD-Q4_0.gguf',
+    parameterLabel: 'LFM2.5-VL · 1.6B · Q4_0',
+    fileName: 'LFM2.5-VL-1.6B-Q4_0.gguf',
     downloadUrl:
-        'https://huggingface.co/LiquidAI/LFM2.5-VL-1.6B-GGUF/resolve/b58c7041a129d28e7e1cb904a4387d8df981b10a/LFM2.5-VL-1.6B-QAD-Q4_0.gguf',
-    expectedBytes: 892168704,
+        'https://huggingface.co/LiquidAI/LFM2.5-VL-1.6B-GGUF/resolve/36fc16bc95133424921bcc3da009e83b2f23ffb5/LFM2.5-VL-1.6B-Q4_0.gguf',
+    expectedBytes: 695752480,
     sha256Digest:
-        '91a8f9c0e4d7b213840e5bb3057e937d5718a6c81373eefb22a0149021b34371',
+        '8186364a4e7c3ad30f6dd3d3b7a4e0074c77dd91eed6cad5d8be9090ce285804',
   ),
 ];
 
@@ -73,10 +72,10 @@ const qwenModels = <QwenModel>[
 /// and screenshot/UI grounding.
 const qwenMmproj = QwenArtifact(
   name: 'LFM2.5-VL multimodal component',
-  fileName: 'mmproj-LFM2.5-VL-1.6B-F16.gguf',
+  fileName: 'mmproj-LFM2.5-VL-1.6b-F16.gguf',
   downloadUrl:
-      'https://huggingface.co/LiquidAI/LFM2.5-VL-1.6B-GGUF/resolve/b58c7041a129d28e7e1cb904a4387d8df981b10a/mmproj-F16.gguf',
-  expectedBytes: 338421760,
+      'https://huggingface.co/LiquidAI/LFM2.5-VL-1.6B-GGUF/resolve/36fc16bc95133424921bcc3da009e83b2f23ffb5/mmproj-LFM2.5-VL-1.6b-F16.gguf',
+  expectedBytes: 853993856,
   sha256Digest:
-      'a78f234981cb02e88a3cfbe47492c10978921a9ef2394cb5d4ef289a72199f18',
+      '2cddba98b98390c011c606c416de2e63dcfdd3b21452bf71ad6aab59fa52d2ee',
 );
