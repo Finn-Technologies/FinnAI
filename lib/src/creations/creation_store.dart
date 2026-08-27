@@ -45,11 +45,11 @@ class CreationStore {
     try {
       final decoded = jsonDecode(await file.readAsString());
       if (decoded is! Map || decoded['version'] != 1) {
-        return _quarantine(file, 'Unsupported creations storage format.');
+        return await _quarantine(file, 'Unsupported creations storage format.');
       }
       final records = decoded['creations'];
       if (records is! List) {
-        return _quarantine(file, 'Invalid creations storage.');
+        return await _quarantine(file, 'Invalid creations storage.');
       }
       final creations = <FinnCreation>[];
       for (final record in records.whereType<Map>()) {

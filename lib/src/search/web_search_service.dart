@@ -1,7 +1,13 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+
+typedef BrowserSource = WebSource;
+typedef BrowserSearchResult = WebSearchResult;
+typedef BrowserSearchPolicy = WebSearchPolicy;
+typedef BrowserSearchService = WebSearchService;
 
 @immutable
 class WebSource {
@@ -253,14 +259,13 @@ class WebSearchService {
     http.Client? client,
     this.policy = const WebSearchPolicy(),
     this.timeout = const Duration(seconds: 4),
-    Uri? endpoint,
-  }) : _client = client ?? http.Client(),
-       endpoint = endpoint ?? Uri.parse('https://html.duckduckgo.com/html/');
+    this.endpoint,
+  }) : _client = client ?? http.Client();
 
   final http.Client _client;
   final WebSearchPolicy policy;
   final Duration timeout;
-  final Uri endpoint;
+  final Uri? endpoint;
 
   /// Searches only when the local policy says fresh or cited information is
   /// useful. The query contains the latest user prompt only; history and
@@ -270,29 +275,84 @@ class WebSearchService {
     return search(prompt);
   }
 
-  /// Runs an explicit query. This is used after the local model emits a
-  /// SEARCH decision, so the decision pass and the policy share one retrieval
-  /// implementation.
+  /// Runs an explicit browser search query. Structured search APIs (JSON) are
+  /// preferred to eliminate fragile scraping, with fallback to HTML parsing
+  /// when custom HTML endpoints are supplied.
   Future<WebSearchResult?> search(String query) async {
     final value = query.trim();
     if (value.isEmpty) return null;
     try {
-      final uri = endpoint.replace(queryParameters: {'q': value});
+      if (endpoint != null) {
+        final uri = endpoint!.replace(queryParameters: {'q': value});
+        final response = await _client
+            .get(
+              uri,
+              headers: const {
+                'Accept': 'application/json,text/html,text/plain',
+                'User-Agent': 'FinnAI/1.0 Browser search',
+              },
+            )
+            .timeout(timeout);
+        if (response.statusCode != 200) return null;
+        final sources = _parseResponseContent(response.body);
+        if (sources.isEmpty) return null;
+        return WebSearchResult(query: value, sources: sources);
+      }
+
+      // Default browser search: query structured JSON search provider
+      // (DuckDuckGo Instant Answer / Topics API), with fallback to Wikipedia OpenSearch API.
+      final ddgUri = Uri.parse('https://api.duckduckgo.com/').replace(
+        queryParameters: {
+          'q': value,
+          'format': 'json',
+          'no_html': '1',
+          'skip_disambig': '1',
+        },
+      );
       final response = await _client
           .get(
-            uri,
+            ddgUri,
             headers: const {
-              'Accept': 'text/html',
-              'User-Agent': 'FinnAI/1.0 Android web search',
+              'Accept': 'application/json',
+              'User-Agent': 'FinnAI/1.0 Browser search',
             },
           )
           .timeout(timeout);
-      if (response.statusCode != 200) return null;
-      final sources = parseResults(response.body);
+
+      var sources = <WebSource>[];
+      if (response.statusCode == 200) {
+        sources = _parseResponseContent(response.body);
+      }
+
+      if (sources.isEmpty) {
+        // Fallback to Wikipedia OpenSearch API for factual queries
+        final wikiUri = Uri.parse('https://en.wikipedia.org/w/api.php').replace(
+          queryParameters: {
+            'action': 'opensearch',
+            'search': value,
+            'limit': '5',
+            'namespace': '0',
+            'format': 'json',
+          },
+        );
+        final wikiResp = await _client
+            .get(
+              wikiUri,
+              headers: const {
+                'Accept': 'application/json',
+                'User-Agent': 'FinnAI/1.0 Browser search',
+              },
+            )
+            .timeout(timeout);
+        if (wikiResp.statusCode == 200) {
+          sources = _parseResponseContent(wikiResp.body);
+        }
+      }
+
       if (sources.isEmpty) return null;
       return WebSearchResult(query: value, sources: sources);
     } on Object catch (error) {
-      debugPrint('Web search unavailable: $error');
+      debugPrint('Browser search unavailable: $error');
       return null;
     }
   }
@@ -308,7 +368,7 @@ class WebSearchService {
             url,
             headers: const {
               'Accept': 'text/html,text/plain',
-              'User-Agent': 'FinnAI/1.0 Android web search',
+              'User-Agent': 'FinnAI/1.0 Browser search',
             },
           )
           .timeout(timeout);
@@ -326,6 +386,123 @@ class WebSearchService {
 
   @visibleForTesting
   http.Client get client => _client;
+
+  static List<WebSource> _parseResponseContent(String body) {
+    final trimmed = body.trim();
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+      try {
+        final decoded = jsonDecode(trimmed);
+        final jsonSources = parseJsonResults(decoded);
+        if (jsonSources.isNotEmpty) return jsonSources;
+      } catch (_) {}
+    }
+    return parseResults(body);
+  }
+
+  @visibleForTesting
+  static List<WebSource> parseJsonResults(dynamic json) {
+    final sources = <WebSource>[];
+    final seen = <String>{};
+
+    void addSource(String title, String? urlString, String snippet) {
+      if (sources.length >= 5) return;
+      final cleanTitle = _plainText(title);
+      if (cleanTitle.isEmpty) return;
+      final parsedUrl = _resultUri(urlString ?? '');
+      if (parsedUrl == null || !seen.add(parsedUrl.toString())) return;
+      final cleanSnippet = _plainText(snippet);
+      sources.add(
+        WebSource(
+          title: cleanTitle,
+          url: parsedUrl,
+          snippet: cleanSnippet.isEmpty
+              ? 'No excerpt available.'
+              : cleanSnippet,
+        ),
+      );
+    }
+
+    if (json is List &&
+        json.length >= 4 &&
+        json[1] is List &&
+        json[3] is List) {
+      final titles = json[1] as List;
+      final snippets = json[2] is List ? json[2] as List : const [];
+      final urls = json[3] as List;
+      for (var i = 0; i < titles.length && sources.length < 5; i++) {
+        final title = titles[i]?.toString() ?? '';
+        final snippet = i < snippets.length
+            ? snippets[i]?.toString() ?? ''
+            : '';
+        final url = i < urls.length ? urls[i]?.toString() ?? '' : '';
+        addSource(title, url, snippet);
+      }
+      return List.unmodifiable(sources);
+    }
+
+    if (json is Map<String, dynamic>) {
+      final heading = json['Heading']?.toString() ?? '';
+      final abstractText = json['AbstractText']?.toString() ?? '';
+      final abstractUrl = json['AbstractURL']?.toString() ?? '';
+      if (abstractText.isNotEmpty && abstractUrl.isNotEmpty) {
+        addSource(
+          heading.isNotEmpty ? heading : 'Summary',
+          abstractUrl,
+          abstractText,
+        );
+      }
+
+      final related = json['RelatedTopics'];
+      if (related is List) {
+        for (final item in related) {
+          if (sources.length >= 5) break;
+          if (item is Map<String, dynamic>) {
+            if (item.containsKey('Topics') && item['Topics'] is List) {
+              for (final subItem in (item['Topics'] as List)) {
+                if (sources.length >= 5) break;
+                if (subItem is Map<String, dynamic>) {
+                  final text = subItem['Text']?.toString() ?? '';
+                  final firstUrl = subItem['FirstURL']?.toString() ?? '';
+                  final title = text.contains(' - ')
+                      ? text.split(' - ').first
+                      : text;
+                  addSource(title, firstUrl, text);
+                }
+              }
+            } else {
+              final text = item['Text']?.toString() ?? '';
+              final firstUrl = item['FirstURL']?.toString() ?? '';
+              final title = text.contains(' - ')
+                  ? text.split(' - ').first
+                  : text;
+              addSource(title, firstUrl, text);
+            }
+          }
+        }
+      }
+
+      final results = json['results'] ?? json['Results'];
+      if (results is List) {
+        for (final item in results) {
+          if (sources.length >= 5) break;
+          if (item is Map<String, dynamic>) {
+            final title =
+                item['title']?.toString() ?? item['Text']?.toString() ?? '';
+            final url =
+                item['url']?.toString() ?? item['FirstURL']?.toString() ?? '';
+            final snippet =
+                item['snippet']?.toString() ??
+                item['content']?.toString() ??
+                item['Text']?.toString() ??
+                '';
+            addSource(title, url, snippet);
+          }
+        }
+      }
+    }
+
+    return List.unmodifiable(sources);
+  }
 
   @visibleForTesting
   static List<WebSource> parseResults(String html) {

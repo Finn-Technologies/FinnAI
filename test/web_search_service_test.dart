@@ -103,9 +103,112 @@ void main() {
         query: 'football results today',
       ),
     );
+    expect(
+      decision(
+        '<tool_call>\n{"name": "browser_search", "arguments": {"query": "latest flutter release"}}\n</tool_call>',
+      ),
+      SearchDecision(
+        kind: SearchDecisionKind.search,
+        query: 'latest flutter release',
+        toolName: 'browser_search',
+        arguments: const {'query': 'latest flutter release'},
+      ),
+    );
+    expect(
+      decision(
+        '<tool_call>{"name": "browser_search", "parameters": {"query": "dart 3.5 features"}}</tool_call>',
+      ),
+      SearchDecision(
+        kind: SearchDecisionKind.search,
+        query: 'dart 3.5 features',
+        toolName: 'browser_search',
+        arguments: const {'query': 'dart 3.5 features'},
+      ),
+    );
+    expect(
+      decision(
+        '{"name": "browser_search", "arguments": {"query": "best pizza in naples"}}',
+      ),
+      SearchDecision(
+        kind: SearchDecisionKind.search,
+        query: 'best pizza in naples',
+        toolName: 'browser_search',
+        arguments: const {'query': 'best pizza in naples'},
+      ),
+    );
+    expect(
+      decision('browser_search(query="current stock prices")'),
+      SearchDecision(
+        kind: SearchDecisionKind.search,
+        query: 'current stock prices',
+        toolName: 'browser_search',
+      ),
+    );
     expect(decision('').kind, SearchDecisionKind.answerFromKnowledge);
     expect(decision('not sure').kind, SearchDecisionKind.answerFromKnowledge);
     expect(decision('SEARCH:').kind, SearchDecisionKind.answerFromKnowledge);
+  });
+
+  test('search parses structured JSON search API responses', () async {
+    final client = MockClient((request) async {
+      if (request.url.host.contains('duckduckgo.com')) {
+        return http.Response('''
+{
+  "Heading": "Dart (programming language)",
+  "AbstractText": "Dart is a programming language designed for client development.",
+  "AbstractURL": "https://en.wikipedia.org/wiki/Dart_(programming_language)",
+  "RelatedTopics": [
+    {
+      "FirstURL": "https://dart.dev",
+      "Text": "Dart programming language official site"
+    }
+  ]
+}
+''', 200);
+      }
+      return http.Response('[]', 200);
+    });
+
+    final service = WebSearchService(client: client);
+    final result = await service.search('dart programming');
+
+    expect(result, isNotNull);
+    expect(result!.sources, hasLength(2));
+    expect(result.sources.first.title, 'Dart (programming language)');
+    expect(
+      result.sources.first.url,
+      Uri.parse('https://en.wikipedia.org/wiki/Dart_(programming_language)'),
+    );
+    expect(result.sources.first.snippet, contains('client development'));
+    expect(result.sources[1].url, Uri.parse('https://dart.dev'));
+  });
+
+  test('search parses OpenSearch / Wikipedia JSON API responses', () async {
+    final client = MockClient((request) async {
+      return http.Response('''
+[
+  "flutter",
+  ["Flutter (software)", "Fluttershy"],
+  ["Flutter is an open-source UI software development kit.", "A character in My Little Pony."],
+  ["https://en.wikipedia.org/wiki/Flutter_(software)", "https://en.wikipedia.org/wiki/Fluttershy"]
+]
+''', 200);
+    });
+
+    final service = WebSearchService(
+      client: client,
+      endpoint: Uri.parse('https://en.wikipedia.org/w/api.php'),
+    );
+    final result = await service.search('flutter');
+
+    expect(result, isNotNull);
+    expect(result!.sources, hasLength(2));
+    expect(result.sources.first.title, 'Flutter (software)');
+    expect(
+      result.sources.first.url,
+      Uri.parse('https://en.wikipedia.org/wiki/Flutter_(software)'),
+    );
+    expect(result.sources.first.snippet, contains('open-source UI'));
   });
 
   test('search parses HTTPS sources and rejects unsafe result URLs', () async {
@@ -122,7 +225,10 @@ void main() {
 </div>
 ''', 200);
     });
-    final service = WebSearchService(client: client);
+    final service = WebSearchService(
+      client: client,
+      endpoint: Uri.parse('https://html.duckduckgo.com/html/'),
+    );
 
     final result = await service.searchIfNeeded('latest space news');
 

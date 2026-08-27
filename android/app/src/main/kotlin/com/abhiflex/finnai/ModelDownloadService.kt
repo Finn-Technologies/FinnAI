@@ -128,7 +128,42 @@ class ModelDownloadService : Service() {
         return START_REDELIVER_INTENT
     }
 
+    private fun resolveFinalUrl(urlString: String): String {
+        var currentUrl = urlString
+        var redirects = 0
+        while (redirects < 6) {
+            try {
+                val conn = (URL(currentUrl).openConnection() as HttpURLConnection).apply {
+                    connectTimeout = 15_000
+                    readTimeout = 15_000
+                    instanceFollowRedirects = false
+                    setRequestProperty("User-Agent", "FinnAI/1.0 (Android)")
+                    setRequestProperty("Accept-Encoding", "identity")
+                    requestMethod = "HEAD"
+                    connect()
+                }
+                val code = conn.responseCode
+                val location = conn.getHeaderField("Location")
+                conn.disconnect()
+                if (code in listOf(HttpURLConnection.HTTP_MOVED_PERM, HttpURLConnection.HTTP_MOVED_TEMP, HttpURLConnection.HTTP_SEE_OTHER, 307, 308) && location != null) {
+                    currentUrl = if (location.startsWith("http://") || location.startsWith("https://")) {
+                        location
+                    } else {
+                        URL(URL(currentUrl), location).toString()
+                    }
+                    redirects++
+                } else {
+                    break
+                }
+            } catch (_: Exception) {
+                break
+            }
+        }
+        return currentUrl
+    }
+
     private fun download(url: String, partial: File, target: String, expectedBytes: Long, label: String) {
+        val resolvedUrl = resolveFinalUrl(url)
         partial.parentFile?.mkdirs()
         var existing = if (partial.exists()) partial.length() else 0L
         if (existing > expectedBytes) {
@@ -139,7 +174,7 @@ class ModelDownloadService : Service() {
 
         var ranged = false
         var total = if (expectedBytes > 0) expectedBytes else 0L
-        val probe = openConnection(url, 0L, 0L)
+        val probe = openConnection(resolvedUrl, 0L, 0L)
         try {
             ranged = probe.responseCode == HttpURLConnection.HTTP_PARTIAL
             if (total <= 0) {
@@ -164,9 +199,9 @@ class ModelDownloadService : Service() {
                 existing = 0L
                 clearRangeProgress(target)
             }
-            downloadSingleStream(url, partial, existing, total, expectedBytes, label, target)
+            downloadSingleStream(resolvedUrl, partial, existing, total, expectedBytes, label, target)
         } else {
-            downloadSegmented(url, partial, existing, total, expectedBytes, label, target)
+            downloadSegmented(resolvedUrl, partial, existing, total, expectedBytes, label, target)
         }
     }
 
@@ -434,16 +469,38 @@ class ModelDownloadService : Service() {
         clearRangeProgress(target)
     }
 
-    private fun openConnection(url: String, rangeStart: Long, rangeEnd: Long): HttpURLConnection =
-        (URL(url).openConnection() as HttpURLConnection).apply {
-            connectTimeout = 20_000
-            readTimeout = 30_000
-            instanceFollowRedirects = true
-            setRequestProperty("Accept-Encoding", "identity")
-            val range = if (rangeEnd >= 0) "bytes=$rangeStart-$rangeEnd" else "bytes=$rangeStart-"
-            setRequestProperty("Range", range)
-            connect()
+    private fun openConnection(url: String, rangeStart: Long, rangeEnd: Long): HttpURLConnection {
+        var currentUrl = url
+        var redirects = 0
+        while (true) {
+            val connection = (URL(currentUrl).openConnection() as HttpURLConnection).apply {
+                connectTimeout = 20_000
+                readTimeout = 30_000
+                instanceFollowRedirects = false
+                setRequestProperty("User-Agent", "FinnAI/1.0 (Android)")
+                setRequestProperty("Accept-Encoding", "identity")
+                setRequestProperty("Connection", "keep-alive")
+                val range = if (rangeEnd >= 0) "bytes=$rangeStart-$rangeEnd" else "bytes=$rangeStart-"
+                setRequestProperty("Range", range)
+                connect()
+            }
+            val code = connection.responseCode
+            if (code in listOf(HttpURLConnection.HTTP_MOVED_PERM, HttpURLConnection.HTTP_MOVED_TEMP, HttpURLConnection.HTTP_SEE_OTHER, 307, 308)) {
+                val location = connection.getHeaderField("Location")
+                connection.disconnect()
+                if (location != null && redirects < 6) {
+                    currentUrl = if (location.startsWith("http://") || location.startsWith("https://")) {
+                        location
+                    } else {
+                        URL(URL(currentUrl), location).toString()
+                    }
+                    redirects++
+                    continue
+                }
+            }
+            return connection
         }
+    }
 
     private fun reportProgress(label: String, progress: Double, speedBps: Long, remainingBytes: Long, target: String) {
         updateStatus(

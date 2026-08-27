@@ -1,16 +1,21 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math' as math;
-import 'dart:ui' show ImageFilter;
+import 'dart:ui' as ui;
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:flutter/services.dart';
+import 'package:hugeicons/hugeicons.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../ads/banner_ad_widget.dart';
 import '../conversations/conversation_store.dart';
 import '../creations/creations_page.dart';
 import '../generation/chat_generation_controller.dart';
+import '../inference/device_profile.dart';
 import '../inference/qwen_inference.dart';
 import '../inference/residency_policy.dart';
 import '../privacy/ad_consent_service.dart';
@@ -27,6 +32,11 @@ import '../you/you_profile_store.dart';
 import '../widgets/ambient_background.dart';
 import '../widgets/flux_controls.dart';
 import '../widgets/safe_markdown_text.dart';
+
+bool _isImageAttachmentPath(String path) {
+  final extension = path.split('.').last.toLowerCase();
+  return const {'jpg', 'jpeg', 'png', 'webp', 'heic'}.contains(extension);
+}
 
 class HomeShell extends StatefulWidget {
   const HomeShell({
@@ -68,6 +78,8 @@ class _HomeShellState extends State<HomeShell>
   bool _sidebarAdVisible = false;
   bool _preparing = false;
   bool _dismissedSearchNotice = false;
+  String? _attachedImagePath;
+  bool _attachmentMenuOpen = false;
   late bool _storesReady = !widget.initializeServices;
   static int _welcomeSession = 0;
   late int _welcomeRotation;
@@ -83,6 +95,94 @@ class _HomeShellState extends State<HomeShell>
   );
 
   bool get _busy => _preparing || _generation.busy;
+
+  void _removeAttachment() {
+    setState(() {
+      _attachedImagePath = null;
+    });
+  }
+
+  void _toggleAttachmentMenu() {
+    setState(() {
+      _attachmentMenuOpen = !_attachmentMenuOpen;
+    });
+  }
+
+  void _closeAttachmentMenu() {
+    if (_attachmentMenuOpen) {
+      setState(() {
+        _attachmentMenuOpen = false;
+      });
+    }
+  }
+
+  Future<void> _pickFromCamera() async {
+    _closeAttachmentMenu();
+    try {
+      final picker = ImagePicker();
+      final photo = await picker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 80,
+      );
+      if (photo != null && mounted) {
+        setState(() {
+          _attachedImagePath = photo.path;
+        });
+      }
+    } catch (e) {
+      debugPrint('Camera capture error: $e');
+    }
+  }
+
+  Future<void> _pickFromGallery() async {
+    _closeAttachmentMenu();
+    try {
+      final picker = ImagePicker();
+      final image = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 80,
+      );
+      if (image != null && mounted) {
+        setState(() {
+          _attachedImagePath = image.path;
+        });
+      }
+    } catch (e) {
+      debugPrint('Gallery picker error: $e');
+    }
+  }
+
+  Future<void> _pickFromFileSystem() async {
+    _closeAttachmentMenu();
+    try {
+      final result = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: const [
+          'jpg',
+          'jpeg',
+          'png',
+          'webp',
+          'heic',
+          'txt',
+          'md',
+          'json',
+          'csv',
+        ],
+        allowMultiple: false,
+      );
+      if (result != null && result.files.single.path != null && mounted) {
+        setState(() {
+          _attachedImagePath = result.files.single.path;
+        });
+      }
+    } catch (e) {
+      debugPrint('File picker error: $e');
+    }
+  }
 
   @override
   void initState() {
@@ -127,9 +227,10 @@ class _HomeShellState extends State<HomeShell>
       final profile = _inference.deviceProfile;
       final constrained =
           profile?.lowMemory == true ||
-          (profile?.availableRamBytes ?? 1 << 40) < 1800 * 1024 * 1024;
+          (profile?.availableRamBytes ?? 1 << 40) < 1800 * 1024 * 1024 ||
+          (profile != null && DeviceProfiler.isLowEnd(profile));
       _memoryReleaseTimer = Timer(
-        Duration(seconds: constrained ? 3 : 20),
+        Duration(seconds: constrained ? 1 : 20),
         _releaseMemoryWhenIdle,
       );
     } else if (state == AppLifecycleState.resumed) {
@@ -223,6 +324,10 @@ class _HomeShellState extends State<HomeShell>
 
   void _schedulePrewarm() {
     _prewarmTimer?.cancel();
+    final profile = _inference.deviceProfile;
+    if (profile != null && DeviceProfiler.isLowEnd(profile)) {
+      return;
+    }
     _prewarmTimer = Timer(
       const Duration(milliseconds: 450),
       () => unawaited(_inference.prewarm()),
@@ -243,7 +348,8 @@ class _HomeShellState extends State<HomeShell>
 
   Future<void> _send() async {
     final value = _composer.text.trim();
-    if (value.isEmpty || _busy) return;
+    final attached = _attachedImagePath;
+    if ((value.isEmpty && attached == null) || _busy) return;
     if (_inference.isGeneratingReply) {
       ScaffoldMessenger.of(context)
         ..clearSnackBars()
@@ -265,23 +371,25 @@ class _HomeShellState extends State<HomeShell>
     });
     debugPrint('FINN_SEND preparing started');
     try {
-      final initialization =
-          Future.wait([
-            _conversations.initialize(),
-            YouProfileStore.instance.initialize(),
-            SkillsStore.instance.initialize(),
-          ]).timeout(
-            const Duration(seconds: 12),
-            onTimeout: () {
-              debugPrint(
-                'FINN_SEND store init timeout — proceeding with available stores',
-              );
-              return <void>[];
-            },
-          );
-      await initialization;
-      if (!mounted) return;
-      _storesReady = true;
+      if (!_storesReady) {
+        final initialization =
+            Future.wait([
+              _conversations.initialize(),
+              YouProfileStore.instance.initialize(),
+              SkillsStore.instance.initialize(),
+            ]).timeout(
+              const Duration(seconds: 12),
+              onTimeout: () {
+                debugPrint(
+                  'FINN_SEND store init timeout — proceeding with available stores',
+                );
+                return <void>[];
+              },
+            );
+        await initialization;
+        if (!mounted) return;
+        _storesReady = true;
+      }
       final systemContext = [
         YouProfileStore.instance.promptContext,
         SkillsStore.instance.promptContextFor(value),
@@ -335,19 +443,34 @@ class _HomeShellState extends State<HomeShell>
       }
       if (!mounted) return;
 
+      final effectivePrompt = value.isNotEmpty
+          ? value
+          : attached != null && _isImageAttachmentPath(attached)
+          ? 'Please analyze this attached image in detail.'
+          : 'Please summarize the attached file and highlight its key points.';
       final conversation = _conversations.active ?? _conversations.startNew();
       final history = [
         for (final message in conversation.messages)
           if (message.text.trim().isNotEmpty)
-            LocalChatTurn(role: message.role.name, content: message.text),
+            LocalChatTurn(
+              role: message.role.name,
+              content: message.text,
+              imagePath: message.imagePath,
+            ),
       ];
 
       _focusNode.unfocus();
       _composer.clear();
-      if (mounted) setState(() => _dismissedSearchNotice = false);
+      if (mounted) {
+        setState(() {
+          _attachedImagePath = null;
+          _dismissedSearchNotice = false;
+        });
+      }
       await _generation.start(
         conversationId: conversation.id,
-        prompt: value,
+        prompt: effectivePrompt,
+        imagePath: attached,
         history: history,
         systemContext: systemContext,
         trace: timing,
@@ -359,7 +482,9 @@ class _HomeShellState extends State<HomeShell>
           ..clearSnackBars()
           ..showSnackBar(
             SnackBar(
-              content: Text('Could not prepare chat — tap to retry. ($e)'),
+              content: const Text(
+                'Could not prepare chat. Check the model and storage, then try again.',
+              ),
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -720,6 +845,40 @@ class _HomeShellState extends State<HomeShell>
                       top: 71 * sy,
                       child: _HomeHeader(onMenu: () => _setSidebar(true)),
                     ),
+                    if (_attachmentMenuOpen) ...[
+                      Positioned.fill(
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.translucent,
+                          onTap: _closeAttachmentMenu,
+                          child: const SizedBox.expand(),
+                        ),
+                      ),
+                      ValueListenableBuilder<bool>(
+                        valueListenable: _chatScrolledAway,
+                        builder: (context, scrolledAway, _) =>
+                            AnimatedPositioned(
+                              left: contentLeft,
+                              bottom:
+                                  safeBottom +
+                                  (scrolledAway
+                                      ? (constraints.maxHeight < 650 ? 10 : 20)
+                                      : (constraints.maxHeight < 650
+                                            ? 20
+                                            : 30)) +
+                                  52,
+                              duration: MediaQuery.disableAnimationsOf(context)
+                                  ? Duration.zero
+                                  : const Duration(milliseconds: 220),
+                              curve: Curves.easeOutCubic,
+                              child: _IMessageAttachmentMenu(
+                                onSelectCamera: _pickFromCamera,
+                                onSelectPhoto: _pickFromGallery,
+                                onSelectFile: _pickFromFileSystem,
+                              ),
+                            ),
+                      ),
+                    ],
+
                     ValueListenableBuilder<bool>(
                       valueListenable: _chatScrolledAway,
                       builder: (context, scrolledAway, _) => AnimatedPositioned(
@@ -742,7 +901,14 @@ class _HomeShellState extends State<HomeShell>
                           blocked: _preparing || !_storesReady,
                           busy: _generation.busy,
                           compact: scrolledAway,
-                          onReturnToLatest: _returnToLatest,
+                          attachmentPath: _attachedImagePath,
+                          isAttachmentMenuOpen: _attachmentMenuOpen,
+                          onPickAttachment: _toggleAttachmentMenu,
+                          onRemoveAttachment: _removeAttachment,
+                          onReturnToLatest: () {
+                            _closeAttachmentMenu();
+                            _returnToLatest();
+                          },
                           width: contentWidth,
                           onSend: _send,
                           onStop: _stopReply,
@@ -1221,6 +1387,7 @@ class _ConversationState extends State<_Conversation> {
                         alignment: Alignment.centerRight,
                         child: _Bubble(
                           text: message.text,
+                          imagePath: message.imagePath,
                           user: true,
                           modelTier: 'User message',
                           onEdit: () => widget.onEdit(message),
@@ -1297,12 +1464,14 @@ class _ConversationState extends State<_Conversation> {
 class _Bubble extends StatelessWidget {
   const _Bubble({
     required this.text,
+    this.imagePath,
     this.user = false,
     this.modelTier = 'Finn AI',
     this.onEdit,
   });
 
   final String text;
+  final String? imagePath;
   final bool user;
   final String modelTier;
   final VoidCallback? onEdit;
@@ -1318,9 +1487,77 @@ class _Bubble extends StatelessWidget {
         final style = Theme.of(context).textTheme.bodyMedium?.copyWith(
           color: user ? FluxColors.inkOf(context) : null,
         );
-        return selecting
-            ? SelectableText(text, style: style)
-            : Text(text, style: style);
+        final hasImage = imagePath != null && imagePath!.isNotEmpty;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (hasImage) ...[
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: File(imagePath!).existsSync()
+                      ? Image.file(
+                          File(imagePath!),
+                          width: 200,
+                          height: 140,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              Container(
+                                width: 160,
+                                padding: const EdgeInsets.all(8),
+                                color: FluxColors.cardOf(context),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.image_outlined, size: 16),
+                                    const SizedBox(width: 4),
+                                    Expanded(
+                                      child: Text(
+                                        imagePath!
+                                            .split(Platform.pathSeparator)
+                                            .last,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: Theme.of(
+                                          context,
+                                        ).textTheme.bodySmall,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                        )
+                      : Container(
+                          width: 160,
+                          padding: const EdgeInsets.all(8),
+                          color: FluxColors.cardOf(context),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.image_outlined, size: 16),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  imagePath!.split(Platform.pathSeparator).last,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                ),
+              ),
+            ],
+            if (text.isNotEmpty)
+              selecting
+                  ? SelectableText(text, style: style)
+                  : Text(text, style: style),
+          ],
+        );
       },
     );
   }
@@ -2223,6 +2460,213 @@ class _EditMessageDialogState extends State<_EditMessageDialog> {
   );
 }
 
+class _IMessageAttachmentMenu extends StatefulWidget {
+  const _IMessageAttachmentMenu({
+    required this.onSelectCamera,
+    required this.onSelectPhoto,
+    required this.onSelectFile,
+  });
+
+  final VoidCallback onSelectCamera;
+  final VoidCallback onSelectPhoto;
+  final VoidCallback onSelectFile;
+
+  @override
+  State<_IMessageAttachmentMenu> createState() =>
+      _IMessageAttachmentMenuState();
+}
+
+class _IMessageAttachmentMenuState extends State<_IMessageAttachmentMenu>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 220),
+  )..forward();
+
+  late final Animation<double> _scaleAnimation = Tween<double>(
+    begin: 0.94,
+    end: 1.0,
+  ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+
+  late final Animation<double> _fadeAnimation = Tween<double>(
+    begin: 0.0,
+    end: 1.0,
+  ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutQuad));
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = FluxColors.isDark(context);
+    final monochromeBg = isDark
+        ? const Color(0xFF323236)
+        : const Color(0xFFE5E5EA);
+    final monochromeIcon = isDark
+        ? const Color(0xFFF2F2F7)
+        : const Color(0xFF1C1C1E);
+
+    final items = [
+      (
+        title: 'Camera',
+        icon: HugeIcons.strokeRoundedCamera01,
+        iconBg: monochromeBg,
+        iconColor: monochromeIcon,
+        onTap: widget.onSelectCamera,
+      ),
+      (
+        title: 'Photos',
+        icon: HugeIcons.strokeRoundedImage01,
+        iconBg: monochromeBg,
+        iconColor: monochromeIcon,
+        onTap: widget.onSelectPhoto,
+      ),
+      (
+        title: 'Files',
+        icon: HugeIcons.strokeRoundedFolder01,
+        iconBg: monochromeBg,
+        iconColor: monochromeIcon,
+        onTap: widget.onSelectFile,
+      ),
+    ];
+
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) => Transform.scale(
+        alignment: Alignment.bottomLeft,
+        scale: _scaleAnimation.value,
+        child: Opacity(
+          opacity: _fadeAnimation.value.clamp(0.0, 1.0),
+          child: child,
+        ),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(22),
+        child: BackdropFilter(
+          filter: ui.ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+          child: Container(
+            width: 220,
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xD91E1E22) : const Color(0xEBFFFFFF),
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(
+                color: isDark
+                    ? const Color(0x33FFFFFF)
+                    : const Color(0x1F000000),
+                width: 0.75,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.15),
+                  blurRadius: 24,
+                  spreadRadius: 2,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (var i = 0; i < items.length; i++)
+                  _buildItemRow(
+                    index: i,
+                    total: items.length,
+                    item: items[i],
+                    isDark: isDark,
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildItemRow({
+    required int index,
+    required int total,
+    required ({
+      String title,
+      List<List<dynamic>> icon,
+      Color iconBg,
+      Color iconColor,
+      VoidCallback onTap,
+    })
+    item,
+    required bool isDark,
+  }) {
+    final start = (index * 0.06).clamp(0.0, 0.5);
+    final end = (start + 0.4).clamp(0.0, 1.0);
+    final rowAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: Interval(start, end, curve: Curves.easeOutCubic),
+    );
+
+    return AnimatedBuilder(
+      animation: rowAnimation,
+      builder: (context, child) => Transform.translate(
+        offset: Offset(0, 8 * (1 - rowAnimation.value)),
+        child: Opacity(
+          opacity: rowAnimation.value.clamp(0.0, 1.0),
+          child: child,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: item.onTap,
+          borderRadius: BorderRadius.circular(14),
+          splashColor: isDark
+              ? const Color(0x28FFFFFF)
+              : const Color(0x18000000),
+          highlightColor: isDark
+              ? const Color(0x14FFFFFF)
+              : const Color(0x0C000000),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: item.iconBg,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: HugeIcon(
+                      icon: item.icon,
+                      color: item.iconColor,
+                      size: 20,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(
+                    item.title,
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w400,
+                      letterSpacing: -0.2,
+                      color: isDark ? Colors.white : const Color(0xFF1C1C1E),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class ChatComposer extends StatefulWidget {
   const ChatComposer({
     super.key,
@@ -2232,6 +2676,10 @@ class ChatComposer extends StatefulWidget {
     required this.onSend,
     this.busy = false,
     this.compact = false,
+    this.attachmentPath,
+    this.isAttachmentMenuOpen = false,
+    this.onPickAttachment,
+    this.onRemoveAttachment,
     this.onReturnToLatest,
     this.width,
     this.onStop,
@@ -2240,6 +2688,18 @@ class ChatComposer extends StatefulWidget {
   final FocusNode focusNode;
   final bool blocked;
   final VoidCallback onSend;
+
+  /// Optional attached file/image path for multimodal queries.
+  final String? attachmentPath;
+
+  /// True when the iMessage-style floating attachment menu is open.
+  final bool isAttachmentMenuOpen;
+
+  /// Invoked when the user taps the '+' attachment button on the left.
+  final VoidCallback? onPickAttachment;
+
+  /// Invoked when the user dismisses an attached file/image.
+  final VoidCallback? onRemoveAttachment;
 
   /// True while a reply is generating. Input stays enabled so the user can
   /// draft the next message, but sending is disabled until the turn ends.
@@ -2301,7 +2761,10 @@ class _ChatComposerState extends State<ChatComposer> {
 
   @override
   Widget build(BuildContext context) {
-    final canSend = _hasText && !widget.blocked && !widget.busy;
+    final hasAttachment =
+        widget.attachmentPath != null && widget.attachmentPath!.isNotEmpty;
+    final canSend =
+        (_hasText || hasAttachment) && !widget.blocked && !widget.busy;
     final reducedMotion = MediaQuery.disableAnimationsOf(context);
     // Frosted pill: white on light surfaces, dark glass in dark mode, with a
     // light backdrop blur so content scrolling beneath it reads softly through
@@ -2322,105 +2785,149 @@ class _ChatComposerState extends State<ChatComposer> {
         scale: 1 - 0.15 * shrink,
         child: child,
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(999),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: AnimatedContainer(
-            key: const ValueKey('chat-composer-motion'),
-            duration: reducedMotion
-                ? Duration.zero
-                : const Duration(milliseconds: 180),
-            curve: Curves.easeOutCubic,
-            decoration: BoxDecoration(
-              color: FluxColors.isDark(context)
-                  ? const Color(0xCC18181B)
-                  : Colors.white.withValues(alpha: 0.85),
-              borderRadius: BorderRadius.circular(999),
-              border: FluxColors.isDark(context)
-                  ? Border.all(color: const Color(0x28FFFFFF))
-                  : null,
+      child: AnimatedContainer(
+        key: const ValueKey('chat-composer-motion'),
+        duration: reducedMotion
+            ? Duration.zero
+            : const Duration(milliseconds: 180),
+        curve: Curves.easeOutCubic,
+        decoration: BoxDecoration(
+          color: FluxColors.isDark(context)
+              ? const Color(0xF218181B)
+              : const Color(0xF5FFFFFF),
+          borderRadius: BorderRadius.circular(hasAttachment ? 22 : 999),
+          border: FluxColors.isDark(context)
+              ? Border.all(color: const Color(0x28FFFFFF))
+              : Border.all(color: FluxColors.line),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(
+                alpha: FluxColors.isDark(context) ? 0.35 : 0.08,
+              ),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
             ),
-            width: widget.width,
-            constraints: const BoxConstraints(minHeight: 42, maxHeight: 190),
-            padding: const EdgeInsets.fromLTRB(12, 6, 6, 6),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
+          ],
+        ),
+        width: widget.width,
+        constraints: const BoxConstraints(minHeight: 42, maxHeight: 220),
+        padding: const EdgeInsets.fromLTRB(8, 6, 6, 6),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (hasAttachment)
+              Padding(
+                padding: const EdgeInsets.only(
+                  bottom: 8,
+                  left: 6,
+                  right: 6,
+                  top: 2,
+                ),
+                child: Row(
                   children: [
-                    Expanded(
-                      child: Semantics(
-                        label: 'Message to Finn AI',
-                        textField: true,
-                        child: TextField(
-                          controller: widget.controller,
-                          focusNode: widget.focusNode,
-                          inputFormatters: [
-                            LengthLimitingTextInputFormatter(4000),
-                          ],
-                          enabled: !widget.blocked,
-                          minLines: 1,
-                          maxLines: 5,
-                          keyboardType: TextInputType.multiline,
-                          textInputAction: TextInputAction.send,
-                          onSubmitted: (_) => canSend ? widget.onSend() : null,
-                          onTap: () => widget.onReturnToLatest?.call(),
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(color: FluxColors.inkOf(context)),
-                          cursorColor: FluxColors.inkOf(context),
-                          decoration: InputDecoration.collapsed(
-                            hintText: widget.blocked
-                                ? 'Finn is typing…'
-                                : 'Ask anything',
-                            hintStyle: Theme.of(context).textTheme.bodyMedium
-                                ?.copyWith(color: FluxColors.mutedOf(context)),
+                    _buildAttachmentPreview(context, widget.attachmentPath!),
+                  ],
+                ),
+              ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Semantics(
+                  button: true,
+                  label: 'Add attachment',
+                  child: SizedBox.square(
+                    dimension: 34,
+                    child: InkWell(
+                      key: const ValueKey('add-attachment-button'),
+                      onTap: widget.blocked || widget.busy
+                          ? null
+                          : widget.onPickAttachment,
+                      customBorder: const CircleBorder(),
+                      child: Center(
+                        child: AnimatedRotation(
+                          turns: widget.isAttachmentMenuOpen ? 0.125 : 0.0,
+                          duration: const Duration(milliseconds: 220),
+                          curve: Curves.easeOutCubic,
+                          child: HugeIcon(
+                            icon: HugeIcons.strokeRoundedAdd01,
+                            size: 20,
+                            color: (widget.blocked || widget.busy)
+                                ? FluxColors.mutedOf(
+                                    context,
+                                  ).withValues(alpha: 0.35)
+                                : (widget.isAttachmentMenuOpen
+                                      ? FluxColors.inkOf(context)
+                                      : FluxColors.mutedOf(context)),
+                            strokeWidth: 2.0,
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 6),
-                    if (widget.busy)
-                      // While a reply is generating the send button becomes a
-                      // stop control: a black rounded square with a white stop
-                      // glyph that cancels generation on tap. In dark mode the
-                      // colors flip so the control stays visible on the pill.
-                      // The visible circle matches the send icon (30×30) with
-                      // the same 36×36 tappable surface, so the two controls
-                      // read as the same size.
-                      Semantics(
-                        button: true,
-                        label: 'Stop generating',
-                        child: SizedBox.square(
-                          key: const ValueKey('stop-button-surface'),
-                          dimension: 36,
-                          child: InkWell(
-                            onTap: widget.onStop,
-                            customBorder: const CircleBorder(),
+                  ),
+                ),
+                const SizedBox(width: 4),
+
+                Expanded(
+                  child: Semantics(
+                    label: 'Message to Finn AI',
+                    textField: true,
+                    child: TextField(
+                      controller: widget.controller,
+                      focusNode: widget.focusNode,
+                      inputFormatters: [LengthLimitingTextInputFormatter(4000)],
+                      enabled: !widget.blocked,
+                      minLines: 1,
+                      maxLines: 5,
+                      keyboardType: TextInputType.multiline,
+                      textInputAction: TextInputAction.send,
+                      onSubmitted: (_) => canSend ? widget.onSend() : null,
+                      onTap: () => widget.onReturnToLatest?.call(),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: FluxColors.inkOf(context),
+                      ),
+                      cursorColor: FluxColors.inkOf(context),
+                      decoration: InputDecoration.collapsed(
+                        hintText: widget.blocked
+                            ? 'Finn is typing…'
+                            : 'Ask anything',
+                        hintStyle: Theme.of(context).textTheme.bodyMedium
+                            ?.copyWith(color: FluxColors.mutedOf(context)),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                if (widget.busy)
+                  Semantics(
+                    button: true,
+                    label: 'Stop generating',
+                    child: SizedBox.square(
+                      key: const ValueKey('stop-button-surface'),
+                      dimension: 36,
+                      child: InkWell(
+                        onTap: widget.onStop,
+                        customBorder: const CircleBorder(),
+                        child: Center(
+                          child: Container(
+                            width: 30,
+                            height: 30,
+                            decoration: BoxDecoration(
+                              color: FluxColors.isDark(context)
+                                  ? Colors.white
+                                  : Colors.black,
+                              shape: BoxShape.circle,
+                            ),
                             child: Center(
-                              child: Container(
-                                width: 30,
-                                height: 30,
-                                decoration: BoxDecoration(
-                                  color: FluxColors.isDark(context)
-                                      ? Colors.white
-                                      : Colors.black,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Center(
-                                  child: SizedBox.square(
-                                    dimension: 12,
-                                    child: DecoratedBox(
-                                      decoration: BoxDecoration(
-                                        color: FluxColors.isDark(context)
-                                            ? Colors.black
-                                            : Colors.white,
-                                        borderRadius: const BorderRadius.all(
-                                          Radius.circular(3),
-                                        ),
-                                      ),
+                              child: SizedBox.square(
+                                dimension: 12,
+                                child: DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    color: FluxColors.isDark(context)
+                                        ? Colors.black
+                                        : Colors.white,
+                                    borderRadius: const BorderRadius.all(
+                                      Radius.circular(3),
                                     ),
                                   ),
                                 ),
@@ -2428,44 +2935,201 @@ class _ChatComposerState extends State<ChatComposer> {
                             ),
                           ),
                         ),
-                      )
-                    else
-                      Semantics(
-                        button: true,
-                        enabled: canSend,
-                        label: 'Send message',
-                        child: SizedBox.square(
-                          key: const ValueKey('send-button-surface'),
-                          dimension: 36,
-                          child: InkWell(
-                            onTap: canSend ? widget.onSend : null,
-                            customBorder: const CircleBorder(),
-                            child: Center(
-                              child: FigmaSvg(
-                                asset: canSend
-                                    ? FigmaAssets.activeSend
-                                    : FigmaAssets.send,
-                                key: const ValueKey('send-button-icon'),
-                                width: 30,
-                                height: 30,
-                                // The send glyph is a dark circle on a light
-                                // surface; on the dark pill it flips to a
-                                // light circle so it stays visible in dark
-                                // mode.
-                                invertForDark: true,
-                              ),
-                            ),
+                      ),
+                    ),
+                  )
+                else
+                  Semantics(
+                    button: true,
+                    enabled: canSend,
+                    label: 'Send message',
+                    child: SizedBox.square(
+                      key: const ValueKey('send-button-surface'),
+                      dimension: 36,
+                      child: InkWell(
+                        onTap: canSend ? widget.onSend : null,
+                        customBorder: const CircleBorder(),
+                        child: Center(
+                          child: FigmaSvg(
+                            asset: canSend
+                                ? FigmaAssets.activeSend
+                                : FigmaAssets.send,
+                            key: const ValueKey('send-button-icon'),
+                            width: 30,
+                            height: 30,
+                            invertForDark: true,
                           ),
                         ),
                       ),
-                  ],
-                ),
+                    ),
+                  ),
               ],
             ),
-          ),
+          ],
         ),
       ),
     );
+  }
+
+  Widget _buildAttachmentPreview(BuildContext context, String path) {
+    final isDark = FluxColors.isDark(context);
+    final file = File(path);
+    final fileName = path.split(Platform.pathSeparator).last;
+    final isImg = _isImage(path);
+
+    if (isImg && file.existsSync()) {
+      return Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            width: 54,
+            height: 54,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(13),
+              border: Border.all(
+                color: isDark
+                    ? const Color(0x33FFFFFF)
+                    : const Color(0x1F000000),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.file(
+                file,
+                width: 54,
+                height: 54,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  color: isDark
+                      ? const Color(0xFF2C2C2E)
+                      : const Color(0xFFE5E5EA),
+
+                  child: Center(
+                    child: Icon(
+                      Icons.broken_image_rounded,
+                      size: 20,
+                      color: FluxColors.mutedOf(context),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            top: -4,
+            right: -4,
+            child: GestureDetector(
+              onTap: widget.onRemoveAttachment,
+              child: Container(
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? const Color(0xFF48484A)
+                      : const Color(0xFF3A3A3C),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: isDark ? const Color(0xFF18181B) : Colors.white,
+                    width: 1.5,
+                  ),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x33000000),
+                      blurRadius: 4,
+                      offset: Offset(0, 1),
+                    ),
+                  ],
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.close_rounded,
+                    size: 11,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    // Document or non-image file
+    final ext = fileName.contains('.')
+        ? fileName.split('.').last.toUpperCase()
+        : 'FILE';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFEFEFF4),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDark ? const Color(0x33FFFFFF) : const Color(0x1F000000),
+          width: 0.75,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF3A3A3C) : const Color(0xFFE5E5EA),
+              borderRadius: BorderRadius.circular(5),
+            ),
+            child: Text(
+              ext.length > 4 ? ext.substring(0, 4) : ext,
+              style: const TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.2,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 160),
+            child: Text(
+              fileName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: isDark ? Colors.white : const Color(0xFF1C1C1E),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: widget.onRemoveAttachment,
+            child: Icon(
+              Icons.close_rounded,
+              size: 16,
+              color: FluxColors.mutedOf(context),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  bool _isImage(String path) {
+    final lower = path.toLowerCase();
+    return lower.endsWith('.jpg') ||
+        lower.endsWith('.jpeg') ||
+        lower.endsWith('.png') ||
+        lower.endsWith('.webp') ||
+        lower.endsWith('.bmp') ||
+        lower.endsWith('.gif');
   }
 }
 

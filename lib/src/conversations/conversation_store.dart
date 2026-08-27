@@ -28,6 +28,7 @@ class ConversationMessage {
     required this.role,
     required this.text,
     required this.createdAt,
+    this.imagePath,
     this.modelTier = 'Finn AI',
     this.status = ConversationMessageStatus.complete,
     this.generationId,
@@ -40,6 +41,7 @@ class ConversationMessage {
   final ConversationRole role;
   final String text;
   final DateTime createdAt;
+  final String? imagePath;
   final String modelTier;
   final ConversationMessageStatus status;
   final String? generationId;
@@ -49,6 +51,8 @@ class ConversationMessage {
 
   ConversationMessage copyWith({
     String? text,
+    String? imagePath,
+    bool clearImagePath = false,
     String? modelTier,
     ConversationMessageStatus? status,
     String? generationId,
@@ -62,6 +66,7 @@ class ConversationMessage {
     role: role,
     text: text ?? this.text,
     createdAt: createdAt,
+    imagePath: clearImagePath ? null : imagePath ?? this.imagePath,
     modelTier: modelTier ?? this.modelTier,
     status: status ?? this.status,
     generationId: generationId ?? this.generationId,
@@ -75,6 +80,7 @@ class ConversationMessage {
     'role': role.name,
     'text': text,
     'createdAt': createdAt.toIso8601String(),
+    if (imagePath != null) 'imagePath': imagePath,
     'modelTier': modelTier,
     'status': status.name,
     if (generationId != null) 'generationId': generationId,
@@ -97,6 +103,7 @@ class ConversationMessage {
         role: ConversationRole.values.byName(json['role'] as String),
         text: json['text'] as String,
         createdAt: DateTime.parse(json['createdAt'] as String),
+        imagePath: json['imagePath'] as String?,
         modelTier: (json['modelTier'] as String?) ?? 'Finn AI',
         status: ConversationMessageStatus.values.byName(
           (json['status'] as String?) ??
@@ -567,6 +574,7 @@ class ConversationStore extends ChangeNotifier {
   ConversationMessage add(
     ConversationRole role,
     String text, {
+    String? imagePath,
     String modelTier = 'Finn AI',
   }) {
     final conversation = active ?? startNew();
@@ -576,6 +584,7 @@ class ConversationStore extends ChangeNotifier {
       role: role,
       text: text,
       createdAt: now,
+      imagePath: imagePath,
       modelTier: modelTier,
     );
     final messages = [...conversation.messages, message];
@@ -591,6 +600,7 @@ class ConversationStore extends ChangeNotifier {
 
   ConversationMessage beginExchange(
     String userText, {
+    String? imagePath,
     String modelTier = 'Finn AI',
     String? generationId,
   }) {
@@ -598,6 +608,7 @@ class ConversationStore extends ChangeNotifier {
     return beginExchangeInConversation(
       conversation.id,
       userText,
+      imagePath: imagePath,
       modelTier: modelTier,
       generationId: generationId,
     );
@@ -606,6 +617,7 @@ class ConversationStore extends ChangeNotifier {
   ConversationMessage beginExchangeInConversation(
     String conversationId,
     String userText, {
+    String? imagePath,
     String modelTier = 'Finn AI',
     String? generationId,
   }) {
@@ -619,8 +631,10 @@ class ConversationStore extends ChangeNotifier {
       role: ConversationRole.user,
       text: userText,
       createdAt: now,
+      imagePath: imagePath,
       modelTier: modelTier,
     );
+
     final assistant = ConversationMessage(
       id: (now.microsecondsSinceEpoch + 1).toString(),
       role: ConversationRole.assistant,
@@ -876,6 +890,17 @@ class ConversationStore extends ChangeNotifier {
     return true;
   }
 
+  /// Clears all conversations and waits until the encrypted snapshot is
+  /// durably rewritten before the caller reports success.
+  Future<void> clearAllAndFlush() async {
+    _conversations.clear();
+    _activeId = null;
+    notifyListeners();
+    if (!_storageError) await flush();
+  }
+
+  /// Legacy synchronous entry point. New destructive UI flows should use
+  /// [clearAllAndFlush] so a success message is not shown before persistence.
   void clearAll() {
     _conversations.clear();
     _activeId = null;

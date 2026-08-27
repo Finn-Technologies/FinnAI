@@ -155,9 +155,22 @@ class _SettingsPageState extends State<SettingsPage>
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.of(dialogContext).pop();
-              ConversationStore.instance.clearAll();
+              try {
+                await ConversationStore.instance.clearAllAndFlush();
+              } catch (_) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Could not clear conversations. Check storage and try again.',
+                      ),
+                    ),
+                  );
+                }
+                return;
+              }
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(

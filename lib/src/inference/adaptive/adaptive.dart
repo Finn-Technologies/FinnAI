@@ -126,7 +126,6 @@ class BackendSelection {
   final String reason;
 }
 
-/// The well-tested CPU baseline used until an accelerator is discovered.
 RuntimeConfig runtimeConfigFromPlan(
   InferencePlan plan,
   DeviceProfile profile,
@@ -137,7 +136,7 @@ RuntimeConfig runtimeConfigFromPlan(
   batchSize: plan.batchSize,
   microBatchSize: plan.microBatchSize,
   sessionCount: plan.sessionCacheEntries,
-  kvType: plan.compactKv ? KvCacheType.q8_0 : KvCacheType.f16,
+  kvType: plan.compactKv ? KvCacheType.q4_0 : KvCacheType.f16,
   flashAttention: plan.flashAttention ? FlashAttention.on : FlashAttention.off,
   gpuLayers: 0,
   deviceName: '',
@@ -150,7 +149,6 @@ RuntimeConfig runtimeConfigFromPlan(
 /// Order: Hexagon NPU first (best token/sec/watt on Snapdragon), then GPU
 /// (Metal/CUDA/Vulkan preferred, OpenCL as the Adreno/Mali fallback). The
 /// CPU and the BLAS meta-backend are never chosen.
-@visibleForTesting
 BackendDevice? preferredAccelerator(List<BackendDevice> devices) {
   BackendDevice? npu;
   BackendDevice? gpu;

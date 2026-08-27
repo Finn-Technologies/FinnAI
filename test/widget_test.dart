@@ -98,8 +98,37 @@ void main() {
     await tester.pump(const Duration(milliseconds: 600));
 
     expect(find.bySemanticsLabel('Send message'), findsOneWidget);
+    expect(find.bySemanticsLabel('Add attachment'), findsOneWidget);
     expect(find.bySemanticsLabel('Start on-device voice input'), findsNothing);
   });
+
+  testWidgets(
+    'user message with image attachment renders thumbnail and bubble',
+    (tester) async {
+      final conversations = ConversationStore();
+      conversations.startNew();
+      conversations.add(
+        ConversationRole.user,
+        'Look at this chart',
+        imagePath: '/mock/chart_sample.jpg',
+      );
+      addTearDown(conversations.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: FluxTheme.light,
+          home: HomeShell(
+            conversationStore: conversations,
+            initializeServices: false,
+          ),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 600));
+
+      expect(find.text('Look at this chart'), findsOneWidget);
+      expect(find.text('chart_sample.jpg'), findsOneWidget);
+    },
+  );
 
   testWidgets('chat fades at both edges and stays readable on wide screens', (
     tester,

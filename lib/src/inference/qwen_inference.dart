@@ -33,10 +33,15 @@ int _nextGenerationSeed() => _generationSeedRng.nextInt(1 << 32);
 
 @immutable
 class LocalChatTurn {
-  const LocalChatTurn({required this.role, required this.content});
+  const LocalChatTurn({
+    required this.role,
+    required this.content,
+    this.imagePath,
+  });
 
   final String role;
   final String content;
+  final String? imagePath;
 }
 
 enum InferencePhase { idle, downloading, loading, generating, error }
@@ -116,6 +121,7 @@ class _ModelRuntime {
     required this.compactKv,
     required this.contextSize,
     required this.modelSha256,
+    this.kvType = KvCacheType.q8_0,
   });
 
   final QwenModel model;
@@ -123,6 +129,7 @@ class _ModelRuntime {
   final bool compactKv;
   final int contextSize;
   final String modelSha256;
+  final KvCacheType kvType;
   final Map<String, _ConversationSession> sessions = {};
   final SerializedAsyncGate sessionSetupGate = SerializedAsyncGate();
   Future<PrefixStateReport>? prefixWarmup;
@@ -904,8 +911,11 @@ class QwenInference extends ChangeNotifier {
     var hidingThought = false;
     await for (final token in source) {
       if (decided) {
-        if (token.isNotEmpty) trace?.mark(TtftPhase.sanitizedToken);
-        yield token;
+        final sanitized = _stripToolTags(token);
+        if (sanitized.isNotEmpty) {
+          trace?.mark(TtftPhase.sanitizedToken);
+          yield sanitized;
+        }
         continue;
       }
       prefix.write(token);
@@ -917,8 +927,11 @@ class QwenInference extends ChangeNotifier {
           hidingThought = true;
         } else {
           decided = true;
-          if (trimmed.isNotEmpty) trace?.mark(TtftPhase.sanitizedToken);
-          yield trimmed;
+          final sanitized = _stripToolTags(trimmed);
+          if (sanitized.isNotEmpty) {
+            trace?.mark(TtftPhase.sanitizedToken);
+            yield sanitized;
+          }
           continue;
         }
       }
@@ -926,25 +939,30 @@ class QwenInference extends ChangeNotifier {
       if (close < 0) continue;
       final visible = buffered.substring(close + '</think>'.length).trimLeft();
       decided = true;
-      if (visible.isNotEmpty) {
+      final sanitized = _stripToolTags(visible);
+      if (sanitized.isNotEmpty) {
         trace?.mark(TtftPhase.sanitizedToken);
-        yield visible;
+        yield sanitized;
       }
     }
     // An unterminated reasoning block is intentionally not surfaced.
     if (!decided && !hidingThought && prefix.isNotEmpty) {
-      trace?.mark(TtftPhase.sanitizedToken);
-      yield prefix.toString();
+      final sanitized = _stripToolTags(prefix.toString());
+      if (sanitized.isNotEmpty) {
+        trace?.mark(TtftPhase.sanitizedToken);
+        yield sanitized;
+      }
     }
   }
 
-  /// Runs the model-driven web-search decision pass and, when the model
-  /// decides to search, the actual search + content fetch.
-  ///
-  /// Returns the grounded context (or fallback note) and the fetched sources,
-  /// or `(groundedContext: '', sources: const [])` when the model decided to
-  /// answer from knowledge.
-  Future<({String groundedContext, List<WebSource> sources})>
+  static String _stripToolTags(String text) => text
+      .replaceAll(RegExp(r'</?tool_call>', caseSensitive: false), '')
+      .replaceAll(RegExp(r'</?tool_response>', caseSensitive: false), '');
+
+  /// Runs the model-driven tool-calling pass. The AI model itself evaluates
+  /// whether to call the browser_search tool. When a tool call is emitted,
+  /// the browser search is executed and returned with toolCallMade: true.
+  Future<({String groundedContext, List<WebSource> sources, bool toolCallMade})>
   _runSearchDecision(
     EngineSession session,
     String prompt,
@@ -957,20 +975,11 @@ class QwenInference extends ChangeNotifier {
     TtftTrace? trace,
   }) async {
     if (analysis.intent == PromptIntent.greeting) {
-      return (groundedContext: '', sources: const <WebSource>[]);
-    }
-    final policyNeedsSearch = _searchAgent.policy.shouldSearch(prompt);
-    // Prompts that clearly need current or verifiable information (latest
-    // news, prices, recipes, factual how/why questions, named products, …)
-    // search unconditionally — a small local model cannot be trusted to
-    // decline them, and answering from stale knowledge is worse than
-    // searching. The model's decision pass only runs for genuinely
-    // conversational prompts where the policy is unsure.
-    if (policyNeedsSearch) {
-      searchRanForCurrentTurn = true;
-      final direct = await _searchAndFetch(prompt);
-      _throwIfGenerationCancelled(generationEpoch);
-      return direct;
+      return (
+        groundedContext: '',
+        sources: const <WebSource>[],
+        toolCallMade: false,
+      );
     }
     final directive = PromptIntentPolicy.searchDecisionDirectiveFor(
       analysis.language,
@@ -984,17 +993,15 @@ class QwenInference extends ChangeNotifier {
       history: history,
       directive: directive,
     );
-    _setStatus(InferencePhase.generating, 'Thinking about what you need');
+    _setStatus(InferencePhase.generating, 'Evaluating tools');
     trace?.mark(TtftPhase.decisionPass);
     final decisionText = StringBuffer();
     await for (final event in session.generate(
       prompt: decisionPrompt,
       addSpecial: !primed && !basePrefixReady,
       parseSpecial: true,
-      // The decision is a fixed vocabulary (ANSWER / SEARCH: <query>); a
-      // short cap keeps the pass cheap on slow devices where every decode
-      // token is seconds, without truncating a real search query.
-      maxTokens: 12,
+      // Allow enough tokens to decode a complete <tool_call> JSON structure
+      maxTokens: 64,
       sampler: PromptIntentPolicy.searchDecisionSampler.params.copyWith(
         seed: _nextGenerationSeed(),
       ),
@@ -1011,51 +1018,37 @@ class QwenInference extends ChangeNotifier {
       decisionText.toString(),
     );
     if (decision.kind == SearchDecisionKind.answerFromKnowledge) {
-      return (groundedContext: '', sources: const <WebSource>[]);
+      return (
+        groundedContext: '',
+        sources: const <WebSource>[],
+        toolCallMade: false,
+      );
     }
     final query = decision.query?.trim();
     if (query == null || query.isEmpty) {
-      return (groundedContext: '', sources: const <WebSource>[]);
+      return (
+        groundedContext: '',
+        sources: const <WebSource>[],
+        toolCallMade: false,
+      );
     }
     searchRanForCurrentTurn = true;
-    _setStatus(InferencePhase.generating, 'Searching the web');
-    try {
-      final grounded = await _searchAgent
-          .searchAndFetch(query)
-          .timeout(const Duration(seconds: 8), onTimeout: () => null);
-      _throwIfGenerationCancelled(generationEpoch);
-      if (grounded == null) {
-        _lastSearchFailed = true;
-        return (
-          groundedContext:
-              'Note: web search was requested but no results were available (offline or unavailable). Answer carefully from general knowledge, state uncertainty for time-sensitive claims, and do not invent sources.',
-          sources: const <WebSource>[],
-        );
-      }
-      return (
-        groundedContext: grounded.groundedContext,
-        sources: grounded.search.sources,
-      );
-    } on _GenerationCancelled {
-      rethrow;
-    } on Object {
-      _throwIfGenerationCancelled(generationEpoch);
-      _lastSearchFailed = true;
-      return (
-        groundedContext:
-            'Note: web search was requested but no results were available (offline or unavailable). Answer carefully from general knowledge, state uncertainty for time-sensitive claims, and do not invent sources.',
-        sources: const <WebSource>[],
-      );
-    }
+    final grounded = await _searchAndFetch(query);
+    _throwIfGenerationCancelled(generationEpoch);
+    return (
+      groundedContext: grounded.groundedContext,
+      sources: grounded.sources,
+      toolCallMade: true,
+    );
   }
 
-  /// Searches and fetches content, returning the grounded result or the
-  /// offline fallback note when retrieval fails.
+  /// Searches the browser and fetches content, returning the grounded result
+  /// or the offline fallback note when retrieval fails.
   Future<({String groundedContext, List<WebSource> sources})> _searchAndFetch(
     String query, {
     bool markFailure = true,
   }) async {
-    _setStatus(InferencePhase.generating, 'Searching the web');
+    _setStatus(InferencePhase.generating, 'Searching the browser');
     try {
       final grounded = await _searchAgent
           .searchAndFetch(query)
@@ -1064,7 +1057,7 @@ class QwenInference extends ChangeNotifier {
         if (markFailure) _lastSearchFailed = true;
         return (
           groundedContext:
-              'Note: web search was requested but no results were available (offline or unavailable). Answer carefully from general knowledge, state uncertainty for time-sensitive claims, and do not invent sources.',
+              'Note: browser search was requested for "$query" but no results were available (offline or unavailable). Answer carefully from general knowledge, state uncertainty for time-sensitive claims, and do not invent sources.',
           sources: const <WebSource>[],
         );
       }
@@ -1078,7 +1071,7 @@ class QwenInference extends ChangeNotifier {
       if (markFailure) _lastSearchFailed = true;
       return (
         groundedContext:
-            'Note: web search was requested but no results were available (offline or unavailable). Answer carefully from general knowledge, state uncertainty for time-sensitive claims, and do not invent sources.',
+            'Note: browser search was requested for "$query" but no results were available (offline or unavailable). Answer carefully from general knowledge, state uncertainty for time-sensitive claims, and do not invent sources.',
         sources: const <WebSource>[],
       );
     }
@@ -1160,6 +1153,38 @@ class QwenInference extends ChangeNotifier {
           _throwIfGenerationCancelled(generationEpoch);
           final entry = prepared.entry;
           final session = entry.session;
+          final attachedPath = history.reversed
+              .where((t) => t.imagePath != null && t.imagePath!.isNotEmpty)
+              .firstOrNull
+              ?.imagePath;
+
+          final hasAttachedImage =
+              attachedPath != null &&
+              File(attachedPath).existsSync() &&
+              _isImageFile(attachedPath);
+
+          final mediaList = <LlamaMedia>[];
+          final useMediaMarker =
+              hasAttachedImage && runtime.engine.multimodalLoaded;
+          if (useMediaMarker) {
+            mediaList.add(LlamaMedia.imageFile(attachedPath));
+          }
+
+          String? attachedDocContext;
+          if (attachedPath != null &&
+              File(attachedPath).existsSync() &&
+              !hasAttachedImage) {
+            try {
+              final content = await File(attachedPath).readAsString();
+              final docName = attachedPath.split(Platform.pathSeparator).last;
+              final truncated = content.length > 4000
+                  ? '${content.substring(0, 4000)}\n[... content truncated]'
+                  : content;
+              attachedDocContext =
+                  'Attached document ($docName):\n```\n$truncated\n```';
+            } catch (_) {}
+          }
+
           final taskInstruction = PromptIntentPolicy.taskInstruction(
             promptAnalysis,
           );
@@ -1178,6 +1203,8 @@ class QwenInference extends ChangeNotifier {
             analysis: promptAnalysis,
             includeTaskInstruction: includeTaskInstruction,
             primeEmptyThinking: primeEmptyThinking,
+            includeMediaMarker: useMediaMarker,
+            attachedDocContext: attachedDocContext,
           );
           // The token-breakdown re-renders the prompt a second time purely
           // for diagnostics. Skip it (and the full-prompt log) in release
@@ -1205,17 +1232,20 @@ class QwenInference extends ChangeNotifier {
             ..batchThreads = plan?.batchThreads
             ..batchSize = plan?.batchSize
             ..microBatchSize = plan?.microBatchSize
-            ..kvType = runtime.compactKv ? 'q8_0' : 'f16'
+            ..kvType = runtime.compactKv ? runtime.kvType.name : 'f16'
             ..flashAttention = plan?.flashAttention == true ? 'on' : 'off'
             ..mark(TtftPhase.promptRendered);
-          // Model-driven web search: run the decision pass, then (if the
-          // model asked for fresh info) search, feed the grounded context
-          // back into the session, and continue generating the answer.
+
+          // Model-driven browser search: the AI model itself evaluates whether
+          // to perform a tool call. When the model emits a tool call, we execute
+          // the browser search, feed the tool response back into the session,
+          // and let the model generate the grounded answer.
+          // When an image is attached, skip the search pass to answer immediately from vision.
           var effectiveGroundedContext = groundedContext;
           var effectiveSources = const <WebSource>[];
-          final policyNeedsSearch = _searchAgent.policy.shouldSearch(prompt);
           final decisionEnabled =
               enableSearchDecision &&
+              !hasAttachedImage &&
               PromptIntentPolicy.needsSearchDecision(promptAnalysis);
           if (decisionEnabled) {
             final decision = await _runSearchDecision(
@@ -1232,39 +1262,28 @@ class QwenInference extends ChangeNotifier {
             effectiveGroundedContext = decision.groundedContext;
             effectiveSources = decision.sources;
             _throwIfGenerationCancelled(generationEpoch);
-            if (policyNeedsSearch) {
-              // The deterministic policy searched before any decision pass,
-              // so the session still contains only its base prefix. Re-render
-              // the complete user turn with the retrieved context; a
-              // continuation here would omit the latest prompt entirely.
-              renderedPrompt = _renderPrompt(
-                entry,
-                prompt,
-                history,
-                systemContext: systemContext,
-                groundedContext: effectiveGroundedContext,
-                analysis: promptAnalysis,
-                includeTaskInstruction: includeTaskInstruction,
-                primeEmptyThinking: primeEmptyThinking,
-              );
-            } else {
-              // A model-driven decision already appended the full user turn
-              // and its decision tokens to the session KV cache. Continue with
-              // a minimal turn that closes the decision and opens the answer;
-              // re-appending the rendered prompt would duplicate the user
-              // request in the context.
+            if (decision.toolCallMade) {
               final continuation = StringBuffer()..write('<|im_end|>\n');
-              // The private profile/skills context was intentionally omitted
-              // from the decision prompt so it can never shape a network
-              // query. Add it back locally before answering on a cold turn;
-              // warm sessions already contain the same private context.
               if (!entry.primed && systemContext.trim().isNotEmpty) {
                 _writePrivateContext(continuation, systemContext);
               }
               if (effectiveGroundedContext.isNotEmpty) {
                 continuation.write(
-                  _renderGroundedSystemMessage(effectiveGroundedContext),
+                  '<|im_start|>tool\n'
+                  '<tool_response>\n'
+                  '$effectiveGroundedContext\n'
+                  '</tool_response>\n'
+                  '<|im_end|>\n',
                 );
+              }
+              continuation.write(
+                '<|im_start|>assistant\n<think>\n\n</think>\n\n',
+              );
+              renderedPrompt = continuation.toString();
+            } else {
+              final continuation = StringBuffer()..write('<|im_end|>\n');
+              if (!entry.primed && systemContext.trim().isNotEmpty) {
+                _writePrivateContext(continuation, systemContext);
               }
               continuation.write(
                 '<|im_start|>assistant\n<think>\n\n</think>\n\n',
@@ -1280,7 +1299,8 @@ class QwenInference extends ChangeNotifier {
                 addSpecial: !entry.primed && !entry.basePrefixReady,
                 parseSpecial: true,
                 maxTokens: outputBudget,
-                shiftPolicy: runtime.engine.canShift
+                media: mediaList,
+                shiftPolicy: runtime.engine.canShift && mediaList.isEmpty
                     ? ContextShiftPolicy.auto
                     : ContextShiftPolicy.off,
                 sampler: PromptIntentPolicy.sampler(
@@ -1485,7 +1505,6 @@ class QwenInference extends ChangeNotifier {
     if (_benchmarkRunning || _replyInFlight || _runtimes.isNotEmpty) return;
     if (!Platform.isAndroid) return;
     _benchmarkRunning = true;
-    final previousStatus = _status;
     try {
       _setStatus(
         InferencePhase.loading,
@@ -1508,7 +1527,7 @@ class QwenInference extends ChangeNotifier {
         config: runtimeConfigFromPlan(plan, profile),
         profile: profile,
         compactKv: plan.compactKv,
-      ).timeout(const Duration(seconds: 30));
+      ).timeout(const Duration(seconds: 60));
       try {
         devices = probe.devices;
       } finally {
@@ -1525,69 +1544,64 @@ class QwenInference extends ChangeNotifier {
         reason: 'CPU baseline',
       );
 
-      Future<double> run(RuntimeConfig config) => _benchmarkTokensPerSecond(
-        model,
-        path,
-        config,
-        profile,
-        compactKv: plan.compactKv,
-      ).timeout(const Duration(seconds: 25));
-
-      for (final device in devices) {
-        if (debugForceCpu) break;
-        if (!device.isAccelerator ||
-            device.registryName.toLowerCase() == 'blas') {
-          continue;
-        }
-        if (!hasOffloadHeadroom(
-          profile: profile,
-          modelBytes: model.expectedBytes,
-        )) {
-          continue;
-        }
-        final config = acceleratedConfig(cpuConfig, device);
-        final double tps;
+      // Only test the single top preferred accelerator candidate (e.g. Hexagon NPU
+      // or Vulkan/OpenCL GPU) rather than iterating through all backends.
+      final candidate = preferredAccelerator(devices);
+      if (!debugForceCpu &&
+          candidate != null &&
+          candidate.isAccelerator &&
+          candidate.registryName.toLowerCase() != 'blas' &&
+          hasOffloadHeadroom(
+            profile: profile,
+            modelBytes: model.expectedBytes,
+          )) {
+        final config = acceleratedConfig(cpuConfig, candidate);
         try {
-          tps = await run(config);
+          final tps = await _benchmarkTokensPerSecond(
+            model,
+            path,
+            config,
+            profile,
+            compactKv: plan.compactKv,
+          ).timeout(const Duration(seconds: 15));
+          debugPrint(
+            'FINN_BENCH ${candidate.registryName}/${candidate.name} '
+            '${tps.toStringAsFixed(2)} tok/s',
+          );
+          if (tps > 0) {
+            bestTps = tps;
+            best = BackendSelection(
+              config: config,
+              backend: classifyBackend(candidate),
+              deviceName: candidate.name,
+              registryName: candidate.registryName,
+              reason: 'Benchmarked fastest backend.',
+            );
+          }
         } catch (e) {
           debugPrint(
-            'FINN_BENCH skip ${device.registryName}/${device.name}: $e',
-          );
-          continue;
-        }
-        debugPrint(
-          'FINN_BENCH ${device.registryName}/${device.name} '
-          '${tps.toStringAsFixed(2)} tok/s',
-        );
-        if (tps > bestTps) {
-          bestTps = tps;
-          best = BackendSelection(
-            config: config,
-            backend: classifyBackend(device),
-            deviceName: device.name,
-            registryName: device.registryName,
-            reason: 'Benchmarked fastest backend.',
+            'FINN_BENCH skip candidate ${candidate.registryName}/${candidate.name}: $e',
           );
         }
       }
 
-      // The CPU baseline is always measured so the winner has a real floor to
-      // beat; a failed CPU spawn still leaves the existing adaptive cache.
-      try {
-        final cpuTps = await run(cpuConfig);
-        debugPrint('FINN_BENCH CPU ${cpuTps.toStringAsFixed(2)} tok/s');
-        if (cpuTps > bestTps) {
-          bestTps = cpuTps;
-          best = BackendSelection(
-            config: cpuConfig,
-            backend: ComputeBackend.cpu,
-            deviceName: 'CPU',
-            registryName: 'CPU',
-            reason: 'CPU measured fastest.',
-          );
+      // The CPU baseline is measured if accelerator was not selected or to verify floor.
+      if (bestTps <= 0) {
+        try {
+          final cpuTps = await _benchmarkTokensPerSecond(
+            model,
+            path,
+            cpuConfig,
+            profile,
+            compactKv: plan.compactKv,
+          ).timeout(const Duration(seconds: 15));
+          debugPrint('FINN_BENCH CPU ${cpuTps.toStringAsFixed(2)} tok/s');
+          if (cpuTps > bestTps) {
+            bestTps = cpuTps;
+          }
+        } catch (e) {
+          debugPrint('FINN_BENCH cpu baseline failed: $e');
         }
-      } catch (e) {
-        debugPrint('FINN_BENCH cpu baseline failed: $e');
       }
 
       // Persist the winner even when it is CPU so the benchmark does not run
@@ -1604,7 +1618,7 @@ class QwenInference extends ChangeNotifier {
       _setStatus(InferencePhase.idle, 'Finn AI is optimized for this device');
     } catch (e) {
       debugPrint('FINN_BENCH failed, keeping CPU fallback: $e');
-      _setStatus(InferencePhase.idle, previousStatus);
+      _setStatus(InferencePhase.idle, 'Finn AI is optimized for this device');
     } finally {
       _benchmarkRunning = false;
     }
@@ -1627,10 +1641,24 @@ class QwenInference extends ChangeNotifier {
     required RuntimeConfig config,
     required DeviceProfile profile,
     required bool compactKv,
-  }) {
+  }) async {
+    final mmprojFile = await _mmprojFile();
+    final hasMmproj =
+        await mmprojFile.exists() &&
+        await mmprojFile.length() == qwenMmproj.expectedBytes;
     return LlamaEngine.spawn(
       libraryPath: 'libllama.so',
       backendDirectory: profile.nativeLibraryDir,
+      multimodalParams: hasMmproj
+          ? MultimodalParams(
+              mmprojPath: mmprojFile.path,
+              useGpu: true,
+              nThreads: config.batchThreads > 0 ? config.batchThreads : 8,
+              imageMinTokens: 64,
+              imageMaxTokens: 256,
+            )
+          : null,
+
       modelParams: ModelParams(
         path: path,
         gpuLayers: config.gpuLayers,
@@ -1658,6 +1686,7 @@ class QwenInference extends ChangeNotifier {
         flashAttn: config.flashAttention,
         typeK: compactKv ? config.kvType : KvCacheType.f16,
         typeV: compactKv ? config.kvType : KvCacheType.f16,
+        defragThreshold: DeviceProfiler.isLowEnd(profile) ? 0.1 : -1.0,
         swaFull: false,
         noPerf: false,
         // Recurrent-state snapshots for lookahead decoding rollback.
@@ -1848,11 +1877,27 @@ class QwenInference extends ChangeNotifier {
           'Downloaded model is not a valid GGUF file',
         );
       }
+      await _verifyArtifactDigest(target, model.sha256Digest);
       _verifiedModels.add(model.tier);
       _completeInstallArtifact(model.expectedBytes);
       return target;
     } finally {
       client.close(force: true);
+    }
+  }
+
+  Future<String> _sha256File(File file) async {
+    final digest = sha256.convert(await file.readAsBytes());
+    return digest.toString();
+  }
+
+  Future<void> _verifyArtifactDigest(File file, String expectedDigest) async {
+    if (expectedDigest.isEmpty) return;
+    final actual = await _sha256File(file);
+    if (actual.toLowerCase() != expectedDigest.toLowerCase()) {
+      throw const FormatException(
+        'Downloaded artifact failed SHA-256 verification',
+      );
     }
   }
 
@@ -2010,6 +2055,7 @@ class QwenInference extends ChangeNotifier {
       await target.delete();
       throw const FormatException('Downloaded file is not a valid GGUF file');
     }
+    await _verifyArtifactDigest(target, qwenMmproj.sha256Digest);
     _completeInstallArtifact(expectedBytes);
     return target;
   }
@@ -2098,6 +2144,9 @@ class QwenInference extends ChangeNotifier {
       if (!await _looksLikeGguf(target)) {
         await target.delete();
         throw const FormatException('Downloaded file is not a valid GGUF file');
+      }
+      if (label == 'Qwen multimodal component') {
+        await _verifyArtifactDigest(target, qwenMmproj.sha256Digest);
       }
       _completeInstallArtifact(expectedBytes);
       return target;
@@ -2346,6 +2395,16 @@ class QwenInference extends ChangeNotifier {
     // A benchmarked engine for the selected config can be reused directly.
     LlamaEngine? engine = outcome.engine;
 
+    final mmprojFile = await _mmprojFile();
+    final hasMmproj =
+        await mmprojFile.exists() &&
+        await mmprojFile.length() == qwenMmproj.expectedBytes;
+
+    if (engine != null && hasMmproj && !engine.multimodalLoaded) {
+      await engine.dispose();
+      engine = null;
+    }
+
     Future<LlamaEngine> spawnWith(
       RuntimeConfig cfg, {
       required bool compactKv,
@@ -2353,6 +2412,16 @@ class QwenInference extends ChangeNotifier {
       return LlamaEngine.spawn(
         libraryPath: 'libllama.so',
         backendDirectory: profile.nativeLibraryDir,
+        multimodalParams: hasMmproj
+            ? MultimodalParams(
+                mmprojPath: mmprojFile.path,
+                useGpu: true,
+                nThreads: cfg.batchThreads > 0 ? cfg.batchThreads : 8,
+                imageMinTokens: 64,
+                imageMaxTokens: 256,
+              )
+            : null,
+
         modelParams: ModelParams(
           path: path,
           gpuLayers: cfg.gpuLayers,
@@ -2377,6 +2446,7 @@ class QwenInference extends ChangeNotifier {
           flashAttn: cfg.flashAttention,
           typeK: compactKv ? cfg.kvType : KvCacheType.f16,
           typeV: compactKv ? cfg.kvType : KvCacheType.f16,
+          defragThreshold: DeviceProfiler.isLowEnd(profile) ? 0.1 : -1.0,
           swaFull: false,
           noPerf: false,
           // Recurrent-state snapshots for lookahead decoding rollback.
@@ -2385,13 +2455,14 @@ class QwenInference extends ChangeNotifier {
       );
     }
 
-    var compactKv = config.kvType == KvCacheType.q8_0;
+    var compactKv =
+        config.kvType != KvCacheType.f16 && config.kvType != KvCacheType.f32;
     var fellBackFromAccelerator = false;
     try {
       engine ??= await spawnWith(
         config,
         compactKv: compactKv,
-      ).timeout(const Duration(seconds: 30));
+      ).timeout(const Duration(seconds: 90));
     } on TimeoutException catch (e) {
       debugPrint('FINN_LOADMODEL spawn timeout: $e');
       if (!config.isCpu) {
@@ -2401,13 +2472,15 @@ class QwenInference extends ChangeNotifier {
         // retry the same broken backend.
         await adaptive.invalidateCachedSelection();
         config = runtimeConfigFromPlan(hardwarePlan, profile);
-        compactKv = config.kvType == KvCacheType.q8_0;
+        compactKv =
+            config.kvType != KvCacheType.f16 &&
+            config.kvType != KvCacheType.f32;
         fellBackFromAccelerator = true;
         try {
           engine = await spawnWith(
             config,
             compactKv: compactKv,
-          ).timeout(const Duration(seconds: 30));
+          ).timeout(const Duration(seconds: 90));
         } on TimeoutException catch (e2) {
           debugPrint('FINN_LOADMODEL cpu fallback timeout: $e2');
           throw TimeoutException(
@@ -2427,13 +2500,15 @@ class QwenInference extends ChangeNotifier {
         // baseline instead of failing startup.
         await adaptive.invalidateCachedSelection();
         config = runtimeConfigFromPlan(hardwarePlan, profile);
-        compactKv = config.kvType == KvCacheType.q8_0;
+        compactKv =
+            config.kvType != KvCacheType.f16 &&
+            config.kvType != KvCacheType.f32;
         fellBackFromAccelerator = true;
         try {
           engine = await spawnWith(
             config,
             compactKv: compactKv,
-          ).timeout(const Duration(seconds: 30));
+          ).timeout(const Duration(seconds: 90));
         } on TimeoutException catch (e2) {
           debugPrint('FINN_LOADMODEL cpu fallback timeout: $e2');
           throw TimeoutException(
@@ -2448,7 +2523,7 @@ class QwenInference extends ChangeNotifier {
           engine = await spawnWith(
             config,
             compactKv: false,
-          ).timeout(const Duration(seconds: 30));
+          ).timeout(const Duration(seconds: 90));
         } on TimeoutException catch (e2) {
           debugPrint('FINN_LOADMODEL retry timeout: $e2');
           throw TimeoutException(
@@ -2492,7 +2567,7 @@ class QwenInference extends ChangeNotifier {
             final accelerated = await spawnWith(
               selection.config,
               compactKv: compactKv,
-            ).timeout(const Duration(seconds: 30));
+            ).timeout(const Duration(seconds: 90));
             await primaryEngine.dispose();
             engine = accelerated;
             config = selection.config;
@@ -2511,7 +2586,7 @@ class QwenInference extends ChangeNotifier {
     debugPrint(
       'FINN_ENGINE threads=${config.threads} batchThreads=${config.batchThreads} '
       'batch=${config.batchSize} ubatch=${config.microBatchSize} '
-      'kv=${compactKv ? "q8_0" : "f16"} flash=${config.flashAttention.name} '
+      'kv=${compactKv ? config.kvType.name : "f16"} flash=${config.flashAttention.name} '
       'ctx=${config.contextSize} gpu=${config.gpuLayers} '
       'dev=${config.deviceName} cpu=${config.isCpu}',
     );
@@ -2522,7 +2597,10 @@ class QwenInference extends ChangeNotifier {
     final modelSha256 = model.sha256Digest.isEmpty
         ? (debugSkipSha256
               ? 'benchmark-skip-sha256'
-              : await compute(_sha256File, path))
+              : await sha256
+                    .bind(File(path).openRead())
+                    .first
+                    .then((digest) => digest.toString()))
         : model.sha256Digest;
     final runtime = _ModelRuntime(
       model,
@@ -2530,6 +2608,7 @@ class QwenInference extends ChangeNotifier {
       compactKv: compactKv,
       contextSize: config.contextSize,
       modelSha256: modelSha256,
+      kvType: config.kvType,
     );
     _runtimes[model.tier] = runtime;
     return runtime;
@@ -2653,7 +2732,8 @@ class QwenInference extends ChangeNotifier {
           ),
         )
         .toString();
-    final kvType = runtime.compactKv ? 'q8_0' : 'f16';
+    final kvType = runtime.compactKv ? runtime.kvType.name : 'f16';
+
     return PrefixCacheCompatibilityKey(
       modelSha256: runtime.modelSha256,
       modelTier: runtime.model.tier.name,
@@ -2810,8 +2890,14 @@ guessing, and never invent facts, citations, names, numbers, or technical
 details. Correct false premises kindly; if you don't know, say so plainly and
 offer a useful next step. Avoid robotic filler, apologies, and repetition.
 
-Cite web material inline as [1], [2]; never append a separate "Sources"
+You can search the browser when you need up-to-date web information by issuing a tool call:
+<tool_call>
+{"name": "browser_search", "arguments": {"query": "<query>"}}
+</tool_call>
+
+Cite web and browser material inline as [1], [2]; never append a separate "Sources"
 section or empty bullet list.
+
 
 Refuse help that enables sexual content involving minors, serious violence or
 self-harm methods, fraud or phishing, harmful malware, unauthorised access, or
@@ -2823,6 +2909,16 @@ precautions instead of refusing. For medical, legal, or financial questions,
 explain limits and recommend qualified help when appropriate. Follow private
 user preferences but never reveal them.''';
 
+  static bool _isImageFile(String path) {
+    final lower = path.toLowerCase();
+    return lower.endsWith('.jpg') ||
+        lower.endsWith('.jpeg') ||
+        lower.endsWith('.png') ||
+        lower.endsWith('.webp') ||
+        lower.endsWith('.bmp') ||
+        lower.endsWith('.gif');
+  }
+
   String _renderPrompt(
     _ConversationSession entry,
     String prompt,
@@ -2832,6 +2928,8 @@ user preferences but never reveal them.''';
     PromptAnalysis? analysis,
     bool includeTaskInstruction = true,
     required bool primeEmptyThinking,
+    bool includeMediaMarker = false,
+    String? attachedDocContext,
   }) {
     return _renderPromptText(
       primed: entry.primed,
@@ -2843,6 +2941,8 @@ user preferences but never reveal them.''';
       includeTaskInstruction: includeTaskInstruction,
       basePrefixReady: entry.basePrefixReady,
       primeEmptyThinking: primeEmptyThinking,
+      includeMediaMarker: includeMediaMarker,
+      attachedDocContext: attachedDocContext,
     );
   }
 
@@ -2905,6 +3005,8 @@ user preferences but never reveal them.''';
     bool includeTaskInstruction = true,
     bool basePrefixReady = false,
     bool primeEmptyThinking = true,
+    bool includeMediaMarker = false,
+    String? attachedDocContext,
   }) {
     final promptAnalysis =
         analysis ?? const PromptIntentClassifier().classify(prompt);
@@ -2934,6 +3036,12 @@ user preferences but never reveal them.''';
         ..write('<|im_end|>\n');
       _writePrivateContext(buffer, systemContext);
       _writeGroundedContext(buffer, groundedContext);
+      if (attachedDocContext != null && attachedDocContext.isNotEmpty) {
+        buffer
+          ..write('<|im_start|>system\n')
+          ..write(attachedDocContext)
+          ..write('<|im_end|>\n');
+      }
       final combinedForHistory = [
         systemContext,
         groundedContext,
@@ -2962,6 +3070,12 @@ user preferences but never reveal them.''';
       // inserted on a warm session, where the shared system prefix is already
       // in the KV cache.
       _writeGroundedContext(buffer, groundedContext);
+      if (attachedDocContext != null && attachedDocContext.isNotEmpty) {
+        buffer
+          ..write('<|im_start|>system\n')
+          ..write(attachedDocContext)
+          ..write('<|im_end|>\n');
+      }
     }
     if (RegExp(
       r'\b(?:joke|pun|another|new one|different one)\b',
@@ -3023,10 +3137,14 @@ user preferences but never reveal them.''';
         )
         ..write('<|im_end|>\n');
     }
+    buffer.write('<|im_start|>user\n');
+    if (includeMediaMarker) {
+      buffer.write('<__media__>\n');
+    }
     buffer
-      ..write('<|im_start|>user\n')
       ..write(prompt)
       ..write('<|im_end|>\n<|im_start|>assistant\n');
+
     // Qwen 3-family non-thinking templates prime an empty reasoning block.
     // Other ChatML models do not understand these tags, so detect support
     // from the GGUF's embedded template instead of contaminating every model.
@@ -3191,14 +3309,6 @@ user preferences but never reveal them.''';
       ..write('<|im_end|>\n');
   }
 
-  /// Renders [context] as a ChatML system message (used both in the initial
-  /// prompt and as a mid-turn continuation after the search decision pass).
-  String _renderGroundedSystemMessage(String context) {
-    final value = context.trim();
-    if (value.isEmpty) return '';
-    return '<|im_start|>system\n$value<|im_end|>\n';
-  }
-
   void _writeGroundedContext(StringBuffer buffer, String context) {
     final value = context.trim();
     if (value.isEmpty) return;
@@ -3335,8 +3445,16 @@ user preferences but never reveal them.''';
   /// full-file SHA-256 was dropped to keep verification fast on budget devices.
   Future<bool> isMmprojInstalled() async {
     final file = await _mmprojFile();
-    if (!await file.exists()) return false;
-    return await file.length() == qwenMmproj.expectedBytes;
+    if (!await file.exists() ||
+        await file.length() != qwenMmproj.expectedBytes) {
+      return false;
+    }
+    try {
+      await _verifyArtifactDigest(file, qwenMmproj.sha256Digest);
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   /// Downloads and verifies the reserved Qwen3.5 projector artifact. It is
@@ -3414,7 +3532,14 @@ user preferences but never reveal them.''';
     if (!await file.exists() || await file.length() != model.expectedBytes) {
       return false;
     }
-    return _looksLikeGguf(file);
+    if (!await _looksLikeGguf(file)) return false;
+    if (model.sha256Digest.isEmpty) return false;
+    try {
+      await _verifyArtifactDigest(file, model.sha256Digest);
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<bool> _looksLikeGguf(File file) async {
@@ -3557,8 +3682,20 @@ user preferences but never reveal them.''';
   }
 }
 
-Future<String> _sha256File(String path) async =>
-    (await sha256.bind(File(path).openRead()).first).toString();
+Future<bool> _looksLikeGgufFile(File file) async {
+  if (!await file.exists() || await file.length() < 4) return false;
+  final handle = await file.open();
+  try {
+    final magic = await handle.read(4);
+    return magic.length == 4 &&
+        magic[0] == 0x47 &&
+        magic[1] == 0x47 &&
+        magic[2] == 0x55 &&
+        magic[3] == 0x46;
+  } finally {
+    await handle.close();
+  }
+}
 
 /// Promotes a complete resumable download without making another network
 /// request.
@@ -3581,5 +3718,9 @@ Future<bool> promoteVerifiedModelPartial({
   }
   if (await target.exists()) await target.delete();
   await partial.rename(target.path);
+  if (!await _looksLikeGgufFile(target)) {
+    await target.delete();
+    return false;
+  }
   return true;
 }

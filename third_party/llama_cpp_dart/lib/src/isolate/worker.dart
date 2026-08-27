@@ -967,11 +967,21 @@ void _shutdown(
     }
   }
   state.sessions.clear();
-  // We deliberately do NOT dispose the model or context here. With multiple
-  // engines in a process, freeing one worker's model/context can crash the
-  // other worker's outstanding operations because the backend is shared and
-  // some teardown paths touch process-global state. The OS reclaims memory
-  // on process exit; that is good enough for M3.
+  try {
+    state.multimodal?.dispose();
+  } catch (_) {
+    /* ignore */
+  }
+  try {
+    state.context.dispose();
+  } catch (_) {
+    /* ignore */
+  }
+  try {
+    state.model.dispose();
+  } catch (_) {
+    /* ignore */
+  }
   LlamaLibrary.dispose();
   reply.send(EngineShutdownComplete(requestId));
   commandRx.close();

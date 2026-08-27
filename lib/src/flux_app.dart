@@ -39,8 +39,9 @@ class _FinnBootstrapState extends State<FinnBootstrap> {
       _modelInstalled = await inference.isInstalled(inference.selected);
       // After a software update the cached backend choice is invalidated by
       // the new app version, so re-measure the fastest CPU/GPU/NPU backend
-      // before the home screen becomes interactive.
-      if (_modelInstalled) {
+      // before the home screen becomes interactive. Fresh onboarding handles
+      // this on its own installation screen.
+      if (_modelInstalled && AppStateStore.instance.onboardingComplete) {
         try {
           if (await inference.needsBenchmark()) {
             await inference.optimizeForDevice();

@@ -5,3 +5,5 @@ import 'search_agent.dart';
 class WebSearchAgent extends SearchAgent {
   WebSearchAgent({super.searchService});
 }
+
+typedef BrowserSearchAgent = WebSearchAgent;

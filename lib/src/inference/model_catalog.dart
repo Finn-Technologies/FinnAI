@@ -62,7 +62,7 @@ const qwenModels = <QwenModel>[
     parameterLabel: 'Qwen 3.5 · 2B · Q4_K_M',
     fileName: 'Qwen3.5-2B-Q4_K_M.gguf',
     downloadUrl:
-        'https://huggingface.co/unsloth/Qwen3.5-2B-GGUF/resolve/main/Qwen3.5-2B-Q4_K_M.gguf',
+        'https://huggingface.co/unsloth/Qwen3.5-2B-GGUF/resolve/4f0c7c8a6dd19d5774b5c73e86d9f7e2a7d4f6b1/Qwen3.5-2B-Q4_K_M.gguf',
     expectedBytes: 1280835840,
     sha256Digest:
         'aaf42c8b7c3cab2bf3d69c355048d4a0ee9973d48f16c731c0520ee914699223',
@@ -76,7 +76,7 @@ const qwenMmproj = QwenArtifact(
   name: 'Qwen 3.5 multimodal component',
   fileName: 'Qwen3.5-2B-mmproj-F16.gguf',
   downloadUrl:
-      'https://huggingface.co/unsloth/Qwen3.5-2B-GGUF/resolve/main/mmproj-F16.gguf',
+      'https://huggingface.co/unsloth/Qwen3.5-2B-GGUF/resolve/4f0c7c8a6dd19d5774b5c73e86d9f7e2a7d4f6b1/mmproj-F16.gguf',
   expectedBytes: 668227264,
   sha256Digest:
       '7035e9cb8d7c6a9681d07eef9a364783e86ea4cd73faab2eabb4f43a101830c7',

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../home/home_shell.dart';
+import '../inference/device_profile.dart';
 import '../inference/qwen_inference.dart';
 import '../theme/flux_theme.dart';
 import '../widgets/ambient_background.dart';
@@ -48,8 +49,12 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     }
     if (page >= 3 && widget.enableModelDownload) {
       // Precautions and the final swipe give the mmap-backed engine time to
-      // load before the user can type a first prompt.
-      unawaited(QwenInference.instance.prewarm());
+      // load before the user can type a first prompt on devices with ample RAM.
+      // On entry/low-memory devices, skip eager prewarm to keep UI memory unpressured.
+      final profile = QwenInference.instance.deviceProfile;
+      if (profile == null || !DeviceProfiler.isLowEnd(profile)) {
+        unawaited(QwenInference.instance.prewarm());
+      }
     }
   }
 
@@ -186,6 +191,15 @@ class _WelcomePage extends StatelessWidget {
                       style: Theme.of(context).textTheme.labelMedium?.copyWith(
                         color: FluxColors.mutedOf(context),
                         fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Semantics(
+                      button: true,
+                      label: 'Continue onboarding',
+                      child: TextButton(
+                        onPressed: onNext,
+                        child: const Text('Continue'),
                       ),
                     ),
                   ],
@@ -513,7 +527,13 @@ class _AutomaticModelPageState extends State<_AutomaticModelPage> {
         }
       }
       // Measure the best CPU/GPU/NPU backend now that the model is present.
-      await _inference.optimizeForDevice();
+      try {
+        await _inference.optimizeForDevice().timeout(
+          const Duration(seconds: 35),
+        );
+      } catch (e) {
+        debugPrint('FINN_OPTIMIZE timed out or failed: $e');
+      }
       if (!mounted) return;
       setState(() {
         _progress = 1;

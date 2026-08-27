@@ -494,12 +494,18 @@ class PromptIntentPolicy {
         _ => true,
       };
 
-  /// A tiny, language-neutral tool contract for the optional local web-search
-  /// decision pass. Retrieval itself remains deterministic and policy-gated.
+  /// A standard tool contract for the model-driven browser search tool call.
   static String searchDecisionDirectiveFor(PromptLanguage language) =>
-      'Tool: web_search. If the latest request needs current or verifiable information, '
-      'reply exactly: SEARCH: <short query>. Otherwise reply exactly: ANSWER. '
-      'Output only that, in ${language == PromptLanguage.unknown ? 'the user language' : language.name}.';
+      '# Tools\n\n'
+      'You have access to the following tool:\n\n'
+      '<tools>\n'
+      '{"type": "function", "function": {"name": "browser_search", "description": "Search the browser for up-to-date web information, real-time news, websites, and current facts.", "parameters": {"type": "object", "properties": {"query": {"type": "string", "description": "The search query to look up in the browser"}}, "required": ["query"]}}}\n'
+      '</tools>\n\n'
+      'If the latest request needs current, real-time, or verifiable information from the browser, output a tool call formatted as:\n'
+      '<tool_call>\n'
+      '{"name": "browser_search", "arguments": {"query": "<search query>"}}\n'
+      '</tool_call>\n'
+      'Otherwise, reply exactly: ANSWER.';
 
   static const IntentSamplerProfile searchDecisionSampler =
       IntentSamplerProfile(

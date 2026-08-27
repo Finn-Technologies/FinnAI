@@ -247,6 +247,7 @@ class ChatGenerationController extends ChangeNotifier {
     required String prompt,
     required List<LocalChatTurn> history,
     required String systemContext,
+    String? imagePath,
     String groundedContext = '',
     String responseSuffix = '',
     List<WebSource> sources = const [],
@@ -260,16 +261,22 @@ class ChatGenerationController extends ChangeNotifier {
     final assistant = conversations.beginExchangeInConversation(
       conversationId,
       prompt,
+      imagePath: imagePath,
       modelTier: runtime.selectedModelName,
       generationId: generationId,
     );
+    final effectiveHistory = [
+      ...history,
+      if (imagePath != null)
+        LocalChatTurn(role: 'user', content: prompt, imagePath: imagePath),
+    ];
     return _listen(
       generationId: generationId,
       conversationId: conversationId,
       assistant: assistant,
       originalPrompt: prompt,
       runtimePrompt: prompt,
-      history: history,
+      history: imagePath != null ? effectiveHistory : history,
       systemContext: systemContext,
       groundedContext: groundedContext,
       responseSuffix: responseSuffix,
@@ -486,7 +493,7 @@ class ChatGenerationController extends ChangeNotifier {
     );
     if (!_disposed) notifyListeners();
     _preparingGuard?.cancel();
-    _preparingGuard = Timer(const Duration(seconds: 30), () {
+    _preparingGuard = Timer(const Duration(seconds: 90), () {
       final current = _job;
       if (current == null ||
           current.generationId != generationId ||

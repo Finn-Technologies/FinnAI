@@ -13,17 +13,19 @@ This document records the exact completion and verification status of all releas
 | **Native llama.cpp AAR** | `COMPLETE` | `VERIFIED (Nord + static) / 16 KB RUNTIME PENDING` | Rebuilt all five arm64 libraries from the exact pinned `llama_cpp_dart` and `llama.cpp` sources with NDK r28. Multi-turn generation passed on a OnePlus Nord. APK/AAB are ARM64-only and every packaged ELF has at least `0x4000` `PT_LOAD` alignment. A runtime test on a 16 KB kernel remains required. |
 | **Runtime SVG Assets** | `COMPLETE` | `VERIFIED` | All 20 required Figma icons copied to `assets/runtime/` and verified via `test/asset_verification_test.dart`. |
 | **AES-256-GCM Encryption** | `COMPLETE` | `VERIFIED` | Replaced custom crypto with maintained `cryptography` package. Verified roundtrips, tampered tag detection, key persistence, and atomic legacy migration in `test/conversation_store_test.dart`. |
-| **Truthful AI Reporting** | `COMPLETE` | `VERIFIED (payload + routing tests) / DELIVERY CHECK PENDING` | The app prepares a complete report addressed to `finn_org@proton.me`, then requires the user to review and send it from their mail client. No mail credentials are embedded in the APK. |
+| **Truthful AI Reporting** | `IMPLEMENTED` | `VERIFIED (payload + routing tests) / DELIVERY CHECK PENDING` | The app prepares a complete report addressed to `finn_org@proton.me`, then requires the user to review and send it from their mail client. No mail credentials are embedded in the APK. |
 | **System Safety Prompts** | `COMPLETE` | `VERIFIED (Templates + observed output)` | Applied the compact `finnSafetySystemPrompt` to all tiers and modes. Automated template tests pass and user-visible generation was observed on the physical Nord after correcting Qwen 3 non-thinking priming. |
 | **Creations, You & Skills** | `COMPLETE` | `VERIFIED` | Persistent local creation generation, personalization, response styles, built-in/custom Skills, private inference-context integration, responsive screens, and deletion coverage. |
 | **Delete All Local Data** | `COMPLETE` | `VERIFIED` | Truthful deletion of onboarding state, encrypted history, keys, downloaded models, creations, profile preferences, and Skills. Returns `DeletionResult` with error reporting. Verified in `test/app_state_store_test.dart`. |
-| **Legal & Privacy Disclosures** | `COMPLETE` | `VERIFIED` | The app defaults to public privacy, terms and support routes on `finn-org.vercel.app`; compile-time overrides remain available. `THIRD_PARTY_NOTICES.md` includes full licences. |
+| **Legal & Privacy Disclosures** | `IMPLEMENTED` | `VERIFIED` | The app defaults to public privacy, terms and support routes on `finn-org.vercel.app`; compile-time overrides remain available. `THIRD_PARTY_NOTICES.md` includes full licences. |
 | **AdMob UMP & Banner Layout** | `COMPLETE` | `VERIFIED` | UMP consent callbacks have timeout protection. Google Mobile Ads 9.x is configured with a PG maximum content rating. Ads are limited to stable Settings, settled sidebar, and idle Creations placements. The sidebar native view is mounted only after opening completes and disposed before closing begins; every placement collapses while unconsented or generating. Chat, onboarding, You, and Skills stay ad-free. |
 | **Verification & CI** | `COMPLETE` | `VERIFIED` | `tool/verify_release.sh` updated with `set -euo pipefail` and truthful failure logging. CI workflow updated in `.github/workflows/ci.yml`. Release signing gate verified in `test/release_signing_gate_test.dart`. |
 
 ---
 
 ## Release Blockers & Manual Action Required Before Production Launch
+
+The repository checks are necessary but cannot replace physical-device and Play Console validation. In particular, artifact URLs, native inference, foreground downloads, notifications, ads consent, and the upload-key relationship must be verified on the final signed build.
 
 1. **16 KB Runtime Validation**:
    - Static compatibility is complete: all source-built llama/ggml libraries

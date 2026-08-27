@@ -20,7 +20,7 @@ class DeviceProfile {
     this.nativeLibraryDir,
   });
 
-  static const minimumRamBytes = 3000000000;
+  static const minimumRamBytes = 2200000000;
 
   final int? totalRamBytes;
   final int? availableRamBytes;
@@ -190,8 +190,15 @@ class DeviceProfiler {
     // compute-bound, so they use all cores: the native AAR affinity patch
     // spills threadpools with more threads than the fast cluster onto the
     // small cores (8 threads on 4xA78 + 4xA55 ≈ 1.35x prefill throughput).
-    final decodeCeiling = 4;
-    final batchCeiling = math.max(4, profile.cores);
+    final constrained =
+        profile.lowMemory ||
+        (profile.availableRamBytes != null &&
+            profile.availableRamBytes! < 1800 * 1024 * 1024) ||
+        (profile.totalRamBytes != null &&
+            profile.totalRamBytes! <= 3000 * 1000 * 1000);
+
+    final decodeCeiling = constrained ? 2 : 4;
+    final batchCeiling = constrained ? 4 : math.max(4, profile.cores);
     const threadOverride = int.fromEnvironment(
       'FINN_BENCH_THREADS',
       defaultValue: 0,
@@ -211,10 +218,6 @@ class DeviceProfiler {
     final batchThreads = batchThreadOverride > 0
         ? batchThreadOverride
         : normalBatchThreads;
-    final constrained =
-        profile.lowMemory ||
-        (profile.availableRamBytes != null &&
-            profile.availableRamBytes! < 1800 * 1024 * 1024);
     const batchOverride = int.fromEnvironment(
       'FINN_BENCH_BATCH',
       defaultValue: 0,
@@ -245,7 +248,9 @@ class DeviceProfiler {
     final effectiveBatch = overrides.batchSize ?? batchSize;
     final effectiveMicroBatch = overrides.microBatchSize ?? microBatchSize;
     final effectiveCompactKv = overrides.compactKv ?? !f16Kv;
-    final effectiveFlash = overrides.flashAttention ?? !flashOff;
+    final effectiveFlash =
+        overrides.flashAttention ??
+        (!flashOff && processor != ProcessorClass.entry);
     return InferencePlan(
       contextSize: context,
       threads: effectiveThreads,
@@ -302,7 +307,10 @@ class DeviceProfiler {
       'sm8650',
       'sm8750',
       'sm8850',
+      'sm7675',
       'snapdragon 8',
+      'snapdragon 7+ gen 3',
+      '7+ gen 3',
       'dimensity 8100',
       'dimensity 8200',
       'dimensity 9000',
@@ -330,12 +338,28 @@ class DeviceProfiler {
       'sdm765',
       'snapdragon 7',
       'dimensity 700',
+      'dimensity 7000',
+      'dimensity 7020',
+      'dimensity 7025',
+      'dimensity 7030',
+      'dimensity 7050',
+      'dimensity 7200',
+      'dimensity 7300',
       'dimensity 800',
       'dimensity 900',
       'dimensity 1000',
       'dimensity 1080',
       'dimensity 1200',
       'dimensity 1300',
+      'dimensity 6020',
+      'dimensity 6080',
+      'dimensity 6100',
+      'dimensity 6300',
+      'mt6855',
+      'mt6877',
+      'mt6885',
+      'mt6893',
+      'mt6895',
       'exynos 980',
       'exynos 1080',
       'exynos 1280',
@@ -345,11 +369,37 @@ class DeviceProfiler {
     ];
     if (flagship.any(value.contains)) return ProcessorClass.flagship;
     if (balanced.any(value.contains)) return ProcessorClass.balanced;
-    if (value.contains('sm4') ||
-        value.contains('sm6') ||
-        value.contains('sdm6') ||
-        value.contains('helio') ||
-        value.contains('mt67')) {
+
+    const entryKeywords = <String>[
+      'sm4',
+      'sm6',
+      'sdm6',
+      'helio',
+      'mt67',
+      'mt6833',
+      'unisoc',
+      'spreadtrum',
+      'sprd',
+      'ums',
+      'sc9863',
+      't606',
+      't610',
+      't612',
+      't616',
+      't618',
+      't700',
+      'tiger',
+      'jlq',
+      'allwinner',
+      'rockchip',
+      'g80',
+      'g85',
+      'g88',
+      'g90',
+      'g95',
+      'g99',
+    ];
+    if (entryKeywords.any(value.contains)) {
       return ProcessorClass.entry;
     }
     return cores >= 8 ? ProcessorClass.balanced : ProcessorClass.entry;
