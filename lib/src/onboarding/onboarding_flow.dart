@@ -193,15 +193,6 @@ class _WelcomePage extends StatelessWidget {
                         fontSize: 16,
                       ),
                     ),
-                    const SizedBox(height: 14),
-                    Semantics(
-                      button: true,
-                      label: 'Continue onboarding',
-                      child: TextButton(
-                        onPressed: onNext,
-                        child: const Text('Continue'),
-                      ),
-                    ),
                   ],
                 ),
               ),
