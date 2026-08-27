@@ -56,12 +56,10 @@ final class Generator implements Finalizable {
     final accumulator = Utf8Accumulator();
 
     final sampler = SamplerFactory.build(request.sampler, model: context.model);
-    // Lookahead (self-speculative) decoding verifies n-gram draft tokens in
-    // a single batched forward pass. It requires recurrent-state snapshots
-    // (`nRsSeq > 0`) on hybrid/recurrent models so rejected drafts can be
-    // rolled back; on pure-attention models the KV rollback always works but
-    // we still gate on nRsSeq to stay conservative.
-    final useLookahead = request.lookaheadWindow > 0 && context.nRsSeq > 0;
+    // Lookahead / Prompt Lookup (self-speculative) decoding verifies n-gram draft tokens in
+    // a single batched forward pass. It rolls back rejected drafts in the KV cache
+    // via llama_memory_seq_rm, operating efficiently with zero additional model parameters.
+    final useLookahead = request.lookaheadWindow > 0;
     // Greedy (filtered-argmax) twin of the request's sampler chain: same
     // logit-bias / penalties / top-k / top-p / min-p stages, but argmax
     // instead of temperature+dist. Drafts are verified against its picks,
@@ -171,6 +169,7 @@ final class Generator implements Finalizable {
               // whole accepted prefix during verification (lockstep, so the
               // penalty state matches a sequential run).
               history.add(tok);
+              ngram?.add(tok);
               final bytes = tokenizer.encodeToken(tok);
               final isEog = vocab.isEog(tok);
               if (isEog) {
@@ -236,6 +235,7 @@ final class Generator implements Finalizable {
         sampler.accept(token);
         greedySampler?.accept(token);
         history.add(token);
+        ngram?.add(token);
 
         final bytes = tokenizer.encodeToken(token);
         final isEog = vocab.isEog(token);

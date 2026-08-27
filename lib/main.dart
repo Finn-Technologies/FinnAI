@@ -13,9 +13,11 @@ import 'src/inference/qwen_inference.dart';
 import 'src/inference/evaluation.dart';
 import 'src/inference/prompt_intent.dart';
 import 'src/inference/ttft_metrics.dart';
+import 'src/legal/licenses.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  registerModelLicenses();
   final benchmark = const bool.fromEnvironment('FINN_BENCHMARK');
   final evaluation = const bool.fromEnvironment('FINN_EVALUATION');
   if (benchmark || evaluation) {

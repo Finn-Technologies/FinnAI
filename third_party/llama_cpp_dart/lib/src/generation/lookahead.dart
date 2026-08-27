@@ -61,8 +61,27 @@ final class NGramTable {
 
   /// Build a draft window of up to [window] tokens for the positions that
   /// follow [history] (the verified stream, ending at the last committed
-  /// position). Returns fewer tokens when the table runs dry.
+  /// position).
+  ///
+  /// Employs Prompt Lookup Decoding (PLD): searches backwards in [history]
+  /// for the current suffix to extract exact prompt/context continuations,
+  /// falling back to chained n-gram frequency lookup when no direct prompt
+  /// match is found. Returns fewer tokens when the table runs dry.
   List<int> draft(List<int> history, int window) {
+    if (history.isEmpty || window <= 0) return const <int>[];
+
+    // 1. Try Prompt Lookup Decoding: match longest suffix (3-gram down to 2-gram)
+    for (var matchLen = nGram - 1; matchLen >= 2; matchLen--) {
+      if (history.length > matchLen) {
+        final query = history.sublist(history.length - matchLen);
+        final promptDraft = _findPromptContinuation(history, query, window);
+        if (promptDraft != null && promptDraft.isNotEmpty) {
+          return promptDraft;
+        }
+      }
+    }
+
+    // 2. Chained n-gram continuation fallback
     final out = <int>[];
     while (out.length < window) {
       final key = _keyFor(history, out);
@@ -72,6 +91,36 @@ final class NGramTable {
       out.add(cont);
     }
     return out;
+  }
+
+  /// Searches backwards in [source] for the most recent occurrence of [query]
+  /// prior to the trailing position, returning up to [maxTokens] that followed it.
+  List<int>? _findPromptContinuation(
+    List<int> source,
+    List<int> query,
+    int maxTokens,
+  ) {
+    final qLen = query.length;
+    final searchLimit = source.length - qLen;
+    for (var i = searchLimit - 1; i >= 0; i--) {
+      var match = true;
+      for (var j = 0; j < qLen; j++) {
+        if (source[i + j] != query[j]) {
+          match = false;
+          break;
+        }
+      }
+      if (match) {
+        final start = i + qLen;
+        final end = (start + maxTokens) > source.length
+            ? source.length
+            : (start + maxTokens);
+        if (start < end) {
+          return source.sublist(start, end);
+        }
+      }
+    }
+    return null;
   }
 
   void _insert(_GramKey key, int continuation) {

@@ -64,10 +64,12 @@ sealed class EngineCommand {
 final class CreateSessionCommand extends EngineCommand {
   final int sessionId;
   final int seqId;
+  final int lookaheadWindow;
   const CreateSessionCommand(
     super.requestId, {
     required this.sessionId,
     required this.seqId,
+    this.lookaheadWindow = 0,
   });
 }
 

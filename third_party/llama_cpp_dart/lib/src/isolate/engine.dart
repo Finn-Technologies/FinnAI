@@ -257,10 +257,15 @@ final class LlamaEngine {
 
   /// Create a chat handle backed by a fresh session. The handle keeps a
   /// list of [ChatMessage]s and renders them via the model's embedded
+  /// Create a high-level chat session that automatically formats via the
   /// chat template on each [EngineChat.generate].
-  Future<EngineChat> createChat({int seqId = 0}) async {
+  Future<EngineChat> createChat(
+      {int seqId = 0, int lookaheadWindow = 0}) async {
     _ensureAlive();
-    final session = await createSession(seqId: seqId);
+    final session = await createSession(
+      seqId: seqId,
+      lookaheadWindow: lookaheadWindow,
+    );
     return EngineChat._(this, session);
   }
 
@@ -270,11 +275,21 @@ final class LlamaEngine {
   /// [seqId] must be `< nSeqMax` of the engine's context. Defaults to `0`,
   /// matching the single-session model. Apps with `nSeqMax > 1` must pass
   /// distinct ids explicitly.
-  Future<EngineSession> createSession({int seqId = 0}) async {
+  ///
+  /// [lookaheadWindow] enables speculative Prompt Lookup Decoding (PLD).
+  Future<EngineSession> createSession({
+    int seqId = 0,
+    int lookaheadWindow = 0,
+  }) async {
     _ensureAlive();
     final sessionId = _nextSessionId++;
     await _request<EngineAckResponse>(
-      (id) => CreateSessionCommand(id, sessionId: sessionId, seqId: seqId),
+      (id) => CreateSessionCommand(
+        id,
+        sessionId: sessionId,
+        seqId: seqId,
+        lookaheadWindow: lookaheadWindow,
+      ),
     );
     _sessionIds.add(sessionId);
     return EngineSession._(this, sessionId, seqId);

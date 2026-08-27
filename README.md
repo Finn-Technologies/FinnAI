@@ -1,6 +1,6 @@
 # FinnAI - On-Device AI Assistant for Android
 
-FinnAI is a private, on-device AI assistant with low-latency offline inference built with Flutter, powered by our custom **FinnEngine** native inference runtime and local open-source models.
+FinnAI is a private, on-device AI assistant with low-latency offline inference built with Flutter, powered by our custom **FinnAI-Accelerator** native inference runtime and local open-source models.
 
 Package Identifier: `com.abhiflex.finnai`
 
@@ -8,7 +8,7 @@ Package Identifier: `com.abhiflex.finnai`
 
 ## Key Features
 
-- **⚡ FinnEngine Native Runtime**: High-performance C++ and Dart FFI on-device inference engine running on dedicated worker isolates with cancellable streams.
+- **⚡ FinnAI-Accelerator**: High-performance C++ and Dart FFI on-device inference runtime with zero-overhead Prompt Lookup Speculative Decoding (PLD), running on dedicated worker isolates with cancellable streams.
 - **🔍 Hardware-Adaptive Topology**: Detects CPU core clusters and asymmetric architectures (big.LITTLE). Automatically pins decode loops to fast performance cores (e.g. 2 cores on entry chips, 4 on balanced/flagship) to eliminate cross-cluster barrier synchronization stalls.
 - **🛡️ Multi-Tier Device Optimization**: Seamless, crash-free execution from 3GB entry tablets (e.g., Samsung Galaxy Tab A8 / Unisoc T618) to high-end 8GB+ smartphones (Snapdragon 7+ Gen 3 / Dimensity 7025 / Snapdragon 8 series).
 - **📦 Compact KV Cache & TurboQuant Ready**: Supports compact `Q8_0`, `Q4_0`, and `TurboQuant 2-Bit/3-Bit` KV-cache configurations, shrinking memory consumption below 32 MB even on long multi-turn chats.

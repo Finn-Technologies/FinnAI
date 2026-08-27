@@ -11,6 +11,10 @@ class FinnEngineStream {
   /// Cancel callback to immediately abort native worker generation.
   final Future<void> Function() cancel;
 
+  void cancelStream() {
+    cancel();
+  }
+
   final Completer<GenerationReport> _reportCompleter =
       Completer<GenerationReport>();
 
@@ -29,3 +33,5 @@ class FinnEngineStream {
     }
   }
 }
+
+typedef FinnAcceleratorStream = FinnEngineStream;

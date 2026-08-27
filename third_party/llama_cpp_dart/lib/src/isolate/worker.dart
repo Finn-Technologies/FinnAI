@@ -195,12 +195,13 @@ Future<void> _dispatch(
           );
           return;
         }
-        // Lookahead (self-speculative) decoding: derive the window from the
-        // recurrent-state snapshots the context was created with. nRsSeq=0
-        // (clamped by llama.cpp for non-hybrid models) disables it.
-        final laWindow = state.context.nRsSeq > 0
-            ? math.min(state.context.nRsSeq + 1, 16)
-            : 0;
+        // Lookahead / Prompt Lookup (self-speculative) decoding: use the
+        // requested lookaheadWindow or derive from recurrent state if present.
+        final laWindow = cmd.lookaheadWindow > 0
+            ? cmd.lookaheadWindow
+            : (state.context.nRsSeq > 0
+                ? math.min(state.context.nRsSeq + 1, 16)
+                : 0);
         state.sessions[cmd.sessionId] = LlamaSession(
           state.context,
           seqId: cmd.seqId,

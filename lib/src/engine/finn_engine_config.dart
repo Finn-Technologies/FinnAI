@@ -34,7 +34,7 @@ class FinnEngineConfig {
     required this.batchThreads,
     required this.batchSize,
     required this.microBatchSize,
-    this.kvCacheType = FinnKvCacheType.compactQ8,
+    this.kvCacheType = FinnKvCacheType.turboQuant2Bit,
     this.flashAttention = true,
     this.gpuLayers = 0,
     this.deviceName = 'CPU',
@@ -98,3 +98,5 @@ class FinnEngineConfig {
     );
   }
 }
+
+typedef FinnAcceleratorConfig = FinnEngineConfig;

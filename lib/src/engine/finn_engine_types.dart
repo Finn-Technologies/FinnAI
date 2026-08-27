@@ -5,8 +5,6 @@ import 'package:llama_cpp_dart/llama_cpp_dart.dart';
 import 'catalog/model_catalog.dart';
 
 export 'catalog/model_catalog.dart';
-export 'profiler/device_profile.dart';
-export 'adaptive/adaptive.dart';
 
 /// Single conversational turn passed to the on-device inference engine.
 @immutable

@@ -92,7 +92,7 @@ class RuntimeConfig {
     sessionCount: json['sessionCount'] as int,
     kvType: KvCacheType.values.firstWhere(
       (e) => e.name == json['kvType'],
-      orElse: () => KvCacheType.q8_0,
+      orElse: () => KvCacheType.iq4_nl,
     ),
     flashAttention: FlashAttention.values.firstWhere(
       (e) => e.name == json['flashAttention'],

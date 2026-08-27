@@ -204,6 +204,12 @@ class _HomeShellState extends State<HomeShell>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached ||
+        state == AppLifecycleState.hidden) {
+      PaintingBinding.instance.imageCache.clear();
+      PaintingBinding.instance.imageCache.clearLiveImages();
+    }
     final residencyAction = residencyActionFor(switch (state) {
       AppLifecycleState.detached => ResidencyLifecycleEvent.detached,
       AppLifecycleState.paused => ResidencyLifecycleEvent.paused,
@@ -243,6 +249,8 @@ class _HomeShellState extends State<HomeShell>
   void didHaveMemoryPressure() {
     _prewarmTimer?.cancel();
     _memoryReleaseTimer?.cancel();
+    PaintingBinding.instance.imageCache.clear();
+    PaintingBinding.instance.imageCache.clearLiveImages();
     if (!_generation.busy) {
       unawaited(_inference.handleMemoryPressure());
     }
@@ -264,6 +272,8 @@ class _HomeShellState extends State<HomeShell>
   }
 
   void _releaseMemoryWhenIdle() {
+    PaintingBinding.instance.imageCache.clear();
+    PaintingBinding.instance.imageCache.clearLiveImages();
     if (_inference.isGeneratingReply) {
       _memoryReleaseTimer = Timer(
         const Duration(seconds: 10),

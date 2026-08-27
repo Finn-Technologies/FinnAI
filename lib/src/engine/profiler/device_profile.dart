@@ -57,6 +57,7 @@ class InferencePlan {
     required this.tokenPaintIntervalMs,
     required this.sessionCacheEntries,
     required this.flashAttention,
+    this.lookaheadWindow = 4,
   });
 
   final int contextSize;
@@ -68,6 +69,7 @@ class InferencePlan {
   final int tokenPaintIntervalMs;
   final int sessionCacheEntries;
   final bool flashAttention;
+  final int lookaheadWindow;
 }
 
 /// Benchmark-only overrides applied by the device harness (see
@@ -83,6 +85,7 @@ class PlanOverrides {
     this.compactKv,
     this.flashAttention,
     this.nRsSeq,
+    this.lookaheadWindow,
   });
 
   final int? threads;
@@ -92,6 +95,7 @@ class PlanOverrides {
   final bool? compactKv;
   final bool? flashAttention;
   final int? nRsSeq;
+  final int? lookaheadWindow;
 
   bool get isEmpty =>
       threads == null &&
@@ -100,7 +104,8 @@ class PlanOverrides {
       microBatchSize == null &&
       compactKv == null &&
       flashAttention == null &&
-      nRsSeq == null;
+      nRsSeq == null &&
+      lookaheadWindow == null;
 }
 
 class DeviceProfiler {
@@ -269,6 +274,13 @@ class DeviceProfiler {
         ProcessorClass.flagship => 3,
       },
       flashAttention: effectiveFlash,
+      lookaheadWindow:
+          overrides.lookaheadWindow ??
+          switch (processor) {
+            ProcessorClass.entry => 2,
+            ProcessorClass.balanced => 3,
+            ProcessorClass.flagship => 4,
+          },
     );
   }
 

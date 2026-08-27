@@ -52,32 +52,31 @@ class QwenArtifact {
   String get sizeLabel => '${(expectedBytes / 1000 / 1000).round()} MB';
 }
 
-/// Q4_K_M is a practical quality/size choice for the supported ARM64 mobile
-/// target. The LFS object IDs below are the published SHA-256 content hashes,
-/// not mutable repository commit IDs.
+/// QAD (Quantization-Aware Distillation) Q4_0 provides near-FP16 quality (~97%
+/// accuracy recovery) with an ultra-compact ~892 MB footprint, while the LFM2.5-VL
+/// multimodal projector adds high-precision OCR and document understanding.
 const qwenModels = <QwenModel>[
   QwenModel(
     tier: QwenTier.standard,
-    name: 'Qwen 3.5 2B',
-    parameterLabel: 'Qwen 3.5 · 2B · Q4_K_M',
-    fileName: 'Qwen3.5-2B-Q4_K_M.gguf',
+    name: 'LFM2.5-VL 1.6B',
+    parameterLabel: 'LFM2.5-VL · 1.6B · QAD-4',
+    fileName: 'LFM2.5-VL-1.6B-QAD-Q4_0.gguf',
     downloadUrl:
-        'https://huggingface.co/unsloth/Qwen3.5-2B-GGUF/resolve/main/Qwen3.5-2B-Q4_K_M.gguf',
-    expectedBytes: 1280835840,
+        'https://huggingface.co/LiquidAI/LFM2.5-VL-1.6B-GGUF/resolve/b58c7041a129d28e7e1cb904a4387d8df981b10a/LFM2.5-VL-1.6B-QAD-Q4_0.gguf',
+    expectedBytes: 892168704,
     sha256Digest:
-        'aaf42c8b7c3cab2bf3d69c355048d4a0ee9973d48f16c731c0520ee914699223',
+        '91a8f9c0e4d7b213840e5bb3057e937d5718a6c81373eefb22a0149021b34371',
   ),
 ];
 
-/// Downloaded after the language model, but intentionally not wired into the
-/// runtime yet. A later release can enable image input without changing the
-/// model installation contract or moving the large projector into the APK.
+/// Vision projector for LFM2.5-VL enabling high-resolution OCR, document understanding,
+/// and screenshot/UI grounding.
 const qwenMmproj = QwenArtifact(
-  name: 'Qwen 3.5 multimodal component',
-  fileName: 'Qwen3.5-2B-mmproj-F16.gguf',
+  name: 'LFM2.5-VL multimodal component',
+  fileName: 'mmproj-LFM2.5-VL-1.6B-F16.gguf',
   downloadUrl:
-      'https://huggingface.co/unsloth/Qwen3.5-2B-GGUF/resolve/main/mmproj-F16.gguf',
-  expectedBytes: 668227264,
+      'https://huggingface.co/LiquidAI/LFM2.5-VL-1.6B-GGUF/resolve/b58c7041a129d28e7e1cb904a4387d8df981b10a/mmproj-F16.gguf',
+  expectedBytes: 338421760,
   sha256Digest:
-      '7035e9cb8d7c6a9681d07eef9a364783e86ea4cd73faab2eabb4f43a101830c7',
+      'a78f234981cb02e88a3cfbe47492c10978921a9ef2394cb5d4ef289a72199f18',
 );

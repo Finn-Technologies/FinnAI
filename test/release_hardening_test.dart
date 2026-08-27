@@ -22,7 +22,7 @@ void main() {
 
   test('release configuration does not use mutable model URLs', () async {
     final source = await File(
-      'lib/src/inference/model_catalog.dart',
+      'lib/src/engine/catalog/model_catalog.dart',
     ).readAsString();
     expect(source, isNot(contains('/resolve/main/')));
   });

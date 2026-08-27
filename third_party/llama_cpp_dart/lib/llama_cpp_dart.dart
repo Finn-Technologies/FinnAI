@@ -32,6 +32,7 @@ export 'src/generation/event.dart'
     show DoneEvent, GenerationEvent, ShiftEvent, TokenEvent;
 export 'src/generation/generator.dart' show Generator;
 export 'src/generation/request.dart' show Request;
+export 'src/generation/lookahead.dart' show NGramTable;
 export 'src/generation/speculative.dart'
     show SpeculativeDecoder, SpeculativeResult;
 export 'src/generation/stop.dart'

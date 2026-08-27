@@ -3,9 +3,13 @@ import 'dart:async';
 import 'package:finn_ai/src/inference/qwen_inference.dart';
 import 'package:finn_ai/src/inference/residency_policy.dart';
 import 'package:finn_ai/src/inference/ttft_metrics.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:llama_cpp_dart/llama_cpp_dart.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   test(
     'duplicate prewarm and Send collapse onto the exact same load',
     () async {
@@ -172,5 +176,41 @@ void main() {
     expect(prompt, isNot(contains('<|im_start|>system')));
     expect(prompt, contains('<|im_start|>user'));
     expect(prompt, contains('<|im_start|>assistant'));
+  });
+
+  test('imageCache clear drops all live and cached bitmaps', () {
+    final imageCache = PaintingBinding.instance.imageCache;
+    imageCache.clear();
+    imageCache.clearLiveImages();
+    expect(imageCache.currentSize, 0);
+    expect(imageCache.liveImageCount, 0);
+  });
+
+  test(
+    'prompt lookup decoding extracts exact matching sequences from history',
+    () {
+      final ngram = NGramTable(nGram: 4);
+      // Seed with a prompt containing a repeating pattern
+      final prompt = <int>[101, 102, 103, 201, 202, 203, 301, 302, 303];
+      ngram.seed(prompt);
+
+      // Current history ends with [101, 102, 103] -> should draft [201, 202, 203, 301]
+      final drafts = ngram.draft([101, 102, 103], 4);
+      expect(drafts, [201, 202, 203, 301]);
+    },
+  );
+
+  test('prompt lookup decoding dynamically learns from emitted tokens', () {
+    final ngram = NGramTable(nGram: 3);
+    ngram.seed([1, 2, 3]);
+
+    // Emitting [4, 5, 6] during generation extends knowledge
+    ngram.add(4);
+    ngram.add(5);
+    ngram.add(6);
+
+    // Query suffix [4, 5] -> should draft [6]
+    final drafts = ngram.draft([1, 2, 3, 4, 5], 2);
+    expect(drafts, contains(6));
   });
 }

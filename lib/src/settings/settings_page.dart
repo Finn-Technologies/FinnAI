@@ -693,7 +693,7 @@ class _SettingsPageState extends State<SettingsPage>
                                                 applicationName: 'FinnAI',
                                                 applicationVersion: _appVersion,
                                                 applicationLegalese:
-                                                    'Created using Qwen 3.5 2B by Qwen.\n'
+                                                    'Created using LFM2.5-VL 1.6B by Liquid AI, Inc. under the LFM Open License v1.0.\n'
                                                     'Powered by llama.cpp and Flutter.',
                                               );
                                             },

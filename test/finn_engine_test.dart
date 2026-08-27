@@ -10,7 +10,7 @@ void main() {
       final engine = FinnEngine.instance;
       expect(engine, isNotNull);
       expect(engine.selected, isNotNull);
-      expect(engine.selected.name, contains('Qwen'));
+      expect(engine.selected.name, contains('LFM2.5-VL'));
     });
 
     test('FinnEngineConfig supports TurboQuant and compact KV types', () {
@@ -53,5 +53,37 @@ void main() {
         GenerationFinishReason.userCancellation,
       );
     });
+
+    test(
+      'FinnAccelerator aliases FinnEngine and QwenInference identically',
+      () {
+        final accelerator = FinnAccelerator.instance;
+        final engine = FinnEngine.instance;
+        final inference = QwenInference.instance;
+
+        expect(identical(accelerator, engine), isTrue);
+        expect(identical(engine, inference), isTrue);
+        expect(accelerator.selected.name, contains('LFM2.5-VL'));
+      },
+    );
+
+    test(
+      'PromptFormatter properly detects recipe content and formats safety prefix',
+      () {
+        expect(
+          PromptFormatter.isRecipeAnswer(
+            'Ingredienti:\n- 200g farina\n- 2 uova',
+          ),
+          isTrue,
+        );
+        expect(
+          PromptFormatter.isRecipeAnswer(
+            'Here is a brief overview of Roman history.',
+          ),
+          isFalse,
+        );
+        expect(PromptFormatter.baseSystemPrefix, contains('Finn AI'));
+      },
+    );
   });
 }
