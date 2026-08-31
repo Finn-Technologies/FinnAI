@@ -325,6 +325,10 @@ class AdaptiveInferenceEngine {
     required String modelSha256,
     required int modelBytes,
   }) async {
+    // On mobile Android devices, CPU inference with ARM Neon SIMD is rock-solid,
+    // power-efficient, and avoids GPU/Vulkan driver crashes across vendor chips.
+    if (Platform.isAndroid) return null;
+
     final device = preferredAccelerator(devices);
     if (device == null) return null;
 
@@ -441,6 +445,7 @@ class AdaptiveInferenceEngine {
     DeviceProfile profile,
     String modelSha256,
   ) async {
+    if (Platform.isAndroid) return null;
     try {
       final file = await _cacheFile();
       if (!await file.exists()) return null;

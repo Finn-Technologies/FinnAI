@@ -76,7 +76,7 @@ class _ConversationSession {
   String promptConfigurationHash;
   int messageCount;
   bool primed = false;
-  final bool basePrefixReady;
+  bool basePrefixReady;
   String? lastTaskInstruction;
   int lastUsed;
 }
@@ -308,10 +308,8 @@ class FinnAccelerator extends ChangeNotifier {
   Future<void> initialize() async {
     _deviceProfile = await DeviceProfiler.read();
     _plan = DeviceProfiler.plan(_deviceProfile!);
-    // The prior releases downloaded three different Bonsai files. They are no
-    // longer reachable after this single-model migration, so reclaim only
-    // those known filenames before Qwen's storage check runs.
-    await _removeRetiredModelArtifacts();
+    // Clean up any retired legacy artifacts in background without blocking startup
+    unawaited(_removeRetiredModelArtifacts());
     _selected = qwenModels.single;
     _automaticSelection = true;
   }
@@ -890,15 +888,15 @@ class FinnAccelerator extends ChangeNotifier {
       history: history,
       directive: directive,
     );
-    _setStatus(InferencePhase.generating, 'Evaluating tools');
+    _setStatus(InferencePhase.generating, 'Checking web...');
     trace?.mark(TtftPhase.decisionPass);
     final decisionText = StringBuffer();
     await for (final event in session.generate(
       prompt: decisionPrompt,
       addSpecial: !primed && !basePrefixReady,
       parseSpecial: true,
-      // Allow enough tokens to decode a complete <tool_call> JSON structure
-      maxTokens: 64,
+      // Fast bounded budget to decode decision or tool call
+      maxTokens: 40,
       sampler: PromptIntentPolicy.searchDecisionSampler.params.copyWith(
         seed: _nextGenerationSeed(),
       ),
@@ -908,6 +906,11 @@ class FinnAccelerator extends ChangeNotifier {
       }
       if (event case TokenEvent(:final text)) {
         decisionText.write(text);
+        final current = decisionText.toString();
+        // Break early as soon as the decision or tool call is terminated
+        if (current.contains('ANSWER') || current.contains('</tool_call>')) {
+          break;
+        }
       }
     }
     _throwIfGenerationCancelled(generationEpoch);
@@ -945,11 +948,11 @@ class FinnAccelerator extends ChangeNotifier {
     String query, {
     bool markFailure = true,
   }) async {
-    _setStatus(InferencePhase.generating, 'Searching the browser');
+    _setStatus(InferencePhase.generating, 'Searching browser...');
     try {
       final grounded = await _searchAgent
           .searchAndFetch(query)
-          .timeout(const Duration(seconds: 8), onTimeout: () => null);
+          .timeout(const Duration(milliseconds: 3000), onTimeout: () => null);
       if (grounded == null) {
         if (markFailure) _lastSearchFailed = true;
         return (
@@ -1178,14 +1181,24 @@ class FinnAccelerator extends ChangeNotifier {
               );
               renderedPrompt = continuation.toString();
             } else {
-              final continuation = StringBuffer()..write('<|im_end|>\n');
-              if (!entry.primed && systemContext.trim().isNotEmpty) {
-                _writePrivateContext(continuation, systemContext);
-              }
-              continuation.write(
-                '<|im_start|>assistant\n<think>\n\n</think>\n\n',
+              // The search decision concluded with ANSWER. Reset the session
+              // so the main answer generation starts cleanly from the user's
+              // actual prompt rather than appending to the temporary decision tokens.
+              await session.clear();
+              entry.primed = false;
+              entry.basePrefixReady = false;
+              renderedPrompt = _renderPrompt(
+                entry,
+                prompt,
+                history,
+                systemContext: systemContext,
+                groundedContext: groundedContext,
+                analysis: promptAnalysis,
+                includeTaskInstruction: includeTaskInstruction,
+                primeEmptyThinking: primeEmptyThinking,
+                includeMediaMarker: useMediaMarker,
+                attachedDocContext: attachedDocContext,
               );
-              renderedPrompt = continuation.toString();
             }
           }
           _setStatus(InferencePhase.generating, 'Thinking on this device');
@@ -1200,6 +1213,9 @@ class FinnAccelerator extends ChangeNotifier {
                 shiftPolicy: runtime.engine.canShift && mediaList.isEmpty
                     ? ContextShiftPolicy.auto
                     : ContextShiftPolicy.off,
+                shift: ContextShift(
+                  nKeep: entry.basePrefixReady ? 321 : 0,
+                ),
                 sampler: PromptIntentPolicy.sampler(
                   promptAnalysis.intent,
                 ).params.copyWith(seed: _nextGenerationSeed()),
@@ -1549,7 +1565,7 @@ class FinnAccelerator extends ChangeNotifier {
       multimodalParams: hasMmproj
           ? MultimodalParams(
               mmprojPath: mmprojFile.path,
-              useGpu: true,
+              useGpu: false,
               nThreads: config.batchThreads > 0 ? config.batchThreads : 8,
               imageMinTokens: 64,
               imageMaxTokens: 256,
@@ -1697,6 +1713,7 @@ class FinnAccelerator extends ChangeNotifier {
         partial: partial,
         expectedBytes: model.expectedBytes,
         label: 'Finn AI model',
+        sha256Digest: model.sha256Digest,
       );
     }
     final client = HttpClient()
@@ -1784,8 +1801,12 @@ class FinnAccelerator extends ChangeNotifier {
   }
 
   Future<String> _sha256File(File file) async {
-    final digest = sha256.convert(await file.readAsBytes());
-    return digest.toString();
+    try {
+      final digest = await sha256.bind(file.openRead()).first;
+      return digest.toString();
+    } on StateError {
+      throw const FormatException('Downloaded file is empty or unreadable');
+    }
   }
 
   Future<void> _verifyArtifactDigest(File file, String expectedDigest) async {
@@ -1804,6 +1825,7 @@ class FinnAccelerator extends ChangeNotifier {
     required File partial,
     required int expectedBytes,
     required String label,
+    required String sha256Digest,
   }) async {
     // A process can be killed after the final byte lands but before the
     // Android service is asked to promote the file. Verify that state locally
@@ -1817,6 +1839,9 @@ class FinnAccelerator extends ChangeNotifier {
           target: target,
           expectedBytes: expectedBytes,
         )) {
+          if (sha256Digest.isNotEmpty) {
+            await _verifyArtifactDigest(target, sha256Digest);
+          }
           _completeInstallArtifact(expectedBytes);
           return target;
         }
@@ -1948,11 +1973,9 @@ class FinnAccelerator extends ChangeNotifier {
     )) {
       throw const FormatException('Downloaded file failed verification');
     }
-    if (!await _looksLikeGguf(target)) {
-      await target.delete();
-      throw const FormatException('Downloaded file is not a valid GGUF file');
+    if (sha256Digest.isNotEmpty) {
+      await _verifyArtifactDigest(target, sha256Digest);
     }
-    await _verifyArtifactDigest(target, qwenMmproj.sha256Digest);
     _completeInstallArtifact(expectedBytes);
     return target;
   }
@@ -1969,6 +1992,7 @@ class FinnAccelerator extends ChangeNotifier {
     required File target,
     required int expectedBytes,
     required String label,
+    required String sha256Digest,
   }) async {
     final partial = File('${target.path}.part');
     var existing = await partial.exists() ? await partial.length() : 0;
@@ -1983,6 +2007,9 @@ class FinnAccelerator extends ChangeNotifier {
       } else {
         if (await target.exists()) await target.delete();
         await partial.rename(target.path);
+        if (sha256Digest.isNotEmpty) {
+          await _verifyArtifactDigest(target, sha256Digest);
+        }
         _completeInstallArtifact(expectedBytes);
         return target;
       }
@@ -2042,8 +2069,8 @@ class FinnAccelerator extends ChangeNotifier {
         await target.delete();
         throw const FormatException('Downloaded file is not a valid GGUF file');
       }
-      if (label == 'Qwen multimodal component') {
-        await _verifyArtifactDigest(target, qwenMmproj.sha256Digest);
+      if (sha256Digest.isNotEmpty) {
+        await _verifyArtifactDigest(target, sha256Digest);
       }
       _completeInstallArtifact(expectedBytes);
       return target;
@@ -2312,7 +2339,7 @@ class FinnAccelerator extends ChangeNotifier {
         multimodalParams: hasMmproj
             ? MultimodalParams(
                 mmprojPath: mmprojFile.path,
-                useGpu: true,
+                useGpu: false,
                 nThreads: cfg.batchThreads > 0 ? cfg.batchThreads : 8,
                 imageMinTokens: 64,
                 imageMaxTokens: 256,
@@ -3375,6 +3402,7 @@ user preferences but never reveal them.''';
         partial: partial,
         expectedBytes: qwenMmproj.expectedBytes,
         label: 'Qwen multimodal component',
+        sha256Digest: qwenMmproj.sha256Digest,
       );
       return;
     }
@@ -3383,6 +3411,7 @@ user preferences but never reveal them.''';
       target: target,
       expectedBytes: qwenMmproj.expectedBytes,
       label: 'Qwen multimodal component',
+      sha256Digest: qwenMmproj.sha256Digest,
     );
   }
 
@@ -3432,14 +3461,7 @@ user preferences but never reveal them.''';
     if (!await file.exists() || await file.length() != model.expectedBytes) {
       return false;
     }
-    if (!await _looksLikeGguf(file)) return false;
-    if (model.sha256Digest.isEmpty) return false;
-    try {
-      await _verifyArtifactDigest(file, model.sha256Digest);
-      return true;
-    } catch (_) {
-      return false;
-    }
+    return _looksLikeGguf(file);
   }
 
   Future<bool> _looksLikeGguf(File file) async {

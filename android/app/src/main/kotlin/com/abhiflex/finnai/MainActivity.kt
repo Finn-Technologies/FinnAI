@@ -145,12 +145,16 @@ class MainActivity : FlutterActivity() {
                     ) {
                         requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 4102)
                     }
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        startForegroundService(serviceIntent)
-                    } else {
-                        startService(serviceIntent)
+                    try {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            startForegroundService(serviceIntent)
+                        } else {
+                            startService(serviceIntent)
+                        }
+                        result.success(null)
+                    } catch (e: Exception) {
+                        result.error("service_start_failed", e.message, null)
                     }
-                    result.success(null)
                 }
                 "status" -> result.success(ModelDownloadService.status(this))
                 "cancel" -> {

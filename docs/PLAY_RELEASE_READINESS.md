@@ -18,7 +18,6 @@ This document records the exact completion and verification status of all releas
 | **Creations, You & Skills** | `COMPLETE` | `VERIFIED` | Persistent local creation generation, personalization, response styles, built-in/custom Skills, private inference-context integration, responsive screens, and deletion coverage. |
 | **Delete All Local Data** | `COMPLETE` | `VERIFIED` | Truthful deletion of onboarding state, encrypted history, keys, downloaded models, creations, profile preferences, and Skills. Returns `DeletionResult` with error reporting. Verified in `test/app_state_store_test.dart`. |
 | **Legal & Privacy Disclosures** | `IMPLEMENTED` | `VERIFIED` | The app defaults to public privacy, terms and support routes on `finn-org.vercel.app`; compile-time overrides remain available. `THIRD_PARTY_NOTICES.md` includes full licences. |
-| **AdMob UMP & Banner Layout** | `COMPLETE` | `VERIFIED` | UMP consent callbacks have timeout protection. Google Mobile Ads 9.x is configured with a PG maximum content rating. Ads are limited to stable Settings, settled sidebar, and idle Creations placements. The sidebar native view is mounted only after opening completes and disposed before closing begins; every placement collapses while unconsented or generating. Chat, onboarding, You, and Skills stay ad-free. |
 | **DEX Code Optimization (R8)** | `COMPLETE` | `VERIFIED` | Configured R8 optimization, minification, and resource shrinking (`isMinifyEnabled`, `isShrinkResources`, `proguard-rules.pro`) for release builds meeting Google Play 2026/2027 quality standards. Verified in `test/release_signing_gate_test.dart`. |
 | **Bitmap Cache Lifecycle Eviction** | `COMPLETE` | `VERIFIED` | Added explicit `PaintingBinding.instance.imageCache` and live image eviction on app background transitions (`paused`/`detached`/`hidden`) and memory pressure events in `HomeShell`. Verified in `test/performance_policy_test.dart`. |
 | **Verification & CI** | `COMPLETE` | `VERIFIED` | `tool/verify_release.sh` updated with `set -euo pipefail` and truthful failure logging. CI workflow updated in `.github/workflows/ci.yml`. Release signing gate verified in `test/release_signing_gate_test.dart`. |
@@ -27,7 +26,7 @@ This document records the exact completion and verification status of all releas
 
 ## Release Blockers & Manual Action Required Before Production Launch
 
-The repository checks are necessary but cannot replace physical-device and Play Console validation. In particular, artifact URLs, native inference, foreground downloads, notifications, ads consent, and the upload-key relationship must be verified on the final signed build.
+The repository checks are necessary but cannot replace physical-device and Play Console validation. In particular, artifact URLs, native inference, foreground downloads, notifications, and the upload-key relationship must be verified on the final signed build.
 
 1. **16 KB Runtime Validation**:
    - Static compatibility is complete: all source-built llama/ggml libraries
@@ -49,14 +48,7 @@ The repository checks are necessary but cannot replace physical-device and Play 
    - Use the configured monitored address `finn_org@proton.me` for the required
      Play Console support-email field.
 
-5. **AdMob Verification and Publisher Declarations**:
-   - Publish `store-listing/app-ads.txt` at the developer website root and link
-     that website from the Play listing.
-   - Complete AdMob app readiness and publish the required UMP privacy message.
-   - Choose the real Play target audience. FinnAI intentionally does not guess
-     child-directed or under-age-of-consent flags in code.
-
-6. **Store Graphics and Account-Gated Testing**:
+5. **Store Graphics and Account-Gated Testing**:
    - Capture final phone screenshots and create the 1024 × 500 feature graphic
      after the production identity and website are final.
    - New personal Play accounts created after November 13, 2023 must complete a

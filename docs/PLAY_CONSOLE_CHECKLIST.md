@@ -12,14 +12,13 @@ This document demarcates automated repository preparation from manual actions re
 - [x] **Native 16 KB Static Compatibility**: Recompiled all five shared libraries from the exact pinned llama.cpp sources using NDK r28; the AAR and packaged APK verify at `PT_LOAD Align = 0x4000`.
 - [ ] **Native 16 KB Runtime Validation**: Install the release on an Android 15-or-newer arm64 environment where `getconf PAGE_SIZE` is `16384`, then exercise model loading and multi-turn inference.
 - [x] **Release Signing Setup**: Enforced `android/key.properties` or environment variables for release builds with Gradle validation.
-- [x] **AdMob & Privacy Consent**: Integrated Google UMP consent SDK (`AdConsentService`), environment-aware AdMob unit IDs (`kReleaseMode`), PG maximum ad-content rating, and banner error collapse.
 - [x] **Encrypted Local Storage**: Implemented authenticated AES-256-GCM storage (`conversations.v2.enc`) with secure key storage, atomic legacy migration, and data purge action.
 - [x] **AI Safety & Reporting**: Added the in-app Report dialog and red-team safety evaluation. Reports are prepared as user-reviewable emails addressed to `finn_org@proton.me`.
 - [x] **Production Features**: The obsolete microphone and Models navigation are removed; Creations, You, and Skills are implemented, persisted locally, and covered by widget/store tests.
 - [x] **Legal & Attribution**: Published `PRIVACY_POLICY.md`, `TERMS_OF_USE.md`, `THIRD_PARTY_NOTICES.md`, dynamic versioning, and open-source licence viewer.
 - [x] **CI & Release Verification**: Added `.github/workflows/ci.yml`, `tool/verify_release.sh`, and fail-closed `tool/build_play_release.sh`.
-- [x] **Store Copy & app-ads.txt Source**: Added reviewed English listing copy plus the AdMob publisher declaration and crawler rules under `store-listing/`.
-- [x] **Public Website**: Privacy, terms, support, `app-ads.txt`, and crawler
+- [x] **Store Copy & Assets**: Added reviewed English listing copy and graphics assets under `store-listing/`.
+- [x] **Public Website**: Privacy, terms, and support
   rules are deployed on `https://finn-org.vercel.app` from the separate
   `Finn-Technologies/landing-page` repository.
 
@@ -47,14 +46,11 @@ Follow these steps in the [Google Play Console](https://play.google.com/console)
 - [x] **Terms Hosting**: Public URL verified at
   `https://finn-org.vercel.app/terms`.
 - [ ] **Data Safety Questionnaire**: Fill out using `docs/DATA_SAFETY_DRAFT.md`.
-- [ ] **Advertising ID Declaration**: Declare that the app uses Advertising ID for AdMob ads and UMP consent.
-- [ ] **Ads Declaration**: Select **Yes, my app contains ads**.
+- [ ] **Advertising ID Declaration**: Declare that the app does **NOT** use Advertising ID.
+- [ ] **Ads Declaration**: Select **No, my app does not contain ads**.
 - [ ] **Target Audience and Content**: Select the actual intended age groups.
-  The SDK flags remain unspecified until this publisher-owned choice is made;
-  update them before release if the app is child-directed or includes users
-  under the applicable age of consent.
 - [ ] **Content Rating**: Complete the questionnaire truthfully for an
-  unrestricted generative AI assistant and advertising.
+  unrestricted generative AI assistant.
 - [ ] **Generative AI Reporting**: On a physical device with a configured mail
   client, report a generated response and verify the addressed email arrives at
   `finn_org@proton.me` before uploading production.
@@ -67,18 +63,7 @@ Follow these steps in the [Google Play Console](https://play.google.com/console)
   days** before applying for production access.
 - [ ] **Submit for Review**: Send build to Google for Closed Testing review.
 
-### 4. AdMob Launch
-- [x] **Host verification**:
-  `https://finn-org.vercel.app/app-ads.txt` and `/robots.txt` return HTTP 200.
-- [ ] **Verify Ownership**: Link the same developer website in the Play listing,
-  then wait for AdMob's app-ads.txt status to show **Verified**.
-- [ ] **App Readiness**: Link the live Play listing to the AdMob app and complete
-  AdMob app-readiness review. New apps do not fully serve ads until verification
-  and approval.
-- [ ] **Privacy Message**: Publish a production European regulations message in
-  AdMob Privacy & messaging and verify **Privacy choices** appears when required.
-
-### 5. Final Production Build
+### 4. Final Production Build
 - [ ] Configure the permanent Play upload key in `android/key.properties` or
   the four supported `KEYSTORE_*` environment variables.
 - [ ] **Back up the keystore and `key.properties`** (encrypted vault / offline

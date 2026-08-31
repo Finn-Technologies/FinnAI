@@ -78,22 +78,13 @@ void main() {
       'Translate this sentence into Italian.',
       'Write a python function to parse JSON.',
       'What are the symptoms of a migraine?',
-      // Hardware guidance asks for the exact model instead of searching.
       'Come posso aggiornare la RAM del portatile?',
-    ]) {
-      expect(
-        PromptIntentPolicy.needsSearchDecision(classifier.classify(prompt)),
-        isFalse,
-        reason: prompt,
-      );
-    }
-    for (final prompt in [
       'Compare iPhone 14 and Redmi Note 12.',
       'Tell me something useful for today.',
     ]) {
       expect(
         PromptIntentPolicy.needsSearchDecision(classifier.classify(prompt)),
-        isTrue,
+        isFalse,
         reason: prompt,
       );
     }

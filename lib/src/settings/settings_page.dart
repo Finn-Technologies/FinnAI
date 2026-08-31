@@ -4,14 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../ads/ad_service.dart';
-import '../ads/banner_ad_widget.dart';
 import '../app_state_store.dart';
 import '../config/legal_config.dart';
 import '../conversations/conversation_store.dart';
 import '../flux_app.dart';
 import '../inference/qwen_inference.dart';
-import '../privacy/ad_consent_service.dart';
 import '../theme/flux_theme.dart';
 import '../widgets/ambient_background.dart';
 import '../widgets/flux_controls.dart';
@@ -111,7 +108,7 @@ class _SettingsPageState extends State<SettingsPage>
     showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: const Text('Purge AI Memory?'),
         content: const Text(
           'This will unload the AI model from RAM. It will be reloaded automatically on the next message.',
@@ -119,7 +116,10 @@ class _SettingsPageState extends State<SettingsPage>
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancel'),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: FluxColors.mutedOf(context)),
+            ),
           ),
           TextButton(
             onPressed: () {
@@ -132,6 +132,7 @@ class _SettingsPageState extends State<SettingsPage>
                 color: FluxColors.isDark(context)
                     ? const Color(0xFFFF6B6B)
                     : const Color(0xFFD32F2F),
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -144,7 +145,7 @@ class _SettingsPageState extends State<SettingsPage>
     showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: const Text('Clear All Conversations?'),
         content: const Text(
           'This will permanently delete all chat history. This action cannot be undone.',
@@ -152,7 +153,10 @@ class _SettingsPageState extends State<SettingsPage>
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancel'),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: FluxColors.mutedOf(context)),
+            ),
           ),
           TextButton(
             onPressed: () async {
@@ -189,6 +193,7 @@ class _SettingsPageState extends State<SettingsPage>
                 color: FluxColors.isDark(context)
                     ? const Color(0xFFFF6B6B)
                     : const Color(0xFFD32F2F),
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -201,7 +206,7 @@ class _SettingsPageState extends State<SettingsPage>
     showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: const Text('Delete All Local Data?'),
         content: const Text(
           'This permanently deletes encrypted conversations and keys, '
@@ -211,14 +216,28 @@ class _SettingsPageState extends State<SettingsPage>
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancel'),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: FluxColors.mutedOf(context)),
+            ),
           ),
           TextButton(
             onPressed: () async {
               Navigator.of(dialogContext).pop();
               setState(() => _deletingAllData = true);
-              final result = await AppStateStore.instance.deleteAllData();
-              await _loadSettingsData();
+              DeletionResult result;
+              try {
+                result = await AppStateStore.instance.deleteAllData();
+              } catch (e) {
+                result = DeletionResult(
+                  deletedItems: const [],
+                  nonExistentItems: const [],
+                  failedItems: ['All local data ($e)'],
+                );
+              }
+              try {
+                await _loadSettingsData();
+              } catch (_) {}
               if (mounted) {
                 setState(() => _deletingAllData = false);
                 if (result.isSuccess) {
@@ -260,7 +279,7 @@ class _SettingsPageState extends State<SettingsPage>
                 color: FluxColors.isDark(context)
                     ? const Color(0xFFFF6B6B)
                     : const Color(0xFFD32F2F),
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -313,15 +332,12 @@ class _SettingsPageState extends State<SettingsPage>
                     listenable: Listenable.merge([
                       ConversationStore.instance,
                       QwenInference.instance,
-                      AdConsentService.instance,
                     ]),
                     builder: (context, _) {
                       final totalChats =
                           ConversationStore.instance.conversations.length;
                       final states = _storageStates;
                       final selectedTier = QwenInference.instance.selected.tier;
-                      final isPrivacyOptionsNeeded =
-                          AdConsentService.instance.isPrivacyOptionsRequired;
 
                       final scrollView = CustomScrollView(
                         controller: _scrollController,
@@ -332,22 +348,6 @@ class _SettingsPageState extends State<SettingsPage>
                           SliverToBoxAdapter(
                             child: SizedBox(height: contentTop),
                           ),
-                          SliverToBoxAdapter(
-                            // Keep the native ad outside the decorative spring
-                            // transforms used by the settings sections. It
-                            // receives the full viewport width so a standard
-                            // 320dp banner also fits narrow supported devices.
-                            child: BannerAdWidget(
-                              enabled:
-                                  QwenInference.instance.phase !=
-                                  InferencePhase.generating,
-                              margin: EdgeInsets.zero,
-                              adUnitId: AdService.settingsBannerAdUnitId,
-                            ),
-                          ),
-                          // Breathing room between the ad and the first
-                          // section heading below it.
-                          const SliverToBoxAdapter(child: SizedBox(height: 24)),
 
                           // ── AI MODELS section ──
                           SliverToBoxAdapter(
@@ -366,18 +366,18 @@ class _SettingsPageState extends State<SettingsPage>
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     const _SectionHeader(label: 'AI MODEL'),
-                                    const SizedBox(height: 10),
+                                    const SizedBox(height: 8),
                                     FluxGlass(
-                                      radius: 16,
+                                      radius: 20,
                                       child: states == null
                                           ? const Padding(
                                               padding: EdgeInsets.symmetric(
-                                                vertical: 24,
+                                                vertical: 28,
                                               ),
                                               child: Center(
                                                 child: SizedBox(
-                                                  width: 20,
-                                                  height: 20,
+                                                  width: 22,
+                                                  height: 22,
                                                   child:
                                                       CircularProgressIndicator(
                                                         strokeWidth: 2,
@@ -397,7 +397,7 @@ class _SettingsPageState extends State<SettingsPage>
                                                       height: 1,
                                                       color: FluxColors.lineOf(
                                                         context,
-                                                      ),
+                                                      ).withValues(alpha: 0.5),
                                                     ),
                                                   _ModelRow(
                                                     state: states[i],
@@ -415,7 +415,7 @@ class _SettingsPageState extends State<SettingsPage>
                             ),
                           ),
 
-                          SliverToBoxAdapter(child: const SizedBox(height: 28)),
+                          SliverToBoxAdapter(child: const SizedBox(height: 24)),
 
                           // ── STORAGE & DATA section ──
                           SliverToBoxAdapter(
@@ -436,9 +436,9 @@ class _SettingsPageState extends State<SettingsPage>
                                     const _SectionHeader(
                                       label: 'STORAGE & DATA',
                                     ),
-                                    const SizedBox(height: 10),
+                                    const SizedBox(height: 8),
                                     FluxGlass(
-                                      radius: 16,
+                                      radius: 20,
                                       child: Column(
                                         children: [
                                           _InfoRow(
@@ -450,7 +450,7 @@ class _SettingsPageState extends State<SettingsPage>
                                           ),
                                           Divider(
                                             height: 1,
-                                            color: FluxColors.lineOf(context),
+                                            color: FluxColors.lineOf(context).withValues(alpha: 0.5),
                                           ),
                                           _DestructiveRow(
                                             icon: FluxIcons.chip,
@@ -463,7 +463,7 @@ class _SettingsPageState extends State<SettingsPage>
                                           ),
                                           Divider(
                                             height: 1,
-                                            color: FluxColors.lineOf(context),
+                                            color: FluxColors.lineOf(context).withValues(alpha: 0.5),
                                           ),
                                           _DestructiveRow(
                                             icon: FluxIcons.refresh,
@@ -473,7 +473,7 @@ class _SettingsPageState extends State<SettingsPage>
                                           ),
                                           Divider(
                                             height: 1,
-                                            color: FluxColors.lineOf(context),
+                                            color: FluxColors.lineOf(context).withValues(alpha: 0.5),
                                           ),
                                           _DestructiveRow(
                                             icon: FluxIcons.security,
@@ -493,7 +493,7 @@ class _SettingsPageState extends State<SettingsPage>
                             ),
                           ),
 
-                          SliverToBoxAdapter(child: const SizedBox(height: 28)),
+                          SliverToBoxAdapter(child: const SizedBox(height: 24)),
 
                           // ── PRIVACY & LEGAL section ──
                           SliverToBoxAdapter(
@@ -514,25 +514,11 @@ class _SettingsPageState extends State<SettingsPage>
                                     const _SectionHeader(
                                       label: 'PRIVACY & LEGAL',
                                     ),
-                                    const SizedBox(height: 10),
+                                    const SizedBox(height: 8),
                                     FluxGlass(
-                                      radius: 16,
+                                      radius: 20,
                                       child: Column(
                                         children: [
-                                          if (isPrivacyOptionsNeeded) ...[
-                                            _ActionRow(
-                                              icon: FluxIcons.security,
-                                              label: 'Privacy choices',
-                                              onTap: () {
-                                                AdConsentService.instance
-                                                    .showPrivacyOptionsForm();
-                                              },
-                                            ),
-                                            Divider(
-                                              height: 1,
-                                              color: FluxColors.lineOf(context),
-                                            ),
-                                          ],
                                           _ActionRow(
                                             icon: FluxIcons.lock,
                                             label: 'Privacy Policy',
@@ -576,7 +562,7 @@ class _SettingsPageState extends State<SettingsPage>
                                           ),
                                           Divider(
                                             height: 1,
-                                            color: FluxColors.lineOf(context),
+                                            color: FluxColors.lineOf(context).withValues(alpha: 0.5),
                                           ),
                                           _ActionRow(
                                             icon: FluxIcons.security,
@@ -620,7 +606,7 @@ class _SettingsPageState extends State<SettingsPage>
                                           ),
                                           Divider(
                                             height: 1,
-                                            color: FluxColors.lineOf(context),
+                                            color: FluxColors.lineOf(context).withValues(alpha: 0.5),
                                           ),
                                           _ActionRow(
                                             icon: FluxIcons.security,
@@ -682,7 +668,7 @@ class _SettingsPageState extends State<SettingsPage>
                                           ),
                                           Divider(
                                             height: 1,
-                                            color: FluxColors.lineOf(context),
+                                            color: FluxColors.lineOf(context).withValues(alpha: 0.5),
                                           ),
                                           _ActionRow(
                                             icon: FluxIcons.leaf,
@@ -707,7 +693,7 @@ class _SettingsPageState extends State<SettingsPage>
                             ),
                           ),
 
-                          SliverToBoxAdapter(child: const SizedBox(height: 28)),
+                          SliverToBoxAdapter(child: const SizedBox(height: 24)),
 
                           // ── ABOUT section ──
                           SliverToBoxAdapter(
@@ -726,9 +712,9 @@ class _SettingsPageState extends State<SettingsPage>
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     const _SectionHeader(label: 'ABOUT'),
-                                    const SizedBox(height: 10),
+                                    const SizedBox(height: 8),
                                     FluxGlass(
-                                      radius: 16,
+                                      radius: 20,
                                       child: Column(
                                         children: [
                                           _InfoRow(
@@ -738,7 +724,7 @@ class _SettingsPageState extends State<SettingsPage>
                                           ),
                                           Divider(
                                             height: 1,
-                                            color: FluxColors.lineOf(context),
+                                            color: FluxColors.lineOf(context).withValues(alpha: 0.5),
                                           ),
                                           _InfoRow(
                                             icon: FluxIcons.robot,
@@ -747,7 +733,7 @@ class _SettingsPageState extends State<SettingsPage>
                                           ),
                                           Divider(
                                             height: 1,
-                                            color: FluxColors.lineOf(context),
+                                            color: FluxColors.lineOf(context).withValues(alpha: 0.5),
                                           ),
                                           _InfoRow(
                                             icon: FluxIcons.security,
@@ -756,12 +742,12 @@ class _SettingsPageState extends State<SettingsPage>
                                           ),
                                           Divider(
                                             height: 1,
-                                            color: FluxColors.lineOf(context),
+                                            color: FluxColors.lineOf(context).withValues(alpha: 0.5),
                                           ),
                                           _InfoRow(
                                             icon: FluxIcons.leaf,
-                                            label: 'Model Attribution',
-                                            value: 'Qwen 3.5 2B (Apache-2.0)',
+                                            label: 'Model Architecture',
+                                            value: 'LFM2.5-VL 1.6B (Liquid)',
                                           ),
                                         ],
                                       ),
@@ -937,14 +923,12 @@ class _ModelRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final model = state.model;
+    final isDark = FluxColors.isDark(context);
 
     final inference = QwenInference.instance;
     final downloading =
         inference.phase == InferencePhase.downloading &&
         inference.workingModel?.tier == state.model.tier;
-    // Prefer the aggregate install progress (language model + multimodal
-    // component) so the row keeps advancing when the second artifact starts
-    // instead of resetting toward zero.
     final progress = downloading
         ? (inference.installProgress ?? inference.downloadProgress ?? 0)
         : 0.0;
@@ -965,9 +949,9 @@ class _ModelRow extends StatelessWidget {
     final statusColor = downloading
         ? const Color(0xFF3B82F6)
         : activeAndInstalled
-        ? const Color(0xFF3B82F6)
+        ? (isDark ? const Color(0xFF4ADE80) : const Color(0xFF16A34A))
         : state.installed
-        ? const Color(0xFF22C55E)
+        ? (isDark ? const Color(0xFF4ADE80) : const Color(0xFF16A34A))
         : state.resumable
         ? const Color(0xFFF59E0B)
         : FluxColors.mutedOf(context);
@@ -978,28 +962,52 @@ class _ModelRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(
         children: [
-          FluxIcon(
-            icon: FluxIcons.chip,
-            size: 18,
-            color: isActive
-                ? const Color(0xFF3B82F6)
-                : FluxColors.mutedOf(context),
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: FluxColors.inkOf(context).withValues(
+                alpha: isDark ? 0.08 : 0.05,
+              ),
+              borderRadius: BorderRadius.circular(11),
+            ),
+            alignment: Alignment.center,
+            child: FluxIcon(
+              icon: FluxIcons.chip,
+              size: 18,
+              color: isActive ? FluxColors.inkOf(context) : FluxColors.mutedOf(context),
+            ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  model.name,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
+                Row(
+                  children: [
+                    Text(
+                      model.name,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if (isActive) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: statusColor,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
                 const SizedBox(height: 2),
                 Text(
                   '${model.parameterLabel} · ${model.sizeLabel}',
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
                     color: FluxColors.mutedOf(context),
                   ),
                 ),
@@ -1007,7 +1015,7 @@ class _ModelRow extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     transferInfo,
-                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: const Color(0xFF3B82F6),
                       fontWeight: FontWeight.w600,
                     ),
@@ -1020,11 +1028,11 @@ class _ModelRow extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
               color: statusColor.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(99),
+              borderRadius: BorderRadius.circular(999),
             ),
             child: Text(
               statusLabel,
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
                 color: statusColor,
                 fontWeight: FontWeight.w600,
               ),
@@ -1043,12 +1051,16 @@ class _SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      label,
-      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-        fontWeight: FontWeight.w600,
-        letterSpacing: 0.9,
-        color: FluxColors.mutedOf(context),
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: 4),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          fontWeight: FontWeight.w700,
+          letterSpacing: 1.0,
+          fontSize: 11,
+          color: FluxColors.mutedOf(context),
+        ),
       ),
     );
   }
@@ -1067,23 +1079,39 @@ class _InfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = FluxColors.isDark(context);
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
       child: Row(
         children: [
-          FluxIcon(icon: icon, size: 18, color: FluxColors.mutedOf(context)),
-          const SizedBox(width: 12),
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: FluxColors.inkOf(context).withValues(
+                alpha: isDark ? 0.08 : 0.05,
+              ),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            alignment: Alignment.center,
+            child: FluxIcon(
+              icon: icon,
+              size: 17,
+              color: FluxColors.mutedOf(context),
+            ),
+          ),
+          const SizedBox(width: 13),
           Expanded(
             child: Text(
               label,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
           Text(
             value,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: FluxColors.mutedOf(context),
             ),
           ),
@@ -1106,28 +1134,48 @@ class _ActionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        child: Row(
-          children: [
-            FluxIcon(icon: icon, size: 18, color: FluxColors.inkOf(context)),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                label,
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
+    final isDark = FluxColors.isDark(context);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: FluxColors.inkOf(context).withValues(
+                    alpha: isDark ? 0.08 : 0.05,
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                alignment: Alignment.center,
+                child: FluxIcon(
+                  icon: icon,
+                  size: 17,
+                  color: FluxColors.inkOf(context),
+                ),
               ),
-            ),
-            Icon(
-              Icons.chevron_right,
-              size: 18,
-              color: FluxColors.mutedOf(context),
-            ),
-          ],
+              const SizedBox(width: 13),
+              Expanded(
+                child: Text(
+                  label,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 20,
+                color: FluxColors.mutedOf(context).withValues(alpha: 0.6),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1151,26 +1199,35 @@ class _DestructiveRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = FluxColors.isDark(context);
     final color = enabled
-        ? (FluxColors.isDark(context)
-              ? const Color(0xFFFF6B6B)
-              : const Color(0xFFD32F2F))
+        ? (isDark ? const Color(0xFFFF6B6B) : const Color(0xFFD32F2F))
         : FluxColors.mutedOf(context);
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: enabled ? onTap : null,
+        borderRadius: BorderRadius.circular(16),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
           child: Row(
             children: [
-              FluxIcon(icon: icon, size: 18, color: color),
-              const SizedBox(width: 12),
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: isDark ? 0.12 : 0.08),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                alignment: Alignment.center,
+                child: FluxIcon(icon: icon, size: 17, color: color),
+              ),
+              const SizedBox(width: 13),
               Expanded(
                 child: Text(
                   label,
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w500,
                     color: color,
                   ),

@@ -471,37 +471,22 @@ class PromptIntentPolicy {
     PromptIntent.creative => 512,
   };
 
-  /// Whether a turn should run the model-driven web-search decision pass.
+  /// Whether a turn should run the smart on-device model-driven web-search decision pass.
   ///
-  /// The deterministic policy already searches for explicit, freshness,
-  /// news, recipe, and interrogative prompts. The model decision pass only
-  /// adds value for imperative prompts that could still benefit from fresh
-  /// data (comparisons, analyses, general how-tos). For intents whose answers
-  /// are self-contained creative or knowledge work, the pass is pure overhead:
-  /// one full prefill plus a short generation before the real answer, which
-  /// dominates first-token latency on slow devices.
-  static bool needsSearchDecision(PromptAnalysis analysis) =>
-      switch (analysis.intent) {
-        PromptIntent.greeting ||
-        PromptIntent.writing ||
-        PromptIntent.coding ||
-        PromptIntent.creative ||
-        PromptIntent.translation ||
-        PromptIntent.highStakes => false,
-        // Hardware guidance deliberately asks for the exact model instead of
-        // guessing device-specific details, so fresh web data adds no value.
-        PromptIntent.howTo => !analysis.hardwareGuidance,
-        _ => true,
-      };
+  /// Self-contained tasks (greetings, translations, recipes, creative writing, pure coding,
+  /// standard questions) skip the decision pass completely for instant TTFT (<150ms).
+  /// Advanced, research-heavy, or deeply analytical prompts allow the model to actively
+  /// reason whether background browser search is needed.
+  static bool needsSearchDecision(PromptAnalysis analysis) => analysis.advanced;
 
   /// A standard tool contract for the model-driven browser search tool call.
   static String searchDecisionDirectiveFor(PromptLanguage language) =>
       '# Tools\n\n'
-      'You have access to the following tool:\n\n'
+      'You have access to an ultra-lightweight background browser tool:\n\n'
       '<tools>\n'
-      '{"type": "function", "function": {"name": "browser_search", "description": "Search the browser for up-to-date web information, real-time news, websites, and current facts.", "parameters": {"type": "object", "properties": {"query": {"type": "string", "description": "The search query to look up in the browser"}}, "required": ["query"]}}}\n'
+      '{"type": "function", "function": {"name": "browser_search", "description": "Search the browser for up-to-date web info, real-time facts, current news, live scores, or external websites.", "parameters": {"type": "object", "properties": {"query": {"type": "string", "description": "The search query"}}, "required": ["query"]}}}\n'
       '</tools>\n\n'
-      'If the latest request needs current, real-time, or verifiable information from the browser, output a tool call formatted as:\n'
+      'If the user request requires current, real-time, or external facts from the browser, output a tool call formatted as:\n'
       '<tool_call>\n'
       '{"name": "browser_search", "arguments": {"query": "<search query>"}}\n'
       '</tool_call>\n'
@@ -509,12 +494,12 @@ class PromptIntentPolicy {
 
   static const IntentSamplerProfile searchDecisionSampler =
       IntentSamplerProfile(
-        temperature: .05,
-        topK: 4,
-        topP: .50,
-        minP: .02,
+        temperature: .0,
+        topK: 1,
+        topP: .10,
+        minP: .05,
         repeatPenalty: 1.0,
-        penaltyLastN: 64,
+        penaltyLastN: 32,
       );
 
   static IntentSamplerProfile sampler(PromptIntent intent) => switch (intent) {

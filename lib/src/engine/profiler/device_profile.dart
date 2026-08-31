@@ -173,28 +173,8 @@ class DeviceProfiler {
   }
 
   static InferencePlan plan(DeviceProfile profile) {
-    final ram = profile.totalRamBytes ?? 4 * 1000 * 1000 * 1000;
-    final ramGb = ram / 1000000000;
     final processor = profile.processor;
 
-    // A single Qwen 3.5 2B model replaces the old tiered catalog. Compact KV
-    // keeps longer contexts affordable: entry-class devices stay at 2K/4K so
-    // the KV cache never competes with the model for RAM, while balanced and
-    // flagship devices with enough headroom run an 8K context so long answers
-    // and grounded web excerpts do not overflow the window mid-generation.
-    final context = switch (processor) {
-      ProcessorClass.entry => ramGb >= 5.5 ? 4096 : 2048,
-      ProcessorClass.balanced => ramGb >= 7.0 ? 8192 : 4096,
-      ProcessorClass.flagship => ramGb >= 7.0 ? 8192 : 4096,
-    };
-
-    // Measured on SM7325 (4x A78 + 4x A55, Qwen 3.5 2B, full CPU): decode
-    // is bandwidth-bound and scales to 4 threads (52 ms/token @ 4 threads) —
-    // extra decode threads only add contention, so decode stays pinned to
-    // the fastest cluster. Batch (prefill) and lookahead batches are
-    // compute-bound, so they use all cores: the native AAR affinity patch
-    // spills threadpools with more threads than the fast cluster onto the
-    // small cores (8 threads on 4xA78 + 4xA55 ≈ 1.35x prefill throughput).
     final constrained =
         profile.lowMemory ||
         (profile.availableRamBytes != null &&
@@ -202,6 +182,20 @@ class DeviceProfiler {
         (profile.totalRamBytes != null &&
             profile.totalRamBytes! <= 3000 * 1000 * 1000);
 
+    // TurboQuant compact KV cache quantization (Q4_0 / IQ4_NL + FlashAttention)
+    // shrinks KV memory by ~75%, allowing substantial context windows across
+    // all hardware tiers without memory pressure or out-of-memory risks.
+    final context = constrained
+        ? 2048
+        : switch (processor) {
+            ProcessorClass.entry => 2048,
+            ProcessorClass.balanced => 4096,
+            ProcessorClass.flagship => 4096,
+          };
+
+    // Measured on SM7325 (4x A78 + 4x A55, full CPU): decode is
+    // bandwidth-bound and scales to 4 threads on the fast cluster.
+    // Batch (prefill) is compute-bound, scaling across all cores (6-8 threads).
     final decodeCeiling = constrained ? 2 : 4;
     final batchCeiling = constrained ? 4 : math.max(4, profile.cores);
     const threadOverride = int.fromEnvironment(
@@ -264,23 +258,13 @@ class DeviceProfiler {
       microBatchSize: effectiveMicroBatch,
       compactKv: effectiveCompactKv,
       tokenPaintIntervalMs: switch (processor) {
-        ProcessorClass.entry => 80,
-        ProcessorClass.balanced => 50,
-        ProcessorClass.flagship => 34,
+        ProcessorClass.entry => 32,
+        ProcessorClass.balanced => 16,
+        ProcessorClass.flagship => 16,
       },
-      sessionCacheEntries: switch (processor) {
-        ProcessorClass.entry => 1,
-        ProcessorClass.balanced => 2,
-        ProcessorClass.flagship => 3,
-      },
+      sessionCacheEntries: 1,
       flashAttention: effectiveFlash,
-      lookaheadWindow:
-          overrides.lookaheadWindow ??
-          switch (processor) {
-            ProcessorClass.entry => 2,
-            ProcessorClass.balanced => 3,
-            ProcessorClass.flagship => 4,
-          },
+      lookaheadWindow: overrides.lookaheadWindow ?? 0,
     );
   }
 

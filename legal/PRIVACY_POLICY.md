@@ -29,13 +29,7 @@ FinnAI uses network access exclusively for the following specific purposes:
 ### A. Model Downloads
 When you download or update an AI model, the application connects to the configured model repository over HTTPS to fetch licensed `.gguf` model files. The request necessarily exposes ordinary network metadata, such as an IP address, to that host, but it does not include prompts or conversation content. FinnAI itself is proprietary software, not an open-source application.
 
-### B. Advertising & Google UMP Consent
-FinnAI uses Google AdMob to display advertisements when allowed.
-- Google User Messaging Platform (UMP) requests and manages privacy consent in accordance with applicable laws (e.g., GDPR, CCPA).
-- Google Mobile Ads may collect and share IP addresses (which can estimate general location), app interactions such as launches and taps, diagnostic and performance information, and device or account identifiers. Google uses these for advertising, analytics, and fraud prevention according to the user's choices and applicable law.
-- You can change your advertising privacy choices at any time from the app Settings under **Privacy choices**.
-
-### C. Optional In-App AI Response Reporting
+### B. Optional In-App AI Response Reporting
 If you explicitly choose to report an AI response via the in-app "Report" feature:
 - Reports are prepared as emails addressed to `finn_org@proton.me`. Nothing is
   sent until you review the report and press Send in your email app.

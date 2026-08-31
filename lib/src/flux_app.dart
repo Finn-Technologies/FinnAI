@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'app_state_store.dart';
@@ -23,32 +25,29 @@ class _FinnBootstrapState extends State<FinnBootstrap> {
       AppStateStore.instance.initialize(),
       QwenInference.instance.initialize(),
     ]);
-    // Resume any partially-downloaded model right away instead of waiting for
-    // the user to reach the install screen again. A resume failure must never
-    // block the app from reaching the home screen.
-    try {
-      await QwenInference.instance.resumeInterruptedDownloads();
-    } catch (error, stack) {
-      debugPrint('FINN_RESUME failed: $error\n$stack');
-    }
-    // A returning user whose model is missing (for example after upgrading
-    // from the retired tiered catalog) is sent to the blocking upgrade screen
-    // instead of a home screen that cannot answer.
+
     final inference = QwenInference.instance;
     if (inference.isDeviceSupported) {
       _modelInstalled = await inference.isInstalled(inference.selected);
-      // After a software update the cached backend choice is invalidated by
-      // the new app version, so re-measure the fastest CPU/GPU/NPU backend
-      // before the home screen becomes interactive. Fresh onboarding handles
-      // this on its own installation screen.
-      if (_modelInstalled && AppStateStore.instance.onboardingComplete) {
-        try {
-          if (await inference.needsBenchmark()) {
-            await inference.optimizeForDevice();
-          }
-        } catch (error, stack) {
-          debugPrint('FINN_BENCH bootstrap failed: $error\n$stack');
+      // Run model download resumption and background accelerator benchmark
+      // asynchronously in the background so the home screen boots instantly.
+      unawaited(_backgroundWarmup(inference));
+    }
+  }
+
+  Future<void> _backgroundWarmup(QwenInference inference) async {
+    try {
+      await inference.resumeInterruptedDownloads();
+    } catch (error, stack) {
+      debugPrint('FINN_RESUME failed: $error\n$stack');
+    }
+    if (_modelInstalled && AppStateStore.instance.onboardingComplete) {
+      try {
+        if (await inference.needsBenchmark()) {
+          await inference.optimizeForDevice();
         }
+      } catch (error, stack) {
+        debugPrint('FINN_BENCH bootstrap failed: $error\n$stack');
       }
     }
   }

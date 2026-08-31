@@ -23,10 +23,6 @@
 -keepattributes EnclosingMethod
 -keepattributes SourceFile,LineNumberTable
 
-# Google Mobile Ads
--keep class com.google.android.gms.ads.** { *; }
--keep interface com.google.android.gms.ads.** { *; }
-
 # Suppress harmless warnings for optional JDK and Play Core packages
 -dontwarn javax.crypto.**
 -dontwarn java.awt.**

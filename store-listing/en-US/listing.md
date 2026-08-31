@@ -36,10 +36,6 @@ on device after installation.
 AI can make mistakes. Verify important medical, legal, financial, or safety
 information independently.
 
-FinnAI contains advertising. Advertising and consent services may use network
-access according to your privacy choices. Prompts and conversations are not
-sent to advertising services.
-
 ## Category
 
 Productivity

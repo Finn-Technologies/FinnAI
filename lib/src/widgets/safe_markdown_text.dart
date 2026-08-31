@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -5,7 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 ///
 /// Raw HTML, routing/thinking tags, and images are removed. Only explicit
 /// HTTPS Markdown links are interactive; every other link target is stripped.
-class SafeMarkdownText extends StatelessWidget {
+class SafeMarkdownText extends StatefulWidget {
   const SafeMarkdownText({super.key, required this.text});
 
   final String text;
@@ -34,9 +35,33 @@ class SafeMarkdownText extends StatelessWidget {
   }
 
   @override
+  State<SafeMarkdownText> createState() => _SafeMarkdownTextState();
+}
+
+class _SafeMarkdownTextState extends State<SafeMarkdownText> {
+  final List<TapGestureRecognizer> _recognizers = [];
+
+  void _disposeRecognizers() {
+    for (final recognizer in _recognizers) {
+      recognizer.dispose();
+    }
+    _recognizers.clear();
+  }
+
+  @override
+  void dispose() {
+    _disposeRecognizers();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final base = Theme.of(context).textTheme.bodyMedium!.copyWith(height: 1.38);
-    final blocks = sanitize(text).split('\n');
+    _disposeRecognizers();
+    final fallback = const TextStyle(fontSize: 14, height: 1.38);
+    final base = (Theme.of(context).textTheme.bodyMedium ?? fallback).copyWith(
+      height: 1.38,
+    );
+    final blocks = SafeMarkdownText.sanitize(widget.text).split('\n');
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -103,21 +128,21 @@ class SafeMarkdownText extends StatelessWidget {
           r'^\[([^\]]+)\]\((https://[^)]+)\)$',
         ).firstMatch(token)!;
         final uri = Uri.parse(link.group(2)!);
+        final recognizer = TapGestureRecognizer()
+          ..onTap = () => launchUrl(
+            uri,
+            mode: LaunchMode.externalApplication,
+          );
+        _recognizers.add(recognizer);
         spans.add(
-          WidgetSpan(
-            alignment: PlaceholderAlignment.baseline,
-            baseline: TextBaseline.alphabetic,
-            child: InkWell(
-              onTap: () => launchUrl(uri, mode: LaunchMode.externalApplication),
-              child: Text(
-                link.group(1)!,
-                style: base.copyWith(
-                  color: Theme.of(context).colorScheme.primary,
-                  decoration: TextDecoration.underline,
-                  decorationColor: Theme.of(context).colorScheme.primary,
-                ),
-              ),
+          TextSpan(
+            text: link.group(1)!,
+            style: base.copyWith(
+              color: Theme.of(context).colorScheme.primary,
+              decoration: TextDecoration.underline,
+              decorationColor: Theme.of(context).colorScheme.primary,
             ),
+            recognizer: recognizer,
           ),
         );
       } else if (token.startsWith('**')) {

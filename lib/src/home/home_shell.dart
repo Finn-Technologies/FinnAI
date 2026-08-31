@@ -11,14 +11,12 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../ads/banner_ad_widget.dart';
 import '../conversations/conversation_store.dart';
 import '../creations/creations_page.dart';
 import '../generation/chat_generation_controller.dart';
 import '../inference/device_profile.dart';
 import '../inference/qwen_inference.dart';
 import '../inference/residency_policy.dart';
-import '../privacy/ad_consent_service.dart';
 import '../reporting/report_dialog.dart';
 import '../search/search_agent.dart';
 import '../search/web_search_agent.dart';
@@ -30,6 +28,7 @@ import '../theme/flux_theme.dart';
 import '../you/you_page.dart';
 import '../you/you_profile_store.dart';
 import '../widgets/ambient_background.dart';
+import '../widgets/flux_context_menu.dart';
 import '../widgets/flux_controls.dart';
 import '../widgets/safe_markdown_text.dart';
 
@@ -75,7 +74,6 @@ class _HomeShellState extends State<HomeShell>
   Timer? _prewarmTimer;
   bool _sidebar = false;
   bool _sidebarEverOpened = false;
-  bool _sidebarAdVisible = false;
   bool _preparing = false;
   bool _dismissedSearchNotice = false;
   String? _attachedImagePath;
@@ -194,7 +192,6 @@ class _HomeShellState extends State<HomeShell>
     if (widget.initializeServices) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         unawaited(_initializeStores());
-        unawaited(AdConsentService.instance.initializeConsentAndAds());
       });
     }
     // Each fresh home screen shows a different "Try asking" suggestion set so
@@ -709,18 +706,12 @@ class _HomeShellState extends State<HomeShell>
     setState(() {
       _sidebar = open;
       if (open) _sidebarEverOpened = true;
-      if (!open) _sidebarAdVisible = false;
     });
     final reduced = MediaQuery.disableAnimationsOf(context);
     if (reduced) {
       _sidebarController.value = open ? 1 : 0;
-      if (open && mounted) setState(() => _sidebarAdVisible = true);
     } else if (open) {
-      _sidebarController.forward().whenComplete(() {
-        if (mounted && _sidebar && _sidebarController.value == 1) {
-          setState(() => _sidebarAdVisible = true);
-        }
-      });
+      _sidebarController.forward();
     } else {
       _sidebarController.reverse();
     }
@@ -730,7 +721,6 @@ class _HomeShellState extends State<HomeShell>
     if (!_sidebar) return;
     setState(() {
       _sidebar = false;
-      _sidebarAdVisible = false;
     });
     if (MediaQuery.disableAnimationsOf(context)) {
       _sidebarController.value = 0;
@@ -942,7 +932,6 @@ class _HomeShellState extends State<HomeShell>
                       onYou: _openYou,
                       onSkills: _openSkills,
                       onSettings: _openSettings,
-                      showAd: _sidebarAdVisible && !_generation.busy,
                     ),
                   );
             return AnimatedBuilder(
@@ -1155,17 +1144,13 @@ class _ConversationEmpty extends StatelessWidget {
                         label: Text(suggestion),
                         onPressed: () => onSuggestion(suggestion),
                         backgroundColor: FluxColors.cardOf(context).withValues(
-                          alpha: FluxColors.isDark(context) ? .5 : .62,
+                          alpha: FluxColors.isDark(context) ? .65 : .75,
                         ),
-                        side: BorderSide(
-                          color: FluxColors.lineOf(context).withValues(
-                            alpha: FluxColors.isDark(context) ? .45 : .8,
-                          ),
-                        ),
+                        side: BorderSide.none,
                         labelStyle: Theme.of(context).textTheme.labelMedium,
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 6,
+                          horizontal: 10,
+                          vertical: 7,
                         ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(999),
@@ -1498,6 +1483,12 @@ class _Bubble extends StatelessWidget {
           color: user ? FluxColors.inkOf(context) : null,
         );
         final hasImage = imagePath != null && imagePath!.isNotEmpty;
+        bool imageExists = false;
+        try {
+          imageExists = hasImage && File(imagePath!).existsSync();
+        } catch (_) {
+          imageExists = false;
+        }
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
@@ -1507,7 +1498,7 @@ class _Bubble extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 6),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: File(imagePath!).existsSync()
+                  child: imageExists
                       ? Image.file(
                           File(imagePath!),
                           width: 200,
@@ -1643,13 +1634,12 @@ class _MessageBubble extends StatefulWidget {
 }
 
 class _MessageBubbleState extends State<_MessageBubble> {
-  bool _actionsVisible = false;
+  final GlobalKey _bubbleKey = GlobalKey();
   bool _selecting = false;
 
   Future<void> _copy() async {
     await Clipboard.setData(ClipboardData(text: widget.text));
     if (!mounted) return;
-    setState(() => _actionsVisible = false);
     ScaffoldMessenger.of(context)
       ..clearSnackBars()
       ..showSnackBar(
@@ -1660,10 +1650,17 @@ class _MessageBubbleState extends State<_MessageBubble> {
       );
   }
 
-  @override
-  Widget build(BuildContext context) {
+  void _openContextMenu() {
+    if (_selecting) return;
     final isDark = FluxColors.isDark(context);
-    final bubble = Container(
+    final borderRadius = BorderRadius.only(
+      topLeft: const Radius.circular(19),
+      topRight: const Radius.circular(19),
+      bottomLeft: Radius.circular(widget.user ? 19 : 5),
+      bottomRight: Radius.circular(widget.user ? 5 : 19),
+    );
+
+    final preview = Container(
       constraints: BoxConstraints(
         maxWidth: math.min(MediaQuery.sizeOf(context).width * .82, 620),
       ),
@@ -1672,12 +1669,78 @@ class _MessageBubbleState extends State<_MessageBubble> {
         color: widget.user
             ? (isDark ? const Color(0xFF2C2C2E) : const Color(0xFFE9E9EB))
             : FluxColors.cardOf(context),
-        borderRadius: BorderRadius.only(
-          topLeft: const Radius.circular(19),
-          topRight: const Radius.circular(19),
-          bottomLeft: Radius.circular(widget.user ? 19 : 5),
-          bottomRight: Radius.circular(widget.user ? 5 : 19),
+        borderRadius: borderRadius,
+        border: widget.user
+            ? null
+            : Border.all(
+                color: FluxColors.lineOf(context).withValues(alpha: 0.06),
+              ),
+      ),
+      child: widget.childBuilder(false),
+    );
+
+    final items = <FluxContextMenuItem>[
+      if (widget.onEdit != null)
+        FluxContextMenuItem(
+          icon: FluxIcons.edit,
+          label: 'Edit',
+          onTap: () => widget.onEdit?.call(),
         ),
+      FluxContextMenuItem(
+        icon: FluxIcons.copy,
+        label: 'Copy',
+        onTap: _copy,
+      ),
+      FluxContextMenuItem(
+        icon: FluxIcons.canvas,
+        label: 'Select Text',
+        onTap: () => setState(() => _selecting = true),
+      ),
+      if (!widget.user)
+        FluxContextMenuItem(
+          icon: FluxIcons.flag,
+          label: 'Report',
+          onTap: () {
+            ReportDialog.show(
+              context,
+              assistantResponse: widget.text,
+              userPrompt: null,
+              modelTier: widget.modelTier,
+            );
+          },
+        ),
+    ];
+
+    showFluxContextMenu(
+      context: context,
+      targetKey: _bubbleKey,
+      previewWidget: preview,
+      items: items,
+      targetBorderRadius: borderRadius,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = FluxColors.isDark(context);
+    final borderRadius = BorderRadius.only(
+      topLeft: const Radius.circular(19),
+      topRight: const Radius.circular(19),
+      bottomLeft: Radius.circular(widget.user ? 19 : 5),
+      bottomRight: Radius.circular(widget.user ? 5 : 19),
+    );
+
+    final bubble = Container(
+      key: _bubbleKey,
+      constraints: BoxConstraints(
+        maxWidth: math.min(MediaQuery.sizeOf(context).width * .82, 620),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: widget.user
+            ? (isDark ? const Color(0xFF2C2C2E) : const Color(0xFFE9E9EB))
+            : FluxColors.cardOf(context),
+        borderRadius: borderRadius,
         boxShadow: widget.user
             ? null
             : [
@@ -1695,161 +1758,22 @@ class _MessageBubbleState extends State<_MessageBubble> {
       ),
       child: widget.childBuilder(_selecting),
     );
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: widget.user
-          ? CrossAxisAlignment.end
-          : CrossAxisAlignment.start,
-      children: [
-        GestureDetector(
-          onLongPress: _selecting
-              ? null
-              : () => setState(() => _actionsVisible = !_actionsVisible),
-          child: Semantics(
-            button: !_selecting,
-            hint: _selecting ? null : 'Press and hold for message actions',
-            child: bubble,
-          ),
-        ),
-        AnimatedSwitcher(
-          duration: MediaQuery.disableAnimationsOf(context)
-              ? Duration.zero
-              : const Duration(milliseconds: 220),
-          switchInCurve: Curves.easeOutCubic,
-          switchOutCurve: Curves.easeInCubic,
-          transitionBuilder: (child, animation) => FadeTransition(
-            opacity: animation,
-            child: SizeTransition(
-              sizeFactor: animation,
-              axis: Axis.vertical,
-              alignment: Alignment.topCenter,
-              child: SlideTransition(
-                position: Tween<Offset>(
-                  begin: const Offset(0, -.16),
-                  end: Offset.zero,
-                ).animate(animation),
-                child: child,
-              ),
-            ),
-          ),
-          child: !_actionsVisible
-              ? const SizedBox(key: ValueKey('message-actions-hidden'))
-              : Padding(
-                  key: const ValueKey('message-actions-visible'),
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Material(
-                    color: FluxColors.surfaceOf(context),
-                    borderRadius: BorderRadius.circular(18),
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        maxWidth: math.min(
-                          178,
-                          MediaQuery.sizeOf(context).width - 64,
-                        ),
-                      ),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(
-                            color: FluxColors.lineOf(
-                              context,
-                            ).withValues(alpha: 0.08),
-                          ),
-                        ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (widget.onEdit != null) ...[
-                              _InlineMessageAction(
-                                icon: FluxIcons.edit,
-                                label: 'Edit',
-                                onTap: () {
-                                  setState(() => _actionsVisible = false);
-                                  widget.onEdit?.call();
-                                },
-                              ),
-                              Divider(
-                                height: 1,
-                                color: FluxColors.lineOf(context),
-                              ),
-                            ],
-                            _InlineMessageAction(
-                              icon: FluxIcons.copy,
-                              label: 'Copy',
-                              onTap: _copy,
-                            ),
-                            Divider(
-                              height: 1,
-                              color: FluxColors.lineOf(context),
-                            ),
-                            _InlineMessageAction(
-                              icon: FluxIcons.edit,
-                              label: 'Select',
-                              onTap: () => setState(() {
-                                _selecting = true;
-                                _actionsVisible = false;
-                              }),
-                            ),
-                            Divider(
-                              height: 1,
-                              color: FluxColors.lineOf(context),
-                            ),
-                            _InlineMessageAction(
-                              icon: FluxIcons.flag,
-                              label: 'Report',
-                              onTap: () {
-                                setState(() => _actionsVisible = false);
-                                ReportDialog.show(
-                                  context,
-                                  assistantResponse: widget.text,
-                                  userPrompt: null,
-                                  modelTier: widget.modelTier,
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-        ),
-      ],
+
+    return Semantics(
+      button: !_selecting,
+      hint: _selecting ? null : 'Press and hold for message actions',
+      child: FluxSpringPressable(
+        enabled: !_selecting,
+        onLongPress: _openContextMenu,
+        child: bubble,
+      ),
     );
   }
 }
 
-class _InlineMessageAction extends StatelessWidget {
-  const _InlineMessageAction({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  final List<List<dynamic>> icon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => InkWell(
-    onTap: onTap,
-    borderRadius: BorderRadius.circular(17),
-    child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-      child: Row(
-        children: [
-          FluxIcon(icon: icon, size: 18),
-          const SizedBox(width: 11),
-          Text(label, style: Theme.of(context).textTheme.labelLarge),
-        ],
-      ),
-    ),
-  );
-}
-
 /// The live AI response while it is being generated: the streaming text (if
 /// any) followed by a softly blinking caret. Replaces the old "Finn is
-/// typing…" bar and its stop affordance with a caret-only treatment.
+/// typing…" bar and its stop affordance with an animated caret and smooth streaming.
 class _StreamingReply extends StatefulWidget {
   const _StreamingReply({required this.text});
 
@@ -1861,61 +1785,71 @@ class _StreamingReply extends StatefulWidget {
 
 class _StreamingReplyState extends State<_StreamingReply>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _caret = AnimationController(
+  late final AnimationController _pulse = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 530),
+    duration: const Duration(milliseconds: 1400),
   );
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (MediaQuery.disableAnimationsOf(context)) {
-      _caret.stop();
-      _caret.value = 1;
-    } else if (!_caret.isAnimating) {
-      _caret.repeat(reverse: true);
-    }
+  void initState() {
+    super.initState();
+    _pulse.repeat(reverse: true);
   }
 
   @override
   void dispose() {
-    _caret.dispose();
+    _pulse.dispose();
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context) => Semantics(
-    liveRegion: true,
-    label: widget.text.isEmpty ? 'Finn is generating…' : null,
-    child: Text.rich(
-      TextSpan(
-        children: [
-          if (widget.text.isNotEmpty) TextSpan(text: widget.text),
-          WidgetSpan(
-            alignment: PlaceholderAlignment.baseline,
-            baseline: TextBaseline.alphabetic,
-            child: ExcludeSemantics(
-              child: AnimatedBuilder(
-                animation: _caret,
-                builder: (context, _) => Opacity(
-                  opacity: .3 + .7 * _caret.value,
-                  child: Container(
-                    width: 2.2,
-                    height: 18,
-                    decoration: BoxDecoration(
-                      color: FluxColors.inkOf(context),
-                      borderRadius: BorderRadius.circular(1.1),
+  Widget build(BuildContext context) {
+    final fullText = widget.text;
+
+    if (fullText.isEmpty) {
+      return Semantics(
+        liveRegion: true,
+        label: 'Finn is generating…',
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedBuilder(
+                animation: _pulse,
+                builder: (context, _) => Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: FluxColors.inkOf(context).withValues(
+                      alpha: .3 + .5 * _pulse.value,
                     ),
+                    shape: BoxShape.circle,
                   ),
                 ),
               ),
-            ),
+              const SizedBox(width: 8),
+              Text(
+                'Finn is generating…',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: FluxColors.mutedOf(context),
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
+      );
+    }
+
+    return Semantics(
+      liveRegion: true,
+      child: Text(
+        fullText,
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.38),
       ),
-      style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.38),
-    ),
-  );
+    );
+  }
 }
 
 @visibleForTesting
@@ -2193,9 +2127,12 @@ class _SourceListState extends State<_SourceList>
 
   Future<void> _open(BuildContext context, WebSource source) async {
     final uri = source.url;
-    if (uri.scheme == 'http' || uri.scheme == 'https') {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
+    if (uri.scheme != 'http' && uri.scheme != 'https') return;
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    } catch (_) {}
   }
 
   @override
@@ -2809,15 +2746,6 @@ class _ChatComposerState extends State<ChatComposer> {
           border: FluxColors.isDark(context)
               ? Border.all(color: const Color(0x28FFFFFF))
               : Border.all(color: FluxColors.line),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(
-                alpha: FluxColors.isDark(context) ? 0.35 : 0.08,
-              ),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-            ),
-          ],
         ),
         width: widget.width,
         constraints: const BoxConstraints(minHeight: 42, maxHeight: 220),
@@ -2987,7 +2915,13 @@ class _ChatComposerState extends State<ChatComposer> {
     final fileName = path.split(Platform.pathSeparator).last;
     final isImg = _isImage(path);
 
-    if (isImg && file.existsSync()) {
+    bool fileExists = false;
+    try {
+      fileExists = file.existsSync();
+    } catch (_) {
+      fileExists = false;
+    }
+    if (isImg && fileExists) {
       return Stack(
         clipBehavior: Clip.none,
         children: [
@@ -3154,7 +3088,6 @@ class _Sidebar extends StatefulWidget {
     required this.onYou,
     required this.onSkills,
     required this.onSettings,
-    required this.showAd,
   });
 
   final VoidCallback onClose;
@@ -3166,7 +3099,6 @@ class _Sidebar extends StatefulWidget {
   final VoidCallback onYou;
   final VoidCallback onSkills;
   final VoidCallback onSettings;
-  final bool showAd;
 
   @override
   State<_Sidebar> createState() => _SidebarState();
@@ -3236,7 +3168,7 @@ class _SidebarState extends State<_Sidebar> {
                         left: 20,
                         right: 20,
                         top: historyTopAtRest,
-                        bottom: (widget.showAd ? 74 : 30) + safeBottom,
+                        bottom: 30 + safeBottom,
                       ),
                       sliver: widget.conversations.isEmpty
                           ? SliverToBoxAdapter(
@@ -3499,16 +3431,6 @@ class _SidebarState extends State<_Sidebar> {
                   ),
                 ),
               ),
-              Positioned(
-                left: 20,
-                right: 20,
-                bottom: safeBottom + 8,
-                child: BannerAdWidget(
-                  key: const Key('sidebar-ad'),
-                  enabled: widget.showAd,
-                  margin: EdgeInsets.zero,
-                ),
-              ),
             ],
           );
         },
@@ -3577,55 +3499,48 @@ class _SidebarConversationTile extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  void _showChatPopupMenu(BuildContext context) {
-    final renderBox = context.findRenderObject() as RenderBox?;
-    if (renderBox == null) return;
-    final overlay =
-        Overlay.of(context).context.findRenderObject() as RenderBox?;
-    if (overlay == null) return;
+  static final Map<String, GlobalKey> _tileKeys = {};
 
-    final position = RelativeRect.fromRect(
-      renderBox.localToGlobal(Offset.zero, ancestor: overlay) & renderBox.size,
-      Offset.zero & overlay.size,
+  GlobalKey _getTileKey() => _tileKeys.putIfAbsent(conversation.id, () => GlobalKey());
+
+  void _showContextMenu(BuildContext context) {
+    final key = _getTileKey();
+
+    final preview = Container(
+      decoration: BoxDecoration(
+        color: FluxColors.surfaceOf(context),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+      child: Text(
+        conversation.title,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(context).textTheme.bodyMedium,
+      ),
     );
 
-    final isDark = FluxColors.isDark(context);
-    showMenu<String>(
+    final items = <FluxContextMenuItem>[
+      FluxContextMenuItem(
+        icon: FluxIcons.edit,
+        label: 'Rename',
+        onTap: () => _showRenameDialog(context),
+      ),
+      FluxContextMenuItem(
+        icon: FluxIcons.close,
+        label: 'Delete',
+        isDestructive: true,
+        onTap: () => _showDeleteConfirmDialog(context),
+      ),
+    ];
+
+    showFluxContextMenu(
       context: context,
-      position: position,
-      elevation: 6,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      color: isDark ? const Color(0xFF27272A) : Colors.white,
-      items: [
-        PopupMenuItem<String>(
-          value: 'rename',
-          child: Row(
-            children: const [
-              Icon(Icons.edit_outlined, size: 20),
-              SizedBox(width: 12),
-              Text('Rename'),
-            ],
-          ),
-        ),
-        PopupMenuItem<String>(
-          value: 'delete',
-          child: Row(
-            children: const [
-              Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
-              SizedBox(width: 12),
-              Text('Delete', style: TextStyle(color: Colors.redAccent)),
-            ],
-          ),
-        ),
-      ],
-    ).then((value) {
-      if (!context.mounted) return;
-      if (value == 'rename') {
-        _showRenameDialog(context);
-      } else if (value == 'delete') {
-        _showDeleteConfirmDialog(context);
-      }
-    });
+      targetKey: key,
+      previewWidget: preview,
+      items: items,
+      targetBorderRadius: BorderRadius.circular(14),
+    );
   }
 
   void _showRenameDialog(BuildContext context) {
@@ -3633,6 +3548,7 @@ class _SidebarConversationTile extends StatelessWidget {
     showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: const Text('Rename chat'),
         content: TextField(
           controller: controller,
@@ -3649,7 +3565,10 @@ class _SidebarConversationTile extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancel'),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: FluxColors.mutedOf(context)),
+            ),
           ),
           TextButton(
             onPressed: () {
@@ -3659,7 +3578,13 @@ class _SidebarConversationTile extends StatelessWidget {
                 controller.text,
               );
             },
-            child: const Text('Save'),
+            child: Text(
+              'Save',
+              style: TextStyle(
+                color: FluxColors.inkOf(context),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),
@@ -3673,6 +3598,7 @@ class _SidebarConversationTile extends StatelessWidget {
     showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: const Text('Delete chat?'),
         content: Text(
           generationActive
@@ -3684,7 +3610,10 @@ class _SidebarConversationTile extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: Text(generationActive ? 'Close' : 'Cancel'),
+            child: Text(
+              generationActive ? 'Close' : 'Cancel',
+              style: TextStyle(color: FluxColors.mutedOf(context)),
+            ),
           ),
           if (!generationActive)
             TextButton(
@@ -3692,9 +3621,14 @@ class _SidebarConversationTile extends StatelessWidget {
                 Navigator.of(dialogContext).pop();
                 ConversationStore.instance.deleteConversation(conversation.id);
               },
-              child: const Text(
+              child: Text(
                 'Delete',
-                style: TextStyle(color: Colors.redAccent),
+                style: TextStyle(
+                  color: FluxColors.isDark(context)
+                      ? const Color(0xFFFF6B6B)
+                      : const Color(0xFFD32F2F),
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
         ],
@@ -3704,23 +3638,24 @@ class _SidebarConversationTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final key = _getTileKey();
     return Padding(
       padding: const EdgeInsets.only(bottom: 7),
-      child: Material(
-        color: selected ? FluxColors.surfaceOf(context) : Colors.transparent,
-        borderRadius: BorderRadius.circular(14),
-        child: InkWell(
-          onTap: onTap,
-          onLongPress: () => _showChatPopupMenu(context),
-          borderRadius: BorderRadius.circular(14),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-            child: Text(
-              conversation.title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
+      child: FluxSpringPressable(
+        onTap: onTap,
+        onLongPress: () => _showContextMenu(context),
+        child: Container(
+          key: key,
+          decoration: BoxDecoration(
+            color: selected ? FluxColors.surfaceOf(context) : Colors.transparent,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+          child: Text(
+            conversation.title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodyMedium,
           ),
         ),
       ),

@@ -15,11 +15,7 @@ void main() {
 
     final plan = DeviceProfiler.plan(profile);
 
-    expect(plan.contextSize, 8192);
-    // Decode is bandwidth-bound and pinned to the 4 fast cores (52 ms/token
-    // on SM7325). Batch/lookahead passes are compute-bound and the native
-    // AAR now spills oversized threadpools onto the small cores, so batch
-    // uses all cores.
+    expect(plan.contextSize, 4096);
     expect(plan.threads, 4);
     expect(plan.batchThreads, 8);
   });
@@ -36,11 +32,11 @@ void main() {
 
     final plan = DeviceProfiler.plan(profile);
 
-    expect(plan.contextSize, 4096);
+    expect(plan.contextSize, 2048);
     expect(plan.threads, 4);
     expect(plan.batchThreads, 8);
     expect(plan.batchSize, 256);
-    expect(plan.tokenPaintIntervalMs, 80);
+    expect(plan.tokenPaintIntervalMs, 32);
   });
 
   test('minimum supported hardware receives the compact runtime', () {
@@ -70,7 +66,7 @@ void main() {
       lowMemory: false,
     );
 
-    expect(DeviceProfiler.plan(profile).contextSize, 8192);
+    expect(DeviceProfiler.plan(profile).contextSize, 4096);
   });
 
   test(
@@ -113,7 +109,7 @@ void main() {
 
       expect(profile.supported, isTrue);
       final plan = DeviceProfiler.plan(profile);
-      expect(plan.contextSize, 8192);
+      expect(plan.contextSize, 4096);
       expect(plan.threads, 4);
       expect(plan.batchThreads, 8);
     },
@@ -133,7 +129,7 @@ void main() {
 
       expect(profile.supported, isTrue);
       final plan = DeviceProfiler.plan(profile);
-      expect(plan.contextSize, 8192);
+      expect(plan.contextSize, 4096);
       expect(plan.threads, 4);
       expect(plan.batchThreads, 8);
     },
@@ -156,7 +152,7 @@ void main() {
         flagshipProfile,
       );
       expect(flagshipConfig.kvType.name, 'q4_0');
-      expect(flagshipConfig.contextSize, 8192);
+      expect(flagshipConfig.contextSize, 4096);
 
       const entryProfile = DeviceProfile(
         totalRamBytes: 2800000000,

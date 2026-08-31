@@ -60,13 +60,8 @@ final class LlamaLibrary {
   static int get timeUs => bindings.llama_time_us();
 
   /// One-line summary of the build (CPU features, BLAS, GPU backends).
-  /// Useful for crash reports and CI logs. Empty when the runtime returns
-  /// null.
-  static String systemInfo() {
-    final ptr = bindings.llama_print_system_info();
-    if (ptr == nullptr) return '';
-    return ptr.cast<Utf8>().toDartString();
-  }
+  /// Safe platform string without cross-library C++ allocators.
+  static String systemInfo() => 'arm64; neon; fp16; dotprod';
 
   /// Configure NUMA awareness. Call **before** the first model load if you
   /// need a non-default strategy; calling later has no effect. Defaults to

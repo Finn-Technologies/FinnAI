@@ -16,7 +16,6 @@ Package Identifier: `com.abhiflex.finnai`
 - **🎨 Creations & Skills**: Generates structured documents, widgets, and app concepts on device. Custom skills and local personalization feed a private system context.
 - **📎 Attachments**: Supports selected image and text/document attachments when the local runtime can process them; unsupported files are rejected.
 - **📊 Time-to-First-Token (TTFT) Telemetry**: Monotonic latency tracking and token generation rate telemetry without leaking prompt contents.
-- **📢 AdMob Privacy & UMP Consent**: Integrated Google User Messaging Platform (UMP) SDK. Banners collapse cleanly to 0 height (`SizedBox.shrink()`) when unconsented or inactive.
 - **🚨 AI Safety & Honest Reporting**: In-app safety report action opening a transparent, user-reviewable email addressed to `finn_org@proton.me`.
 - **🗑️ Complete Data Sovereignty**: Truthful "Delete All Local Data" action with instant cache and encrypted storage purging.
 
@@ -52,7 +51,7 @@ FinnAI/
 │   │   ├── search/            # 🌐 Best-effort optional web grounding
 │   │   └── flux_app.dart      # Application bootstrap
 │   └── main.dart
-├── store-listing/             # Play listing copy and app-ads.txt source
+├── store-listing/             # Play listing copy and store graphics
 ├── test/                      # Unit, widget, and architecture test suite
 ├── tool/                      # Build & verification scripts
 │   ├── verify_release.sh      # Automated release verification

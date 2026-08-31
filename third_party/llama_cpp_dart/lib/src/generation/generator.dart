@@ -1,4 +1,5 @@
 import 'dart:ffi';
+import 'dart:math' as math;
 
 import '../batch/batch.dart';
 import '../context/context.dart';
@@ -58,8 +59,8 @@ final class Generator implements Finalizable {
     final sampler = SamplerFactory.build(request.sampler, model: context.model);
     // Lookahead / Prompt Lookup (self-speculative) decoding verifies n-gram draft tokens in
     // a single batched forward pass. It rolls back rejected drafts in the KV cache
-    // via llama_memory_seq_rm, operating efficiently with zero additional model parameters.
-    final useLookahead = request.lookaheadWindow > 0;
+    // via llama_memory_seq_rm, which requires full KV sequence removal support (context.canShift).
+    final useLookahead = request.lookaheadWindow > 0 && context.canShift;
     // Greedy (filtered-argmax) twin of the request's sampler chain: same
     // logit-bias / penalties / top-k / top-p / min-p stages, but argmax
     // instead of temperature+dist. Drafts are verified against its picks,
@@ -334,28 +335,32 @@ final class Generator implements Finalizable {
 
   ({int nKeep, int nDiscard}) _applyShift(Request request, int pos) {
     final lib = LlamaLibrary.bindings;
-    var nKeep = request.shift.nKeep < 0
-        ? request.startPos + request.promptTokens.length
-        : request.shift.nKeep;
+    var nKeep = request.shift.nKeep;
+    if (nKeep < 0) {
+      // Default: preserve leading system prompt / prefix tokens while leaving
+      // the rest of the KV cache available for sliding window shift.
+      nKeep = math.min(321, context.nCtx ~/ 4);
+    }
     if (request.shift.keepBos) nKeep += 1;
-    final keepCap = context.nCtx - 4;
+    final keepCap = context.nCtx - 64;
     if (nKeep > keepCap) nKeep = keepCap < 0 ? 0 : keepCap;
     if (nKeep < 0) nKeep = 0;
 
-    final nLeft = pos - nKeep;
+    var nLeft = pos - nKeep;
+    if (nLeft <= 0) {
+      // If nKeep was too large to allow any shift, reduce nKeep to half of pos
+      nKeep = pos ~/ 2;
+      nLeft = pos - nKeep;
+    }
     if (nLeft <= 0) {
       throw LlamaDecodeException(
         0,
         'cannot shift: n_left=$nLeft (n_past=$pos, n_keep=$nKeep)',
       );
     }
-    final nDiscard = request.shift.nDiscard ?? (nLeft ~/ 2);
-    if (nDiscard <= 0 || nDiscard > nLeft) {
-      throw LlamaDecodeException(
-        0,
-        'invalid n_discard=$nDiscard (n_left=$nLeft)',
-      );
-    }
+    var nDiscard = request.shift.nDiscard ?? (nLeft ~/ 2);
+    if (nDiscard <= 0) nDiscard = 1;
+    if (nDiscard > nLeft) nDiscard = nLeft;
 
     final mem = lib.llama_get_memory(context.pointer);
     lib.llama_memory_seq_rm(
@@ -387,7 +392,15 @@ final class Generator implements Finalizable {
     var pos = request.startPos;
 
     for (var i = 0; i < prompt.length;) {
-      final end = (i + cap) > prompt.length ? prompt.length : i + cap;
+      final chunkSize = (i + cap) > prompt.length ? prompt.length - i : cap;
+      // If decoding this chunk would exceed the context window, proactively shift KV cache.
+      if (pos + chunkSize >= context.nCtx) {
+        if (request.shiftPolicy == ContextShiftPolicy.auto && context.canShift) {
+          final shifted = _applyShift(request, pos);
+          pos -= shifted.nDiscard;
+        }
+      }
+      final end = i + chunkSize;
       final isFinalChunk = end == prompt.length;
 
       _batch.clear();

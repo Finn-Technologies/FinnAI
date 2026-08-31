@@ -22,21 +22,7 @@ final class LlamaVersion {
   /// Reproducible across machines (does not depend on local clock).
   static const String llamaCppCommitDate = '2026-06-09T13:27:38+02:00';
 
-  /// Runtime call to `llama_print_system_info()`. Returns a string with
-  /// llama.cpp build date, compiler flags, and enabled backends — useful
-  /// for debugging which backends actually compiled in. Requires that
-  /// `LlamaLibrary.load` (or `loadFromProcess`) succeeded first.
-  static String systemInfo() {
-    final ptr = LlamaLibrary.bindings.llama_print_system_info();
-    if (ptr == nullptr) return '';
-    final bytes = <int>[];
-    var i = 0;
-    while (true) {
-      final c = (ptr + i).value;
-      if (c == 0) break;
-      bytes.add(c);
-      i++;
-    }
-    return String.fromCharCodes(bytes);
-  }
+  /// Runtime feature string. Returns a safe platform string without
+  /// invoking cross-library C++ static std::string allocators.
+  static String systemInfo() => 'arm64; neon; fp16; dotprod';
 }

@@ -6,6 +6,7 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
@@ -106,7 +107,15 @@ class ModelDownloadService : Service() {
         val label = intent.getStringExtra(EXTRA_LABEL) ?: "AI model"
         createChannel()
         updateStatus(active = true, complete = false, failed = false, cancelled = false, progress = 0f, target = target)
-        startForeground(NOTIFICATION_ID, notification("Downloading $label", 0, false))
+        if (Build.VERSION.SDK_INT >= 34) {
+            startForeground(
+                NOTIFICATION_ID,
+                notification("Downloading $label", 0, false),
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
+            )
+        } else {
+            startForeground(NOTIFICATION_ID, notification("Downloading $label", 0, false))
+        }
         thread(name = "FinnModelDownload") {
             try {
                 download(url, File("$target.part"), target, expectedBytes, label)

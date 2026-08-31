@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../ads/banner_ad_widget.dart';
 import '../inference/qwen_inference.dart';
 import '../theme/flux_theme.dart';
 import '../widgets/ambient_background.dart';
@@ -190,17 +189,6 @@ class _CreationsPageState extends State<CreationsPage> {
                         ),
                         const SizedBox(height: 14),
                         Expanded(child: _content()),
-                        BannerAdWidget(
-                          key: const Key('creations-idle-ad'),
-                          enabled:
-                              !_controller.loading &&
-                              !_controller.generating &&
-                              _controller.creations.isNotEmpty &&
-                              QwenInference.instance.phase !=
-                                  InferencePhase.generating &&
-                              bottomInset == 0,
-                          margin: const EdgeInsets.only(top: 2, bottom: 4),
-                        ),
                         AnimatedPadding(
                           duration: const Duration(milliseconds: 180),
                           curve: Curves.easeOutCubic,

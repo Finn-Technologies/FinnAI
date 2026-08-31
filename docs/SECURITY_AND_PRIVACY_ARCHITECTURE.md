@@ -15,7 +15,6 @@ FinnAI is designed as an on-device, privacy-first AI assistant. All inference ru
 | Skills | Local App Private Storage (`skills.json`) | Android application sandbox | None |
 | Encryption Master Key | `FlutterSecureStorage` (Android KeyStore / KeyChain) | 256-bit random key in OS-enforced Hardware KeyStore | None |
 | AI Model Weights | Local Cache Directory (`.gguf` files) | SHA-256 integrity verified | Download only from Hugging Face |
-| AdMob Data & Consent | Local Preferences & Google UMP SDK | Google Standard Advertising Privacy | Google AdMob Servers |
 | AI Response Reports | Transient in memory until handed to the user's mail app | User-controlled email (only after review and Send) | `finn_org@proton.me`; retention is governed by the receiving mailbox |
 | Web Search Query | Transient in memory | HTTPS/TLS | Search provider, only for requests locally classified as needing web information |
 
@@ -49,12 +48,3 @@ Saved Envelope: { "version": "2", "algorithm": "AES-256-GCM", "nonce": "...", "c
 - **Clear Chat History**: Purges saved conversations.
 - **Purge AI Memory**: Unloads AI models from RAM without deleting `.gguf` files.
 - **Delete All Local Data**: Attempts purging encrypted conversations, master encryption keys, downloaded `.gguf` model files, partial downloads, creations, profile preferences, Skills, and onboarding state, returning a structured `DeletionResult`.
-
----
-
-## 4. AdMob & Consent Management
-- Built with Google User Messaging Platform (UMP) SDK (`AdConsentService`).
-- Ad requests are blocked until consent status (`canRequestAds`) returns true.
-- Debug builds strictly utilize official Google AdMob test Unit IDs.
-- Production builds use production IDs.
-- Banner ads collapse cleanly to `SizedBox.shrink()` (0 height) when no ad is loaded or when consent is missing.

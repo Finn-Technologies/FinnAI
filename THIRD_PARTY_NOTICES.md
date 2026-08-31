@@ -65,7 +65,6 @@ limitations under the License.
 
 ## 4. Flutter & Dart SDK Packages
 - **Flutter Framework**: BSD 3-Clause License
-- **google_mobile_ads**: Apache 2.0 License
 - **flutter_secure_storage**: BSD 3-Clause License
 - **package_info_plus**: BSD 3-Clause License
 - **path_provider**: BSD 3-Clause License
