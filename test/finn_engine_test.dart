@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:llama_cpp_dart/llama_cpp_dart.dart';
-import 'package:finn_ai/src/engine/finn_accelerator.dart';
+
 import 'package:finn_ai/src/engine/finn_engine.dart';
 
 void main() {
