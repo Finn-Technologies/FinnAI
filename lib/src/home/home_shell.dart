@@ -362,7 +362,7 @@ class _HomeShellState extends State<HomeShell>
         ..clearSnackBars()
         ..showSnackBar(
           const SnackBar(
-            content: Text('Finn AI is finishing another local task.'),
+            content: Text('Finn is finishing another local task.'),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -419,7 +419,7 @@ class _HomeShellState extends State<HomeShell>
             backgroundColor: FluxColors.cardOf(context),
             surfaceTintColor: Colors.transparent,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(26),
+              borderRadius: BorderRadius.circular(FluxRadius.sheet),
             ),
             title: Text(
               'Download the AI model for offline chat?',
@@ -695,7 +695,7 @@ class _HomeShellState extends State<HomeShell>
     await _closeSidebarForNavigation();
     if (!mounted) return;
     Navigator.of(context).push(
-      _FinnSettingsRoute(
+      _FinnPageRoute(
         child: SettingsPage(onBack: () => Navigator.of(context).pop()),
       ),
     );
@@ -801,7 +801,7 @@ class _HomeShellState extends State<HomeShell>
                           ),
                           decoration: BoxDecoration(
                             color: FluxColors.cardOf(context),
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(FluxRadius.sm),
                             border: Border.all(
                               color: FluxColors.lineOf(context),
                             ),
@@ -1008,7 +1008,7 @@ class _HomeHeader extends StatelessWidget {
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
             child: Text(
-              'Finn AI',
+              'FinnAI',
               style: Theme.of(
                 context,
               ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w400),
@@ -1153,7 +1153,7 @@ class _ConversationEmpty extends StatelessWidget {
                           vertical: 7,
                         ),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(999),
+                          borderRadius: BorderRadius.circular(FluxRadius.pill),
                         ),
                       ),
                   ],
@@ -1461,7 +1461,7 @@ class _Bubble extends StatelessWidget {
     required this.text,
     this.imagePath,
     this.user = false,
-    this.modelTier = 'Finn AI',
+    this.modelTier = 'FinnAI',
     this.onEdit,
   });
 
@@ -1497,7 +1497,7 @@ class _Bubble extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(bottom: 6),
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(FluxRadius.sm),
                   child: imageExists
                       ? Image.file(
                           File(imagePath!),
@@ -1667,7 +1667,7 @@ class _MessageBubbleState extends State<_MessageBubble> {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: widget.user
-            ? (isDark ? const Color(0xFF2C2C2E) : const Color(0xFFE9E9EB))
+            ? (isDark ? FluxColors.bubbleUserDark : FluxColors.bubbleUserLight)
             : FluxColors.cardOf(context),
         borderRadius: borderRadius,
         border: widget.user
@@ -1738,7 +1738,7 @@ class _MessageBubbleState extends State<_MessageBubble> {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: widget.user
-            ? (isDark ? const Color(0xFF2C2C2E) : const Color(0xFFE9E9EB))
+            ? (isDark ? FluxColors.bubbleUserDark : FluxColors.bubbleUserLight)
             : FluxColors.cardOf(context),
         borderRadius: borderRadius,
         boxShadow: widget.user
@@ -1898,7 +1898,7 @@ class _CompleteReply extends StatelessWidget {
   const _CompleteReply({
     required this.text,
     this.userPrompt,
-    this.modelTier = 'Finn AI',
+    this.modelTier = 'FinnAI',
     this.status = ConversationMessageStatus.complete,
     this.showActions = true,
     this.onContinue,
@@ -2045,7 +2045,7 @@ class _ReplyActionButton extends StatelessWidget {
       message: tooltip,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(FluxRadius.sm),
         child: Padding(
           padding: const EdgeInsets.all(7),
           child: FluxIcon(
@@ -2153,7 +2153,7 @@ class _SourceListState extends State<_SourceList>
           label: _expanded ? 'Hide sources' : 'Show sources',
           child: InkWell(
             onTap: _toggle,
-            borderRadius: BorderRadius.circular(999),
+            borderRadius: BorderRadius.circular(FluxRadius.pill),
             child: Padding(
               padding: const EdgeInsets.fromLTRB(10, 6, 8, 6),
               child: Row(
@@ -2323,25 +2323,7 @@ class _FinnPageRoute<T> extends PageRouteBuilder<T> {
       );
 }
 
-class _FinnSettingsRoute<T> extends PageRouteBuilder<T> {
-  _FinnSettingsRoute({required Widget child})
-    : super(
-        transitionDuration: const Duration(milliseconds: 180),
-        reverseTransitionDuration: const Duration(milliseconds: 180),
-        pageBuilder: (_, _, _) => child,
-        transitionsBuilder: (context, animation, _, page) {
-          if (MediaQuery.disableAnimationsOf(context)) return page;
-          return FadeTransition(
-            opacity: CurvedAnimation(
-              parent: animation,
-              curve: Curves.easeOutCubic,
-              reverseCurve: Curves.easeInCubic,
-            ),
-            child: page,
-          );
-        },
-      );
-}
+
 
 class _ErrorReply extends StatelessWidget {
   const _ErrorReply({super.key, required this.text});
@@ -2378,7 +2360,7 @@ class _EditMessageDialogState extends State<_EditMessageDialog> {
   Widget build(BuildContext context) => AlertDialog(
     backgroundColor: FluxColors.cardOf(context),
     surfaceTintColor: Colors.transparent,
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(FluxRadius.sheet)),
     title: Text(
       'Edit message',
       style: Theme.of(
@@ -2450,11 +2432,10 @@ class _IMessageAttachmentMenuState extends State<_IMessageAttachmentMenu>
   Widget build(BuildContext context) {
     final isDark = FluxColors.isDark(context);
     final monochromeBg = isDark
-        ? const Color(0xFF323236)
-        : const Color(0xFFE5E5EA);
+        ? FluxColors.darkCard : FluxColors.bubbleUserLight;
     final monochromeIcon = isDark
-        ? const Color(0xFFF2F2F7)
-        : const Color(0xFF1C1C1E);
+        ? FluxColors.bubbleAssistantLight
+        : FluxColors.bubbleAssistantDark;
 
     final items = [
       (
@@ -2491,14 +2472,14 @@ class _IMessageAttachmentMenuState extends State<_IMessageAttachmentMenu>
         ),
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(FluxRadius.sheet),
         child: BackdropFilter(
           filter: ui.ImageFilter.blur(sigmaX: 28, sigmaY: 28),
           child: Container(
             width: 220,
             decoration: BoxDecoration(
               color: isDark ? const Color(0xD91E1E22) : const Color(0xEBFFFFFF),
-              borderRadius: BorderRadius.circular(22),
+              borderRadius: BorderRadius.circular(FluxRadius.sheet),
               border: Border.all(
                 color: isDark
                     ? const Color(0x33FFFFFF)
@@ -2567,7 +2548,7 @@ class _IMessageAttachmentMenuState extends State<_IMessageAttachmentMenu>
         color: Colors.transparent,
         child: InkWell(
           onTap: item.onTap,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(FluxRadius.sm),
           splashColor: isDark
               ? const Color(0x28FFFFFF)
               : const Color(0x18000000),
@@ -2601,7 +2582,7 @@ class _IMessageAttachmentMenuState extends State<_IMessageAttachmentMenu>
                       fontSize: 17,
                       fontWeight: FontWeight.w400,
                       letterSpacing: -0.2,
-                      color: isDark ? Colors.white : const Color(0xFF1C1C1E),
+                      color: isDark ? Colors.white : FluxColors.bubbleAssistantDark,
                     ),
                   ),
                 ),
@@ -2808,7 +2789,7 @@ class _ChatComposerState extends State<ChatComposer> {
 
                 Expanded(
                   child: Semantics(
-                    label: 'Message to Finn AI',
+                    label: 'Message to Finn',
                     textField: true,
                     child: TextField(
                       controller: widget.controller,
@@ -2945,7 +2926,7 @@ class _ChatComposerState extends State<ChatComposer> {
               ],
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(FluxRadius.sm),
               child: Image.file(
                 file,
                 width: 54,
@@ -2954,7 +2935,7 @@ class _ChatComposerState extends State<ChatComposer> {
                 errorBuilder: (context, error, stackTrace) => Container(
                   color: isDark
                       ? const Color(0xFF2C2C2E)
-                      : const Color(0xFFE5E5EA),
+                      : FluxColors.bubbleUserLight,
 
                   child: Center(
                     child: Icon(
@@ -3014,7 +2995,7 @@ class _ChatComposerState extends State<ChatComposer> {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFEFEFF4),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(FluxRadius.sm),
         border: Border.all(
           color: isDark ? const Color(0x33FFFFFF) : const Color(0x1F000000),
           width: 0.75,
@@ -3026,7 +3007,7 @@ class _ChatComposerState extends State<ChatComposer> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF3A3A3C) : const Color(0xFFE5E5EA),
+              color: isDark ? const Color(0xFF3A3A3C) : FluxColors.bubbleUserLight,
               borderRadius: BorderRadius.circular(5),
             ),
             child: Text(
@@ -3048,7 +3029,7 @@ class _ChatComposerState extends State<ChatComposer> {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
-                color: isDark ? Colors.white : const Color(0xFF1C1C1E),
+                color: isDark ? Colors.white : FluxColors.bubbleAssistantDark,
               ),
             ),
           ),
@@ -3252,7 +3233,7 @@ class _SidebarState extends State<_Sidebar> {
                 },
               ),
 
-              // 3. Header (Finn AI title + actions) - fades out on scroll up as title replaces it, spring overscroll on pull down
+              // 3. Header (FinnAI title + actions) - fades out on scroll up as title replaces it, spring overscroll on pull down
               Positioned(
                 left: 25,
                 right: 20,
@@ -3289,7 +3270,7 @@ class _SidebarState extends State<_Sidebar> {
                         child: Align(
                           alignment: Alignment.centerLeft,
                           child: Text(
-                            'Finn AI',
+                            'FinnAI',
                             style: Theme.of(context).textTheme.titleLarge
                                 ?.copyWith(fontWeight: FontWeight.w400),
                           ),
@@ -3454,10 +3435,10 @@ class _NavTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Material(
     color: Colors.transparent,
-    borderRadius: BorderRadius.circular(14),
+    borderRadius: BorderRadius.circular(FluxRadius.sm),
     child: InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(FluxRadius.sm),
       child: Container(
         width: size,
         height: size + 20,
@@ -3509,7 +3490,7 @@ class _SidebarConversationTile extends StatelessWidget {
     final preview = Container(
       decoration: BoxDecoration(
         color: FluxColors.surfaceOf(context),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(FluxRadius.sm),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
       child: Text(
@@ -3548,7 +3529,7 @@ class _SidebarConversationTile extends StatelessWidget {
     showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(FluxRadius.sheet)),
         title: const Text('Rename chat'),
         content: TextField(
           controller: controller,
@@ -3598,7 +3579,7 @@ class _SidebarConversationTile extends StatelessWidget {
     showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(FluxRadius.sheet)),
         title: const Text('Delete chat?'),
         content: Text(
           generationActive
@@ -3625,8 +3606,8 @@ class _SidebarConversationTile extends StatelessWidget {
                 'Delete',
                 style: TextStyle(
                   color: FluxColors.isDark(context)
-                      ? const Color(0xFFFF6B6B)
-                      : const Color(0xFFD32F2F),
+                      ? FluxColors.destructiveDark
+                      : FluxColors.destructive,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -3648,7 +3629,7 @@ class _SidebarConversationTile extends StatelessWidget {
           key: key,
           decoration: BoxDecoration(
             color: selected ? FluxColors.surfaceOf(context) : Colors.transparent,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(FluxRadius.sm),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
           child: Text(

@@ -689,7 +689,7 @@ class FinnAccelerator extends ChangeNotifier {
     bool enableSearchDecision = true,
   }) async* {
     if (_replyInFlight) {
-      throw StateError('Finn AI is already generating a response.');
+      throw StateError('Finn is already generating a response.');
     }
     _replyInFlight = true;
     _lastSources = const [];
@@ -725,7 +725,7 @@ class FinnAccelerator extends ChangeNotifier {
     TtftTrace? trace,
   }) async* {
     if (_replyInFlight) {
-      throw StateError('Finn AI is already generating a response.');
+      throw StateError('Finn is already generating a response.');
     }
     _replyInFlight = true;
     final model = QwenModel(
@@ -1528,10 +1528,10 @@ class FinnAccelerator extends ChangeNotifier {
         'FINN_BENCH selected ${best.backend.name} '
         '${best.deviceName} at ${bestTps.toStringAsFixed(2)} tok/s',
       );
-      _setStatus(InferencePhase.idle, 'Finn AI is optimized for this device');
+      _setStatus(InferencePhase.idle, 'FinnAI is optimized for this device');
     } catch (e) {
       debugPrint('FINN_BENCH failed, keeping CPU fallback: $e');
-      _setStatus(InferencePhase.idle, 'Finn AI is optimized for this device');
+      _setStatus(InferencePhase.idle, 'FinnAI is optimized for this device');
     } finally {
       _benchmarkRunning = false;
     }
@@ -1712,7 +1712,7 @@ class FinnAccelerator extends ChangeNotifier {
         target: target,
         partial: partial,
         expectedBytes: model.expectedBytes,
-        label: 'Finn AI model',
+        label: 'FinnAI model',
         sha256Digest: model.sha256Digest,
       );
     }

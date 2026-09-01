@@ -146,7 +146,7 @@ class _ReportDialogState extends State<ReportDialog> {
           ? const Color(0xFF1F1F23)
           : const Color(0xFFF7F8F4),
       surfaceTintColor: Colors.transparent,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(FluxRadius.sheet)),
       title: Row(
         children: [
           Icon(Icons.flag_outlined, color: FluxColors.inkOf(context), size: 24),
@@ -169,14 +169,14 @@ class _ReportDialogState extends State<ReportDialog> {
                   color: isDark
                       ? const Color(0x33F59E0B)
                       : const Color(0x22F59E0B),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(FluxRadius.sm),
                 ),
                 child: Row(
                   children: [
                     const Icon(
                       Icons.info_outline,
                       size: 16,
-                      color: Color(0xFFF59E0B),
+                      color: FluxColors.accentAmber,
                     ),
                     const SizedBox(width: 8),
                     Expanded(
@@ -184,8 +184,8 @@ class _ReportDialogState extends State<ReportDialog> {
                         'The report email address is not configured.',
                         style: textTheme.bodySmall?.copyWith(
                           color: isDark
-                              ? const Color(0xFFFBBF24)
-                              : const Color(0xFFD97706),
+                              ? FluxColors.accentAmberDark
+                              : FluxColors.accentAmberDeep,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -212,7 +212,7 @@ class _ReportDialogState extends State<ReportDialog> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(FluxRadius.sm),
                 border: Border.all(color: FluxColors.lineOf(context)),
               ),
               child: DropdownButtonHideUnderline(
@@ -252,7 +252,7 @@ class _ReportDialogState extends State<ReportDialog> {
                 color: isDark
                     ? const Color(0x33000000)
                     : const Color(0x11000000),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(FluxRadius.sm),
                 border: Border.all(color: FluxColors.lineOf(context)),
               ),
               child: SingleChildScrollView(
@@ -288,7 +288,7 @@ class _ReportDialogState extends State<ReportDialog> {
                   color: FluxColors.mutedOf(context),
                 ),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(FluxRadius.sm),
                   borderSide: BorderSide(color: FluxColors.lineOf(context)),
                 ),
                 contentPadding: const EdgeInsets.all(10),
@@ -300,8 +300,8 @@ class _ReportDialogState extends State<ReportDialog> {
                 _errorMessage!,
                 style: textTheme.bodySmall?.copyWith(
                   color: isDark
-                      ? const Color(0xFFFF6B6B)
-                      : const Color(0xFFD32F2F),
+                      ? FluxColors.destructiveDark
+                      : FluxColors.destructive,
                   fontWeight: FontWeight.w500,
                 ),
               ),

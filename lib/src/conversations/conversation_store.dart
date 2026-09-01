@@ -29,7 +29,7 @@ class ConversationMessage {
     required this.text,
     required this.createdAt,
     this.imagePath,
-    this.modelTier = 'Finn AI',
+    this.modelTier = 'FinnAI',
     this.status = ConversationMessageStatus.complete,
     this.generationId,
     this.finishReason,
@@ -104,7 +104,7 @@ class ConversationMessage {
         text: json['text'] as String,
         createdAt: DateTime.parse(json['createdAt'] as String),
         imagePath: json['imagePath'] as String?,
-        modelTier: (json['modelTier'] as String?) ?? 'Finn AI',
+        modelTier: (json['modelTier'] as String?) ?? 'FinnAI',
         status: ConversationMessageStatus.values.byName(
           (json['status'] as String?) ??
               ConversationMessageStatus.complete.name,
@@ -575,7 +575,7 @@ class ConversationStore extends ChangeNotifier {
     ConversationRole role,
     String text, {
     String? imagePath,
-    String modelTier = 'Finn AI',
+    String modelTier = 'FinnAI',
   }) {
     final conversation = active ?? startNew();
     final now = DateTime.now();
@@ -601,7 +601,7 @@ class ConversationStore extends ChangeNotifier {
   ConversationMessage beginExchange(
     String userText, {
     String? imagePath,
-    String modelTier = 'Finn AI',
+    String modelTier = 'FinnAI',
     String? generationId,
   }) {
     final conversation = active ?? startNew();
@@ -618,7 +618,7 @@ class ConversationStore extends ChangeNotifier {
     String conversationId,
     String userText, {
     String? imagePath,
-    String modelTier = 'Finn AI',
+    String modelTier = 'FinnAI',
     String? generationId,
   }) {
     final conversation = conversationById(conversationId);
@@ -753,7 +753,7 @@ class ConversationStore extends ChangeNotifier {
   ConversationMessage? beginAssistantReply({
     required String conversationId,
     required String generationId,
-    String modelTier = 'Finn AI',
+    String modelTier = 'FinnAI',
   }) {
     final conversation = conversationById(conversationId);
     if (conversation == null || conversation.messages.isEmpty) return null;

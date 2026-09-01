@@ -141,7 +141,7 @@ Future<T?> showFluxContextMenu<T>({
       targetRect: targetRect,
       previewWidget: previewWidget,
       items: items,
-      targetBorderRadius: targetBorderRadius ?? BorderRadius.circular(16),
+      targetBorderRadius: targetBorderRadius ?? BorderRadius.circular(FluxRadius.md),
       isDark: FluxColors.isDark(context),
     ),
   );
@@ -331,7 +331,7 @@ class _FluxContextMenuOverlay extends StatelessWidget {
                 );
               },
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(FluxRadius.card),
                 child: BackdropFilter(
                   filter: ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24),
                   child: Container(
@@ -339,7 +339,7 @@ class _FluxContextMenuOverlay extends StatelessWidget {
                       color: isDark
                           ? const Color(0xEB222226)
                           : const Color(0xF5FFFFFF),
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(FluxRadius.card),
                       border: Border.all(
                         color: isDark
                             ? const Color(0x33FFFFFF)
@@ -403,11 +403,11 @@ class _ContextMenuItemTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textColor = item.isDestructive
-        ? (isDark ? const Color(0xFFFF6B6B) : const Color(0xFFE11D48))
+        ? (FluxColors.destructiveOf(context))
         : (isDark ? Colors.white : const Color(0xFF18181B));
 
     final iconColor = item.isDestructive
-        ? (isDark ? const Color(0xFFFF6B6B) : const Color(0xFFE11D48))
+        ? (FluxColors.destructiveOf(context))
         : (isDark ? const Color(0xFFE4E4E7) : const Color(0xFF27272A));
 
     return Material(
@@ -418,7 +418,7 @@ class _ContextMenuItemTile extends StatelessWidget {
           Navigator.of(context).pop();
           item.onTap();
         },
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(FluxRadius.sm),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
           child: Row(

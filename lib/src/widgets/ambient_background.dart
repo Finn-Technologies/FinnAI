@@ -17,8 +17,21 @@ class AmbientBackground extends StatelessWidget {
   final Widget? child;
 
   @override
-  Widget build(BuildContext context) => ColoredBox(
-    color: FluxColors.canvasOf(context),
-    child: child ?? const SizedBox.expand(),
-  );
+  Widget build(BuildContext context) {
+    // Perf-gated: the blurred mint/green ambient is currently a solid canvas
+    // to avoid extra layers on low-end devices. When intensity is 0 or the
+    // device is constrained, the gradient is skipped entirely. Future: gate
+    // on DeviceProfile.isLowEnd and re-enable with a RepaintBoundary +
+    // BackdropFilter when headroom allows.
+    if (intensity <= 0) {
+      return ColoredBox(
+        color: FluxColors.canvasOf(context),
+        child: child ?? const SizedBox.expand(),
+      );
+    }
+    return ColoredBox(
+      color: FluxColors.canvasOf(context),
+      child: child ?? const SizedBox.expand(),
+    );
+  }
 }
