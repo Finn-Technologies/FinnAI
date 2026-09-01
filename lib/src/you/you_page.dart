@@ -272,7 +272,7 @@ class _IntroCard extends StatelessWidget {
     padding: const EdgeInsets.all(18),
     decoration: BoxDecoration(
       color: FluxColors.cardOf(context),
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(FluxRadius.sheet),
       border: Border.all(color: FluxColors.lineOf(context)),
     ),
     child: Row(
@@ -355,15 +355,15 @@ class _FinnTextField extends StatelessWidget {
       fillColor: FluxColors.cardOf(context),
       contentPadding: const EdgeInsets.all(16),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(FluxRadius.md),
         borderSide: BorderSide(color: FluxColors.lineOf(context)),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(FluxRadius.md),
         borderSide: BorderSide(color: FluxColors.lineOf(context)),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(FluxRadius.md),
         borderSide: BorderSide(color: FluxColors.inkOf(context), width: 1.2),
       ),
     ),

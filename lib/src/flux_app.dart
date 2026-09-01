@@ -63,7 +63,7 @@ class _FinnBootstrapState extends State<FinnBootstrap> {
         );
       }
       return MaterialApp(
-        title: 'Finn AI',
+        title: 'FinnAI',
         debugShowCheckedModeBanner: false,
         theme: FluxTheme.light,
         darkTheme: FluxTheme.dark,
@@ -77,7 +77,7 @@ class _FinnBootstrapState extends State<FinnBootstrap> {
                 builder: (context, _) {
                   final status = QwenInference.instance.status;
                   return Text(
-                    status == 'Ready' ? 'Finn AI' : status,
+                    status == 'Ready' ? 'FinnAI' : status,
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontFamily: 'InstrumentSans',
@@ -111,7 +111,7 @@ class FluxApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Finn AI',
+      title: 'FinnAI',
       debugShowCheckedModeBanner: false,
       theme: FluxTheme.light,
       darkTheme: FluxTheme.dark,
@@ -155,13 +155,13 @@ class _UnsupportedDevicePage extends StatelessWidget {
                 ),
                 const SizedBox(height: 22),
                 Text(
-                  'Finn AI cannot run on this device',
+                  'FinnAI cannot run on this device',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  'Finn AI requires at least 3 GB of RAM and a 64-bit ARM '
+                  'FinnAI requires at least 3 GB of RAM and a 64-bit ARM '
                   'processor to run local models reliably. No model has been '
                   'downloaded.',
                   textAlign: TextAlign.center,

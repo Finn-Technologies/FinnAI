@@ -76,7 +76,7 @@ class _SkillsPageState extends State<SkillsPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(FluxRadius.card)),
         title: const Text('Delete this skill?'),
         content: Text('“${skill.name}” will be removed from this device.'),
         actions: [
@@ -249,7 +249,7 @@ class _SkillsSummary extends StatelessWidget {
     padding: const EdgeInsets.all(18),
     decoration: BoxDecoration(
       color: FluxColors.cardOf(context),
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(FluxRadius.sheet),
       border: Border.all(color: FluxColors.lineOf(context)),
     ),
     child: Row(
@@ -326,11 +326,11 @@ class _SkillCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Material(
     color: FluxColors.cardOf(context),
-    borderRadius: BorderRadius.circular(20),
+    borderRadius: BorderRadius.circular(FluxRadius.card),
     child: Container(
       padding: const EdgeInsets.fromLTRB(15, 15, 10, 15),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(FluxRadius.card),
         border: Border.all(
           color: skill.enabled
               ? FluxColors.inkOf(context).withValues(alpha: .35)
@@ -345,7 +345,7 @@ class _SkillCard extends StatelessWidget {
             height: 38,
             decoration: BoxDecoration(
               color: FluxColors.surfaceOf(context),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(FluxRadius.sm),
             ),
             child: Icon(
               _iconFor(skill.category),
@@ -451,7 +451,7 @@ class _EmptyCustomSkills extends StatelessWidget {
     padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 22),
     decoration: BoxDecoration(
       color: FluxColors.surfaceOf(context).withValues(alpha: .65),
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(FluxRadius.card),
       border: Border.all(color: FluxColors.lineOf(context)),
     ),
     child: Text(
@@ -523,7 +523,7 @@ class _SkillEditorState extends State<_SkillEditor> {
     ),
     decoration: BoxDecoration(
       color: FluxColors.canvasOf(context),
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(FluxRadius.sheet)),
     ),
     child: SingleChildScrollView(
       child: Center(
@@ -641,14 +641,14 @@ class _EditorField extends StatelessWidget {
       fillColor: FluxColors.cardOf(context),
       contentPadding: const EdgeInsets.all(16),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(FluxRadius.md),
         borderSide: BorderSide(color: FluxColors.lineOf(context)),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(FluxRadius.md),
         borderSide: BorderSide(color: FluxColors.inkOf(context)),
       ),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(18)),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(FluxRadius.md)),
     ),
   );
 }

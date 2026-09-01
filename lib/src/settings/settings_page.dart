@@ -11,9 +11,10 @@ import '../flux_app.dart';
 import '../inference/qwen_inference.dart';
 import '../theme/flux_theme.dart';
 import '../widgets/ambient_background.dart';
+import '../widgets/finn_page_header.dart';
 import '../widgets/flux_controls.dart';
 
-/// Full-screen Settings page for Finn AI.
+/// Full-screen Settings page for FinnAI.
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key, required this.onBack});
 
@@ -97,7 +98,7 @@ class _SettingsPageState extends State<SettingsPage>
           content: const Text('AI model memory released.'),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(FluxRadius.sm),
           ),
         ),
       );
@@ -108,7 +109,7 @@ class _SettingsPageState extends State<SettingsPage>
     showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(FluxRadius.sheet)),
         title: const Text('Purge AI Memory?'),
         content: const Text(
           'This will unload the AI model from RAM. It will be reloaded automatically on the next message.',
@@ -130,8 +131,8 @@ class _SettingsPageState extends State<SettingsPage>
               'Purge',
               style: TextStyle(
                 color: FluxColors.isDark(context)
-                    ? const Color(0xFFFF6B6B)
-                    : const Color(0xFFD32F2F),
+                    ? FluxColors.destructiveDark
+                    : FluxColors.destructive,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -145,7 +146,7 @@ class _SettingsPageState extends State<SettingsPage>
     showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(FluxRadius.sheet)),
         title: const Text('Clear All Conversations?'),
         content: const Text(
           'This will permanently delete all chat history. This action cannot be undone.',
@@ -181,7 +182,7 @@ class _SettingsPageState extends State<SettingsPage>
                     content: const Text('All conversations cleared.'),
                     behavior: SnackBarBehavior.floating,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(FluxRadius.sm),
                     ),
                   ),
                 );
@@ -191,8 +192,8 @@ class _SettingsPageState extends State<SettingsPage>
               'Clear All',
               style: TextStyle(
                 color: FluxColors.isDark(context)
-                    ? const Color(0xFFFF6B6B)
-                    : const Color(0xFFD32F2F),
+                    ? FluxColors.destructiveDark
+                    : FluxColors.destructive,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -206,12 +207,12 @@ class _SettingsPageState extends State<SettingsPage>
     showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(FluxRadius.sheet)),
         title: const Text('Delete All Local Data?'),
         content: const Text(
           'This permanently deletes encrypted conversations and keys, '
           'downloaded AI models, creations, profile preferences, skills, and '
-          'onboarding state. Finn AI will return to a clean first run.',
+          'onboarding state. FinnAI will return to a clean first run.',
         ),
         actions: [
           TextButton(
@@ -248,7 +249,7 @@ class _SettingsPageState extends State<SettingsPage>
                       ),
                       behavior: SnackBarBehavior.floating,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(FluxRadius.sm),
                       ),
                     ),
                   );
@@ -266,7 +267,7 @@ class _SettingsPageState extends State<SettingsPage>
                       ),
                       behavior: SnackBarBehavior.floating,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(FluxRadius.sm),
                       ),
                     ),
                   );
@@ -277,8 +278,8 @@ class _SettingsPageState extends State<SettingsPage>
               'Delete Everything',
               style: TextStyle(
                 color: FluxColors.isDark(context)
-                    ? const Color(0xFFFF6B6B)
-                    : const Color(0xFFD32F2F),
+                    ? FluxColors.destructiveDark
+                    : FluxColors.destructive,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -317,10 +318,11 @@ class _SettingsPageState extends State<SettingsPage>
             final double safeBottom = MediaQuery.paddingOf(context).bottom;
 
             const double pageHorizontalInset = 20;
+            final metrics = FinnPageHeaderMetrics.forHeight(constraints.maxHeight);
             const double headerHeight = 34;
-            final double headerTop = 71 * sy;
-            final double initialTitleTop = headerTop + headerHeight + 10 * sy;
-            final double pinnedTitleTop = headerTop;
+            final double headerTop = metrics.headerTop;
+            final double initialTitleTop = metrics.initialTitleTop;
+            final double pinnedTitleTop = metrics.pinnedTitleTop;
             const double titleHeight = 30;
             final double titleTravelDistance = initialTitleTop - pinnedTitleTop;
             final double contentTop = initialTitleTop + titleHeight + 10;
@@ -365,7 +367,7 @@ class _SettingsPageState extends State<SettingsPage>
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const _SectionHeader(label: 'AI MODEL'),
+                                    const _SectionHeader(label: 'AI model'),
                                     const SizedBox(height: 8),
                                     FluxGlass(
                                       radius: 20,
@@ -434,7 +436,7 @@ class _SettingsPageState extends State<SettingsPage>
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     const _SectionHeader(
-                                      label: 'STORAGE & DATA',
+                                      label: 'Storage & data',
                                     ),
                                     const SizedBox(height: 8),
                                     FluxGlass(
@@ -512,7 +514,7 @@ class _SettingsPageState extends State<SettingsPage>
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     const _SectionHeader(
-                                      label: 'PRIVACY & LEGAL',
+                                      label: 'Privacy & legal',
                                     ),
                                     const SizedBox(height: 8),
                                     FluxGlass(
@@ -711,7 +713,7 @@ class _SettingsPageState extends State<SettingsPage>
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const _SectionHeader(label: 'ABOUT'),
+                                    const _SectionHeader(label: 'About'),
                                     const SizedBox(height: 8),
                                     FluxGlass(
                                       radius: 20,
@@ -947,13 +949,13 @@ class _ModelRow extends StatelessWidget {
         : 'Not installed';
 
     final statusColor = downloading
-        ? const Color(0xFF3B82F6)
+        ? FluxColors.accentBlue
         : activeAndInstalled
-        ? (isDark ? const Color(0xFF4ADE80) : const Color(0xFF16A34A))
+        ? (isDark ? FluxColors.accentGreenDark : FluxColors.accentGreen)
         : state.installed
-        ? (isDark ? const Color(0xFF4ADE80) : const Color(0xFF16A34A))
+        ? (isDark ? FluxColors.accentGreenDark : FluxColors.accentGreen)
         : state.resumable
-        ? const Color(0xFFF59E0B)
+        ? FluxColors.accentAmber
         : FluxColors.mutedOf(context);
 
     final transferInfo = [?speedLabel, ?etaLabel].join(' · ');
@@ -969,7 +971,7 @@ class _ModelRow extends StatelessWidget {
               color: FluxColors.inkOf(context).withValues(
                 alpha: isDark ? 0.08 : 0.05,
               ),
-              borderRadius: BorderRadius.circular(11),
+              borderRadius: BorderRadius.circular(FluxRadius.sm),
             ),
             alignment: Alignment.center,
             child: FluxIcon(
@@ -1016,7 +1018,7 @@ class _ModelRow extends StatelessWidget {
                   Text(
                     transferInfo,
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: const Color(0xFF3B82F6),
+                      color: FluxColors.accentBlue,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -1028,7 +1030,7 @@ class _ModelRow extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
               color: statusColor.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(999),
+              borderRadius: BorderRadius.circular(FluxRadius.pill),
             ),
             child: Text(
               statusLabel,
@@ -1091,7 +1093,7 @@ class _InfoRow extends StatelessWidget {
               color: FluxColors.inkOf(context).withValues(
                 alpha: isDark ? 0.08 : 0.05,
               ),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(FluxRadius.sm),
             ),
             alignment: Alignment.center,
             child: FluxIcon(
@@ -1139,7 +1141,7 @@ class _ActionRow extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(FluxRadius.md),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
           child: Row(
@@ -1151,7 +1153,7 @@ class _ActionRow extends StatelessWidget {
                   color: FluxColors.inkOf(context).withValues(
                     alpha: isDark ? 0.08 : 0.05,
                   ),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(FluxRadius.sm),
                 ),
                 alignment: Alignment.center,
                 child: FluxIcon(
@@ -1201,14 +1203,14 @@ class _DestructiveRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = FluxColors.isDark(context);
     final color = enabled
-        ? (isDark ? const Color(0xFFFF6B6B) : const Color(0xFFD32F2F))
+        ? (isDark ? FluxColors.destructiveDark : FluxColors.destructive)
         : FluxColors.mutedOf(context);
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: enabled ? onTap : null,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(FluxRadius.md),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
           child: Row(
@@ -1218,7 +1220,7 @@ class _DestructiveRow extends StatelessWidget {
                 height: 36,
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: isDark ? 0.12 : 0.08),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(FluxRadius.sm),
                 ),
                 alignment: Alignment.center,
                 child: FluxIcon(icon: icon, size: 17, color: color),

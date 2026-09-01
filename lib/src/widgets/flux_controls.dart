@@ -253,10 +253,10 @@ class FluxPillButton extends StatelessWidget {
 
     return Material(
       color: bgColor,
-      borderRadius: BorderRadius.circular(99),
+      borderRadius: BorderRadius.circular(FluxRadius.pill),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(99),
+        borderRadius: BorderRadius.circular(FluxRadius.pill),
         child: SizedBox(
           height: compact ? 30 : 36,
           child: Padding(
@@ -294,7 +294,7 @@ class BackControl extends StatelessWidget {
       label: 'Back',
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(FluxRadius.card),
         child: SizedBox(
           width: 82,
           height: 48,
@@ -334,7 +334,7 @@ class FluxGlass extends StatelessWidget {
   const FluxGlass({
     super.key,
     required this.child,
-    this.radius = 16,
+    this.radius = FluxRadius.md,
     this.color,
     this.borderColor,
   });

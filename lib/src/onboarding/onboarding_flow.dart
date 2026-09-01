@@ -102,7 +102,6 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       data: base.copyWith(
         textTheme: textTheme.copyWith(
           titleMedium: textTheme.titleMedium?.copyWith(fontSize: 20),
-          bodyMedium: textTheme.bodyMedium?.copyWith(fontSize: 16),
           labelLarge: textTheme.labelLarge?.copyWith(fontSize: 16),
           labelMedium: textTheme.labelMedium?.copyWith(fontSize: 14),
         ),
@@ -115,11 +114,11 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             _WelcomePage(onNext: () => _to(1)),
             _DetailPage(
               iconAsset: FigmaAssets.privacy,
-              title: 'Finn AI is Privacy-First',
+              title: 'FinnAI is privacy-first',
               onBack: () => _to(0),
               onNext: () => _to(2),
               child: Text(
-                'Finn AI is designed to respect your privacy.\n\nAI processing and conversation history stay on this device. When a request needs fresh information, Finn AI may send only that request as a web search query and will show the sources it used. Your history and personal profile are never included.\n\nFinn AI is proprietary software and is not open source.',
+                'FinnAI is designed to respect your privacy.\n\nAI processing and conversation history stay on this device. When a request needs fresh information, FinnAI may send only that request as a web search query and will show the sources it used. Your history and personal profile are never included.\n\nFinnAI is proprietary software and is not open source.',
                 style: TextStyle(
                   fontFamily: 'InstrumentSans',
                   fontSize: 16,
@@ -171,7 +170,7 @@ class _WelcomePage extends StatelessWidget {
                 right: 0,
                 child: Center(
                   child: Text(
-                    'Welcome to Finn AI!',
+                    'Welcome to FinnAI!',
                     style: Theme.of(
                       context,
                     ).textTheme.titleMedium?.copyWith(fontSize: 21),
@@ -374,7 +373,7 @@ class _DetailPage extends StatelessWidget {
             bottom: 0,
             child: ClipRRect(
               borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(20),
+                top: Radius.circular(FluxRadius.card),
               ),
               child: ColoredBox(
                 color: FluxColors.cardOf(context),
@@ -918,13 +917,13 @@ class _SoftwareUpgradeScreenState extends State<SoftwareUpgradeScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'FinnAI Software Upgrade',
+                    'FinnAI software upgrade',
                     textAlign: TextAlign.center,
                     style: textTheme.titleLarge,
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Finn AI now runs a newer on-device model. Download it to '
+                    'FinnAI now runs a newer on-device model. Download it to '
                     'continue chatting privately.',
                     textAlign: TextAlign.center,
                     style: textTheme.bodyMedium?.copyWith(
@@ -977,7 +976,7 @@ class _FinishPage extends StatelessWidget {
                 right: 0,
                 child: Center(
                   child: Text(
-                    'Finn AI is ready!',
+                    'FinnAI is ready!',
                     style: Theme.of(
                       context,
                     ).textTheme.titleMedium?.copyWith(fontSize: 21),
@@ -993,7 +992,7 @@ class _FinishPage extends StatelessWidget {
                     const _FloatingArrow(),
                     const SizedBox(height: 12),
                     Text(
-                      "You're all set. Finn AI is ready.",
+                      "You're all set. FinnAI is ready.",
                       style: Theme.of(context).textTheme.labelMedium?.copyWith(
                         color: FluxColors.mutedOf(context),
                         fontSize: 16,

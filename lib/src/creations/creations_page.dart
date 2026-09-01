@@ -90,7 +90,7 @@ class _CreationsPageState extends State<CreationsPage> {
     final stop = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(FluxRadius.sheet)),
         title: const Text('Stop this creation?'),
         content: const Text(
           'The unfinished result will be discarded. Your prompt will stay here.',
@@ -376,10 +376,10 @@ class _CreationCard extends StatelessWidget {
     };
     return Material(
       color: FluxColors.cardOf(context),
-      borderRadius: BorderRadius.circular(22),
+      borderRadius: BorderRadius.circular(FluxRadius.sheet),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(FluxRadius.sheet),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -392,7 +392,7 @@ class _CreationCard extends StatelessWidget {
                     height: 38,
                     decoration: BoxDecoration(
                       color: accent,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(FluxRadius.sm),
                     ),
                     child: Center(
                       child: FluxIcon(
@@ -549,7 +549,7 @@ class _ErrorNotice extends StatelessWidget {
     padding: const EdgeInsets.fromLTRB(14, 11, 8, 11),
     decoration: BoxDecoration(
       color: const Color(0xFFD34B4B).withValues(alpha: .09),
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(FluxRadius.sm),
     ),
     child: Row(
       children: [
@@ -576,7 +576,7 @@ class _KindPicker extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     decoration: BoxDecoration(
       color: FluxColors.canvasOf(context),
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(FluxRadius.sheet)),
     ),
     padding: EdgeInsets.fromLTRB(
       20,
@@ -616,10 +616,10 @@ class _KindPicker extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 9),
             child: Material(
               color: FluxColors.surfaceOf(context),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(FluxRadius.md),
               child: InkWell(
                 onTap: () => Navigator.pop(context, kind),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(FluxRadius.md),
                 child: Padding(
                   padding: const EdgeInsets.all(15),
                   child: Row(
@@ -654,7 +654,7 @@ class _CreationDetail extends StatelessWidget {
     height: MediaQuery.sizeOf(context).height * .88,
     decoration: BoxDecoration(
       color: FluxColors.canvasOf(context),
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(FluxRadius.sheet)),
     ),
     child: Column(
       children: [
@@ -667,7 +667,7 @@ class _CreationDetail extends StatelessWidget {
                 height: 34,
                 decoration: BoxDecoration(
                   color: FluxColors.surfaceOf(context),
-                  borderRadius: BorderRadius.circular(11),
+                  borderRadius: BorderRadius.circular(FluxRadius.sm),
                 ),
                 child: Center(
                   child: FluxIcon(icon: _iconFor(creation.kind), size: 18),
@@ -687,7 +687,7 @@ class _CreationDetail extends StatelessWidget {
                     context: context,
                     builder: (dialogContext) => AlertDialog(
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(FluxRadius.card),
                       ),
                       title: const Text('Delete this creation?'),
                       content: Text(
@@ -747,7 +747,7 @@ class _CreationDetail extends StatelessWidget {
                     padding: const EdgeInsets.all(17),
                     decoration: BoxDecoration(
                       color: FluxColors.cardOf(context),
-                      borderRadius: BorderRadius.circular(18),
+                      borderRadius: BorderRadius.circular(FluxRadius.md),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
