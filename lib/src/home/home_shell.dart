@@ -71,6 +71,8 @@ class _HomeShellState extends State<HomeShell>
       widget.generationController ?? ChatGenerationController.instance;
   late final _webSearch = widget.webSearch ?? WebSearchService();
   Timer? _memoryReleaseTimer;
+  static const MethodChannel _memoryPressureChannel =
+      MethodChannel('finn_ai/memory.pressure');
   Timer? _prewarmTimer;
   bool _sidebar = false;
   bool _sidebarEverOpened = false;
@@ -189,6 +191,22 @@ class _HomeShellState extends State<HomeShell>
     _conversations.addListener(_conversationChanged);
     _chatScrollController.addListener(_onChatScroll);
     WidgetsBinding.instance.addObserver(this);
+    // Cap decoded image bytes retained in the widget image cache.
+    // 20 MiB bounds RSS from chat + composer previews; pressure
+    // and paused paths still clear eagerly.
+    PaintingBinding.instance.imageCache.maximumSizeBytes = 20 << 20;
+    _memoryPressureChannel.setMethodCallHandler((call) async {
+      if (call.method == 'onTrimMemory') {
+        _prewarmTimer?.cancel();
+        _memoryReleaseTimer?.cancel();
+        PaintingBinding.instance.imageCache.clear();
+        PaintingBinding.instance.imageCache.clearLiveImages();
+        if (!_generation.busy) {
+          unawaited(_inference.handleMemoryPressure());
+        }
+      }
+      return null;
+    });
     if (widget.initializeServices) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         unawaited(_initializeStores());
@@ -292,6 +310,7 @@ class _HomeShellState extends State<HomeShell>
     _chatScrollController.removeListener(_onChatScroll);
     _chatScrollController.dispose();
     _chatScrolledAway.dispose();
+    _memoryPressureChannel.setMethodCallHandler(null);
     WidgetsBinding.instance.removeObserver(this);
     _memoryReleaseTimer?.cancel();
     _prewarmTimer?.cancel();
@@ -1503,6 +1522,9 @@ class _Bubble extends StatelessWidget {
                           File(imagePath!),
                           width: 200,
                           height: 140,
+                          cacheWidth: 400,
+                          filterQuality: FilterQuality.low,
+                          gaplessPlayback: true,
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) =>
                               Container(
@@ -2950,6 +2972,9 @@ class _ChatComposerState extends State<ChatComposer> {
                 file,
                 width: 54,
                 height: 54,
+                cacheWidth: 400,
+                filterQuality: FilterQuality.low,
+                gaplessPlayback: true,
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) => Container(
                   color: isDark

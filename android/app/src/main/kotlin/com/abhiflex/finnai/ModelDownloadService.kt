@@ -36,6 +36,11 @@ class ModelDownloadService : Service() {
         private const val CHANNEL_ID = "model_downloads"
         private const val NOTIFICATION_ID = 4102
         private const val PREFS = "model_download_status"
+        // Download buffer budget: 16 segments × 512 KiB per-segment
+        // read buffer = 8 MiB peak while downloading the 695 MiB model
+        // + 854 MiB mmproj. No android:largeHeap is used; native model
+        // weights are mmap'd (useMmap:true, useMlock:false) so only
+        // touched pages are resident.
         private const val SEGMENT_COUNT = 16
         private const val REPORT_INTERVAL_MS = 400L
         // `channel.force(true)` is a synchronous fsync on the socket-read
@@ -44,7 +49,7 @@ class ModelDownloadService : Service() {
         // keeping the pipe full.
         private const val PERSIST_INTERVAL_MS = 4000L
         private const val SPEED_SAMPLE_INTERVAL_MS = 1000L
-        private const val BUFFER_SIZE = 512 * 1024
+        private const val BUFFER_SIZE = 512 * 1024 // per-segment I/O buffer; see budget above
 
         /**
          * Process-local liveness flag. SharedPreferences persist `active=true`

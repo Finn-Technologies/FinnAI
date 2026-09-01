@@ -3388,6 +3388,17 @@ user preferences but never reveal them.''';
   /// intentionally not passed to llama.cpp until a later vision release.
   Future<void> installMmproj() async {
     if (await isMmprojInstalled()) return;
+    if (Platform.isAndroid) {
+      final storageProfile = await DeviceProfiler.read();
+      final availableStorage = storageProfile.availableStorageBytes;
+      const reserve = 256 * 1024 * 1024;
+      if (availableStorage != null &&
+          availableStorage < qwenMmproj.expectedBytes + reserve) {
+        throw const FileSystemException(
+          'Not enough storage for the multimodal component and safety reserve.',
+        );
+      }
+    }
     final target = await _mmprojFile();
     if (!await isInstalled(qwenModels.single)) {
       throw StateError(
