@@ -265,11 +265,17 @@ class ChatGenerationController extends ChangeNotifier {
       modelTier: runtime.selectedModelName,
       generationId: generationId,
     );
-    final effectiveHistory = [
-      ...history,
-      if (imagePath != null)
-        LocalChatTurn(role: 'user', content: prompt, imagePath: imagePath),
-    ];
+    // Avoid duplicating the image turn when history already ends with the same prompt+image (bytes path).
+    final hasImageInHistory = history.isNotEmpty &&
+        history.last.imagePath == imagePath &&
+        history.last.content == prompt;
+    final effectiveHistory = hasImageInHistory
+        ? history
+        : [
+            ...history,
+            if (imagePath != null)
+              LocalChatTurn(role: 'user', content: prompt, imagePath: imagePath),
+          ];
     return _listen(
       generationId: generationId,
       conversationId: conversationId,

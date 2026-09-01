@@ -77,6 +77,7 @@ class _HomeShellState extends State<HomeShell>
   bool _preparing = false;
   bool _dismissedSearchNotice = false;
   String? _attachedImagePath;
+  Uint8List? _attachedImageBytes;
   bool _attachmentMenuOpen = false;
   late bool _storesReady = !widget.initializeServices;
   static int _welcomeSession = 0;
@@ -97,6 +98,7 @@ class _HomeShellState extends State<HomeShell>
   void _removeAttachment() {
     setState(() {
       _attachedImagePath = null;
+      _attachedImageBytes = null;
     });
   }
 
@@ -125,9 +127,29 @@ class _HomeShellState extends State<HomeShell>
         imageQuality: 80,
       );
       if (photo != null && mounted) {
+        final bytes = await photo.readAsBytes();
+        // HEIC check: picker should return JPEG but guard anyway
+        final isHeic = photo.path.toLowerCase().endsWith('.heic') ||
+            photo.path.toLowerCase().endsWith('.heif');
+        if (isHeic) {
+          if (mounted) {
+            ScaffoldMessenger.of(context)
+              ..clearSnackBars()
+              ..showSnackBar(
+                const SnackBar(
+                  content: Text('HEIC images are not supported. Please share as JPEG or PNG.'),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+          }
+          return;
+        }
         setState(() {
           _attachedImagePath = photo.path;
+          _attachedImageBytes = bytes;
         });
+        // Warn if multimodal not loaded
+        _warnIfMultimodalMissing(photo.path);
       }
     } catch (e) {
       debugPrint('Camera capture error: $e');
@@ -145,9 +167,27 @@ class _HomeShellState extends State<HomeShell>
         imageQuality: 80,
       );
       if (image != null && mounted) {
+        final isHeic = image.path.toLowerCase().endsWith('.heic') ||
+            image.path.toLowerCase().endsWith('.heif');
+        if (isHeic) {
+          if (mounted) {
+            ScaffoldMessenger.of(context)
+              ..clearSnackBars()
+              ..showSnackBar(
+                const SnackBar(
+                  content: Text('HEIC images are not supported. Please share as JPEG or PNG.'),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+          }
+          return;
+        }
+        final bytes = await image.readAsBytes();
         setState(() {
           _attachedImagePath = image.path;
+          _attachedImageBytes = bytes;
         });
+        _warnIfMultimodalMissing(image.path);
       }
     } catch (e) {
       debugPrint('Gallery picker error: $e');
@@ -173,9 +213,29 @@ class _HomeShellState extends State<HomeShell>
         allowMultiple: false,
       );
       if (result != null && result.files.single.path != null && mounted) {
+        final path = result.files.single.path!;
+        final isHeic = path.toLowerCase().endsWith('.heic') ||
+            path.toLowerCase().endsWith('.heif');
+        if (isHeic) {
+          if (mounted) {
+            ScaffoldMessenger.of(context)
+              ..clearSnackBars()
+              ..showSnackBar(
+                const SnackBar(
+                  content: Text('HEIC images are not supported. Please share as JPEG or PNG.'),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+          }
+          return;
+        }
         setState(() {
-          _attachedImagePath = result.files.single.path;
+          _attachedImagePath = path;
+          _attachedImageBytes = result.files.single.bytes;
         });
+        if (_isImageAttachmentPath(path)) {
+          _warnIfMultimodalMissing(path);
+        }
       }
     } catch (e) {
       debugPrint('File picker error: $e');
@@ -353,6 +413,31 @@ class _HomeShellState extends State<HomeShell>
     }
   }
 
+  void _warnIfMultimodalMissing(String path) {
+    // Fire-and-forget check: if user attached an image but mmproj is absent,
+    // surface a toast immediately so expectation is set.
+    if (!_isImageAttachmentPath(path)) return;
+    // Best-effort: QwenInference mirrors FinnAccelerator; check via inference
+    // without importing engine internals. Use a microtask to avoid build-time.
+    Future.microtask(() async {
+      try {
+        // FinnAccelerator exposes multimodalLoaded via engine; check via isMmprojInstalled
+        // as a lightweight file probe does not need the engine to be warm.
+        final hasMmproj = await _inference.hasMmprojFile();
+        if (!hasMmproj && mounted) {
+          ScaffoldMessenger.of(context)
+            ..clearSnackBars()
+            ..showSnackBar(
+              const SnackBar(
+                content: Text('Image analysis unavailable: install the image component in Settings.'),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+        }
+      } catch (_) {}
+    });
+  }
+
   Future<void> _send() async {
     final value = _composer.text.trim();
     final attached = _attachedImagePath;
@@ -456,6 +541,7 @@ class _HomeShellState extends State<HomeShell>
           ? 'Please analyze this attached image in detail.'
           : 'Please summarize the attached file and highlight its key points.';
       final conversation = _conversations.active ?? _conversations.startNew();
+      final attachedBytes = _attachedImageBytes;
       final history = [
         for (final message in conversation.messages)
           if (message.text.trim().isNotEmpty)
@@ -465,20 +551,35 @@ class _HomeShellState extends State<HomeShell>
               imagePath: message.imagePath,
             ),
       ];
+      // Append image bytes to the new turn when available (picker bytes skip temp file)
+      final sendHistory = attachedBytes != null && _isImageAttachmentPath(attached ?? '')
+          ? [
+              ...history,
+              LocalChatTurn(
+                role: 'user',
+                content: effectivePrompt,
+                imagePath: attached,
+                imageBytes: attachedBytes,
+              ),
+            ]
+          : history;
 
       _focusNode.unfocus();
       _composer.clear();
       if (mounted) {
         setState(() {
           _attachedImagePath = null;
+          _attachedImageBytes = null;
           _dismissedSearchNotice = false;
         });
       }
+      // Pass imagePath for persistence (store), but also ensure the history
+      // carries bytes when present so the engine can use imageBytes without file I/O.
       await _generation.start(
         conversationId: conversation.id,
         prompt: effectivePrompt,
         imagePath: attached,
-        history: history,
+        history: attachedBytes != null ? sendHistory : history,
         systemContext: systemContext,
         trace: timing,
       );

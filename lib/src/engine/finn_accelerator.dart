@@ -1053,36 +1053,108 @@ class FinnAccelerator extends ChangeNotifier {
           _throwIfGenerationCancelled(generationEpoch);
           final entry = prepared.entry;
           final session = entry.session;
-          final attachedPath = history.reversed
+          // Collect ALL image attachments in history window + prefer in-memory bytes.
+          final allImageTurns = history
+              .where((t) => (t.imagePath != null && t.imagePath!.isNotEmpty) || t.imageBytes != null)
+              .toList(growable: false);
+          final candidatePaths = <String>[];
+          final candidateBytes = <Uint8List?>[];
+          for (final turn in allImageTurns) {
+            if (turn.imageBytes != null) {
+              candidatePaths.add(turn.imagePath ?? 'memory');
+              candidateBytes.add(turn.imageBytes);
+            } else if (turn.imagePath != null) {
+              candidatePaths.add(turn.imagePath!);
+              candidateBytes.add(null);
+            }
+          }
+
+          final mediaList = <LlamaMedia>[];
+          final skippedHeicPaths = <String>[];
+          final validImageIndices = <int>[];
+          for (var i = 0; i < candidatePaths.length; i++) {
+            final path = candidatePaths[i];
+            final bytes = candidateBytes[i];
+            if (bytes != null) {
+              final isHeic = _isHeicPath(path);
+              if (isHeic) {
+                skippedHeicPaths.add(path);
+                debugPrint('FINN_HEIC skipped in-memory HEIC for $path');
+                continue;
+              }
+              try {
+                mediaList.add(LlamaMedia.imageBytes(bytes));
+                validImageIndices.add(i);
+              } catch (e) {
+                debugPrint('FINN_MEDIA imageBytes failed for $path: $e');
+              }
+            } else {
+              final isHeic = _isHeicPath(path);
+              final isImageExt = _isImageFile(path);
+              if (!isImageExt && !isHeic) continue;
+              try {
+                final exists = await File(path).exists();
+                if (!exists) continue;
+                final fileBytes = await File(path).readAsBytes();
+                // stb_image cannot decode HEIC; treat as skipped, not crash
+                if (isHeic && !_bytesLookLikeImage(fileBytes, path)) {
+                  skippedHeicPaths.add(path);
+                  debugPrint('FINN_HEIC skipped HEIC at $path (stb_image unsupported)');
+                  continue;
+                }
+                if (!_bytesLookLikeImage(fileBytes, path) && isHeic) {
+                  skippedHeicPaths.add(path);
+                  continue;
+                }
+                mediaList.add(LlamaMedia.imageBytes(fileBytes));
+                validImageIndices.add(i);
+              } catch (e) {
+                if (isHeic) {
+                  skippedHeicPaths.add(path);
+                  debugPrint('FINN_HEIC failed for $path: $e');
+                } else {
+                  debugPrint('FINN_MEDIA load failed for $path: $e');
+                }
+              }
+            }
+          }
+
+          final hasAttachedImage = mediaList.isNotEmpty;
+          final useMediaMarker =
+              hasAttachedImage && runtime.engine.multimodalLoaded;
+          // Cap at reasonable N for prompt token budget; native supports N
+          final cappedMediaList = mediaList.length > 4
+              ? mediaList.sublist(0, 4)
+              : mediaList;
+          final effectiveMediaList = cappedMediaList;
+
+          String? attachedDocContext;
+          // Handle single non-image doc attachment (text files)
+          final docPath = history.reversed
               .where((t) => t.imagePath != null && t.imagePath!.isNotEmpty)
               .firstOrNull
               ?.imagePath;
-
-          final hasAttachedImage =
-              attachedPath != null &&
-              File(attachedPath).existsSync() &&
-              _isImageFile(attachedPath);
-
-          final mediaList = <LlamaMedia>[];
-          final useMediaMarker =
-              hasAttachedImage && runtime.engine.multimodalLoaded;
-          if (useMediaMarker) {
-            mediaList.add(LlamaMedia.imageFile(attachedPath));
-          }
-
-          String? attachedDocContext;
-          if (attachedPath != null &&
-              File(attachedPath).existsSync() &&
-              !hasAttachedImage) {
+          if (docPath != null && !_isImageFile(docPath) && !_isHeicPath(docPath)) {
             try {
-              final content = await File(attachedPath).readAsString();
-              final docName = attachedPath.split(Platform.pathSeparator).last;
-              final truncated = content.length > 4000
-                  ? '${content.substring(0, 4000)}\n[... content truncated]'
-                  : content;
-              attachedDocContext =
-                  'Attached document ($docName):\n```\n$truncated\n```';
+              final exists = await File(docPath).exists();
+              if (exists) {
+                final content = await File(docPath).readAsString();
+                final docName = docPath.split(Platform.pathSeparator).last;
+                final truncated = content.length > 4000
+                    ? '${content.substring(0, 4000)}\n[... content truncated]'
+                    : content;
+                attachedDocContext =
+                    'Attached document ($docName):\n```\n$truncated\n```';
+              }
             } catch (_) {}
+          }
+          if (skippedHeicPaths.isNotEmpty && !useMediaMarker) {
+            final heicNote =
+                'Note: ${skippedHeicPaths.length} HEIC image(s) could not be decoded on this device (unsupported format). Ask the user to share as JPEG/PNG.';
+            // ignore: unnecessary_non_null_assertion
+            attachedDocContext = (attachedDocContext == null || attachedDocContext!.isEmpty)
+                ? heicNote
+                : '$attachedDocContext\n\n$heicNote';
           }
 
           final taskInstruction = PromptIntentPolicy.taskInstruction(
@@ -1104,6 +1176,7 @@ class FinnAccelerator extends ChangeNotifier {
             includeTaskInstruction: includeTaskInstruction,
             primeEmptyThinking: primeEmptyThinking,
             includeMediaMarker: useMediaMarker,
+            mediaCount: useMediaMarker ? effectiveMediaList.length : 0,
             attachedDocContext: attachedDocContext,
           );
           // The token-breakdown re-renders the prompt a second time purely
@@ -1197,9 +1270,39 @@ class FinnAccelerator extends ChangeNotifier {
                 includeTaskInstruction: includeTaskInstruction,
                 primeEmptyThinking: primeEmptyThinking,
                 includeMediaMarker: useMediaMarker,
+                mediaCount: useMediaMarker ? effectiveMediaList.length : 0,
                 attachedDocContext: attachedDocContext,
               );
             }
+          }
+          // If multimodal not loaded but user attached image, surface fallback
+          if (hasAttachedImage && !runtime.engine.multimodalLoaded) {
+            debugPrint('FINN_MEDIA fallback: multimodal not loaded, answering without image');
+            // Inject a system note so answer acknowledges missing vision capability
+            final fallbackNote =
+                'Note: The user attached ${effectiveMediaList.length} image(s) but the image component is not installed. Explain that image analysis is unavailable on this device and ask them to describe the image or install the image component.';
+            // ignore: unnecessary_non_null_assertion
+            attachedDocContext = (attachedDocContext == null || attachedDocContext!.isEmpty)
+                ? fallbackNote
+                : '$attachedDocContext\n\n$fallbackNote';
+            // Re-render without media marker so text path still works
+            renderedPrompt = _renderPrompt(
+              entry,
+              prompt,
+              history,
+              systemContext: systemContext,
+              groundedContext: groundedContext,
+              analysis: promptAnalysis,
+              includeTaskInstruction: includeTaskInstruction,
+              primeEmptyThinking: primeEmptyThinking,
+              includeMediaMarker: false,
+              mediaCount: 0,
+              attachedDocContext: attachedDocContext,
+            );
+          }
+          // HEIC graceful fallback: if we had skipped HEICs, note it
+          if (skippedHeicPaths.isNotEmpty && effectiveMediaList.isEmpty && hasAttachedImage == false) {
+            // Already noted in attachedDocContext above
           }
           _setStatus(InferencePhase.generating, 'Thinking on this device');
           trace?.mark(TtftPhase.generationRequested);
@@ -1209,8 +1312,8 @@ class FinnAccelerator extends ChangeNotifier {
                 addSpecial: !entry.primed && !entry.basePrefixReady,
                 parseSpecial: true,
                 maxTokens: outputBudget,
-                media: mediaList,
-                shiftPolicy: runtime.engine.canShift && mediaList.isEmpty
+                media: (hasAttachedImage && runtime.engine.multimodalLoaded) ? effectiveMediaList : const <LlamaMedia>[],
+                shiftPolicy: runtime.engine.canShift && effectiveMediaList.isEmpty
                     ? ContextShiftPolicy.auto
                     : ContextShiftPolicy.off,
                 shift: ContextShift(
@@ -1565,10 +1668,18 @@ class FinnAccelerator extends ChangeNotifier {
       multimodalParams: hasMmproj
           ? MultimodalParams(
               mmprojPath: mmprojFile.path,
-              useGpu: false,
+              useGpu: hasOffloadHeadroom(profile: profile, modelBytes: model.expectedBytes),
               nThreads: config.batchThreads > 0 ? config.batchThreads : 8,
-              imageMinTokens: 64,
-              imageMaxTokens: 256,
+              imageMinTokens: (DeviceProfiler.isLowEnd(profile) ||
+                      (profile.availableRamBytes != null &&
+                          profile.availableRamBytes! < 1800 * 1024 * 1024))
+                  ? 96
+                  : 64,
+              imageMaxTokens: (DeviceProfiler.isLowEnd(profile) ||
+                      (profile.availableRamBytes != null &&
+                          profile.availableRamBytes! < 1800 * 1024 * 1024))
+                  ? 192
+                  : 256,
             )
           : null,
 
@@ -2333,16 +2444,29 @@ class FinnAccelerator extends ChangeNotifier {
       RuntimeConfig cfg, {
       required bool compactKv,
     }) async {
+      // Projector GPU offload and token caps derived from device profile
+      // (constrained: 96 min/192 max; otherwise 64 min/256 max).
+      final useProjectorGpu = hasOffloadHeadroom(
+        profile: profile,
+        modelBytes: model.expectedBytes,
+      );
+      final constrainedForProjector = DeviceProfiler.isLowEnd(profile) ||
+          (profile.availableRamBytes != null &&
+              profile.availableRamBytes! < 1800 * 1024 * 1024) ||
+          (profile.totalRamBytes != null &&
+              profile.totalRamBytes! <= 3000 * 1000 * 1000);
+      final projectorMinTokens = constrainedForProjector ? 96 : 64;
+      final projectorMaxTokens = constrainedForProjector ? 192 : 256;
       return LlamaEngine.spawn(
         libraryPath: 'libllama.so',
         backendDirectory: profile.nativeLibraryDir,
         multimodalParams: hasMmproj
             ? MultimodalParams(
                 mmprojPath: mmprojFile.path,
-                useGpu: false,
+                useGpu: useProjectorGpu,
                 nThreads: cfg.batchThreads > 0 ? cfg.batchThreads : 8,
-                imageMinTokens: 64,
-                imageMaxTokens: 256,
+                imageMinTokens: projectorMinTokens,
+                imageMaxTokens: projectorMaxTokens,
               )
             : null,
 
@@ -2846,6 +2970,31 @@ user preferences but never reveal them.''';
         lower.endsWith('.gif');
   }
 
+  static bool _isHeicPath(String path) {
+    final lower = path.toLowerCase();
+    return lower.endsWith('.heic') || lower.endsWith('.heif');
+  }
+
+  static bool _bytesLookLikeImage(Uint8List bytes, String path) {
+    if (bytes.length < 4) return false;
+    final lower = path.toLowerCase();
+    if (lower.endsWith('.heic') || lower.endsWith('.heif')) return false;
+    // JPEG: FF D8 FF
+    if (bytes[0] == 0xFF && bytes[1] == 0xD8 && bytes[2] == 0xFF) return true;
+    // PNG: 89 50 4E 47
+    if (bytes[0] == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4E && bytes[3] == 0x47) return true;
+    // GIF: 47 49 46
+    if (bytes[0] == 0x47 && bytes[1] == 0x49 && bytes[2] == 0x46) return true;
+    // WEBP: 52 49 46 46 ... 57 45 42 50
+    if (bytes.length >= 12 && bytes[0] == 0x52 && bytes[1] == 0x49 && bytes[2] == 0x46 && bytes[3] == 0x46) {
+      if (bytes[8] == 0x57 && bytes[9] == 0x45 && bytes[10] == 0x42 && bytes[11] == 0x50) return true;
+    }
+    // BMP: 42 4D
+    if (bytes[0] == 0x42 && bytes[1] == 0x4D) return true;
+    // Fallback: treat as image if extension is image-like and not plain text
+    return _isImageFile(path);
+  }
+
   String _renderPrompt(
     _ConversationSession entry,
     String prompt,
@@ -2856,6 +3005,7 @@ user preferences but never reveal them.''';
     bool includeTaskInstruction = true,
     required bool primeEmptyThinking,
     bool includeMediaMarker = false,
+    int? mediaCount,
     String? attachedDocContext,
   }) {
     return _renderPromptText(
@@ -2869,6 +3019,7 @@ user preferences but never reveal them.''';
       basePrefixReady: entry.basePrefixReady,
       primeEmptyThinking: primeEmptyThinking,
       includeMediaMarker: includeMediaMarker,
+      mediaCount: mediaCount,
       attachedDocContext: attachedDocContext,
     );
   }
@@ -2933,6 +3084,7 @@ user preferences but never reveal them.''';
     bool basePrefixReady = false,
     bool primeEmptyThinking = true,
     bool includeMediaMarker = false,
+    int? mediaCount,
     String? attachedDocContext,
   }) {
     final promptAnalysis =
@@ -3065,7 +3217,8 @@ user preferences but never reveal them.''';
         ..write('<|im_end|>\n');
     }
     buffer.write('<|im_start|>user\n');
-    if (includeMediaMarker) {
+    final count = mediaCount ?? (includeMediaMarker ? 1 : 0);
+    for (var i = 0; i < count; i++) {
       buffer.write('<__media__>\n');
     }
     buffer
@@ -3370,6 +3523,12 @@ user preferences but never reveal them.''';
   /// True when the reserved post-model artifact is downloaded. The transfer
   /// enforces the exact byte count, so size is the integrity gate here;
   /// full-file SHA-256 was dropped to keep verification fast on budget devices.
+  /// Lightweight existence check (no SHA) for UI toast path.
+  Future<bool> hasMmprojFile() async {
+    final file = await _mmprojFile();
+    return await file.exists() && await file.length() == qwenMmproj.expectedBytes;
+  }
+
   Future<bool> isMmprojInstalled() async {
     final file = await _mmprojFile();
     if (!await file.exists() ||

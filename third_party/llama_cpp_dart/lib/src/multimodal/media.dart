@@ -34,17 +34,26 @@ final class LlamaMedia {
     this.id,
   });
 
-  /// Load image bytes from [path]. Format detected from file contents, not
-  /// the extension.
-  factory LlamaMedia.imageFile(String path) =>
+  /// Load image bytes from [path] asynchronously. Format detected from
+  /// file contents, not the extension.
+  static Future<LlamaMedia> imageFile(String path) async =>
+      LlamaMedia(bytes: await File(path).readAsBytes(), kind: MediaKind.image);
+
+  /// Load image bytes from [path] synchronously. Prefer [imageFile] on the
+  /// UI isolate; this stays for worker-isolate or legacy callers.
+  factory LlamaMedia.imageFileSync(String path) =>
       LlamaMedia(bytes: File(path).readAsBytesSync(), kind: MediaKind.image);
 
   /// Wrap already-read image bytes.
   factory LlamaMedia.imageBytes(Uint8List bytes, {String? id}) =>
       LlamaMedia(bytes: bytes, kind: MediaKind.image, id: id);
 
-  /// Load audio bytes from [path]. Format detected from file contents.
-  factory LlamaMedia.audioFile(String path) =>
+  /// Load audio bytes from [path] asynchronously.
+  static Future<LlamaMedia> audioFile(String path) async =>
+      LlamaMedia(bytes: await File(path).readAsBytes(), kind: MediaKind.audio);
+
+  /// Load audio bytes from [path] synchronously. Prefer [audioFile] on UI.
+  factory LlamaMedia.audioFileSync(String path) =>
       LlamaMedia(bytes: File(path).readAsBytesSync(), kind: MediaKind.audio);
 
   /// Wrap already-read audio bytes.
