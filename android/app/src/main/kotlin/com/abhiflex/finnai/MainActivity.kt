@@ -34,6 +34,21 @@ class MainActivity : FlutterActivity() {
         return args
     }
 
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        // Forward Android trim signals to Dart so the accelerator can
+        // drop inactive sessions/engines and the image cache can clear.
+        // TRIM_MEMORY_RUNNING_* and above all indicate pressure; Dart
+        // decides how much to release based on availableRamBytes.
+        flutterEngine?.let { engine ->
+            try {
+                MethodChannel(engine.dartExecutor.binaryMessenger, "finn_ai/memory.pressure")
+                    .invokeMethod("onTrimMemory", mapOf("level" to level))
+            } catch (_: Exception) {
+            }
+        }
+    }
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         MethodChannel(

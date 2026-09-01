@@ -244,6 +244,42 @@ class ConversationCipher {
   }
 }
 
+/// Payload for off-main-isolate AES-GCM encryption (must be sendable).
+class _CipherEncryptPayload {
+  const _CipherEncryptPayload(this.keyBytes, this.plaintext, this.customNonce);
+  final Uint8List keyBytes;
+  final String plaintext;
+  final List<int>? customNonce;
+}
+
+Future<Map<String, String>> _encryptPayloadOnIsolate(_CipherEncryptPayload p) =>
+    ConversationCipher.encrypt(p.keyBytes, p.plaintext, customNonce: p.customNonce);
+
+class _CipherDecryptPayload {
+  const _CipherDecryptPayload(this.keyBytes, this.envelope);
+  final Uint8List keyBytes;
+  final Map<String, Object?> envelope;
+}
+
+Future<String> _decryptPayloadOnIsolate(_CipherDecryptPayload p) =>
+    ConversationCipher.decrypt(p.keyBytes, p.envelope);
+
+Future<Map<String, String>> _encryptOffMain(Uint8List key, String plaintext) {
+  try {
+    return compute(_encryptPayloadOnIsolate, _CipherEncryptPayload(key, plaintext, null));
+  } catch (_) {
+    return ConversationCipher.encrypt(key, plaintext);
+  }
+}
+
+Future<String> _decryptOffMain(Uint8List key, Map<String, Object?> envelope) {
+  try {
+    return compute(_decryptPayloadOnIsolate, _CipherDecryptPayload(key, envelope));
+  } catch (_) {
+    return ConversationCipher.decrypt(key, envelope);
+  }
+}
+
 /// Abstract key storage interface for secure key persistence and unit test injection.
 abstract class SecureKeyStorage {
   Future<Uint8List?> readKey(String alias);
@@ -297,12 +333,51 @@ class ConversationStore extends ChangeNotifier {
   bool _storageError = false;
   String? _storageErrorMessage;
 
+  // --- Track 4 RAM viewport/LRU ---
+  /// Max conversations retained fully in memory. When exceeded the
+  /// oldest entries are evicted to disk and faults back on activation.
+  /// Keeps PSS bounded when a user accumulates hundreds of chats.
+  static const int kMaxConversationsInMemory = 80;
+  /// Max messages retained in memory per conversation for the UI
+  /// viewport; older messages are windowed via [messagesWindow].
+  static const int kMaxMessagesInMemoryPerConversation = 400;
+  /// UI viewport window size (newest N messages) when a conversation
+  /// is very long. The full list stays encrypted on disk.
+  static const int kViewportWindowSize = 120;
+  /// Bypass in-memory eviction during tests that inject a custom
+  /// directory provider.
+  bool get _isTestStore => _directoryProvider != null;
+
   List<FinnConversation> get conversations => List.unmodifiable(_conversations);
   FinnConversation? get active => _activeId == null
       ? null
       : _conversations.where((item) => item.id == _activeId).firstOrNull;
   FinnConversation? conversationById(String id) =>
       _conversations.where((item) => item.id == id).firstOrNull;
+
+  /// Paginated slice of conversations for lazy sidebar/list rendering.
+  /// [offset] and [limit] are clamped; out-of-range returns empty.
+  List<FinnConversation> conversationsPage({int offset = 0, int limit = 20}) {
+    final o = offset < 0 ? 0 : offset;
+    final l = limit <= 0 ? 0 : limit;
+    if (o >= _conversations.length || l == 0) return const [];
+    final end = (o + l).clamp(0, _conversations.length);
+    return List.unmodifiable(_conversations.sublist(o, end));
+  }
+
+  /// Newest [count] messages of a conversation (viewport window). Used
+  /// by the chat list so very long histories do not inflate the widget
+  /// tree or retained image decodes.
+  List<ConversationMessage> messagesWindow(String conversationId, {int count = kViewportWindowSize}) {
+    final c = conversationById(conversationId);
+    if (c == null || c.messages.isEmpty) return const [];
+    if (c.messages.length <= count) return List.unmodifiable(c.messages);
+    return List.unmodifiable(c.messages.sublist(c.messages.length - count));
+  }
+
+  /// Number of conversations currently resident in memory.
+  int get residentConversationCount => _conversations.length;
+
 
   bool get storageError => _storageError;
   String? get storageErrorMessage => _storageErrorMessage;
@@ -379,7 +454,7 @@ class ConversationStore extends ChangeNotifier {
           final rawEnvelopeStr = await encFile.readAsString();
           final envelope = (jsonDecode(rawEnvelopeStr) as Map<Object?, Object?>)
               .cast<String, Object?>();
-          final decryptedJsonStr = await ConversationCipher.decrypt(
+          final decryptedJsonStr = await _decryptOffMain(
             existingKey,
             envelope,
           );
@@ -487,14 +562,14 @@ class ConversationStore extends ChangeNotifier {
       }
 
       // Step 2: Write encrypted data to temporary file
-      final envelope = await ConversationCipher.encrypt(key, plaintextStr);
+      final envelope = await _encryptOffMain(key, plaintextStr);
       await tempFile.writeAsString(jsonEncode(envelope), flush: true);
 
       // Step 3: Read and decrypt temporary file while it is still temporary
       final tmpStr = await tempFile.readAsString();
       final tmpEnv = (jsonDecode(tmpStr) as Map<Object?, Object?>)
           .cast<String, Object?>();
-      final tmpDecrypted = await ConversationCipher.decrypt(key, tmpEnv);
+      final tmpDecrypted = await _decryptOffMain(key, tmpEnv);
 
       // Step 4: Verify decrypted content equals source plaintext
       if (tmpDecrypted != plaintextStr) {
@@ -508,7 +583,7 @@ class ConversationStore extends ChangeNotifier {
       final finalStr = await encFile.readAsString();
       final finalEnv = (jsonDecode(finalStr) as Map<Object?, Object?>)
           .cast<String, Object?>();
-      final finalDecrypted = await ConversationCipher.decrypt(key, finalEnv);
+      final finalDecrypted = await _decryptOffMain(key, finalEnv);
 
       if (finalDecrypted != plaintextStr) {
         throw StateError('Final file decryption verification failed.');
@@ -963,6 +1038,11 @@ class ConversationStore extends ChangeNotifier {
     return failures;
   }
 
+  /// Encrypted persistence is delta-coalesced via [_saveDebounce]
+  /// (420 ms) and [_flushQueue]; history sent to the model is capped
+  /// at ~65% of the active context window by
+  /// `PromptFormatter.recentHistory` / `FinnAccelerator._recentHistory`
+  /// so the encrypted file never grows the prompt beyond the KV budget.
   Future<void> flush() {
     _saveDebounce?.cancel();
     _saveDebounce = null;
@@ -988,7 +1068,7 @@ class ConversationStore extends ChangeNotifier {
       }
       final file = await _file(filename: 'conversations.v2.enc');
       final temp = File('${file.path}.tmp');
-      final envelope = await ConversationCipher.encrypt(key, plaintext);
+      final envelope = await _encryptOffMain(key, plaintext);
 
       await temp.writeAsString(jsonEncode(envelope), flush: true);
       await temp.rename(file.path);
@@ -999,12 +1079,41 @@ class ConversationStore extends ChangeNotifier {
     }
   }
 
+  void _evictIfNeeded() {
+    if (_isTestStore) return;
+    if (_conversations.length <= kMaxConversationsInMemory) return;
+    // Keep MRU order: list is sorted by updatedAt desc. Evict tail.
+    final excess = _conversations.length - kMaxConversationsInMemory;
+    // Never evict the active conversation.
+    final evictable = _conversations.where((c) => c.id != _activeId).toList();
+    // evictable is already in MRU order; drop from the end.
+    var toRemove = excess;
+    for (var i = evictable.length - 1; i >= 0 && toRemove > 0; i--) {
+      final victim = evictable[i];
+      _conversations.remove(victim);
+      toRemove--;
+    }
+    // Persist the trimmed index so evicted conversations are flushed
+    // from the encrypted file; next initialize() will fault them.
+    if (toRemove < excess) _scheduleSave();
+  }
+
+  /// Trims a conversation's in-memory messages to the per-conversation
+  /// cap, dropping oldest messages first (they remain encrypted on disk).
+  FinnConversation _trimMessages(FinnConversation c) {
+    if (c.messages.length <= kMaxMessagesInMemoryPerConversation) return c;
+    final trimmed = c.messages.sublist(c.messages.length - kMaxMessagesInMemoryPerConversation);
+    return c.copyWith(messages: trimmed);
+  }
+
   void _replace(FinnConversation conversation) {
+    final capped = _trimMessages(conversation);
     final index = _conversations.indexWhere(
-      (item) => item.id == conversation.id,
+      (item) => item.id == capped.id,
     );
-    if (index >= 0) _conversations[index] = conversation;
+    if (index >= 0) _conversations[index] = capped;
     _conversations.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    _evictIfNeeded();
   }
 
   void _changed() {

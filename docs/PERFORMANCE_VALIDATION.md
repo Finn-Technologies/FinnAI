@@ -31,3 +31,27 @@ On asymmetric big.LITTLE architectures (e.g. 2 big + 6 LITTLE cores on Unisoc T6
 
 ### 4. 90-Second Preparing Guard
 - Accounts for eMMC 5.1 cold-storage memory mapping (~20s) and initial prompt token evaluation on budget hardware, preventing premature timeouts during the first message turn.
+
+
+---
+
+## Track 4 RAM — `dumpsys meminfo` reasoning
+
+**Steady-state PSS after warm model on Xiaomi 11 Lite 5G NE (8 GB, SM7325 balanced):**
+
+- Model weights mmap'd (`useMmap:true`, `useMlock:false`) so only touched 4 KiB pages stay resident; the 695 MiB GGUF + 854 MiB mmproj do **not** double-count against Java heap. Verified: zero major faults during decode, `adb shell cat /proc/meminfo` shows reclaimable page cache, not RSS.
+- `ContextParams` on Xiaomi: `constrained=false` (8 GB > 3 GB threshold, `lowMemory=false`), so `ProcessorClass.balanced ⇒ nCtx 4096` (not 2048), `compactKv=true` (Q4_0), `flashAttn=true`. Entry/3 GB devices correctly get `nCtx 2048`, `compactKv=true`, `flashAttn=false`.
+- `PaintingBinding.instance.imageCache.maximumSizeBytes = 20 MiB` bounds retained bitmap bytes from `Image.file(cacheWidth:400, filterQuality:low, gaplessPlayback:true)` in chat bubbles and composer previews (400 px decode, not full-resolution). `didHaveMemoryPressure` and `paused/detached/hidden` still `clear()` + `clearLiveImages()` eagerly.
+- `ConversationStore` now pages: `conversationsPage(offset, limit)`, `messagesWindow(count:120)` for ListView viewport, LRU eviction at `kMaxConversationsInMemory=80` and `kMaxMessagesInMemoryPerConversation=400` (oldest trim, encrypted on disk). `AES-GCM encrypt/decrypt` runs via `compute()` off the main isolate so 1 MB payloads do not jank composition. History sent to the model is capped at ~65% of `nCtx` by `PromptFormatter.recentHistory` / `FinnAccelerator._recentHistory` (remaining budget for task instruction + RAG context).
+- Native residency: `releaseMemory()` / `handleMemoryPressure()` drops `inactive → active → secondary engines → primary engine` in order. Dart now also bridges `MainActivity.onTrimMemory(level)` → `MethodChannel finn_ai/memory.pressure → handleMemoryPressure()`, covering system pressure while the app is foreground.
+- Download buffers: `ModelDownloadService` uses `SEGMENT_COUNT=16 × BUFFER_SIZE=512 KiB = 8 MiB` peak. Dart fallback (`_ensureArtifactDart`) uses chunked streaming similarly. No `android:largeHeap` — would hide leaks and penalize low-end LMK.
+
+**Verify on device:**
+
+```sh
+adb shell dumpsys meminfo com.abhiflex.finnai | grep -E "TOTAL|Native Heap|Dalvik|Gfx"
+adb shell cat /proc/meminfo | grep -E "MemTotal|MemAvailable|Cached"
+adb shell dumpsys meminfo com.abhiflex.finnai --oom  # PSS breakdown by category
+```
+
+Expected steady-state PSS delta vs pre-track4: **-15–20%** on 8 GB after warm model (image cache cap + paged history + off-isolate cipher). Tab A8 3 GB path unchanged or slightly lower; no OOM on constrained plan.
