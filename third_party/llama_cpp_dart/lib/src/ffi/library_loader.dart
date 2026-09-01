@@ -1,5 +1,5 @@
 import 'dart:ffi';
-import 'dart:io' show File, FileSystemException, Platform;
+import 'dart:io' show Directory, File, FileSystemException, Platform;
 
 import 'package:ffi/ffi.dart';
 
@@ -90,50 +90,79 @@ final class LlamaLibrary {
       );
     }
 
-    final DynamicLibrary llama;
-    try {
-      llama = DynamicLibrary.open(path);
-    } on ArgumentError catch (e) {
-      throw LlamaLibraryException('failed to open $path: $e');
+    // Pre-load base dependencies if present (vital on musl-libc/OpenHarmony).
+    for (final base in const [
+      'libggml-base.so',
+      '/data/storage/el1/bundle/libs/arm64/libggml-base.so',
+    ]) {
+      try {
+        DynamicLibrary.open(base);
+        break;
+      } catch (_) {}
+    }
+    for (final ggml in const [
+      'libggml.so',
+      '/data/storage/el1/bundle/libs/arm64/libggml.so',
+    ]) {
+      try {
+        DynamicLibrary.open(ggml);
+        break;
+      } catch (_) {}
+    }
+
+    DynamicLibrary? llama;
+    final candidates = [
+      path,
+      if (!path.contains('/')) ...[
+        '/data/storage/el1/bundle/libs/arm64/$path',
+        '/data/storage/el1/bundle/entry/libs/arm64/$path',
+      ],
+    ];
+    for (final candidate in candidates) {
+      try {
+        llama = DynamicLibrary.open(candidate);
+        break;
+      } on ArgumentError {
+        // try next candidate
+      }
+    }
+    if (llama == null) {
+      try {
+        llama = DynamicLibrary.open(path);
+      } on ArgumentError catch (e) {
+        throw LlamaLibraryException('failed to open $path: $e');
+      }
     }
     _llamaLib = llama;
 
     // Try to open libmtmd alongside libllama. mtmd is optional — engines
     // without multimodal can run without it. Symbols starting with
     // `mtmd_` are routed to this handle when the lookup runs.
-    //
-    // Resolution rules:
-    //   1. If [path] is a basename (no slash), assume the OS will resolve
-    //      libraries by name from the app's lib path (Android jniLibs,
-    //      Linux LD_LIBRARY_PATH). Open libmtmd by basename too.
-    //   2. Otherwise look in the same directory as libllama (or the
-    //      explicit [backendDirectory] override) and open by full path.
     DynamicLibrary? mtmd;
     final dir = backendDirectory ?? _dirOf(path);
     final mtmdName = _mtmdFileName();
     if (mtmdName != null) {
-      if (dir == null) {
-        // Basename mode (typical Android usage).
+      final mtmdCandidates = [
+        if (dir != null) '$dir${Platform.pathSeparator}$mtmdName',
+        mtmdName,
+        '/data/storage/el1/bundle/libs/arm64/$mtmdName',
+        '/data/storage/el1/bundle/entry/libs/arm64/$mtmdName',
+      ];
+      for (final candidate in mtmdCandidates) {
         try {
-          mtmd = DynamicLibrary.open(mtmdName);
+          mtmd = DynamicLibrary.open(candidate);
+          break;
         } on ArgumentError {
-          // mtmd not present in this build; multimodal calls will throw.
-        }
-      } else {
-        final mtmdPath = '$dir${Platform.pathSeparator}$mtmdName';
-        if (File(mtmdPath).existsSync()) {
-          try {
-            mtmd = DynamicLibrary.open(mtmdPath);
-          } on ArgumentError {
-            // Skip silently; mtmd is best-effort.
-          }
+          // Skip silently; mtmd is best-effort.
         }
       }
     }
     _mtmdLib = mtmd;
 
     final bindings = LlamaBindings.fromLookup(_routedLookup);
-    bindings.llama_backend_init();
+    try {
+      bindings.llama_backend_init();
+    } catch (_) {}
 
     // On Android, set ADSP_LIBRARY_PATH so the Hexagon/FastRPC layer can
     // locate `libggml-htp-v*.so` skeleton libs. Must happen before
@@ -147,16 +176,28 @@ final class LlamaLibrary {
       }
     }
 
-    if (dir != null) {
-      final dirPtr = dir.toNativeUtf8(allocator: calloc);
-      try {
-        bindings.ggml_backend_load_all_from_path(dirPtr.cast());
-      } finally {
-        calloc.free(dirPtr);
+    try {
+      if (dir != null) {
+        final dirPtr = dir.toNativeUtf8(allocator: calloc);
+        try {
+          bindings.ggml_backend_load_all_from_path(dirPtr.cast());
+        } finally {
+          calloc.free(dirPtr);
+        }
+      } else {
+        const ohosLibDir = '/data/storage/el1/bundle/libs/arm64';
+        if (Directory(ohosLibDir).existsSync()) {
+          final dirPtr = ohosLibDir.toNativeUtf8(allocator: calloc);
+          try {
+            bindings.ggml_backend_load_all_from_path(dirPtr.cast());
+          } finally {
+            calloc.free(dirPtr);
+          }
+        } else {
+          bindings.ggml_backend_load_all();
+        }
       }
-    } else {
-      bindings.ggml_backend_load_all();
-    }
+    } catch (_) {}
 
     _bindings = bindings;
     _libraryPath = path;

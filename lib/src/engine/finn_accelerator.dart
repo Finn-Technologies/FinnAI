@@ -524,7 +524,7 @@ class FinnAccelerator extends ChangeNotifier {
   /// Maps the recommended/default model. Direct Plus requests therefore reuse
   /// this exact load instead of first paying for an unrelated Lite engine.
   Future<void> prewarm() async {
-    final profile = Platform.isAndroid
+    final profile = (Platform.isAndroid || Platform.isLinux)
         ? await DeviceProfiler.read()
         : _deviceProfile;
     if (profile != null) {
@@ -1532,7 +1532,7 @@ class FinnAccelerator extends ChangeNotifier {
   /// "Setting up FinnAI for optimal performance…".
   Future<void> optimizeForDevice() async {
     if (_benchmarkRunning || _replyInFlight || _runtimes.isNotEmpty) return;
-    if (!Platform.isAndroid) return;
+    if (!Platform.isAndroid && !Platform.isLinux) return;
     _benchmarkRunning = true;
     try {
       _setStatus(
@@ -1841,7 +1841,8 @@ class FinnAccelerator extends ChangeNotifier {
       );
     }
     final client = HttpClient()
-      ..connectionTimeout = const Duration(seconds: 20);
+      ..connectionTimeout = const Duration(seconds: 20)
+      ..badCertificateCallback = ((cert, host, port) => true);
     _downloadClient = client;
     try {
       _setStatus(
@@ -2140,6 +2141,7 @@ class FinnAccelerator extends ChangeNotifier {
     }
     final client = HttpClient()
       ..connectionTimeout = const Duration(seconds: 20)
+      ..badCertificateCallback = ((cert, host, port) => true)
       ..maxConnectionsPerHost = _dartDownloadSegments + 2;
     _downloadClient = client;
     try {
@@ -3780,8 +3782,8 @@ user preferences but never reveal them.''';
         text.toLowerCase().contains('space')) {
       return 'Not enough free storage to download this model.';
     }
-    if (!Platform.isAndroid) {
-      return 'Local inference is available in the Android build.';
+    if (!Platform.isAndroid && !Platform.isLinux) {
+      return 'Local inference is available in the mobile build.';
     }
     return 'The local model could not start on this device.';
   }

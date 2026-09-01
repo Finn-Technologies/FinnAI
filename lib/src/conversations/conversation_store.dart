@@ -313,8 +313,11 @@ class DefaultFlutterSecureKeyStorage implements SecureKeyStorage {
 }
 
 class ConversationStore extends ChangeNotifier {
-  ConversationStore({SecureKeyStorage? keyStorage, this._directoryProvider})
-    : _keyStorage = keyStorage ?? const DefaultFlutterSecureKeyStorage();
+  ConversationStore({
+    SecureKeyStorage? keyStorage,
+    Future<Directory> Function()? directoryProvider,
+  }) : _keyStorage = keyStorage ?? const DefaultFlutterSecureKeyStorage(),
+       _directoryProvider = directoryProvider;
 
   static final instance = ConversationStore();
 

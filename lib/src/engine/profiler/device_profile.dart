@@ -320,6 +320,15 @@ class DeviceProfiler {
       'tensor g3',
       'tensor g4',
       'tensor g5',
+      'kirin 9000',
+      'kirin 9000s',
+      'kirin 9010',
+      'kirin 9000e',
+      'kirin 990',
+      'kirin 985',
+      'kirin 980',
+      'hi3690',
+      'hi36a0',
     ];
     const balanced = <String>[
       'sm7150',
@@ -362,6 +371,12 @@ class DeviceProfiler {
       'exynos 1380',
       'exynos 1480',
       'tensor',
+      'kirin 820',
+      'kirin 810',
+      'kirin 8000',
+      'kirin 9000w',
+      'kirin 9000sl',
+      'kirin',
     ];
     if (flagship.any(value.contains)) return ProcessorClass.flagship;
     if (balanced.any(value.contains)) return ProcessorClass.balanced;
@@ -378,6 +393,8 @@ class DeviceProfiler {
       'sprd',
       'ums',
       'sc9863',
+      'kirin 710',
+      'kirin 659',
       't606',
       't610',
       't612',

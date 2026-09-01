@@ -5,7 +5,7 @@ publish_to: 'none'
 version: 1.0.4+7
 
 environment:
-  sdk: ^3.12.2
+  sdk: ">=3.6.0 <4.0.0"
 
 dependencies:
   flutter:
@@ -13,10 +13,10 @@ dependencies:
 
   flutter_localizations:
     sdk: flutter
-  intl: ^0.20.2
+  intl: ">=0.19.0 <0.21.0"
   cupertino_icons: ^1.0.8
   crypto: ^3.0.7
-  flutter_svg: ^2.2.3
+  flutter_svg: ">=2.0.0 <3.0.0"
   hugeicons: ^1.1.7
   llama_cpp_dart:
     path: third_party/llama_cpp_dart
@@ -26,14 +26,14 @@ dependencies:
   cryptography: ^2.7.0
   url_launcher: ^6.3.1
   http: ^1.2.2
-  image_picker: ^1.2.3
+  image_picker: ^1.1.2
   file_picker: ^11.0.3
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
-  flutter_lints: ^6.0.0
+  flutter_lints: ^5.0.0
   flutter_launcher_icons: ^0.14.3
 
 flutter_launcher_icons:

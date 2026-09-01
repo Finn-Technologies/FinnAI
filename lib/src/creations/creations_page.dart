@@ -281,7 +281,7 @@ class _Filters extends StatelessWidget {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: values.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 7),
+        separatorBuilder: (_, __) => const SizedBox(width: 7),
         itemBuilder: (context, index) {
           final value = values[index];
           final active = selected == value;

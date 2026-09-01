@@ -5,7 +5,6 @@ import 'dart:ui' as ui;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:image_picker/image_picker.dart';
@@ -1458,7 +1457,7 @@ class _ConversationState extends State<_Conversation> {
             0,
             widget.bottomInset + 20,
           ),
-          scrollCacheExtent: const ScrollCacheExtent.pixels(700),
+          cacheExtent: 700.0,
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           physics: const FluxBouncingScrollPhysics(
             parent: AlwaysScrollableScrollPhysics(),
@@ -2425,7 +2424,7 @@ class _FinnPageRoute<T> extends PageRouteBuilder<T> {
     : super(
         transitionDuration: const Duration(milliseconds: 350),
         reverseTransitionDuration: const Duration(milliseconds: 280),
-        pageBuilder: (_, _, _) => child,
+        pageBuilder: (_, __, ___) => child,
         transitionsBuilder: (context, animation, secondaryAnimation, page) {
           if (MediaQuery.disableAnimationsOf(context)) return page;
           final curved = CurvedAnimation(

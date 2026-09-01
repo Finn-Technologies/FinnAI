@@ -102,7 +102,7 @@ class SerializedAsyncGate {
 
   Future<T> run<T>(Future<T> Function() operation) {
     final result = _tail.then((_) => operation());
-    _tail = result.then<void>((_) {}, onError: (_, _) {});
+    _tail = result.then<void>((_) {}, onError: (_, __) {});
     return result;
   }
 }

@@ -24,7 +24,8 @@ class DeletionResult {
 }
 
 class AppStateStore extends ChangeNotifier {
-  AppStateStore({this._directoryProvider});
+  AppStateStore({Future<Directory> Function()? directoryProvider})
+      : _directoryProvider = directoryProvider;
 
   static final instance = AppStateStore();
 

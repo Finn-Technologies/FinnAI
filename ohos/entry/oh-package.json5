@@ -1,0 +1,12 @@
+{
+  "name": "entry",
+  "version": "1.0.4",
+  "description": "Finn AI OpenHarmony Entry Module",
+  "main": "",
+  "author": "abhiflex",
+  "license": "Apache-2.0",
+  "modelVersion": "5.0.0",
+  "dependencies": {
+    "@ohos/flutter_ohos": "har/flutter.har"
+  }
+}

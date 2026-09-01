@@ -1,0 +1,16 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "Finn AI Module"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "Finn AI Main Application"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "Finn AI"
+    }
+  ]
+}

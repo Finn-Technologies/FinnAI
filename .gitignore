@@ -60,3 +60,18 @@ test/failures/
 # Agent tooling state (never committed)
 .commandcode/
 .freebuff/
+.flutter-plugins
+
+# OpenHarmony build outputs & caches
+ohos/.hvigor/
+ohos/oh_modules/
+ohos/build/
+ohos/entry/build/
+ohos/entry/.preview/
+ohos/entry/oh_modules/
+ohos/local.properties
+ohos/entry/src/main/resources/rawfile/flutter_assets/
+*.hap
+*.hsp
+*.har
+

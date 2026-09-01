@@ -1,0 +1,13 @@
+# Hvigor build outputs and cache
+.preview
+.hvigor
+build
+dist
+entry/build
+entry/.preview
+node_modules
+oh_modules
+local.properties
+*.hap
+*.hsp
+*.har

@@ -172,7 +172,7 @@ abstract final class FluxTheme {
     splashFactory: InkRipple.splashFactory,
     textTheme: _textTheme(FluxColors.ink),
     pageTransitionsTheme: const PageTransitionsTheme(
-      builders: {TargetPlatform.android: FadeForwardsPageTransitionsBuilder()},
+      builders: {TargetPlatform.android: ZoomPageTransitionsBuilder()},
     ),
   );
 
@@ -189,7 +189,7 @@ abstract final class FluxTheme {
     splashFactory: InkRipple.splashFactory,
     textTheme: _textTheme(FluxColors.darkInk),
     pageTransitionsTheme: const PageTransitionsTheme(
-      builders: {TargetPlatform.android: FadeForwardsPageTransitionsBuilder()},
+      builders: {TargetPlatform.android: ZoomPageTransitionsBuilder()},
     ),
   );
 }

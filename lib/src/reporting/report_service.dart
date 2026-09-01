@@ -99,10 +99,11 @@ class ReportService {
     String? endpoint,
     String? reportEmail,
     http.Client? client,
-    this._isReleaseModeOverride,
+    bool? isReleaseModeOverride,
   }) : _customEndpoint = endpoint,
        _customReportEmail = reportEmail,
-       _client = client ?? http.Client();
+       _client = client ?? http.Client(),
+       _isReleaseModeOverride = isReleaseModeOverride;
 
   static final ReportService instance = ReportService();
   final String? _customEndpoint;

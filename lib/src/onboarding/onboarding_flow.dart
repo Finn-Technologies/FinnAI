@@ -68,7 +68,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   PageRouteBuilder<void> _blurRoute(Widget child) => PageRouteBuilder(
     transitionDuration: const Duration(milliseconds: 350),
     reverseTransitionDuration: const Duration(milliseconds: 280),
-    pageBuilder: (_, animation, _) => child,
+    pageBuilder: (_, animation, __) => child,
     transitionsBuilder: (context, animation, _, page) {
       if (MediaQuery.disableAnimationsOf(context)) return page;
       final curved = CurvedAnimation(
@@ -495,6 +495,7 @@ class _AutomaticModelPageState extends State<_AutomaticModelPage> {
   }
 
   Future<void> start() async {
+    debugPrint('FINN_START_CALLED: started=$_started, ready=$_ready');
     if (_started || _ready) return;
     setState(() {
       _started = true;
@@ -503,12 +504,14 @@ class _AutomaticModelPageState extends State<_AutomaticModelPage> {
     });
     _inference.useAutomaticSelection();
     final models = _inference.requiredModels;
+    debugPrint('FINN_START_MODELS: ${models.length}');
     try {
       for (var index = 0; index < models.length; index++) {
         if (mounted) {
           setState(() => _progress = index / models.length);
         }
         final model = models[index];
+        debugPrint('FINN_INSTALLING_MODEL: ${model.name} (${model.downloadUrl})');
         // Calling install even for an existing language model also completes
         // the post-model mmproj download after an upgrade or interrupted
         // first run.
@@ -530,7 +533,8 @@ class _AutomaticModelPageState extends State<_AutomaticModelPage> {
         _progress = 1;
         _ready = true;
       });
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('FINN_START_ERROR: $e\n$st');
       if (!mounted) return;
       setState(() {
         _started = false;
@@ -889,7 +893,7 @@ class _SoftwareUpgradeScreenState extends State<SoftwareUpgradeScreen> {
           PageRouteBuilder<void>(
             transitionDuration: const Duration(milliseconds: 350),
             reverseTransitionDuration: const Duration(milliseconds: 280),
-            pageBuilder: (_, animation, _) => const HomeShell(),
+            pageBuilder: (_, animation, __) => const HomeShell(),
             transitionsBuilder: (context, animation, _, page) =>
                 FadeTransition(opacity: animation, child: page),
           ),

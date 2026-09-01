@@ -959,7 +959,10 @@ class _ModelRow extends StatelessWidget {
         ? FluxColors.accentAmber
         : FluxColors.mutedOf(context);
 
-    final transferInfo = [?speedLabel, ?etaLabel].join(' · ');
+    final transferInfo = [
+      if (speedLabel != null) speedLabel,
+      if (etaLabel != null) etaLabel,
+    ].join(' · ');
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
