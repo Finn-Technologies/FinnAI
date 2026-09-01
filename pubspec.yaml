@@ -11,6 +11,9 @@ dependencies:
   flutter:
     sdk: flutter
 
+  flutter_localizations:
+    sdk: flutter
+  intl: ^0.20.2
   cupertino_icons: ^1.0.8
   crypto: ^3.0.7
   flutter_svg: ^2.2.3
@@ -40,6 +43,7 @@ flutter_launcher_icons:
   adaptive_icon_foreground: "assets/icon/app_icon.png"
 
 flutter:
+  generate: true
   uses-material-design: true
 
   fonts:

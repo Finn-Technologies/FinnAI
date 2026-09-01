@@ -4,6 +4,7 @@ import '../theme/flux_theme.dart';
 import '../widgets/ambient_background.dart';
 import '../widgets/finn_page_header.dart';
 import '../widgets/flux_controls.dart';
+import '../../l10n/l10n_helper.dart';
 import 'you_profile_store.dart';
 
 class YouPage extends StatefulWidget {
@@ -77,7 +78,7 @@ class _YouPageState extends State<YouPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          saved ? 'Personalization saved locally.' : 'Could not save changes.',
+          saved ? L10n.of(context).youSaved : L10n.of(context).youSaveFailed,
         ),
         behavior: SnackBarBehavior.floating,
       ),
@@ -128,12 +129,12 @@ class _YouPageState extends State<YouPage> {
                                   children: [
                                     _IntroCard(
                                       icon: FluxIcons.you,
-                                      title: 'Make Finn feel like yours',
+                                      title: L10n.of(context).youIntroTitle,
                                       body:
-                                          'Your preferences stay on this device and shape future replies.',
+                                          L10n.of(context).youIntroBody,
                                     ),
                                     const SizedBox(height: 22),
-                                    const _SectionLabel('About you'),
+                                    _SectionLabel(L10n.of(context).youAboutYou),
                                     const SizedBox(height: 9),
                                     _FinnTextField(
                                       key: const Key('you-name-field'),

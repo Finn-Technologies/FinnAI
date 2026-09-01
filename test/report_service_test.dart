@@ -167,7 +167,7 @@ void main() {
         await service.submitReport(routedPayload);
 
         expect(transmittedModelTier, 'Qwen 3.5 2B');
-        expect(transmittedModelTier, isNot(equals('Finn AI')));
+        expect(transmittedModelTier, isNot(equals('FinnAI')));
       },
     );
   });

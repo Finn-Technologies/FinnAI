@@ -4,7 +4,7 @@
 // flush + reload). They do NOT invoke QwenInference.generateReply or any
 // real on-device model. They verify that:
 //   1. updateMessage() stamps the caller-supplied modelTier on the assistant
-//      message and that value is distinct from the default 'Finn AI'.
+//      message and that value is distinct from the default 'FinnAI'.
 //   2. The stamped modelTier survives flush() → cold reload from the encrypted
 //      store.
 //   3. The reloaded modelTier (the value that ReportDialog receives) equals the
@@ -61,7 +61,7 @@ void main() {
         final assistant = store.beginExchange('Explain quantum entanglement');
 
         // The assistant placeholder starts with the default modelTier.
-        expect(assistant.modelTier, 'Finn AI');
+        expect(assistant.modelTier, 'FinnAI');
 
         // After inference resolves, the controller stamps the generating model.
         const routedModelTier = 'Qwen 3.5 2B';
@@ -81,7 +81,7 @@ void main() {
           reason:
               'assistant message must carry the generating model, not Finn AI',
         );
-        expect(stored.modelTier, isNot(equals('Finn AI')));
+        expect(stored.modelTier, isNot(equals('FinnAI')));
 
         // Reload from disk — confirm the tier survives serialisation.
         final store2 = ConversationStore(
@@ -100,7 +100,7 @@ void main() {
         // Simulate the report dialog receiving the message's modelTier.
         final reportModelTier = reloaded.modelTier;
         expect(reportModelTier, 'Qwen 3.5 2B');
-        expect(reportModelTier, isNot(equals('Finn AI')));
+        expect(reportModelTier, isNot(equals('FinnAI')));
       },
     );
 
@@ -163,7 +163,7 @@ void main() {
           reason:
               'ReportDialog must receive the generating model stored with the message',
         );
-        expect(dialogModelTier, isNot(equals('Finn AI')));
+        expect(dialogModelTier, isNot(equals('FinnAI')));
       },
     );
   });

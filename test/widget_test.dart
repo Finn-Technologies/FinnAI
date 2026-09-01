@@ -68,7 +68,7 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 220));
     await tester.pump(const Duration(milliseconds: 800));
-    expect(find.text('Finn AI'), findsWidgets);
+    expect(find.text('FinnAI'), findsWidgets);
   });
 
   testWidgets('home and sidebar stay overflow-free', (tester) async {
@@ -81,7 +81,7 @@ void main() {
       MaterialApp(theme: FluxTheme.light, home: const HomeShell()),
     );
     await tester.pump(const Duration(milliseconds: 100));
-    expect(find.text('Finn AI'), findsWidgets);
+    expect(find.text('FinnAI'), findsWidgets);
     expect(tester.takeException(), isNull);
 
     await tester.tap(find.byTooltip('Open menu'));
@@ -565,7 +565,7 @@ void main() {
       await tester.tap(find.byTooltip('Open menu'), warnIfMissed: false);
       await tester.pump(const Duration(milliseconds: 400));
 
-      final initialHeaderY = tester.getTopLeft(find.text('Finn AI').last).dy;
+      final initialHeaderY = tester.getTopLeft(find.text('FinnAI').last).dy;
       final initialTitleY = tester.getTopLeft(find.text('Chat History')).dy;
 
       final scrollableState = tester.state<ScrollableState>(

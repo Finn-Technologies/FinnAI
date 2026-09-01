@@ -31,6 +31,7 @@ import '../widgets/ambient_background.dart';
 import '../widgets/flux_context_menu.dart';
 import '../widgets/flux_controls.dart';
 import '../widgets/safe_markdown_text.dart';
+import '../../l10n/l10n_helper.dart';
 
 bool _isImageAttachmentPath(String path) {
   final extension = path.split('.').last.toLowerCase();
@@ -465,8 +466,8 @@ class _HomeShellState extends State<HomeShell>
       ScaffoldMessenger.of(context)
         ..clearSnackBars()
         ..showSnackBar(
-          const SnackBar(
-            content: Text('Finn is finishing another local task.'),
+          SnackBar(
+            content: Text(L10n.of(context).chatFinishingTask),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -539,11 +540,11 @@ class _HomeShellState extends State<HomeShell>
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('Not now'),
+                child: Text(L10n.of(context).commonNotNow),
               ),
               FilledButton(
                 onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('Download'),
+                child: Text(L10n.of(context).commonDownload),
               ),
             ],
           ),
@@ -1766,8 +1767,8 @@ class _MessageBubbleState extends State<_MessageBubble> {
     ScaffoldMessenger.of(context)
       ..clearSnackBars()
       ..showSnackBar(
-        const SnackBar(
-          content: Text('Copied to clipboard'),
+        SnackBar(
+          content: Text(L10n.of(context).commonCopiedToClipboard),
           duration: Duration(milliseconds: 900),
         ),
       );
@@ -2009,8 +2010,8 @@ class OtherChatGenerationNotice extends StatelessWidget {
               style: Theme.of(context).textTheme.labelMedium,
             ),
           ),
-          TextButton(onPressed: onOpen, child: const Text('Open')),
-          TextButton(onPressed: onStop, child: const Text('Stop')),
+          TextButton(onPressed: onOpen, child: Text(L10n.of(context).commonOpen)),
+          TextButton(onPressed: onStop, child: Text(L10n.of(context).commonStop)),
         ],
       ),
     ),
@@ -2080,7 +2081,7 @@ class _CompleteReply extends StatelessWidget {
           TextButton.icon(
             onPressed: onContinue,
             icon: const Icon(Icons.arrow_forward, size: 17),
-            label: const Text('Continue'),
+            label: Text(L10n.of(context).commonContinue),
           ),
       ],
     ],
@@ -2109,8 +2110,8 @@ class _ReplyActions extends StatelessWidget {
     ScaffoldMessenger.of(context)
       ..clearSnackBars()
       ..showSnackBar(
-        const SnackBar(
-          content: Text('Copied to clipboard'),
+        SnackBar(
+          content: Text(L10n.of(context).commonCopiedToClipboard),
           duration: Duration(milliseconds: 900),
         ),
       );
@@ -2502,11 +2503,11 @@ class _EditMessageDialogState extends State<_EditMessageDialog> {
     actions: [
       TextButton(
         onPressed: () => Navigator.of(context).pop(),
-        child: const Text('Cancel'),
+        child: Text(L10n.of(context).commonCancel),
       ),
       FilledButton(
         onPressed: () => Navigator.of(context).pop(_controller.text),
-        child: const Text('Resend'),
+        child: Text(L10n.of(context).commonResend),
       ),
     ],
   );
@@ -3656,7 +3657,7 @@ class _SidebarConversationTile extends StatelessWidget {
       context: context,
       builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(FluxRadius.sheet)),
-        title: const Text('Rename chat'),
+        title: Text(L10n.of(context).chatRenameTitle),
         content: TextField(
           controller: controller,
           autofocus: true,
@@ -3673,7 +3674,7 @@ class _SidebarConversationTile extends StatelessWidget {
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
             child: Text(
-              'Cancel',
+              L10n.of(context).commonCancel,
               style: TextStyle(color: FluxColors.mutedOf(context)),
             ),
           ),
@@ -3706,7 +3707,7 @@ class _SidebarConversationTile extends StatelessWidget {
       context: context,
       builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(FluxRadius.sheet)),
-        title: const Text('Delete chat?'),
+        title: Text(L10n.of(context).chatDeleteTitle),
         content: Text(
           generationActive
               ? 'Stop the active generation before deleting this chat. Its '
@@ -3718,7 +3719,7 @@ class _SidebarConversationTile extends StatelessWidget {
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
             child: Text(
-              generationActive ? 'Close' : 'Cancel',
+              generationActive ? 'Close' : L10n.of(context).commonCancel,
               style: TextStyle(color: FluxColors.mutedOf(context)),
             ),
           ),

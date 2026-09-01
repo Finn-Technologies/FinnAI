@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import '../../l10n/l10n_helper.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -122,8 +123,8 @@ class _ReportDialogState extends State<ReportDialog> {
       ScaffoldMessenger.of(context)
         ..clearSnackBars()
         ..showSnackBar(
-          const SnackBar(
-            content: Text('Review the report in your email app, then send it.'),
+          SnackBar(
+            content: Text(L10n.of(context).reportReviewInEmail),
             duration: Duration(seconds: 4),
           ),
         );
@@ -152,7 +153,7 @@ class _ReportDialogState extends State<ReportDialog> {
           Icon(Icons.flag_outlined, color: FluxColors.inkOf(context), size: 24),
           const SizedBox(width: 10),
           Text(
-            'Report AI Response',
+            L10n.of(context).reportTitle,
             style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
           ),
         ],
@@ -181,7 +182,7 @@ class _ReportDialogState extends State<ReportDialog> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'The report email address is not configured.',
+                        L10n.of(context).reportNotConfigured,
                         style: textTheme.bodySmall?.copyWith(
                           color: isDark
                               ? FluxColors.accentAmberDark
@@ -196,14 +197,14 @@ class _ReportDialogState extends State<ReportDialog> {
               const SizedBox(height: 12),
             ],
             Text(
-              'Help us maintain safe and accurate AI responses. Reports are reviewed to improve FinnAI safeguards.',
+              L10n.of(context).reportSubtitle,
               style: textTheme.bodySmall?.copyWith(
                 color: FluxColors.mutedOf(context),
               ),
             ),
             const SizedBox(height: 14),
             Text(
-              'Reason for report',
+              L10n.of(context).reportReasonLabel,
               style: textTheme.labelMedium?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
@@ -238,7 +239,7 @@ class _ReportDialogState extends State<ReportDialog> {
             ),
             const SizedBox(height: 14),
             Text(
-              'Reported response preview',
+              L10n.of(context).reportResponsePreview,
               style: textTheme.labelMedium?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
@@ -268,7 +269,7 @@ class _ReportDialogState extends State<ReportDialog> {
                 contentPadding: EdgeInsets.zero,
                 dense: true,
                 title: Text(
-                  'Include my prompt in this report',
+                  L10n.of(context).reportIncludePrompt,
                   style: textTheme.bodySmall?.copyWith(fontSize: 12),
                 ),
                 value: _includePrompt,
@@ -308,7 +309,7 @@ class _ReportDialogState extends State<ReportDialog> {
             ],
             const SizedBox(height: 12),
             Text(
-              'Continue opens a complete report addressed to finn_org@proton.me. Nothing is sent until you review and send it in your email app.',
+              L10n.of(context).reportContinueHint,
               style: textTheme.labelSmall?.copyWith(
                 fontSize: 10,
                 color: FluxColors.mutedOf(context),
@@ -320,7 +321,7 @@ class _ReportDialogState extends State<ReportDialog> {
       actions: [
         TextButton(
           onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: Text(L10n.of(context).commonCancel),
         ),
         FilledButton(
           onPressed: (_isSubmitting || !isConfigured) ? null : _submitReport,
@@ -337,7 +338,7 @@ class _ReportDialogState extends State<ReportDialog> {
                     color: FluxColors.canvasOf(context),
                   ),
                 )
-              : const Text('Continue to Email'),
+              : Text(L10n.of(context).reportContinueToEmail),
         ),
       ],
     );

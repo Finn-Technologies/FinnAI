@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import '../inference/qwen_inference.dart';
 import '../theme/flux_theme.dart';
+import '../../l10n/l10n_helper.dart';
 import '../widgets/ambient_background.dart';
 import '../widgets/finn_page_header.dart';
 import '../widgets/flux_controls.dart';
@@ -91,18 +92,18 @@ class _CreationsPageState extends State<CreationsPage> {
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(FluxRadius.sheet)),
-        title: const Text('Stop this creation?'),
-        content: const Text(
-          'The unfinished result will be discarded. Your prompt will stay here.',
+        title: Text(L10n.of(context).creationsStopTitle),
+        content: Text(
+          L10n.of(context).creationsStopBody,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Keep creating'),
+            child: Text(L10n.of(context).commonKeepCreating),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Stop'),
+            child: Text(L10n.of(context).commonStop),
           ),
         ],
       ),
@@ -159,7 +160,7 @@ class _CreationsPageState extends State<CreationsPage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Turn an idea into a structured plan, entirely on device.',
+                                L10n.of(context).creationsSubtitle,
                                 style: Theme.of(context).textTheme.bodyMedium
                                     ?.copyWith(
                                       color: FluxColors.mutedOf(context),
@@ -212,7 +213,7 @@ class _CreationsPageState extends State<CreationsPage> {
                   ),
                   Positioned.fill(
                     child: FinnPageHeader(
-                      title: 'Creations',
+                      title: L10n.of(context).creationsTitle,
                       onBack: _close,
                       metrics: metrics,
                       scrollOffset: _headerOffset,
@@ -600,12 +601,12 @@ class _KindPicker extends StatelessWidget {
         ),
         const SizedBox(height: 22),
         Text(
-          'What are we making?',
+          L10n.of(context).creationsWhatAreWeMaking,
           style: Theme.of(context).textTheme.titleLarge,
         ),
         const SizedBox(height: 6),
         Text(
-          'Finn adapts the structure to the format.',
+          L10n.of(context).creationsFinnAdapts,
           style: Theme.of(
             context,
           ).textTheme.bodyMedium?.copyWith(color: FluxColors.mutedOf(context)),
@@ -689,18 +690,18 @@ class _CreationDetail extends StatelessWidget {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(FluxRadius.card),
                       ),
-                      title: const Text('Delete this creation?'),
+                      title: Text(L10n.of(context).creationsDeleteTitle),
                       content: Text(
-                        '“${creation.title}” will be removed from this device.',
+                        L10n.of(context).creationsDeleteBody(creation.title),
                       ),
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.pop(dialogContext, false),
-                          child: const Text('Cancel'),
+                          child: Text(L10n.of(context).commonCancel),
                         ),
                         TextButton(
                           onPressed: () => Navigator.pop(dialogContext, true),
-                          child: const Text('Delete'),
+                          child: Text(L10n.of(context).commonDelete),
                         ),
                       ],
                     ),
@@ -773,7 +774,7 @@ class _CreationDetail extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               Text(
-                'Original brief',
+                L10n.of(context).creationsOriginalBrief,
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
                   color: FluxColors.mutedOf(context),
                 ),

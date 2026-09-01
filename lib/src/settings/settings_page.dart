@@ -10,6 +10,7 @@ import '../conversations/conversation_store.dart';
 import '../flux_app.dart';
 import '../inference/qwen_inference.dart';
 import '../theme/flux_theme.dart';
+import '../../l10n/l10n_helper.dart';
 import '../widgets/ambient_background.dart';
 import '../widgets/finn_page_header.dart';
 import '../widgets/flux_controls.dart';
@@ -95,7 +96,7 @@ class _SettingsPageState extends State<SettingsPage>
       setState(() => _clearingMemory = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('AI model memory released.'),
+          content: Text(L10n.of(context).settingsPurgeMemoryReleased),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(FluxRadius.sm),
@@ -110,15 +111,15 @@ class _SettingsPageState extends State<SettingsPage>
       context: context,
       builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(FluxRadius.sheet)),
-        title: const Text('Purge AI Memory?'),
-        content: const Text(
-          'This will unload the AI model from RAM. It will be reloaded automatically on the next message.',
+        title: Text(L10n.of(context).settingsPurgeMemoryTitle),
+        content: Text(
+          L10n.of(context).settingsPurgeMemoryBody,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
             child: Text(
-              'Cancel',
+              L10n.of(context).commonCancel,
               style: TextStyle(color: FluxColors.mutedOf(context)),
             ),
           ),
@@ -128,7 +129,7 @@ class _SettingsPageState extends State<SettingsPage>
               _clearMemory();
             },
             child: Text(
-              'Purge',
+              L10n.of(context).commonPurge,
               style: TextStyle(
                 color: FluxColors.isDark(context)
                     ? FluxColors.destructiveDark
@@ -147,15 +148,15 @@ class _SettingsPageState extends State<SettingsPage>
       context: context,
       builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(FluxRadius.sheet)),
-        title: const Text('Clear All Conversations?'),
-        content: const Text(
-          'This will permanently delete all chat history. This action cannot be undone.',
+        title: Text(L10n.of(context).settingsClearHistoryTitle),
+        content: Text(
+          L10n.of(context).settingsClearHistoryBody,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
             child: Text(
-              'Cancel',
+              L10n.of(context).commonCancel,
               style: TextStyle(color: FluxColors.mutedOf(context)),
             ),
           ),
@@ -167,9 +168,9 @@ class _SettingsPageState extends State<SettingsPage>
               } catch (_) {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
+                    SnackBar(
                       content: Text(
-                        'Could not clear conversations. Check storage and try again.',
+                        L10n.of(context).settingsClearHistoryFailure,
                       ),
                     ),
                   );
@@ -179,7 +180,7 @@ class _SettingsPageState extends State<SettingsPage>
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: const Text('All conversations cleared.'),
+                    content: Text(L10n.of(context).settingsClearHistorySuccess),
                     behavior: SnackBarBehavior.floating,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(FluxRadius.sm),
@@ -189,7 +190,7 @@ class _SettingsPageState extends State<SettingsPage>
               }
             },
             child: Text(
-              'Clear All',
+              L10n.of(context).commonClearAll,
               style: TextStyle(
                 color: FluxColors.isDark(context)
                     ? FluxColors.destructiveDark
@@ -208,7 +209,7 @@ class _SettingsPageState extends State<SettingsPage>
       context: context,
       builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(FluxRadius.sheet)),
-        title: const Text('Delete All Local Data?'),
+        title: Text(L10n.of(context).settingsDeleteAllDataTitle),
         content: const Text(
           'This permanently deletes encrypted conversations and keys, '
           'downloaded AI models, creations, profile preferences, skills, and '
@@ -218,7 +219,7 @@ class _SettingsPageState extends State<SettingsPage>
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
             child: Text(
-              'Cancel',
+              L10n.of(context).commonCancel,
               style: TextStyle(color: FluxColors.mutedOf(context)),
             ),
           ),
@@ -244,8 +245,8 @@ class _SettingsPageState extends State<SettingsPage>
                 if (result.isSuccess) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: const Text(
-                        'All local data deleted. Returning to onboarding.',
+                      content: Text(
+                        L10n.of(context).settingsDeleteAllDataSuccess,
                       ),
                       behavior: SnackBarBehavior.floating,
                       shape: RoundedRectangleBorder(
@@ -263,7 +264,7 @@ class _SettingsPageState extends State<SettingsPage>
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
-                        'Partial deletion failure: Failed to delete ${result.failedItems.join(', ')}.',
+                        L10n.of(context).settingsDeleteAllDataPartialFailure(result.failedItems.join(', ')),
                       ),
                       behavior: SnackBarBehavior.floating,
                       shape: RoundedRectangleBorder(
@@ -275,7 +276,7 @@ class _SettingsPageState extends State<SettingsPage>
               }
             },
             child: Text(
-              'Delete Everything',
+              L10n.of(context).commonDeleteEverything,
               style: TextStyle(
                 color: FluxColors.isDark(context)
                     ? FluxColors.destructiveDark
@@ -367,7 +368,7 @@ class _SettingsPageState extends State<SettingsPage>
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const _SectionHeader(label: 'AI model'),
+                                    _SectionHeader(label: L10n.of(context).settingsAiModel),
                                     const SizedBox(height: 8),
                                     FluxGlass(
                                       radius: 20,
@@ -435,8 +436,8 @@ class _SettingsPageState extends State<SettingsPage>
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const _SectionHeader(
-                                      label: 'Storage & data',
+                                    _SectionHeader(
+                                      label: L10n.of(context).settingsStorageData,
                                     ),
                                     const SizedBox(height: 8),
                                     FluxGlass(
@@ -445,10 +446,10 @@ class _SettingsPageState extends State<SettingsPage>
                                         children: [
                                           _InfoRow(
                                             icon: FluxIcons.settings,
-                                            label: 'Saved Conversations',
+                                            label: L10n.of(context).settingsSavedConversationsLabel,
                                             value: totalChats == 1
-                                                ? '1 chat (Encrypted)'
-                                                : '$totalChats chats (Encrypted)',
+                                                ? L10n.of(context).settingsSavedConversations(1)
+                                                : L10n.of(context).settingsSavedConversations(totalChats),
                                           ),
                                           Divider(
                                             height: 1,
@@ -457,8 +458,8 @@ class _SettingsPageState extends State<SettingsPage>
                                           _DestructiveRow(
                                             icon: FluxIcons.chip,
                                             label: _clearingMemory
-                                                ? 'Releasing Memory…'
-                                                : 'Purge AI Memory',
+                                                ? L10n.of(context).settingsReleasingMemory
+                                                : L10n.of(context).settingsPurgeMemory,
                                             enabled: !_clearingMemory,
                                             loading: _clearingMemory,
                                             onTap: _confirmPurgeMemory,
@@ -469,7 +470,7 @@ class _SettingsPageState extends State<SettingsPage>
                                           ),
                                           _DestructiveRow(
                                             icon: FluxIcons.refresh,
-                                            label: 'Clear All Chat History',
+                                            label: L10n.of(context).settingsClearHistory,
                                             enabled: totalChats > 0,
                                             onTap: _confirmClearAllChats,
                                           ),
@@ -480,8 +481,8 @@ class _SettingsPageState extends State<SettingsPage>
                                           _DestructiveRow(
                                             icon: FluxIcons.security,
                                             label: _deletingAllData
-                                                ? 'Deleting All Local Data…'
-                                                : 'Delete All Local Data',
+                                                ? L10n.of(context).settingsDeleteAllDataDeleting
+                                                : L10n.of(context).settingsDeleteAllData,
                                             enabled: !_deletingAllData,
                                             loading: _deletingAllData,
                                             onTap: _confirmDeleteAllData,
@@ -513,8 +514,8 @@ class _SettingsPageState extends State<SettingsPage>
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const _SectionHeader(
-                                      label: 'Privacy & legal',
+                                    _SectionHeader(
+                                      label: L10n.of(context).settingsPrivacyLegal,
                                     ),
                                     const SizedBox(height: 8),
                                     FluxGlass(
@@ -523,7 +524,7 @@ class _SettingsPageState extends State<SettingsPage>
                                         children: [
                                           _ActionRow(
                                             icon: FluxIcons.lock,
-                                            label: 'Privacy Policy',
+                                            label: L10n.of(context).settingsPrivacyPolicy,
                                             onTap: () async {
                                               if (LegalConfig
                                                   .hasPrivacyPolicyUrl) {
@@ -543,7 +544,7 @@ class _SettingsPageState extends State<SettingsPage>
                                                     ).showSnackBar(
                                                       SnackBar(
                                                         content: Text(
-                                                          'Could not launch ${LegalConfig.privacyPolicyUrl}',
+                                                          L10n.of(context).settingsPrivacyPolicyLaunchFailed(LegalConfig.privacyPolicyUrl),
                                                         ),
                                                       ),
                                                     );
@@ -553,9 +554,9 @@ class _SettingsPageState extends State<SettingsPage>
                                                 ScaffoldMessenger.of(
                                                   context,
                                                 ).showSnackBar(
-                                                  const SnackBar(
+                                                  SnackBar(
                                                     content: Text(
-                                                      'Privacy Policy URL is unconfigured (set FINN_PRIVACY_POLICY_URL).',
+                                                      L10n.of(context).settingsPrivacyPolicyUnconfigured,
                                                     ),
                                                   ),
                                                 );
@@ -568,7 +569,7 @@ class _SettingsPageState extends State<SettingsPage>
                                           ),
                                           _ActionRow(
                                             icon: FluxIcons.security,
-                                            label: 'Terms of Use',
+                                            label: L10n.of(context).settingsTermsOfUse,
                                             onTap: () async {
                                               if (LegalConfig.hasTermsUrl) {
                                                 final uri = Uri.parse(
@@ -587,7 +588,7 @@ class _SettingsPageState extends State<SettingsPage>
                                                     ).showSnackBar(
                                                       SnackBar(
                                                         content: Text(
-                                                          'Could not launch ${LegalConfig.termsUrl}',
+                                                          L10n.of(context).settingsTermsLaunchFailed(LegalConfig.termsUrl),
                                                         ),
                                                       ),
                                                     );
@@ -597,9 +598,9 @@ class _SettingsPageState extends State<SettingsPage>
                                                 ScaffoldMessenger.of(
                                                   context,
                                                 ).showSnackBar(
-                                                  const SnackBar(
+                                                  SnackBar(
                                                     content: Text(
-                                                      'Terms of Use URL is unconfigured (set FINN_TERMS_URL).',
+                                                      L10n.of(context).settingsTermsUnconfigured,
                                                     ),
                                                   ),
                                                 );
@@ -612,7 +613,7 @@ class _SettingsPageState extends State<SettingsPage>
                                           ),
                                           _ActionRow(
                                             icon: FluxIcons.security,
-                                            label: 'Support Contact',
+                                            label: L10n.of(context).settingsSupportContact,
                                             onTap: () async {
                                               if (LegalConfig.hasSupportEmail) {
                                                 final uri = Uri.parse(
@@ -627,7 +628,7 @@ class _SettingsPageState extends State<SettingsPage>
                                                     ).showSnackBar(
                                                       SnackBar(
                                                         content: Text(
-                                                          'Support email: ${LegalConfig.supportEmail}',
+                                                          L10n.of(context).settingsSupportEmailLabel(LegalConfig.supportEmail),
                                                         ),
                                                       ),
                                                     );
@@ -650,7 +651,7 @@ class _SettingsPageState extends State<SettingsPage>
                                                   ).showSnackBar(
                                                     SnackBar(
                                                       content: Text(
-                                                        'Could not launch ${LegalConfig.supportUrl}',
+                                                        L10n.of(context).settingsSupportLaunchFailed(LegalConfig.supportUrl),
                                                       ),
                                                     ),
                                                   );
@@ -659,9 +660,9 @@ class _SettingsPageState extends State<SettingsPage>
                                                 ScaffoldMessenger.of(
                                                   context,
                                                 ).showSnackBar(
-                                                  const SnackBar(
+                                                  SnackBar(
                                                     content: Text(
-                                                      'Support contact is unavailable.',
+                                                      L10n.of(context).settingsSupportUnavailable,
                                                     ),
                                                   ),
                                                 );
@@ -674,7 +675,7 @@ class _SettingsPageState extends State<SettingsPage>
                                           ),
                                           _ActionRow(
                                             icon: FluxIcons.leaf,
-                                            label: 'Open-Source Licences',
+                                            label: L10n.of(context).settingsOpenSourceLicenses,
                                             onTap: () {
                                               showLicensePage(
                                                 context: context,
@@ -713,7 +714,7 @@ class _SettingsPageState extends State<SettingsPage>
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const _SectionHeader(label: 'About'),
+                                    _SectionHeader(label: L10n.of(context).settingsAbout),
                                     const SizedBox(height: 8),
                                     FluxGlass(
                                       radius: 20,
@@ -721,7 +722,7 @@ class _SettingsPageState extends State<SettingsPage>
                                         children: [
                                           _InfoRow(
                                             icon: FluxIcons.magic,
-                                            label: 'App Version',
+                                            label: L10n.of(context).settingsAppVersion,
                                             value: _appVersion,
                                           ),
                                           Divider(
@@ -730,8 +731,8 @@ class _SettingsPageState extends State<SettingsPage>
                                           ),
                                           _InfoRow(
                                             icon: FluxIcons.robot,
-                                            label: 'Inference Engine',
-                                            value: 'llama.cpp · GGUF',
+                                            label: L10n.of(context).settingsInferenceEngine,
+                                            value: L10n.of(context).settingsInferenceEngineValue,
                                           ),
                                           Divider(
                                             height: 1,
@@ -739,8 +740,8 @@ class _SettingsPageState extends State<SettingsPage>
                                           ),
                                           _InfoRow(
                                             icon: FluxIcons.security,
-                                            label: 'Privacy Mode',
-                                            value: 'Encrypted On-Device',
+                                            label: L10n.of(context).settingsPrivacyMode,
+                                            value: L10n.of(context).settingsPrivacyModeValue,
                                           ),
                                           Divider(
                                             height: 1,
@@ -748,8 +749,8 @@ class _SettingsPageState extends State<SettingsPage>
                                           ),
                                           _InfoRow(
                                             icon: FluxIcons.leaf,
-                                            label: 'Model Architecture',
-                                            value: 'LFM2.5-VL 1.6B (Liquid)',
+                                            label: L10n.of(context).settingsModelArchitecture,
+                                            value: L10n.of(context).settingsModelArchitectureValue,
                                           ),
                                         ],
                                       ),
@@ -878,7 +879,7 @@ class _SettingsPageState extends State<SettingsPage>
                     child: Align(
                       alignment: Alignment.centerLeft,
                       child: Text(
-                        'Settings',
+                        L10n.of(context).settingsTitle,
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
                     ),
@@ -1047,7 +1048,7 @@ class _ModelRow extends StatelessWidget {
 }
 
 class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({required this.label});
+  _SectionHeader({required this.label});
 
   final String label;
 
