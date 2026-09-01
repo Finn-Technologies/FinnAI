@@ -7,6 +7,7 @@ import '../inference/qwen_inference.dart';
 import '../theme/flux_theme.dart';
 import '../widgets/ambient_background.dart';
 import '../widgets/flux_controls.dart';
+import '../../l10n/l10n_helper.dart';
 
 class OnboardingFlow extends StatefulWidget {
   const OnboardingFlow({
@@ -115,11 +116,11 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             _WelcomePage(onNext: () => _to(1)),
             _DetailPage(
               iconAsset: FigmaAssets.privacy,
-              title: 'Finn AI is Privacy-First',
+              title: L10n.of(context).onboardingPrivacyTitle,
               onBack: () => _to(0),
               onNext: () => _to(2),
               child: Text(
-                'Finn AI is designed to respect your privacy.\n\nAI processing and conversation history stay on this device. When a request needs fresh information, Finn AI may send only that request as a web search query and will show the sources it used. Your history and personal profile are never included.\n\nFinn AI is proprietary software and is not open source.',
+                L10n.of(context).onboardingPrivacyBody,
                 style: TextStyle(
                   fontFamily: 'InstrumentSans',
                   fontSize: 16,
@@ -137,7 +138,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             ),
             _DetailPage(
               iconAsset: FigmaAssets.security,
-              title: 'Before starting, read precautions',
+              title: L10n.of(context).onboardingPrecautionsTitle,
               contentTop: 93,
               onBack: () => _to(2),
               onNext: () => _to(4),
@@ -171,7 +172,7 @@ class _WelcomePage extends StatelessWidget {
                 right: 0,
                 child: Center(
                   child: Text(
-                    'Welcome to Finn AI!',
+                    L10n.of(context).onboardingWelcome,
                     style: Theme.of(
                       context,
                     ).textTheme.titleMedium?.copyWith(fontSize: 21),
@@ -187,7 +188,7 @@ class _WelcomePage extends StatelessWidget {
                     const _FloatingArrow(),
                     const SizedBox(height: 12),
                     Text(
-                      'Swipe to start',
+                      L10n.of(context).onboardingSwipeToStart,
                       style: Theme.of(context).textTheme.labelMedium?.copyWith(
                         color: FluxColors.mutedOf(context),
                         fontSize: 16,
@@ -406,7 +407,7 @@ class _DetailPage extends StatelessWidget {
                       right: 25,
                       bottom: 79,
                       child: FluxPillButton(
-                        label: 'Next',
+                        label: L10n.of(context).commonNext,
                         onTap: onNext,
                         compact: true,
                       ),
@@ -514,7 +515,7 @@ class _AutomaticModelPageState extends State<_AutomaticModelPage> {
         // first run.
         await _inference.install(model);
         if (!await _inference.isInstalled(model)) {
-          throw const FormatException('Model verification failed');
+          throw FormatException(L10n.of(context).onboardingInstallVerificationFailed);
         }
       }
       // Measure the best CPU/GPU/NPU backend now that the model is present.
@@ -542,7 +543,7 @@ class _AutomaticModelPageState extends State<_AutomaticModelPage> {
   @override
   Widget build(BuildContext context) => _DetailPage(
     iconAsset: FigmaAssets.magic,
-    title: _ready ? 'Qwen 3.5 2B ready' : 'Installing Qwen 3.5 2B',
+    title: _ready ? L10n.of(context).onboardingInstallTitleReady : L10n.of(context).onboardingInstallTitleInstalling,
     contentTop: 79,
     onBack: widget.onBack,
     backEnabled: _ready,
@@ -594,9 +595,9 @@ class _AutomaticInstallPanel extends StatelessWidget {
     final remainingBytes = inference.installRemainingBytes;
     final transferMeta = [
       if (downloading)
-        '${_formatBytes(receivedBytes)} of ${_formatBytes(totalBytes)}',
+        L10n.of(context).onboardingInstallBytesOf(_formatBytes(receivedBytes), _formatBytes(totalBytes)),
       if (downloading && remainingBytes > 0)
-        '${_formatBytes(remainingBytes)} left',
+        L10n.of(context).onboardingInstallBytesLeft(_formatBytes(remainingBytes)),
       if (downloading && inference.downloadSpeedLabel != null)
         inference.downloadSpeedLabel!,
       if (downloading && inference.downloadEtaLabel != null)
@@ -633,9 +634,8 @@ class _AutomaticInstallPanel extends StatelessWidget {
               const SizedBox(height: 3),
               Text(
                 ready
-                    ? 'Ready for private text chat on this device'
-                    : '${model.name} + multimodal component · '
-                          '${_formatBytes(totalBytes)}',
+                    ? L10n.of(context).onboardingInstallReadyForChat
+                    : L10n.of(context).onboardingInstallModelWithComponent(model.name, _formatBytes(totalBytes)),
                 maxLines: 2,
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
@@ -662,7 +662,7 @@ class _AutomaticInstallPanel extends StatelessWidget {
                           const SizedBox(height: 10),
                           Semantics(
                             button: true,
-                            label: 'Retry model download',
+                            label: L10n.of(context).onboardingInstallRetryLabel,
                             child: Material(
                               color: FluxColors.surfaceOf(context),
                               borderRadius: BorderRadius.circular(99),
@@ -675,7 +675,7 @@ class _AutomaticInstallPanel extends StatelessWidget {
                                     vertical: 9,
                                   ),
                                   child: Text(
-                                    'Retry',
+                                    L10n.of(context).commonRetry,
                                     style: Theme.of(context)
                                         .textTheme
                                         .labelMedium
@@ -692,10 +692,10 @@ class _AutomaticInstallPanel extends StatelessWidget {
                     : Text(
                         key: ValueKey(ready),
                         ready
-                            ? 'Model ready'
+                            ? L10n.of(context).onboardingInstallModelReady
                             : started
-                            ? '$status · ${(effectiveProgress * 100).round()}%'
-                            : 'Preparing Qwen 3.5 2B for this device…',
+                            ? L10n.of(context).onboardingInstallProgressStatus(status, (effectiveProgress * 100).round().toString())
+                            : L10n.of(context).onboardingInstallPreparing,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,
@@ -751,11 +751,11 @@ class _Precautions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final items = const [
-      'On-device AI prompt processing',
-      'Offline chat after model download',
-      'Encrypted conversation storage',
-      'Designed for battery efficiency',
+    final items = [
+      L10n.of(context).onboardingPrecautionOne,
+      L10n.of(context).onboardingPrecautionTwo,
+      L10n.of(context).onboardingPrecautionThree,
+      L10n.of(context).onboardingPrecautionFour,
     ];
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -873,7 +873,7 @@ class _SoftwareUpgradeScreenState extends State<SoftwareUpgradeScreen> {
       for (final model in _inference.requiredModels) {
         await _inference.install(model);
         if (!await _inference.isInstalled(model)) {
-          throw const FormatException('Model verification failed');
+          throw FormatException(L10n.of(context).onboardingInstallVerificationFailed);
         }
       }
       // Measure the best CPU/GPU/NPU backend now that the new model is ready.
@@ -918,14 +918,13 @@ class _SoftwareUpgradeScreenState extends State<SoftwareUpgradeScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'FinnAI Software Upgrade',
+                    L10n.of(context).onboardingUpgradeTitle,
                     textAlign: TextAlign.center,
                     style: textTheme.titleLarge,
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Finn AI now runs a newer on-device model. Download it to '
-                    'continue chatting privately.',
+                    L10n.of(context).onboardingUpgradeBody,
                     textAlign: TextAlign.center,
                     style: textTheme.bodyMedium?.copyWith(
                       color: FluxColors.mutedOf(context),
@@ -977,7 +976,7 @@ class _FinishPage extends StatelessWidget {
                 right: 0,
                 child: Center(
                   child: Text(
-                    'Finn AI is ready!',
+                    L10n.of(context).onboardingReadyTitle,
                     style: Theme.of(
                       context,
                     ).textTheme.titleMedium?.copyWith(fontSize: 21),
@@ -993,7 +992,7 @@ class _FinishPage extends StatelessWidget {
                     const _FloatingArrow(),
                     const SizedBox(height: 12),
                     Text(
-                      "You're all set. Finn AI is ready.",
+                      L10n.of(context).onboardingReadySubtitle,
                       style: Theme.of(context).textTheme.labelMedium?.copyWith(
                         color: FluxColors.mutedOf(context),
                         fontSize: 16,

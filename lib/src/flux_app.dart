@@ -1,6 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+
+import '../l10n/app_localizations.dart';
+import '../l10n/l10n_helper.dart';
 
 import 'app_state_store.dart';
 import 'home/home_shell.dart';
@@ -68,6 +72,13 @@ class _FinnBootstrapState extends State<FinnBootstrap> {
         theme: FluxTheme.light,
         darkTheme: FluxTheme.dark,
         themeMode: ThemeMode.system,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
         builder: FluxTheme.applySystemUi,
         home: Scaffold(
           body: AmbientBackground(
@@ -116,6 +127,13 @@ class FluxApp extends StatelessWidget {
       theme: FluxTheme.light,
       darkTheme: FluxTheme.dark,
       themeMode: ThemeMode.system,
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: AppLocalizations.supportedLocales,
       builder: FluxTheme.applySystemUi,
       home: QwenInference.instance.isDeviceSupported
           ? onboardingComplete
@@ -155,15 +173,13 @@ class _UnsupportedDevicePage extends StatelessWidget {
                 ),
                 const SizedBox(height: 22),
                 Text(
-                  'Finn AI cannot run on this device',
+                  L10n.of(context).unsupportedTitle,
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  'Finn AI requires at least 3 GB of RAM and a 64-bit ARM '
-                  'processor to run local models reliably. No model has been '
-                  'downloaded.',
+                  L10n.of(context).unsupportedBody,
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: FluxColors.mutedOf(context),

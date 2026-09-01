@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import '../../l10n/l10n_helper.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:hugeicons/hugeicons.dart';
 
@@ -291,7 +292,7 @@ class BackControl extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      label: 'Back',
+      label: L10n.of(context).commonBack,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(20),
@@ -315,7 +316,7 @@ class BackControl extends StatelessWidget {
                   fit: BoxFit.scaleDown,
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    'Back',
+                    L10n.of(context).commonBack,
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
                       color: FluxColors.inkOf(context).withValues(alpha: .5),
                     ),

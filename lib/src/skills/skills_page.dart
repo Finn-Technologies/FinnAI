@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/flux_theme.dart';
+import '../../l10n/l10n_helper.dart';
 import '../widgets/ambient_background.dart';
 import '../widgets/finn_page_header.dart';
 import '../widgets/flux_controls.dart';
@@ -77,16 +78,16 @@ class _SkillsPageState extends State<SkillsPage> {
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Delete this skill?'),
-        content: Text('“${skill.name}” will be removed from this device.'),
+        title: Text(L10n.of(context).skillsDeleteTitle),
+        content: Text(L10n.of(context).skillsDeleteBody(skill.name)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(L10n.of(context).commonCancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete'),
+            child: Text(L10n.of(context).commonDelete),
           ),
         ],
       ),
@@ -108,7 +109,7 @@ class _SkillsPageState extends State<SkillsPage> {
                 elevation: 0,
                 shape: const StadiumBorder(),
                 icon: const Icon(Icons.add_rounded, size: 20),
-                label: const Text('New skill'),
+                label: Text(L10n.of(context).skillsNewSkill),
               )
             : const SizedBox.shrink(),
       ),
@@ -375,9 +376,9 @@ class _SkillCard extends StatelessWidget {
                           if (value == 'edit') onEdit?.call();
                           if (value == 'delete') onDelete?.call();
                         },
-                        itemBuilder: (_) => const [
-                          PopupMenuItem(value: 'edit', child: Text('Edit')),
-                          PopupMenuItem(value: 'delete', child: Text('Delete')),
+                        itemBuilder: (_) => [
+                          PopupMenuItem(value: 'edit', child: Text(L10n.of(context).commonEdit)),
+                          PopupMenuItem(value: 'delete', child: Text(L10n.of(context).commonDelete)),
                         ],
                       ),
                   ],
@@ -455,7 +456,7 @@ class _EmptyCustomSkills extends StatelessWidget {
       border: Border.all(color: FluxColors.lineOf(context)),
     ),
     child: Text(
-      'No custom skills yet. Create one for a workflow you repeat.',
+      L10n.of(context).skillsNoSkills,
       textAlign: TextAlign.center,
       style: Theme.of(
         context,
@@ -544,12 +545,12 @@ class _SkillEditorState extends State<_SkillEditor> {
               ),
               const SizedBox(height: 20),
               Text(
-                widget.skill == null ? 'New skill' : 'Edit skill',
+                widget.skill == null ? L10n.of(context).skillsNewSkill : 'Edit skill',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 5),
               Text(
-                'Write a reusable instruction Finn should apply when relevant.',
+                L10n.of(context).skillsInstructionHint,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: FluxColors.mutedOf(context),
                 ),
@@ -600,7 +601,7 @@ class _SkillEditorState extends State<_SkillEditor> {
                     shape: const StadiumBorder(),
                     elevation: 0,
                   ),
-                  child: const Text('Save skill'),
+                  child: Text(L10n.of(context).commonSaveSkill),
                 ),
               ),
             ],
