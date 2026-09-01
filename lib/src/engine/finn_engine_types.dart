@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:llama_cpp_dart/llama_cpp_dart.dart';
+import 'backends/llama_shim.dart';
 
 import 'catalog/model_catalog.dart';
 

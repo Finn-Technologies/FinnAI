@@ -6,7 +6,7 @@ import 'dart:math' as math;
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:llama_cpp_dart/llama_cpp_dart.dart';
+import 'backends/llama_shim.dart'; 
 import 'package:path_provider/path_provider.dart';
 
 import 'profiler/device_profile.dart';
@@ -89,18 +89,31 @@ class _GenerationCancelled implements Exception {
 ///
 /// The runtime lives on a dedicated worker isolate, models are mmap-backed, and all
 /// settings retain CPU/GPU/NPU paths via the FinnAI-Accelerator architecture.
+// Engine seam (Phase 1): FinnAccelerator is the high-level facade over a
+// [FinnEngine] implementation. Production uses [LlamaBackend]; tests may
+// inject a fake via [debugEngineFactory]. Direct `LlamaEngine` construction
+// must stay inside `lib/src/engine/backends/` (see docs/ENGINE_API.md).
+// ignore: unused_element
+typedef _FinnEngineFactory = dynamic Function();
+
 class FinnAccelerator extends ChangeNotifier {
   static const _backgroundDownloadChannel = MethodChannel(
     'finn_ai/model_download',
   );
 
-  FinnAccelerator._({SearchAgent? searchAgent})
-    : _searchAgent = searchAgent ?? SearchAgent();
+  FinnAccelerator._({SearchAgent? searchAgent, dynamic debugEngineFactory})
+    : _searchAgent = searchAgent ?? SearchAgent(),
+      _debugEngineFactory = debugEngineFactory; // ignore: prefer_initializing_formals
 
   static final FinnAccelerator instance = FinnAccelerator._();
 
   /// Model-driven web search orchestration. Injected for tests.
   final SearchAgent _searchAgent;
+
+  // Engine seam injection (Phase 1). Null in production; tests inject a
+  // fake [FinnEngine] factory so they never import `llama_cpp_dart`.
+  // ignore: unused_field
+  final dynamic _debugEngineFactory;
 
   /// True when a web-search decision pass ran for the current/last turn and
   /// reached the search step. Used by the controller/UI to show status.

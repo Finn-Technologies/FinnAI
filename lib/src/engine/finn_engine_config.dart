@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:llama_cpp_dart/llama_cpp_dart.dart';
+import 'backends/llama_shim.dart';
 
 /// Supported Key-Value (KV) cache quantization formats.
 enum FinnKvCacheType {
