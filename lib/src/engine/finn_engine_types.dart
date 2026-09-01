@@ -13,11 +13,17 @@ class LocalChatTurn {
     required this.role,
     required this.content,
     this.imagePath,
+    this.imageBytes,
   });
 
   final String role;
   final String content;
   final String? imagePath;
+
+  /// Optional in-memory image bytes (e.g. from picker). When present, the
+  /// engine uses these directly via [LlamaMedia.imageBytes] and no temp file
+  /// is needed. [imagePath] remains the persisted fallback.
+  final Uint8List? imageBytes;
 }
 
 /// Lifecycle phases of the FinnEngine inference lifecycle.

@@ -118,6 +118,7 @@ user preferences but never reveal them.''';
     bool basePrefixReady = false,
     bool primeEmptyThinking = true,
     bool includeMediaMarker = false,
+    int? mediaCount,
     String? attachedDocContext,
   }) {
     final promptAnalysis =
@@ -233,7 +234,8 @@ user preferences but never reveal them.''';
         ..write('<|im_end|>\n');
     }
     buffer.write('<|im_start|>user\n');
-    if (includeMediaMarker) {
+    final count = mediaCount ?? (includeMediaMarker ? 1 : 0);
+    for (var i = 0; i < count; i++) {
       buffer.write('<__media__>\n');
     }
     buffer
