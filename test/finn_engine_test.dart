@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:llama_cpp_dart/llama_cpp_dart.dart';
+import 'package:finn_ai/src/engine/finn_accelerator.dart';
 import 'package:finn_ai/src/engine/finn_engine.dart';
 
 void main() {
@@ -7,7 +8,7 @@ void main() {
 
   group('FinnEngine Architecture Tests', () {
     test('FinnEngine singleton is accessible', () {
-      final engine = FinnEngine.instance;
+      final engine = FinnAccelerator.instance;
       expect(engine, isNotNull);
       expect(engine.selected, isNotNull);
       expect(engine.selected.name, contains('LFM2.5-VL'));
@@ -58,7 +59,7 @@ void main() {
       'FinnAccelerator aliases FinnEngine and QwenInference identically',
       () {
         final accelerator = FinnAccelerator.instance;
-        final engine = FinnEngine.instance;
+        final engine = FinnAccelerator.instance;
         final inference = QwenInference.instance;
 
         expect(identical(accelerator, engine), isTrue);

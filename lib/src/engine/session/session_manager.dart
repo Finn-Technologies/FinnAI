@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:llama_cpp_dart/llama_cpp_dart.dart';
+import '../backends/llama_shim.dart';
 import '../finn_engine_types.dart';
 import '../policy/residency_policy.dart';
 
