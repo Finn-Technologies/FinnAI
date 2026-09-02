@@ -21,16 +21,15 @@ class SafeMarkdownText extends StatefulWidget {
         .replaceAll(RegExp(r'<FINN_(?:PLUS|PRO)>', caseSensitive: false), '');
     value = value
         .replaceAllMapped(
-          RegExp(r'!\[([^\]]*)\]\([^)]*\)'),
-          (match) => match.group(1) ?? '',
-        )
+      RegExp(r'!\[([^\]]*)\]\([^)]*\)'),
+      (match) => match.group(1) ?? '',
+    )
         .replaceAllMapped(RegExp(r'\[([^\]]+)\]\(([^)]*)\)'), (match) {
-          final uri = Uri.tryParse(match.group(2) ?? '');
-          return uri?.scheme == 'https' && uri?.host.isNotEmpty == true
-              ? match.group(0)!
-              : match.group(1) ?? '';
-        })
-        .replaceAll(RegExp(r'</?[A-Za-z][^>\n]*>'), '');
+      final uri = Uri.tryParse(match.group(2) ?? '');
+      return uri?.scheme == 'https' && uri?.host.isNotEmpty == true
+          ? match.group(0)!
+          : match.group(1) ?? '';
+    }).replaceAll(RegExp(r'</?[A-Za-z][^>\n]*>'), '');
     return value.trim();
   }
 
@@ -130,9 +129,9 @@ class _SafeMarkdownTextState extends State<SafeMarkdownText> {
         final uri = Uri.parse(link.group(2)!);
         final recognizer = TapGestureRecognizer()
           ..onTap = () => launchUrl(
-            uri,
-            mode: LaunchMode.externalApplication,
-          );
+                uri,
+                mode: LaunchMode.externalApplication,
+              );
         _recognizers.add(recognizer);
         spans.add(
           TextSpan(

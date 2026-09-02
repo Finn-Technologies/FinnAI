@@ -9,8 +9,8 @@ typedef CreationDirectoryProvider = Future<Directory> Function();
 
 class CreationStore {
   CreationStore({CreationDirectoryProvider? directoryProvider})
-    : _directoryProvider =
-          directoryProvider ?? getApplicationDocumentsDirectory;
+      : _directoryProvider =
+            directoryProvider ?? getApplicationDocumentsDirectory;
 
   static final instance = CreationStore();
 

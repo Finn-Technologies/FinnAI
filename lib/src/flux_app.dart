@@ -64,86 +64,87 @@ class _FinnBootstrapState extends State<FinnBootstrap> {
 
   @override
   Widget build(BuildContext context) => FutureBuilder<void>(
-    future: _ready,
-    builder: (context, snapshot) {
-      // Surface engine bootstrap failures instead of silently falling back
-      // to the model-download screen and hiding the root cause.
-      if (snapshot.hasError) {
-        return MaterialApp(
-          title: 'FinnAI',
-          debugShowCheckedModeBanner: false,
-          theme: FluxTheme.light,
-          darkTheme: FluxTheme.dark,
-          themeMode: ThemeMode.system,
-          localizationsDelegates: const [
-            AppLocalizations.delegate,
-            GlobalMaterialLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
-          ],
-          supportedLocales: AppLocalizations.supportedLocales,
-          builder: FluxTheme.applySystemUi,
-          home: _BootstrapErrorPage(
-            error: snapshot.error!,
-            onRetry: _retryInitialization,
-          ),
-        );
-      }
-      if (snapshot.connectionState == ConnectionState.done) {
-        return FluxApp(
-          onboardingComplete: AppStateStore.instance.onboardingComplete,
-          modelInstalled: _modelInstalled,
-        );
-      }
-      return MaterialApp(
-        title: 'FinnAI',
-        debugShowCheckedModeBanner: false,
-        theme: FluxTheme.light,
-        darkTheme: FluxTheme.dark,
-        themeMode: ThemeMode.system,
-        localizationsDelegates: const [
-          AppLocalizations.delegate,
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        supportedLocales: AppLocalizations.supportedLocales,
-        builder: FluxTheme.applySystemUi,
-        home: Scaffold(
-          body: AmbientBackground(
-            child: Center(
-              child: ListenableBuilder(
-                listenable: FinnInference.instance,
-                builder: (context, _) {
-                  final inference = FinnInference.instance;
-                  // Engine statuses are localized at this display layer via
-                  // the machine-readable statusKey; the raw engine text is
-                  // only a fallback for dynamic/unmapped values.
-                  final status = inference.statusKey == FinnStatusKey.ready
-                      ? 'FinnAI'
-                      : localizedEngineStatus(
-                          context,
-                          inference.statusKey,
-                          inference.status,
-                        );
-                  return Text(
-                    status,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontFamily: 'InstrumentSans',
-                      fontSize: 22,
-                      fontWeight: FontWeight.w400,
-                      color: FluxColors.inkOf(context).withValues(alpha: .65),
-                    ),
-                  );
-                },
+        future: _ready,
+        builder: (context, snapshot) {
+          // Surface engine bootstrap failures instead of silently falling back
+          // to the model-download screen and hiding the root cause.
+          if (snapshot.hasError) {
+            return MaterialApp(
+              title: 'FinnAI',
+              debugShowCheckedModeBanner: false,
+              theme: FluxTheme.light,
+              darkTheme: FluxTheme.dark,
+              themeMode: ThemeMode.system,
+              localizationsDelegates: const [
+                AppLocalizations.delegate,
+                GlobalMaterialLocalizations.delegate,
+                GlobalWidgetsLocalizations.delegate,
+                GlobalCupertinoLocalizations.delegate,
+              ],
+              supportedLocales: AppLocalizations.supportedLocales,
+              builder: FluxTheme.applySystemUi,
+              home: _BootstrapErrorPage(
+                error: snapshot.error!,
+                onRetry: _retryInitialization,
+              ),
+            );
+          }
+          if (snapshot.connectionState == ConnectionState.done) {
+            return FluxApp(
+              onboardingComplete: AppStateStore.instance.onboardingComplete,
+              modelInstalled: _modelInstalled,
+            );
+          }
+          return MaterialApp(
+            title: 'FinnAI',
+            debugShowCheckedModeBanner: false,
+            theme: FluxTheme.light,
+            darkTheme: FluxTheme.dark,
+            themeMode: ThemeMode.system,
+            localizationsDelegates: const [
+              AppLocalizations.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            supportedLocales: AppLocalizations.supportedLocales,
+            builder: FluxTheme.applySystemUi,
+            home: Scaffold(
+              body: AmbientBackground(
+                child: Center(
+                  child: ListenableBuilder(
+                    listenable: FinnInference.instance,
+                    builder: (context, _) {
+                      final inference = FinnInference.instance;
+                      // Engine statuses are localized at this display layer via
+                      // the machine-readable statusKey; the raw engine text is
+                      // only a fallback for dynamic/unmapped values.
+                      final status = inference.statusKey == FinnStatusKey.ready
+                          ? 'FinnAI'
+                          : localizedEngineStatus(
+                              context,
+                              inference.statusKey,
+                              inference.status,
+                            );
+                      return Text(
+                        status,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontFamily: 'InstrumentSans',
+                          fontSize: 22,
+                          fontWeight: FontWeight.w400,
+                          color:
+                              FluxColors.inkOf(context).withValues(alpha: .65),
+                        ),
+                      );
+                    },
+                  ),
+                ),
               ),
             ),
-          ),
-        ),
+          );
+        },
       );
-    },
-  );
 }
 
 class FluxApp extends StatelessWidget {
@@ -176,13 +177,13 @@ class FluxApp extends StatelessWidget {
       builder: FluxTheme.applySystemUi,
       home: FinnInference.instance.isDeviceSupported
           ? onboardingComplete
-                ? modelInstalled
-                      ? const HomeShell()
-                      : const SoftwareUpgradeScreen()
-                : OnboardingFlow(
-                    enableModelDownload: enableModelDownload,
-                    onComplete: AppStateStore.instance.completeOnboarding,
-                  )
+              ? modelInstalled
+                  ? const HomeShell()
+                  : const SoftwareUpgradeScreen()
+              : OnboardingFlow(
+                  enableModelDownload: enableModelDownload,
+                  onComplete: AppStateStore.instance.completeOnboarding,
+                )
           : const _UnsupportedDevicePage(),
     );
   }
@@ -193,44 +194,44 @@ class _UnsupportedDevicePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    body: AmbientBackground(
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 30),
-          child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 62,
-                  height: 62,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: FluxColors.surfaceOf(context),
-                  ),
-                  child: const Icon(Icons.memory_rounded, size: 27),
+        body: AmbientBackground(
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 30),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 62,
+                      height: 62,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: FluxColors.surfaceOf(context),
+                      ),
+                      child: const Icon(Icons.memory_rounded, size: 27),
+                    ),
+                    const SizedBox(height: 22),
+                    Text(
+                      L10n.of(context).unsupportedTitle,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      L10n.of(context).unsupportedBody,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: FluxColors.mutedOf(context),
+                          ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 22),
-                Text(
-                  L10n.of(context).unsupportedTitle,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  L10n.of(context).unsupportedBody,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: FluxColors.mutedOf(context),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ),
-      ),
-    ),
-  );
+      );
 }
 
 /// Shown when engine bootstrap fails so the root cause is visible and the

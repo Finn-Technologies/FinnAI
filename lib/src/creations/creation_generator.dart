@@ -14,15 +14,14 @@ abstract interface class CancelableCreationGenerator {
 class FinnCreationGenerator
     implements CreationGenerator, CancelableCreationGenerator {
   FinnCreationGenerator({FinnInference? inference})
-    : _inference = inference ?? FinnInference.instance;
+      : _inference = inference ?? FinnInference.instance;
 
   final FinnInference _inference;
 
   @override
   Future<CreationDraft> generate(String prompt, CreationKind kind) async {
     final output = StringBuffer();
-    final request =
-        '''
+    final request = '''
 Create a concise, useful ${kind.label.toLowerCase()} concept from this brief:
 "$prompt"
 
@@ -65,18 +64,18 @@ CreationDraft parseCreationDraft(String response, String fallbackPrompt) {
         final rawSections = map['sections'];
         final sections = rawSections is List
             ? rawSections
-                  .whereType<Map<dynamic, dynamic>>()
-                  .map(
-                    (item) => CreationSection.fromJson(
-                      Map<String, Object?>.from(item),
-                    ),
-                  )
-                  .where(
-                    (section) =>
-                        section.heading.isNotEmpty && section.body.isNotEmpty,
-                  )
-                  .take(6)
-                  .toList(growable: false)
+                .whereType<Map<dynamic, dynamic>>()
+                .map(
+                  (item) => CreationSection.fromJson(
+                    Map<String, Object?>.from(item),
+                  ),
+                )
+                .where(
+                  (section) =>
+                      section.heading.isNotEmpty && section.body.isNotEmpty,
+                )
+                .take(6)
+                .toList(growable: false)
             : <CreationSection>[];
         if (title.isNotEmpty && (summary.isNotEmpty || sections.isNotEmpty)) {
           return CreationDraft(
@@ -106,16 +105,12 @@ CreationDraft parseCreationDraft(String response, String fallbackPrompt) {
     );
   }
 
-  final fallbackTitle = fallbackPrompt
-      .trim()
-      .split(RegExp(r'\s+'))
-      .take(6)
-      .join(' ');
+  final fallbackTitle =
+      fallbackPrompt.trim().split(RegExp(r'\s+')).take(6).join(' ');
   return CreationDraft(
     title: fallbackTitle.isEmpty ? 'Untitled creation' : fallbackTitle,
-    summary: cleaned.isEmpty
-        ? 'A local creation based on your brief.'
-        : cleaned,
+    summary:
+        cleaned.isEmpty ? 'A local creation based on your brief.' : cleaned,
     sections: const [],
   );
 }
@@ -132,10 +127,9 @@ String _jsonStringField(String source, String field) {
   }
 }
 
-List<CreationSection> _completeJsonSections(String source) =>
-    RegExp(
-          r'\{\s*"heading"\s*:\s*("(?:\\.|[^"\\])*")\s*,\s*"body"\s*:\s*("(?:\\.|[^"\\])*")\s*\}',
-        )
+List<CreationSection> _completeJsonSections(String source) => RegExp(
+      r'\{\s*"heading"\s*:\s*("(?:\\.|[^"\\])*")\s*,\s*"body"\s*:\s*("(?:\\.|[^"\\])*")\s*\}',
+    )
         .allMatches(source)
         .map((match) {
           try {

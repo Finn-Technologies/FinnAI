@@ -395,7 +395,8 @@ final class Generator implements Finalizable {
       final chunkSize = (i + cap) > prompt.length ? prompt.length - i : cap;
       // If decoding this chunk would exceed the context window, proactively shift KV cache.
       if (pos + chunkSize >= context.nCtx) {
-        if (request.shiftPolicy == ContextShiftPolicy.auto && context.canShift) {
+        if (request.shiftPolicy == ContextShiftPolicy.auto &&
+            context.canShift) {
           final shifted = _applyShift(request, pos);
           pos -= shifted.nDiscard;
         }

@@ -134,14 +134,16 @@ Future<T?> showFluxContextMenu<T>({
   final overlay = Overlay.of(context).context.findRenderObject() as RenderBox?;
   if (overlay == null) return Future.value(null);
 
-  final targetRect = renderBox.localToGlobal(Offset.zero, ancestor: overlay) & renderBox.size;
+  final targetRect =
+      renderBox.localToGlobal(Offset.zero, ancestor: overlay) & renderBox.size;
 
   return Navigator.of(context, rootNavigator: true).push<T>(
     _FluxContextMenuRoute<T>(
       targetRect: targetRect,
       previewWidget: previewWidget,
       items: items,
-      targetBorderRadius: targetBorderRadius ?? BorderRadius.circular(FluxRadius.md),
+      targetBorderRadius:
+          targetBorderRadius ?? BorderRadius.circular(FluxRadius.md),
       isDark: FluxColors.isDark(context),
     ),
   );
@@ -241,7 +243,8 @@ class _FluxContextMenuOverlay extends StatelessWidget {
     }
 
     final double menuTop = showBelow
-        ? math.min(targetRect.bottom + 10.0, screenSize.height - menuHeight - 16.0)
+        ? math.min(
+            targetRect.bottom + 10.0, screenSize.height - menuHeight - 16.0)
         : math.max(targetRect.top - menuHeight - 10.0, 16.0);
 
     return Material(
@@ -310,7 +313,8 @@ class _FluxContextMenuOverlay extends StatelessWidget {
               builder: (context, child) {
                 final scale = 0.78 + 0.22 * springAnimation.value;
                 final opacity = fadeAnimation.value.clamp(0.0, 1.0);
-                final translateY = (showBelow ? -12.0 : 12.0) * (1.0 - springAnimation.value);
+                final translateY =
+                    (showBelow ? -12.0 : 12.0) * (1.0 - springAnimation.value);
 
                 return Transform.translate(
                   offset: Offset(0, translateY),
@@ -357,7 +361,8 @@ class _FluxContextMenuOverlay extends StatelessWidget {
                         ),
                       ],
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,

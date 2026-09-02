@@ -67,11 +67,11 @@ class ConversationSessionCacheKey {
 
 @visibleForTesting
 List<MemoryReleaseTarget> memoryPressureReleaseOrder() => const [
-  MemoryReleaseTarget.inactiveConversationSessions,
-  MemoryReleaseTarget.activeConversationSession,
-  MemoryReleaseTarget.secondaryModelEngines,
-  MemoryReleaseTarget.primaryModelEngine,
-];
+      MemoryReleaseTarget.inactiveConversationSessions,
+      MemoryReleaseTarget.activeConversationSession,
+      MemoryReleaseTarget.secondaryModelEngines,
+      MemoryReleaseTarget.primaryModelEngine,
+    ];
 
 /// Collapses callers onto one in-flight load and lets Send promote the exact
 /// prewarm job instead of starting a competing model load.

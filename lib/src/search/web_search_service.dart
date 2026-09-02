@@ -249,7 +249,7 @@ class WebSearchService {
 
   /// Fast in-memory LRU cache for recent searches (max 30 entries, 15m TTL).
   static final Map<String, ({WebSearchResult result, DateTime timestamp})>
-  _cache = {};
+      _cache = {};
   static const int _maxCacheSize = 30;
   static const Duration _cacheTtl = Duration(minutes: 15);
 
@@ -278,15 +278,13 @@ class WebSearchService {
     try {
       if (endpoint != null) {
         final uri = endpoint!.replace(queryParameters: {'q': value});
-        final response = await _client
-            .get(
-              uri,
-              headers: const {
-                'Accept': 'application/json,text/html,text/plain',
-                'User-Agent': 'FinnAI/1.0 (Mobile; BackgroundBrowser)',
-              },
-            )
-            .timeout(timeout);
+        final response = await _client.get(
+          uri,
+          headers: const {
+            'Accept': 'application/json,text/html,text/plain',
+            'User-Agent': 'FinnAI/1.0 (Mobile; BackgroundBrowser)',
+          },
+        ).timeout(timeout);
         if (response.statusCode != 200) return null;
         final sources = _parseResponseContent(response.body);
         if (sources.isEmpty) return null;
@@ -304,15 +302,13 @@ class WebSearchService {
           'skip_disambig': '1',
         },
       );
-      final ddgFuture = _client
-          .get(
-            ddgUri,
-            headers: const {
-              'Accept': 'application/json',
-              'User-Agent': 'FinnAI/1.0 (Mobile; BackgroundBrowser)',
-            },
-          )
-          .timeout(timeout);
+      final ddgFuture = _client.get(
+        ddgUri,
+        headers: const {
+          'Accept': 'application/json',
+          'User-Agent': 'FinnAI/1.0 (Mobile; BackgroundBrowser)',
+        },
+      ).timeout(timeout);
 
       // 2. Secondary fast engine: Wikipedia OpenSearch API
       final wikiUri = Uri.parse('https://en.wikipedia.org/w/api.php').replace(
@@ -324,15 +320,13 @@ class WebSearchService {
           'format': 'json',
         },
       );
-      final wikiFuture = _client
-          .get(
-            wikiUri,
-            headers: const {
-              'Accept': 'application/json',
-              'User-Agent': 'FinnAI/1.0 (Mobile; BackgroundBrowser)',
-            },
-          )
-          .timeout(timeout);
+      final wikiFuture = _client.get(
+        wikiUri,
+        headers: const {
+          'Accept': 'application/json',
+          'User-Agent': 'FinnAI/1.0 (Mobile; BackgroundBrowser)',
+        },
+      ).timeout(timeout);
 
       // Race or combine fastest available responses
       final responses = await Future.wait([
@@ -357,15 +351,13 @@ class WebSearchService {
           queryParameters: {'q': value},
         );
         try {
-          final liteResp = await _client
-              .get(
-                liteUri,
-                headers: const {
-                  'Accept': 'text/html',
-                  'User-Agent': 'FinnAI/1.0 (Mobile; BackgroundBrowser)',
-                },
-              )
-              .timeout(timeout);
+          final liteResp = await _client.get(
+            liteUri,
+            headers: const {
+              'Accept': 'text/html',
+              'User-Agent': 'FinnAI/1.0 (Mobile; BackgroundBrowser)',
+            },
+          ).timeout(timeout);
           if (liteResp.statusCode == 200) {
             sources = _parseResponseContent(liteResp.body);
           }
@@ -398,15 +390,13 @@ class WebSearchService {
   Future<String?> fetchPageText(Uri url) async {
     if (url.scheme != 'https' || url.host.isEmpty) return null;
     try {
-      final response = await _client
-          .get(
-            url,
-            headers: const {
-              'Accept': 'text/html,text/plain',
-              'User-Agent': 'FinnAI/1.0 (Mobile; BackgroundBrowser)',
-            },
-          )
-          .timeout(timeout);
+      final response = await _client.get(
+        url,
+        headers: const {
+          'Accept': 'text/html,text/plain',
+          'User-Agent': 'FinnAI/1.0 (Mobile; BackgroundBrowser)',
+        },
+      ).timeout(timeout);
       if (response.statusCode < 200 || response.statusCode >= 400) return null;
       final text = _plainText(response.body);
       if (text.isEmpty) return null;
@@ -454,9 +444,8 @@ class WebSearchService {
         WebSource(
           title: cleanTitle,
           url: parsedUrl,
-          snippet: boundedSnippet.isEmpty
-              ? 'No excerpt available.'
-              : boundedSnippet,
+          snippet:
+              boundedSnippet.isEmpty ? 'No excerpt available.' : boundedSnippet,
         ),
       );
     }
@@ -470,9 +459,8 @@ class WebSearchService {
       final urls = json[3] as List;
       for (var i = 0; i < titles.length && sources.length < 3; i++) {
         final title = titles[i]?.toString() ?? '';
-        final snippet = i < snippets.length
-            ? snippets[i]?.toString() ?? ''
-            : '';
+        final snippet =
+            i < snippets.length ? snippets[i]?.toString() ?? '' : '';
         final url = i < urls.length ? urls[i]?.toString() ?? '' : '';
         addSource(title, url, snippet);
       }
@@ -502,18 +490,16 @@ class WebSearchService {
                 if (subItem is Map<String, dynamic>) {
                   final text = subItem['Text']?.toString() ?? '';
                   final firstUrl = subItem['FirstURL']?.toString() ?? '';
-                  final title = text.contains(' - ')
-                      ? text.split(' - ').first
-                      : text;
+                  final title =
+                      text.contains(' - ') ? text.split(' - ').first : text;
                   addSource(title, firstUrl, text);
                 }
               }
             } else {
               final text = item['Text']?.toString() ?? '';
               final firstUrl = item['FirstURL']?.toString() ?? '';
-              final title = text.contains(' - ')
-                  ? text.split(' - ').first
-                  : text;
+              final title =
+                  text.contains(' - ') ? text.split(' - ').first : text;
               addSource(title, firstUrl, text);
             }
           }
@@ -529,8 +515,7 @@ class WebSearchService {
                 item['title']?.toString() ?? item['Text']?.toString() ?? '';
             final url =
                 item['url']?.toString() ?? item['FirstURL']?.toString() ?? '';
-            final snippet =
-                item['snippet']?.toString() ??
+            final snippet = item['snippet']?.toString() ??
                 item['content']?.toString() ??
                 item['Text']?.toString() ??
                 '';
@@ -555,29 +540,25 @@ class WebSearchService {
       final match = anchors[index];
       final url = _resultUri(_decodeHtml(match.group(1)!));
       if (url == null || !seen.add(url.toString())) continue;
-      final blockEnd = index + 1 < anchors.length
-          ? anchors[index + 1].start
-          : html.length;
+      final blockEnd =
+          index + 1 < anchors.length ? anchors[index + 1].start : html.length;
       final block = html.substring(match.end, blockEnd);
       final snippetMatch = RegExp(
         r'class="[^"]*result__snippet[^"]*"[^>]*>([\s\S]*?)</(?:a|div|td)>',
         caseSensitive: false,
       ).firstMatch(block);
       final title = _plainText(match.group(2)!);
-      final snippet = snippetMatch == null
-          ? ''
-          : _plainText(snippetMatch.group(1)!);
+      final snippet =
+          snippetMatch == null ? '' : _plainText(snippetMatch.group(1)!);
       if (title.isEmpty) continue;
-      final boundedSnippet = snippet.length > 350
-          ? '${snippet.substring(0, 350)}…'
-          : snippet;
+      final boundedSnippet =
+          snippet.length > 350 ? '${snippet.substring(0, 350)}…' : snippet;
       sources.add(
         WebSource(
           title: title,
           url: url,
-          snippet: boundedSnippet.isEmpty
-              ? 'No excerpt available.'
-              : boundedSnippet,
+          snippet:
+              boundedSnippet.isEmpty ? 'No excerpt available.' : boundedSnippet,
         ),
       );
     }
@@ -588,8 +569,8 @@ class WebSearchService {
     final absolute = href.startsWith('//')
         ? 'https:$href'
         : href.startsWith('/')
-        ? 'https://duckduckgo.com$href'
-        : href;
+            ? 'https://duckduckgo.com$href'
+            : href;
     final parsed = Uri.tryParse(absolute);
     if (parsed == null) return null;
     final redirected = parsed.queryParameters['uddg'];
@@ -601,17 +582,17 @@ class WebSearchService {
   }
 
   static String _plainText(String value) => _decodeHtml(
-    value
-        .replaceAll(
-          RegExp(
-            r'<(?:script|style|svg|noscript|form|header|footer|nav)[^>]*>[\s\S]*?</(?:script|style|svg|noscript|form|header|footer|nav)>',
-            caseSensitive: false,
-          ),
-          ' ',
-        )
-        .replaceAll(RegExp(r'<[^>]+>'), ' ')
-        .replaceAll(RegExp(r'\s+'), ' '),
-  ).trim();
+        value
+            .replaceAll(
+              RegExp(
+                r'<(?:script|style|svg|noscript|form|header|footer|nav)[^>]*>[\s\S]*?</(?:script|style|svg|noscript|form|header|footer|nav)>',
+                caseSensitive: false,
+              ),
+              ' ',
+            )
+            .replaceAll(RegExp(r'<[^>]+>'), ' ')
+            .replaceAll(RegExp(r'\s+'), ' '),
+      ).trim();
 
   static String _decodeHtml(String value) {
     var decoded = value
@@ -636,4 +617,3 @@ class WebSearchService {
     return decoded;
   }
 }
-

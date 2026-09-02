@@ -67,71 +67,72 @@ class TtftTrace {
   }
 
   Map<String, Object?> toJson() => <String, Object?>{
-    'schema': 1,
-    'generation_id': generationId,
-    // A stable opaque ID is useful for grouping without prompt contents.
-    'conversation_id': conversationId,
-    'total_ttft_ms': _duration(
-      TtftPhase.sendAccepted,
-      hasUiPaintCompleted
-          ? TtftPhase.uiPaintCompleted
-          : TtftPhase.uiPaintScheduled,
-    ),
-    'routing_ms': _duration(TtftPhase.sendAccepted, TtftPhase.routeSelected),
-    'model_load_ms': _duration(
-      TtftPhase.modelLoadRequested,
-      TtftPhase.modelReady,
-    ),
-    'session_prepare_ms': _duration(
-      TtftPhase.modelReady,
-      TtftPhase.sessionReady,
-    ),
-    'prompt_build_ms': _duration(
-      TtftPhase.sessionReady,
-      TtftPhase.promptRendered,
-    ),
-    // llama_cpp_dart currently reports its first event only after
-    // tokenisation, prefill, and first sampling. Keep that combined interval
-    // honest instead of fabricating sub-phase precision.
-    'prompt_eval_ms': _duration(
-      TtftPhase.generationRequested,
-      TtftPhase.nativeToken,
-    ),
-    'first_decode_ms': null,
-    'sanitization_ms': _duration(
-      TtftPhase.nativeToken,
-      TtftPhase.sanitizedToken,
-    ),
-    'ui_delivery_ms': _duration(
-      TtftPhase.sanitizedToken,
-      hasUiPaintCompleted
-          ? TtftPhase.uiPaintCompleted
-          : TtftPhase.uiPaintScheduled,
-    ),
-    'prompt_token_count': promptTokenCount,
-    'prompt_token_count_estimated': true,
-    'model_tier': modelTier,
-    'model_already_resident': modelAlreadyResident,
-    'base_prefix_cache_hit': basePrefixCacheHit,
-    'prefix_state_tokens': prefixStateTokens,
-    'prefix_state_bytes': prefixStateBytes,
-    'prefix_state_preparation_ms': prefixStatePreparationMicros == null
-        ? null
-        : prefixStatePreparationMicros! / 1000,
-    'prefix_state_restoration_ms': prefixStateRestorationMicros == null
-        ? null
-        : prefixStateRestorationMicros! / 1000,
-    'prefix_prompt_tokens_per_second': prefixPromptTokensPerSecond,
-    'conversation_session_cache_hit': conversationSessionCacheHit,
-    'available_ram_bytes': availableRamBytes,
-    'low_memory': lowMemory,
-    'threads': threads,
-    'batch_threads': batchThreads,
-    'n_batch': batchSize,
-    'n_ubatch': microBatchSize,
-    'kv_type': kvType,
-    'flash_attention': flashAttention,
-  };
+        'schema': 1,
+        'generation_id': generationId,
+        // A stable opaque ID is useful for grouping without prompt contents.
+        'conversation_id': conversationId,
+        'total_ttft_ms': _duration(
+          TtftPhase.sendAccepted,
+          hasUiPaintCompleted
+              ? TtftPhase.uiPaintCompleted
+              : TtftPhase.uiPaintScheduled,
+        ),
+        'routing_ms':
+            _duration(TtftPhase.sendAccepted, TtftPhase.routeSelected),
+        'model_load_ms': _duration(
+          TtftPhase.modelLoadRequested,
+          TtftPhase.modelReady,
+        ),
+        'session_prepare_ms': _duration(
+          TtftPhase.modelReady,
+          TtftPhase.sessionReady,
+        ),
+        'prompt_build_ms': _duration(
+          TtftPhase.sessionReady,
+          TtftPhase.promptRendered,
+        ),
+        // llama_cpp_dart currently reports its first event only after
+        // tokenisation, prefill, and first sampling. Keep that combined interval
+        // honest instead of fabricating sub-phase precision.
+        'prompt_eval_ms': _duration(
+          TtftPhase.generationRequested,
+          TtftPhase.nativeToken,
+        ),
+        'first_decode_ms': null,
+        'sanitization_ms': _duration(
+          TtftPhase.nativeToken,
+          TtftPhase.sanitizedToken,
+        ),
+        'ui_delivery_ms': _duration(
+          TtftPhase.sanitizedToken,
+          hasUiPaintCompleted
+              ? TtftPhase.uiPaintCompleted
+              : TtftPhase.uiPaintScheduled,
+        ),
+        'prompt_token_count': promptTokenCount,
+        'prompt_token_count_estimated': true,
+        'model_tier': modelTier,
+        'model_already_resident': modelAlreadyResident,
+        'base_prefix_cache_hit': basePrefixCacheHit,
+        'prefix_state_tokens': prefixStateTokens,
+        'prefix_state_bytes': prefixStateBytes,
+        'prefix_state_preparation_ms': prefixStatePreparationMicros == null
+            ? null
+            : prefixStatePreparationMicros! / 1000,
+        'prefix_state_restoration_ms': prefixStateRestorationMicros == null
+            ? null
+            : prefixStateRestorationMicros! / 1000,
+        'prefix_prompt_tokens_per_second': prefixPromptTokensPerSecond,
+        'conversation_session_cache_hit': conversationSessionCacheHit,
+        'available_ram_bytes': availableRamBytes,
+        'low_memory': lowMemory,
+        'threads': threads,
+        'batch_threads': batchThreads,
+        'n_batch': batchSize,
+        'n_ubatch': microBatchSize,
+        'kv_type': kvType,
+        'flash_attention': flashAttention,
+      };
 
   void report({bool force = false}) {
     if (_reported || (!force && !hasUiPaintScheduled)) return;
@@ -203,16 +204,16 @@ class PrefixCacheCompatibilityKey {
   int get hashCode => stableHash.hashCode;
 
   Map<String, Object?> toDiagnosticJson() => <String, Object?>{
-    'key_hash': stableHash,
-    'model_sha256': modelSha256,
-    'model_tier': modelTier,
-    'runtime_version': runtimeVersion,
-    'architecture_identity': architectureIdentity,
-    'system_prompt_version': systemPromptVersion,
-    'chat_template_version': chatTemplateVersion,
-    'context_size': contextSize,
-    'kv_type_k': kvTypeK,
-    'kv_type_v': kvTypeV,
-    'tokenizer_settings': tokenizerSettings,
-  };
+        'key_hash': stableHash,
+        'model_sha256': modelSha256,
+        'model_tier': modelTier,
+        'runtime_version': runtimeVersion,
+        'architecture_identity': architectureIdentity,
+        'system_prompt_version': systemPromptVersion,
+        'chat_template_version': chatTemplateVersion,
+        'context_size': contextSize,
+        'kv_type_k': kvTypeK,
+        'kv_type_v': kvTypeV,
+        'tokenizer_settings': tokenizerSettings,
+      };
 }

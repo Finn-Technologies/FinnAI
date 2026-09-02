@@ -105,8 +105,7 @@ class AppStateStore extends ChangeNotifier {
 
     // 4. Delete locally generated creations and personalization features.
     try {
-      final target =
-          creationStore ??
+      final target = creationStore ??
           (_directoryProvider == null
               ? CreationStore.instance
               : CreationStore(directoryProvider: _directoryProvider));
@@ -120,8 +119,7 @@ class AppStateStore extends ChangeNotifier {
       failed.add('Local creations ($e)');
     }
 
-    final profileTarget =
-        youProfileStore ??
+    final profileTarget = youProfileStore ??
         (_directoryProvider == null
             ? YouProfileStore.instance
             : YouProfileStore(directoryProvider: _directoryProvider));
@@ -132,8 +130,7 @@ class AppStateStore extends ChangeNotifier {
       failed.addAll(profileFailures);
     }
 
-    final skillTarget =
-        skillsStore ??
+    final skillTarget = skillsStore ??
         (_directoryProvider == null
             ? SkillsStore.instance
             : SkillsStore(directoryProvider: _directoryProvider));

@@ -102,9 +102,8 @@ abstract final class FluxTheme {
       statusBarColor: Colors.transparent,
       statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
       systemNavigationBarColor: Colors.transparent,
-      systemNavigationBarIconBrightness: isDark
-          ? Brightness.light
-          : Brightness.dark,
+      systemNavigationBarIconBrightness:
+          isDark ? Brightness.light : Brightness.dark,
       systemStatusBarContrastEnforced: false,
       systemNavigationBarContrastEnforced: false,
     );
@@ -117,104 +116,104 @@ abstract final class FluxTheme {
       );
 
   static TextTheme _textTheme(Color color) => TextTheme(
-    headlineLarge: TextStyle(
-      fontSize: 24,
-      height: 1.08,
-      fontWeight: FontWeight.w500,
-      letterSpacing: -0.55,
-    ),
-    headlineMedium: TextStyle(
-      fontSize: 22,
-      height: 1.1,
-      fontWeight: FontWeight.w500,
-      letterSpacing: -0.45,
-    ),
-    titleLarge: TextStyle(
-      fontSize: 20,
-      height: 1.2,
-      fontWeight: FontWeight.w500,
-      letterSpacing: -0.3,
-    ),
-    titleMedium: TextStyle(
-      fontSize: 16,
-      height: 1.25,
-      fontWeight: FontWeight.w400,
-      letterSpacing: -0.15,
-    ),
-    titleSmall: TextStyle(
-      fontSize: 14,
-      height: 1.25,
-      fontWeight: FontWeight.w500,
-      letterSpacing: -0.1,
-    ),
-    bodyLarge: TextStyle(
-      fontSize: 15,
-      height: 1.45,
-      fontWeight: FontWeight.w400,
-      letterSpacing: -0.1,
-    ),
-    bodyMedium: TextStyle(
-      fontSize: 15,
-      height: 1.35,
-      fontWeight: FontWeight.w400,
-      letterSpacing: -0.08,
-    ),
-    bodySmall: TextStyle(
-      fontSize: 13,
-      height: 1.3,
-      fontWeight: FontWeight.w400,
-      letterSpacing: -0.05,
-    ),
-    labelLarge: TextStyle(
-      fontSize: 16,
-      height: 1.2,
-      fontWeight: FontWeight.w400,
-    ),
-    labelMedium: TextStyle(
-      fontSize: 12,
-      height: 1.25,
-      fontWeight: FontWeight.w400,
-    ),
-    // Matches the M3 default this role previously inherited, so existing
-    // labelSmall usages keep rendering at the same size.
-    labelSmall: TextStyle(
-      fontSize: 11,
-      height: 1.25,
-      fontWeight: FontWeight.w400,
-    ),
-  ).apply(bodyColor: color, displayColor: color);
+        headlineLarge: TextStyle(
+          fontSize: 24,
+          height: 1.08,
+          fontWeight: FontWeight.w500,
+          letterSpacing: -0.55,
+        ),
+        headlineMedium: TextStyle(
+          fontSize: 22,
+          height: 1.1,
+          fontWeight: FontWeight.w500,
+          letterSpacing: -0.45,
+        ),
+        titleLarge: TextStyle(
+          fontSize: 20,
+          height: 1.2,
+          fontWeight: FontWeight.w500,
+          letterSpacing: -0.3,
+        ),
+        titleMedium: TextStyle(
+          fontSize: 16,
+          height: 1.25,
+          fontWeight: FontWeight.w400,
+          letterSpacing: -0.15,
+        ),
+        titleSmall: TextStyle(
+          fontSize: 14,
+          height: 1.25,
+          fontWeight: FontWeight.w500,
+          letterSpacing: -0.1,
+        ),
+        bodyLarge: TextStyle(
+          fontSize: 15,
+          height: 1.45,
+          fontWeight: FontWeight.w400,
+          letterSpacing: -0.1,
+        ),
+        bodyMedium: TextStyle(
+          fontSize: 15,
+          height: 1.35,
+          fontWeight: FontWeight.w400,
+          letterSpacing: -0.08,
+        ),
+        bodySmall: TextStyle(
+          fontSize: 13,
+          height: 1.3,
+          fontWeight: FontWeight.w400,
+          letterSpacing: -0.05,
+        ),
+        labelLarge: TextStyle(
+          fontSize: 16,
+          height: 1.2,
+          fontWeight: FontWeight.w400,
+        ),
+        labelMedium: TextStyle(
+          fontSize: 12,
+          height: 1.25,
+          fontWeight: FontWeight.w400,
+        ),
+        // Matches the M3 default this role previously inherited, so existing
+        // labelSmall usages keep rendering at the same size.
+        labelSmall: TextStyle(
+          fontSize: 11,
+          height: 1.25,
+          fontWeight: FontWeight.w400,
+        ),
+      ).apply(bodyColor: color, displayColor: color);
 
   static ThemeData get light => ThemeData(
-    useMaterial3: true,
-    brightness: Brightness.light,
-    scaffoldBackgroundColor: FluxColors.canvas,
-    fontFamily: 'InstrumentSans',
-    colorScheme: const ColorScheme.light(
-      primary: FluxColors.ink,
-      surface: FluxColors.canvas,
-      onSurface: FluxColors.ink,
-    ),
-    splashFactory: InkRipple.splashFactory,
-    textTheme: _textTheme(FluxColors.ink),
-    pageTransitionsTheme: const PageTransitionsTheme(
-      builders: {TargetPlatform.android: ZoomPageTransitionsBuilder()},
-    ),
-  );
+        useMaterial3: true,
+        brightness: Brightness.light,
+        scaffoldBackgroundColor: FluxColors.canvas,
+        fontFamily: 'InstrumentSans',
+        colorScheme: const ColorScheme.light(
+          primary: FluxColors.ink,
+          surface: FluxColors.canvas,
+          onSurface: FluxColors.ink,
+        ),
+        splashFactory: InkRipple.splashFactory,
+        textTheme: _textTheme(FluxColors.ink),
+        pageTransitionsTheme: const PageTransitionsTheme(
+          builders: {TargetPlatform.android: ZoomPageTransitionsBuilder()},
+        ),
+      );
 
   static ThemeData get dark => ThemeData(
-    useMaterial3: true,
-    brightness: Brightness.dark,
-    scaffoldBackgroundColor: FluxColors.darkCanvas,
-    fontFamily: 'InstrumentSans',
-    colorScheme: const ColorScheme.dark(
-      primary: FluxColors.darkInk,
-      surface: FluxColors.darkCanvas,
-      onSurface: FluxColors.darkInk,
-    ),
-    splashFactory: InkRipple.splashFactory,
-    textTheme: _textTheme(FluxColors.darkInk),
-    pageTransitionsTheme: const PageTransitionsTheme(
-      builders: {TargetPlatform.android: ZoomPageTransitionsBuilder()},
-    ),
-  );
+        useMaterial3: true,
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: FluxColors.darkCanvas,
+        fontFamily: 'InstrumentSans',
+        colorScheme: const ColorScheme.dark(
+          primary: FluxColors.darkInk,
+          surface: FluxColors.darkCanvas,
+          onSurface: FluxColors.darkInk,
+        ),
+        splashFactory: InkRipple.splashFactory,
+        textTheme: _textTheme(FluxColors.darkInk),
+        pageTransitionsTheme: const PageTransitionsTheme(
+          builders: {TargetPlatform.android: ZoomPageTransitionsBuilder()},
+        ),
+      );
 }

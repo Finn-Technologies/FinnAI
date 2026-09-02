@@ -55,7 +55,8 @@ void main() {
     expect(find.textContaining('proprietary software'), findsOneWidget);
     await moveForward();
     expect(find.text('Installing LFM2.5-VL 1.6B'), findsOneWidget);
-    expect(find.text('Preparing LFM2.5-VL 1.6B for this device…'), findsOneWidget);
+    expect(
+        find.text('Preparing LFM2.5-VL 1.6B for this device…'), findsOneWidget);
 
     tester.widget<PageView>(find.byType(PageView)).controller!.jumpToPage(3);
     await tester.pump();
@@ -295,9 +296,8 @@ void main() {
     testWidgets(
       'send control has distinct, contrasting states in ${brightness.name} mode',
       (tester) async {
-        final theme = brightness == Brightness.dark
-            ? FluxTheme.dark
-            : FluxTheme.light;
+        final theme =
+            brightness == Brightness.dark ? FluxTheme.dark : FluxTheme.light;
         final controller = TextEditingController();
         final focusNode = FocusNode();
         addTearDown(controller.dispose);

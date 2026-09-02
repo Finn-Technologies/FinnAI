@@ -117,12 +117,12 @@ Future<void> _runModelEvaluation() async {
   final selectedCases = caseSelection.trim().isEmpty
       ? List<int>.generate(prompts.length, (index) => index)
       : caseSelection
-            .split(',')
-            .map((value) => int.tryParse(value.trim()))
-            .whereType<int>()
-            .where((index) => index >= 0 && index < prompts.length)
-            .toSet()
-            .toList(growable: false);
+          .split(',')
+          .map((value) => int.tryParse(value.trim()))
+          .whereType<int>()
+          .where((index) => index >= 0 && index < prompts.length)
+          .toSet()
+          .toList(growable: false);
   for (final entry in specification.split(';')) {
     final separator = entry.indexOf('=');
     if (separator <= 0) continue;
@@ -144,7 +144,32 @@ Future<void> _runModelEvaluation() async {
       final report = FinnInference.instance.lastGenerationReport;
       final response = answer.toString();
       debugPrint(
-        'FINN_EVAL ${jsonEncode({'selectedModel': label, 'intent': analysis.intent.name, 'route': report?.route.name, 'outputBudget': report?.outputBudget, 'finishReason': report?.finishReason.name, 'firstTokenLatencyMs': report?.firstTokenLatency?.inMilliseconds, 'totalGenerationTimeMs': report?.totalGenerationTime.inMilliseconds, 'outputTokens': report?.outputTokens, 'tokensPerSecond': report?.tokensPerSecond, if (prompt == 'Come fare una torta di ricotta e fragole?') 'recipeAcceptance': assessRicottaStrawberryCake(response).toJson(), if (prompt == 'Can you tell me how to upgrade the RAM in my laptop?') 'hardwareAcceptance': assessLaptopRamGuidance(response).toJson(), if (prompt == 'How does the routing in Bridgetown work?') 'bridgetownAcceptance': assessBridgetownRouting(response).toJson(), if (prompt == 'How do living ants know that an ant has died?') 'antNecrophoresisAcceptance': assessAntNecrophoresis(response).toJson(), 'response': response})}',
+        'FINN_EVAL ${jsonEncode({
+              'selectedModel': label,
+              'intent': analysis.intent.name,
+              'route': report?.route.name,
+              'outputBudget': report?.outputBudget,
+              'finishReason': report?.finishReason.name,
+              'firstTokenLatencyMs': report?.firstTokenLatency?.inMilliseconds,
+              'totalGenerationTimeMs':
+                  report?.totalGenerationTime.inMilliseconds,
+              'outputTokens': report?.outputTokens,
+              'tokensPerSecond': report?.tokensPerSecond,
+              if (prompt == 'Come fare una torta di ricotta e fragole?')
+                'recipeAcceptance':
+                    assessRicottaStrawberryCake(response).toJson(),
+              if (prompt ==
+                  'Can you tell me how to upgrade the RAM in my laptop?')
+                'hardwareAcceptance':
+                    assessLaptopRamGuidance(response).toJson(),
+              if (prompt == 'How does the routing in Bridgetown work?')
+                'bridgetownAcceptance':
+                    assessBridgetownRouting(response).toJson(),
+              if (prompt == 'How do living ants know that an ant has died?')
+                'antNecrophoresisAcceptance':
+                    assessAntNecrophoresis(response).toJson(),
+              'response': response
+            })}',
       );
     }
     await FinnInference.instance.releaseMemory();
@@ -165,8 +190,7 @@ Future<void> _runDeviceBenchmark() async {
   final inference = FinnInference.instance;
   Map<Object?, Object?> runtimeOverrides = const {};
   try {
-    runtimeOverrides =
-        await const MethodChannel(
+    runtimeOverrides = await const MethodChannel(
           'finn_ai/benchmark',
         ).invokeMapMethod<Object?, Object?>('getOverrides') ??
         const {};
@@ -197,21 +221,18 @@ Future<void> _runDeviceBenchmark() async {
     'FINN_BENCH_SCENARIO',
     defaultValue: 'model_warm',
   );
-  final scenarioValue =
-      override('scenario') is String &&
+  final scenarioValue = override('scenario') is String &&
           (override('scenario') as String).isNotEmpty
       ? override('scenario') as String
       : scenario;
   const runs = int.fromEnvironment('FINN_BENCH_RUNS', defaultValue: 5);
-  final runsValue = override('runs') is int
-      ? (override('runs') as int).clamp(1, 25)
-      : runs;
+  final runsValue =
+      override('runs') is int ? (override('runs') as int).clamp(1, 25) : runs;
   const prewarm = String.fromEnvironment(
     'FINN_BENCH_PREWARM',
     defaultValue: 'selected',
   );
-  final prewarmValue =
-      override('prewarm') is String &&
+  final prewarmValue = override('prewarm') is String &&
           (override('prewarm') as String).isNotEmpty
       ? override('prewarm') as String
       : prewarm;
@@ -241,9 +262,8 @@ Future<void> _runDeviceBenchmark() async {
         ? (override('batchThreads') as int)
         : null,
     batchSize: override('batch') is int ? (override('batch') as int) : null,
-    microBatchSize: override('ubatch') is int
-        ? (override('ubatch') as int)
-        : null,
+    microBatchSize:
+        override('ubatch') is int ? (override('ubatch') as int) : null,
     compactKv: override('f16Kv') == true ? false : null,
     flashAttention: override('flashOff') == true ? false : null,
     nRsSeq: override('nrs') is int ? (override('nrs') as int) : null,
@@ -254,18 +274,17 @@ Future<void> _runDeviceBenchmark() async {
     defaultValue: 'benchmark-candidate',
   );
   const promptOverride = String.fromEnvironment('FINN_BENCH_PROMPT');
-  final promptExtra = override('prompt') is String
-      ? (override('prompt') as String).trim()
-      : '';
+  final promptExtra =
+      override('prompt') is String ? (override('prompt') as String).trim() : '';
   final prompt = promptExtra.isNotEmpty
       ? promptExtra
       : promptOverride.isNotEmpty
-      ? promptOverride
-      : switch (scenarioValue) {
-          'direct_plus' => 'Write five short sentences about Rome.',
-          'ambiguous' => 'Tell me something useful for today.',
-          _ => 'Reply with exactly one word: ready.',
-        };
+          ? promptOverride
+          : switch (scenarioValue) {
+              'direct_plus' => 'Write five short sentences about Rome.',
+              'ambiguous' => 'Tell me something useful for today.',
+              _ => 'Reply with exactly one word: ready.',
+            };
 
   if (scenarioValue != 'true_cold') {
     if (prewarmValue == 'lite' || prewarmValue == 'both') {
@@ -285,23 +304,24 @@ Future<void> _runDeviceBenchmark() async {
     required String conversationId,
     List<LocalChatTurn> history = const [],
     TtftTrace? trace,
-  }) => candidatePath.isEmpty
-      ? inference.generateReply(
-          input,
-          conversationId: conversationId,
-          history: history,
-          trace: trace,
-          enableSearchDecision: !noSearch,
-        )
-      : inference.generateEvaluationReply(
-          input,
-          path: candidatePath,
-          modelLabel: candidateLabel,
-          tier: FinnModelTier.standard,
-          conversationId: conversationId,
-          history: history,
-          trace: trace,
-        );
+  }) =>
+      candidatePath.isEmpty
+          ? inference.generateReply(
+              input,
+              conversationId: conversationId,
+              history: history,
+              trace: trace,
+              enableSearchDecision: !noSearch,
+            )
+          : inference.generateEvaluationReply(
+              input,
+              path: candidatePath,
+              modelLabel: candidateLabel,
+              tier: FinnModelTier.standard,
+              conversationId: conversationId,
+              history: history,
+              trace: trace,
+            );
   if (scenarioValue == 'conversation_warm') {
     final warmup = StringBuffer();
     await for (final token in generate(
@@ -355,7 +375,12 @@ Future<void> _runDeviceBenchmark() async {
     final total = metrics['total_ttft_ms'];
     if (total is int) ttftValues.add(total);
     debugPrint(
-      'FINN_BENCH ${jsonEncode({'scenario': scenarioValue, 'run': run, 'first_visible_characters': first.length, ...metrics})}',
+      'FINN_BENCH ${jsonEncode({
+            'scenario': scenarioValue,
+            'run': run,
+            'first_visible_characters': first.length,
+            ...metrics
+          })}',
     );
   }
   if (ttftValues.isNotEmpty) {
@@ -366,7 +391,15 @@ Future<void> _runDeviceBenchmark() async {
     }
 
     debugPrint(
-      'FINN_BENCH_SUMMARY ${jsonEncode({'scenario': scenarioValue, 'runs': ttftValues.length, 'min_ms': ttftValues.first, 'p50_ms': percentile(.50), 'p90_ms': percentile(.90), 'p95_ms': percentile(.95), 'max_ms': ttftValues.last})}',
+      'FINN_BENCH_SUMMARY ${jsonEncode({
+            'scenario': scenarioValue,
+            'runs': ttftValues.length,
+            'min_ms': ttftValues.first,
+            'p50_ms': percentile(.50),
+            'p90_ms': percentile(.90),
+            'p95_ms': percentile(.95),
+            'max_ms': ttftValues.last
+          })}',
     );
   }
   await inference.releaseMemory();

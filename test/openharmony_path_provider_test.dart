@@ -26,7 +26,8 @@ void main() {
 
   tearDown(() => stub(null));
 
-  test('getDownloadsPath returns the path reported by the OHOS channel', () async {
+  test('getDownloadsPath returns the path reported by the OHOS channel',
+      () async {
     stub((call) async {
       expect(call.method, 'getDownloadsPath');
       return downloads;
@@ -36,7 +37,8 @@ void main() {
     expect(path, downloads);
   });
 
-  test('getDownloadsPath falls back to the files dir when unimplemented', () async {
+  test('getDownloadsPath falls back to the files dir when unimplemented',
+      () async {
     // EntryAbility answers getDownloadsPath with notImplemented() today,
     // which surfaces here as a MissingPluginException.
     stub((call) async => throw MissingPluginException());

@@ -175,14 +175,13 @@ class FluxIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => HugeIcon(
-    icon: icon,
-    size: size,
-    color:
-        color ??
-        DefaultTextStyle.of(context).style.color ??
-        FluxColors.inkOf(context),
-    strokeWidth: strokeWidth,
-  );
+        icon: icon,
+        size: size,
+        color: color ??
+            DefaultTextStyle.of(context).style.color ??
+            FluxColors.inkOf(context),
+        strokeWidth: strokeWidth,
+      );
 }
 
 class FluxIconButton extends StatelessWidget {
@@ -204,9 +203,8 @@ class FluxIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bgColor = dark ? FluxColors.inkOf(context) : Colors.transparent;
-    final fgColor = dark
-        ? FluxColors.canvasOf(context)
-        : FluxColors.inkOf(context);
+    final fgColor =
+        dark ? FluxColors.canvasOf(context) : FluxColors.inkOf(context);
 
     final button = SizedBox.square(
       dimension: math.max(48, size),
@@ -318,8 +316,9 @@ class BackControl extends StatelessWidget {
                   child: Text(
                     L10n.of(context).commonBack,
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      color: FluxColors.inkOf(context).withValues(alpha: .5),
-                    ),
+                          color:
+                              FluxColors.inkOf(context).withValues(alpha: .5),
+                        ),
                   ),
                 ),
               ),
@@ -347,13 +346,11 @@ class FluxGlass extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final effectiveColor =
-        color ??
+    final effectiveColor = color ??
         (FluxColors.isDark(context)
             ? const Color(0xCC18181B)
             : const Color(0xD9FFFFFF));
-    final effectiveBorder =
-        borderColor ??
+    final effectiveBorder = borderColor ??
         (FluxColors.isDark(context)
             ? const Color(0x28FFFFFF)
             : const Color(0x18FFFFFF));
@@ -386,9 +383,9 @@ class FluxBouncingScrollPhysics extends BouncingScrollPhysics {
 
   @override
   SpringDescription get spring => const SpringDescription(
-    mass: 0.5,
-    stiffness: 200,
-    // Damping ratio 1.8 against the stiffer 200 stiffness.
-    damping: 36,
-  );
+        mass: 0.5,
+        stiffness: 200,
+        // Damping ratio 1.8 against the stiffer 200 stiffness.
+        damping: 36,
+      );
 }

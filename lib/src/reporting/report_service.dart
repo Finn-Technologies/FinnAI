@@ -54,16 +54,17 @@ class ReportPayload {
   final String? additionalDetails;
 
   Map<String, dynamic> toJson() => {
-    'reportId': reportId,
-    'category': category.name,
-    'assistantResponse': assistantResponse,
-    'timestamp': timestamp.toIso8601String(),
-    'appVersion': appVersion,
-    'modelTier': modelTier,
-    if (userPrompt != null && userPrompt!.isNotEmpty) 'userPrompt': userPrompt,
-    if (additionalDetails != null && additionalDetails!.isNotEmpty)
-      'additionalDetails': additionalDetails,
-  };
+        'reportId': reportId,
+        'category': category.name,
+        'assistantResponse': assistantResponse,
+        'timestamp': timestamp.toIso8601String(),
+        'appVersion': appVersion,
+        'modelTier': modelTier,
+        if (userPrompt != null && userPrompt!.isNotEmpty)
+          'userPrompt': userPrompt,
+        if (additionalDetails != null && additionalDetails!.isNotEmpty)
+          'additionalDetails': additionalDetails,
+      };
 
   String toEmailBody() {
     final buffer = StringBuffer()
@@ -100,10 +101,10 @@ class ReportService {
     String? reportEmail,
     http.Client? client,
     bool? isReleaseModeOverride,
-  }) : _customEndpoint = endpoint,
-       _customReportEmail = reportEmail,
-       _client = client ?? http.Client(),
-       _isReleaseModeOverride = isReleaseModeOverride;
+  })  : _customEndpoint = endpoint,
+        _customReportEmail = reportEmail,
+        _client = client ?? http.Client(),
+        _isReleaseModeOverride = isReleaseModeOverride;
 
   static final ReportService instance = ReportService();
   final String? _customEndpoint;

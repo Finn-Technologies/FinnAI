@@ -205,7 +205,7 @@ class SearchDecisionParser {
 /// sending conversation history or profile data to the network.
 class SearchAgent {
   SearchAgent({WebSearchService? searchService, http.Client? client})
-    : searchService = searchService ?? WebSearchService(client: client);
+      : searchService = searchService ?? WebSearchService(client: client);
 
   final WebSearchService searchService;
 
@@ -251,7 +251,8 @@ Cite matching source indices inline like [1], [2].
           }
           final pageText = await searchService
               .fetchPageText(source.url)
-              .timeout(const Duration(milliseconds: 1500), onTimeout: () => null);
+              .timeout(const Duration(milliseconds: 1500),
+                  onTimeout: () => null);
           return WebSource(
             title: source.title,
             url: source.url,

@@ -59,14 +59,14 @@ class FinnCreation {
   final DateTime createdAt;
 
   Map<String, Object?> toJson() => {
-    'id': id,
-    'kind': kind.name,
-    'prompt': prompt,
-    'title': title,
-    'summary': summary,
-    'sections': sections.map((section) => section.toJson()).toList(),
-    'createdAt': createdAt.toUtc().toIso8601String(),
-  };
+        'id': id,
+        'kind': kind.name,
+        'prompt': prompt,
+        'title': title,
+        'summary': summary,
+        'sections': sections.map((section) => section.toJson()).toList(),
+        'createdAt': createdAt.toUtc().toIso8601String(),
+      };
 
   factory FinnCreation.fromJson(Map<String, Object?> json) {
     final rawSections = json['sections'];
@@ -78,17 +78,17 @@ class FinnCreation {
       summary: json['summary'] as String? ?? '',
       sections: rawSections is List
           ? rawSections
-                .whereType<Map<dynamic, dynamic>>()
-                .map(
-                  (section) => CreationSection.fromJson(
-                    Map<String, Object?>.from(section),
-                  ),
-                )
-                .where(
-                  (section) =>
-                      section.heading.isNotEmpty || section.body.isNotEmpty,
-                )
-                .toList(growable: false)
+              .whereType<Map<dynamic, dynamic>>()
+              .map(
+                (section) => CreationSection.fromJson(
+                  Map<String, Object?>.from(section),
+                ),
+              )
+              .where(
+                (section) =>
+                    section.heading.isNotEmpty || section.body.isNotEmpty,
+              )
+              .toList(growable: false)
           : const [],
       createdAt: DateTime.parse(json['createdAt'] as String).toLocal(),
     );

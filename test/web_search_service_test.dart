@@ -290,7 +290,8 @@ void main() {
 
     final before = requests;
     final survivor = await service.search('lru survivor');
-    expect(requests, before, reason: 'recently used entry must survive eviction');
+    expect(requests, before,
+        reason: 'recently used entry must survive eviction');
     expect(survivor, isNotNull);
 
     // One more eviction removes the least recently used entry (the victim).

@@ -32,35 +32,36 @@ class FinnSkill {
     String? instructions,
     String? category,
     bool? enabled,
-  }) => FinnSkill(
-    id: id,
-    name: name ?? this.name,
-    description: description ?? this.description,
-    instructions: instructions ?? this.instructions,
-    category: category ?? this.category,
-    enabled: enabled ?? this.enabled,
-    builtIn: builtIn,
-  );
+  }) =>
+      FinnSkill(
+        id: id,
+        name: name ?? this.name,
+        description: description ?? this.description,
+        instructions: instructions ?? this.instructions,
+        category: category ?? this.category,
+        enabled: enabled ?? this.enabled,
+        builtIn: builtIn,
+      );
 
   Map<String, Object?> toJson() => {
-    'id': id,
-    'name': name,
-    'description': description,
-    'instructions': instructions,
-    'category': category,
-    'enabled': enabled,
-    'builtIn': builtIn,
-  };
+        'id': id,
+        'name': name,
+        'description': description,
+        'instructions': instructions,
+        'category': category,
+        'enabled': enabled,
+        'builtIn': builtIn,
+      };
 
   factory FinnSkill.fromJson(Map<String, Object?> json) => FinnSkill(
-    id: json['id']?.toString() ?? '',
-    name: json['name']?.toString() ?? '',
-    description: json['description']?.toString() ?? '',
-    instructions: json['instructions']?.toString() ?? '',
-    category: json['category']?.toString() ?? 'Custom',
-    enabled: json['enabled'] == true,
-    builtIn: json['builtIn'] == true,
-  );
+        id: json['id']?.toString() ?? '',
+        name: json['name']?.toString() ?? '',
+        description: json['description']?.toString() ?? '',
+        instructions: json['instructions']?.toString() ?? '',
+        category: json['category']?.toString() ?? 'Custom',
+        enabled: json['enabled'] == true,
+        builtIn: json['builtIn'] == true,
+      );
 }
 
 const List<FinnSkill> finnBuiltInSkills = [
@@ -261,51 +262,49 @@ class SkillsStore extends ChangeNotifier {
 
   String promptContextFor(String prompt) {
     final value = prompt.toLowerCase();
-    final relevant = enabledSkills
-        .where((skill) {
-          final signals = switch (skill.id) {
-            'builtin-writing' => const [
-              'write',
-              'rewrite',
-              'edit',
-              'message',
-              'scrivi',
-              'écris',
-            ],
-            'builtin-coding' => const [
-              'code',
-              'program',
-              'software',
-              'debug',
-              'flutter',
-              'python',
-              'swift',
-            ],
-            'builtin-learning' => const [
-              'learn',
-              'explain',
-              'teach',
-              'study',
-              'impar',
-              'spiega',
-            ],
-            'builtin-planning' => const [
-              'plan',
-              'schedule',
-              'roadmap',
-              'organize',
-              'piano',
-              'programma',
-            ],
-            _ => [
-              ...skill.name.toLowerCase().split(RegExp(r'\W+')),
-              ...skill.category.toLowerCase().split(RegExp(r'\W+')),
-              ...skill.description.toLowerCase().split(RegExp(r'\W+')),
-            ].where((word) => word.length >= 4),
-          };
-          return signals.any(value.contains);
-        })
-        .take(4);
+    final relevant = enabledSkills.where((skill) {
+      final signals = switch (skill.id) {
+        'builtin-writing' => const [
+            'write',
+            'rewrite',
+            'edit',
+            'message',
+            'scrivi',
+            'écris',
+          ],
+        'builtin-coding' => const [
+            'code',
+            'program',
+            'software',
+            'debug',
+            'flutter',
+            'python',
+            'swift',
+          ],
+        'builtin-learning' => const [
+            'learn',
+            'explain',
+            'teach',
+            'study',
+            'impar',
+            'spiega',
+          ],
+        'builtin-planning' => const [
+            'plan',
+            'schedule',
+            'roadmap',
+            'organize',
+            'piano',
+            'programma',
+          ],
+        _ => [
+            ...skill.name.toLowerCase().split(RegExp(r'\W+')),
+            ...skill.category.toLowerCase().split(RegExp(r'\W+')),
+            ...skill.description.toLowerCase().split(RegExp(r'\W+')),
+          ].where((word) => word.length >= 4),
+      };
+      return signals.any(value.contains);
+    }).take(4);
     return _promptContext(relevant);
   }
 

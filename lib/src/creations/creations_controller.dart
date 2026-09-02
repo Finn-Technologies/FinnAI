@@ -23,8 +23,8 @@ class CreationsController extends ChangeNotifier {
   List<FinnCreation> get visible => _filter == null
       ? _creations
       : _creations
-            .where((creation) => creation.kind == _filter)
-            .toList(growable: false);
+          .where((creation) => creation.kind == _filter)
+          .toList(growable: false);
 
   bool _loading = true;
   bool get loading => _loading;

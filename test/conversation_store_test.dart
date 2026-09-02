@@ -594,9 +594,8 @@ void main() {
                     'id': 'm$i',
                     'role': 'user',
                     'text': 'message $i',
-                    'createdAt': base
-                        .add(Duration(minutes: i))
-                        .toIso8601String(),
+                    'createdAt':
+                        base.add(Duration(minutes: i)).toIso8601String(),
                     'modelTier': 'FinnAI',
                   },
               ],
@@ -708,7 +707,8 @@ void main() {
       },
     );
 
-    test('archived prefix respects in-memory message cap on eviction', () async {
+    test('archived prefix respects in-memory message cap on eviction',
+        () async {
       const totalMessages = 420;
       final base = DateTime.utc(2026, 1, 1);
       final key = Uint8List(32)..fillRange(0, 32, 7);
@@ -729,9 +729,7 @@ void main() {
                   'id': 'm$i',
                   'role': 'user',
                   'text': 'message $i',
-                  'createdAt': base
-                      .add(Duration(minutes: i))
-                      .toIso8601String(),
+                  'createdAt': base.add(Duration(minutes: i)).toIso8601String(),
                   'modelTier': 'FinnAI',
                 },
             ],

@@ -79,10 +79,8 @@ void main() {
       directoryProvider: () async => directory,
     );
     await restored.initialize();
-    final restoredAnswer = restored
-        .conversationById(conversationA.id)!
-        .messages
-        .last;
+    final restoredAnswer =
+        restored.conversationById(conversationA.id)!.messages.last;
     expect(restoredAnswer.text, 'Alpha Beta');
     expect(restoredAnswer.status, ConversationMessageStatus.complete);
   });
@@ -205,11 +203,8 @@ void main() {
       await runtime.finish(GenerationFinishReason.eos);
       await _waitUntil(() => !controller.busy);
 
-      final answer = store
-          .conversationById(conversation.id)!
-          .messages
-          .last
-          .text;
+      final answer =
+          store.conversationById(conversation.id)!.messages.last.text;
       expect(answer, contains('A sourced answer [1].'));
       expect(answer, contains('[Example](https://example.com/story)'));
     },

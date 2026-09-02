@@ -144,15 +144,14 @@ void main() {
           instructions: 'Use the private workflow.',
         );
 
-        final result =
-            await AppStateStore(
-              directoryProvider: () async => tempDir,
-            ).deleteAllData(
-              conversationStore: testConvStore,
-              creationStore: creationStore,
-              youProfileStore: profileStore,
-              skillsStore: skillsStore,
-            );
+        final result = await AppStateStore(
+          directoryProvider: () async => tempDir,
+        ).deleteAllData(
+          conversationStore: testConvStore,
+          creationStore: creationStore,
+          youProfileStore: profileStore,
+          skillsStore: skillsStore,
+        );
 
         expect(result.failedItems, isEmpty);
         expect(result.deletedItems, contains('Local creations'));

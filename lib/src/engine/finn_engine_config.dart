@@ -18,11 +18,11 @@ enum FinnKvCacheType {
 
 extension FinnKvCacheTypeExtension on FinnKvCacheType {
   KvCacheType toLlama() => switch (this) {
-    FinnKvCacheType.turboQuant2Bit => KvCacheType.iq4_nl,
-    FinnKvCacheType.compactQ8 => KvCacheType.q8_0,
-    FinnKvCacheType.compactQ4 => KvCacheType.q4_0,
-    FinnKvCacheType.fp16 => KvCacheType.f16,
-  };
+        FinnKvCacheType.turboQuant2Bit => KvCacheType.iq4_nl,
+        FinnKvCacheType.compactQ8 => KvCacheType.q8_0,
+        FinnKvCacheType.compactQ4 => KvCacheType.q4_0,
+        FinnKvCacheType.fp16 => KvCacheType.f16,
+      };
 }
 
 /// Unified runtime configuration for FinnEngine instances.

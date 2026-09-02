@@ -14,7 +14,7 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   intl: ">=0.19.0 <0.22.0"
-  cupertino_icons: ^1.0.8
+  cupertino_icons: ^1.0.9
   crypto: ^3.0.7
   flutter_svg: ">=2.0.0 <3.0.0"
   hugeicons: ^1.1.7
@@ -22,12 +22,12 @@ dependencies:
     path: third_party/llama_cpp_dart
   path_provider: ^2.1.5
   path_provider_platform_interface: ^2.1.2
-  package_info_plus: ^8.2.2
+  package_info_plus: ^9.0.1
   flutter_secure_storage: ^9.2.4
   cryptography: ^2.7.0
   url_launcher: ^6.3.1
   http: ^1.2.2
-  image_picker: ^1.1.2
+  image_picker: ^1.2.3
   file_picker: ^11.0.3
 
 dev_dependencies:

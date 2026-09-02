@@ -36,17 +36,17 @@ class RecipeAcceptance {
       doesNotListDishAsIngredient;
 
   Map<String, bool> toJson() => {
-    'passed': passed,
-    'italian': italian,
-    'complete': complete,
-    'sweet': sweet,
-    'requestedIngredients': requestedIngredients,
-    'realisticQuantities': realisticQuantities,
-    'preparationSteps': preparationSteps,
-    'cookingMethod': cookingMethod,
-    'noUnrelatedIngredients': noUnrelatedIngredients,
-    'doesNotListDishAsIngredient': doesNotListDishAsIngredient,
-  };
+        'passed': passed,
+        'italian': italian,
+        'complete': complete,
+        'sweet': sweet,
+        'requestedIngredients': requestedIngredients,
+        'realisticQuantities': realisticQuantities,
+        'preparationSteps': preparationSteps,
+        'cookingMethod': cookingMethod,
+        'noUnrelatedIngredients': noUnrelatedIngredients,
+        'doesNotListDishAsIngredient': doesNotListDishAsIngredient,
+      };
 }
 
 /// Semantic checks for the fixed Italian recipe case in the evaluation suite.
@@ -54,16 +54,14 @@ class RecipeAcceptance {
 /// This is evaluation-only: no recipe content is injected into generation.
 RecipeAcceptance assessRicottaStrawberryCake(String response) {
   final value = response.toLowerCase();
-  final ingredientSection =
-      RegExp(
+  final ingredientSection = RegExp(
         r'(ingredienti|occorrente)([\s\S]*?)(preparazione|procedimento|istruzioni|^\s*1[.)])',
         multiLine: true,
       ).firstMatch(value)?.group(2) ??
       value;
   final last = value.trimRight();
   return RecipeAcceptance(
-    italian:
-        const [
+    italian: const [
           'ingredienti',
           'preparazione',
           'cuoc',
@@ -72,8 +70,7 @@ RecipeAcceptance assessRicottaStrawberryCake(String response) {
           'forno',
         ].where(value.contains).length >=
         2,
-    complete:
-        last.endsWith('.') ||
+    complete: last.endsWith('.') ||
         last.endsWith('!') ||
         last.endsWith(')') ||
         last.endsWith('minuti'),
@@ -84,19 +81,16 @@ RecipeAcceptance assessRicottaStrawberryCake(String response) {
       'dessert',
     ].any(value.contains),
     requestedIngredients: value.contains('ricotta') && value.contains('fragol'),
-    realisticQuantities:
-        RegExp(
+    realisticQuantities: RegExp(
           r'\b\d+(?:[.,]\d+)?\s*(?:g|kg|ml|l|°c|minuti|uov[oa])\b',
         ).allMatches(value).length >=
         2,
-    preparationSteps:
-        RegExp(
+    preparationSteps: RegExp(
           r'^\s*[1-9][.)]\s+\S',
           multiLine: true,
         ).allMatches(value).length >=
         2,
-    cookingMethod:
-        RegExp(r'\b1[456789]\d\s*°?\s*c\b').hasMatch(value) ||
+    cookingMethod: RegExp(r'\b1[456789]\d\s*°?\s*c\b').hasMatch(value) ||
         value.contains('senza cottura') ||
         value.contains('non richiede cottura'),
     noUnrelatedIngredients:
@@ -132,35 +126,32 @@ class HardwareGuidanceAcceptance {
       avoidsInventedDetails;
 
   Map<String, bool> toJson() => {
-    'passed': passed,
-    'requestsExactModel': requestsExactModel,
-    'explainsRamVariations': explainsRamVariations,
-    'recommendsAuthoritativeDocumentation':
-        recommendsAuthoritativeDocumentation,
-    'includesSafetyPrecautions': includesSafetyPrecautions,
-    'avoidsInventedDetails': avoidsInventedDetails,
-  };
+        'passed': passed,
+        'requestsExactModel': requestsExactModel,
+        'explainsRamVariations': explainsRamVariations,
+        'recommendsAuthoritativeDocumentation':
+            recommendsAuthoritativeDocumentation,
+        'includesSafetyPrecautions': includesSafetyPrecautions,
+        'avoidsInventedDetails': avoidsInventedDetails,
+      };
 }
 
 HardwareGuidanceAcceptance assessLaptopRamGuidance(String response) {
   final value = response.toLowerCase();
   return HardwareGuidanceAcceptance(
-    requestsExactModel:
-        value.contains('exact model') ||
+    requestsExactModel: value.contains('exact model') ||
         value.contains('model number') ||
         value.contains('manufacturer and model'),
-    explainsRamVariations:
-        value.contains('soldered') &&
+    explainsRamVariations: value.contains('soldered') &&
         (value.contains('socketed') ||
             value.contains('replaceable') ||
             value.contains('sodimm')),
-    recommendsAuthoritativeDocumentation:
-        value.contains('service manual') ||
+    recommendsAuthoritativeDocumentation: value.contains('service manual') ||
         value.contains('manufacturer specifications') ||
         value.contains('manufacturer’s specifications'),
     includesSafetyPrecautions:
         (value.contains('static') || value.contains('electrostatic')) &&
-        (value.contains('disconnect') || value.contains('power off')),
+            (value.contains('disconnect') || value.contains('power off')),
     avoidsInventedDetails: !const [
       'all laptops have two slots',
       'every laptop has two slots',
@@ -193,27 +184,25 @@ class BridgetownRoutingAcceptance {
       avoidsProjectDenial;
 
   Map<String, bool> toJson() => {
-    'passed': passed,
-    'identifiesRoda': identifiesRoda,
-    'mentionsSsrOrDynamicRoutes': mentionsSsrOrDynamicRoutes,
-    'avoidsRakeConflation': avoidsRakeConflation,
-    'avoidsProjectDenial': avoidsProjectDenial,
-  };
+        'passed': passed,
+        'identifiesRoda': identifiesRoda,
+        'mentionsSsrOrDynamicRoutes': mentionsSsrOrDynamicRoutes,
+        'avoidsRakeConflation': avoidsRakeConflation,
+        'avoidsProjectDenial': avoidsProjectDenial,
+      };
 }
 
 BridgetownRoutingAcceptance assessBridgetownRouting(String response) {
   final value = response.toLowerCase();
   return BridgetownRoutingAcceptance(
     identifiesRoda: value.contains('roda'),
-    mentionsSsrOrDynamicRoutes:
-        value.contains('server-side rendering') ||
+    mentionsSsrOrDynamicRoutes: value.contains('server-side rendering') ||
         value.contains('ssr') ||
         value.contains('dynamic route'),
     avoidsRakeConflation: !RegExp(
       r'(?:uses|based on|routing system.{0,20})\s+rake|rake\s+(?:as|is)\s+(?:its\s+)?routing',
     ).hasMatch(value),
-    avoidsProjectDenial:
-        !value.contains('there isn\'t a widely recognized') &&
+    avoidsProjectDenial: !value.contains('there isn\'t a widely recognized') &&
         !value.contains('not a specific name for a ruby'),
   );
 }
@@ -239,31 +228,28 @@ class AntNecrophoresisAcceptance {
       avoidsUniversalEmissionClaim;
 
   Map<String, bool> toJson() => {
-    'passed': passed,
-    'namesChemicalCues': namesChemicalCues,
-    'explainsRemovalBehavior': explainsRemovalBehavior,
-    'acknowledgesSpeciesVariation': acknowledgesSpeciesVariation,
-    'avoidsUniversalEmissionClaim': avoidsUniversalEmissionClaim,
-  };
+        'passed': passed,
+        'namesChemicalCues': namesChemicalCues,
+        'explainsRemovalBehavior': explainsRemovalBehavior,
+        'acknowledgesSpeciesVariation': acknowledgesSpeciesVariation,
+        'avoidsUniversalEmissionClaim': avoidsUniversalEmissionClaim,
+      };
 }
 
 AntNecrophoresisAcceptance assessAntNecrophoresis(String response) {
   final value = response.toLowerCase();
   return AntNecrophoresisAcceptance(
-    namesChemicalCues:
-        value.contains('oleic acid') ||
+    namesChemicalCues: value.contains('oleic acid') ||
         value.contains('linoleic acid') ||
         value.contains('chemical signals associated with life'),
-    explainsRemovalBehavior:
-        value.contains('necrophoresis') ||
+    explainsRemovalBehavior: value.contains('necrophoresis') ||
         value.contains('remove') ||
         value.contains('carry'),
-    acknowledgesSpeciesVariation:
-        value.contains('species') ||
+    acknowledgesSpeciesVariation: value.contains('species') ||
         value.contains('some ants') ||
         value.contains('not all ants'),
     avoidsUniversalEmissionClaim:
         !value.contains('when an ant dies, it emits a unique scent') &&
-        !value.contains('all ants release oleic acid'),
+            !value.contains('all ants release oleic acid'),
   );
 }

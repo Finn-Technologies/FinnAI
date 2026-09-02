@@ -130,8 +130,7 @@ class _YouPageState extends State<YouPage> {
                                     _IntroCard(
                                       icon: FluxIcons.you,
                                       title: L10n.of(context).youIntroTitle,
-                                      body:
-                                          L10n.of(context).youIntroBody,
+                                      body: L10n.of(context).youIntroBody,
                                     ),
                                     const SizedBox(height: 22),
                                     _SectionLabel(L10n.of(context).youAboutYou),
@@ -181,12 +180,11 @@ class _YouPageState extends State<YouPage> {
                                     _FinnTextField(
                                       key: const Key('you-instructions-field'),
                                       controller: _instructionsController,
-                                      label:
-                                          L10n.of(context).youInstructionsQuestion,
-                                      hint:
-                                          L10n.of(
-                                            context,
-                                          ).youInstructionsPlaceholder,
+                                      label: L10n.of(context)
+                                          .youInstructionsQuestion,
+                                      hint: L10n.of(
+                                        context,
+                                      ).youInstructionsPlaceholder,
                                       maxLines: 5,
                                       maxLength: 1000,
                                     ),
@@ -201,20 +199,19 @@ class _YouPageState extends State<YouPage> {
                                             height: 48,
                                             child: FilledButton(
                                               key: const Key('you-save-button'),
-                                              onPressed: _store.saving
-                                                  ? null
-                                                  : _save,
+                                              onPressed:
+                                                  _store.saving ? null : _save,
                                               style: FilledButton.styleFrom(
                                                 backgroundColor:
                                                     FluxColors.inkOf(context),
                                                 foregroundColor:
                                                     FluxColors.canvasOf(
-                                                      context,
-                                                    ),
+                                                  context,
+                                                ),
                                                 disabledBackgroundColor:
                                                     FluxColors.inkOf(
-                                                      context,
-                                                    ).withValues(alpha: .25),
+                                                  context,
+                                                ).withValues(alpha: .25),
                                                 shape: const StadiumBorder(),
                                                 elevation: 0,
                                               ),
@@ -279,44 +276,44 @@ class _IntroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(18),
-    decoration: BoxDecoration(
-      color: FluxColors.cardOf(context),
-      borderRadius: BorderRadius.circular(FluxRadius.sheet),
-      border: Border.all(color: FluxColors.lineOf(context)),
-    ),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: FluxColors.surfaceOf(context),
-            shape: BoxShape.circle,
-          ),
-          child: Center(child: FluxIcon(icon: icon, size: 22)),
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: FluxColors.cardOf(context),
+          borderRadius: BorderRadius.circular(FluxRadius.sheet),
+          border: Border.all(color: FluxColors.lineOf(context)),
         ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: Theme.of(context).textTheme.bodyLarge),
-              const SizedBox(height: 4),
-              Text(
-                body,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: FluxColors.mutedOf(context),
-                  height: 1.35,
-                ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: FluxColors.surfaceOf(context),
+                shape: BoxShape.circle,
               ),
-            ],
-          ),
+              child: Center(child: FluxIcon(icon: icon, size: 22)),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: Theme.of(context).textTheme.bodyLarge),
+                  const SizedBox(height: 4),
+                  Text(
+                    body,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: FluxColors.mutedOf(context),
+                          height: 1.35,
+                        ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
-      ],
-    ),
-  );
+      );
 }
 
 class _SectionLabel extends StatelessWidget {
@@ -325,12 +322,12 @@ class _SectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Text(
-    text,
-    style: Theme.of(context).textTheme.labelMedium?.copyWith(
-      color: FluxColors.mutedOf(context),
-      letterSpacing: .2,
-    ),
-  );
+        text,
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: FluxColors.mutedOf(context),
+              letterSpacing: .2,
+            ),
+      );
 }
 
 class _FinnTextField extends StatelessWidget {
@@ -351,33 +348,34 @@ class _FinnTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => TextField(
-    controller: controller,
-    maxLines: maxLines,
-    maxLength: maxLength,
-    textCapitalization: TextCapitalization.sentences,
-    style: Theme.of(context).textTheme.bodyMedium,
-    decoration: InputDecoration(
-      labelText: label,
-      hintText: hint,
-      hintStyle: TextStyle(color: FluxColors.mutedOf(context)),
-      counterStyle: TextStyle(color: FluxColors.mutedOf(context)),
-      filled: true,
-      fillColor: FluxColors.cardOf(context),
-      contentPadding: const EdgeInsets.all(16),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(FluxRadius.md),
-        borderSide: BorderSide(color: FluxColors.lineOf(context)),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(FluxRadius.md),
-        borderSide: BorderSide(color: FluxColors.lineOf(context)),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(FluxRadius.md),
-        borderSide: BorderSide(color: FluxColors.inkOf(context), width: 1.2),
-      ),
-    ),
-  );
+        controller: controller,
+        maxLines: maxLines,
+        maxLength: maxLength,
+        textCapitalization: TextCapitalization.sentences,
+        style: Theme.of(context).textTheme.bodyMedium,
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: hint,
+          hintStyle: TextStyle(color: FluxColors.mutedOf(context)),
+          counterStyle: TextStyle(color: FluxColors.mutedOf(context)),
+          filled: true,
+          fillColor: FluxColors.cardOf(context),
+          contentPadding: const EdgeInsets.all(16),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(FluxRadius.md),
+            borderSide: BorderSide(color: FluxColors.lineOf(context)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(FluxRadius.md),
+            borderSide: BorderSide(color: FluxColors.lineOf(context)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(FluxRadius.md),
+            borderSide:
+                BorderSide(color: FluxColors.inkOf(context), width: 1.2),
+          ),
+        ),
+      );
 }
 
 class _StyleChip extends StatelessWidget {
@@ -393,42 +391,44 @@ class _StyleChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Semantics(
-    button: true,
-    selected: selected,
-    label: L10n.of(
-      context,
-    ).youStyleSemantic(_styleLabel(context, style)),
-    child: Material(
-      color: selected ? FluxColors.inkOf(context) : FluxColors.cardOf(context),
-      shape: StadiumBorder(
-        side: BorderSide(
-          color: selected
-              ? FluxColors.inkOf(context)
-              : FluxColors.lineOf(context),
-        ),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        customBorder: const StadiumBorder(),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 48),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
-            child: Center(
-              child: Text(
-                _styleLabel(context, style),
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: selected
-                      ? FluxColors.canvasOf(context)
-                      : FluxColors.inkOf(context),
+        button: true,
+        selected: selected,
+        label: L10n.of(
+          context,
+        ).youStyleSemantic(_styleLabel(context, style)),
+        child: Material(
+          color:
+              selected ? FluxColors.inkOf(context) : FluxColors.cardOf(context),
+          shape: StadiumBorder(
+            side: BorderSide(
+              color: selected
+                  ? FluxColors.inkOf(context)
+                  : FluxColors.lineOf(context),
+            ),
+          ),
+          child: InkWell(
+            onTap: onTap,
+            customBorder: const StadiumBorder(),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 48),
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+                child: Center(
+                  child: Text(
+                    _styleLabel(context, style),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: selected
+                              ? FluxColors.canvasOf(context)
+                              : FluxColors.inkOf(context),
+                        ),
+                  ),
                 ),
               ),
             ),
           ),
         ),
-      ),
-    ),
-  );
+      );
 }
 
 /// Localized label for a response style (the enum's own label stays English

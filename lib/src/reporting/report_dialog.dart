@@ -176,11 +176,11 @@ class _ReportDialogState extends State<ReportDialog> {
     final isConfigured = _reportService.isConfigured;
 
     return AlertDialog(
-      backgroundColor: isDark
-          ? const Color(0xFF1F1F23)
-          : const Color(0xFFF7F8F4),
+      backgroundColor:
+          isDark ? const Color(0xFF1F1F23) : const Color(0xFFF7F8F4),
       surfaceTintColor: Colors.transparent,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(FluxRadius.sheet)),
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(FluxRadius.sheet)),
       title: Row(
         children: [
           Icon(Icons.flag_outlined, color: FluxColors.inkOf(context), size: 24),
@@ -253,9 +253,8 @@ class _ReportDialogState extends State<ReportDialog> {
                 child: DropdownButton<ReportCategory>(
                   value: _category,
                   isExpanded: true,
-                  dropdownColor: isDark
-                      ? const Color(0xFF27272A)
-                      : Colors.white,
+                  dropdownColor:
+                      isDark ? const Color(0xFF27272A) : Colors.white,
                   items: ReportCategory.values.map((cat) {
                     return DropdownMenuItem(
                       value: cat,
@@ -286,9 +285,8 @@ class _ReportDialogState extends State<ReportDialog> {
               padding: const EdgeInsets.all(10),
               constraints: const BoxConstraints(maxHeight: 90),
               decoration: BoxDecoration(
-                color: isDark
-                    ? const Color(0x33000000)
-                    : const Color(0x11000000),
+                color:
+                    isDark ? const Color(0x33000000) : const Color(0x11000000),
                 borderRadius: BorderRadius.circular(FluxRadius.sm),
                 border: Border.all(color: FluxColors.lineOf(context)),
               ),
@@ -386,24 +384,24 @@ class _ReportDialogState extends State<ReportDialog> {
 String _categoryLabel(BuildContext context, ReportCategory category) =>
     switch (category) {
       ReportCategory.harmfulOrDangerous => L10n.of(
-        context,
-      ).reportCategoryHarmfulOrDangerous,
+          context,
+        ).reportCategoryHarmfulOrDangerous,
       ReportCategory.hateOrHarassment => L10n.of(
-        context,
-      ).reportCategoryHateOrHarassment,
+          context,
+        ).reportCategoryHateOrHarassment,
       ReportCategory.sexualContent => L10n.of(
-        context,
-      ).reportCategorySexualContent,
+          context,
+        ).reportCategorySexualContent,
       ReportCategory.childSafety => L10n.of(
-        context,
-      ).reportCategoryChildSafety,
+          context,
+        ).reportCategoryChildSafety,
       ReportCategory.selfHarm => L10n.of(context).reportCategorySelfHarm,
       ReportCategory.illegalOrDeceptive => L10n.of(
-        context,
-      ).reportCategoryIllegalOrDeceptive,
+          context,
+        ).reportCategoryIllegalOrDeceptive,
       ReportCategory.falseOrMisleading => L10n.of(
-        context,
-      ).reportCategoryFalseOrMisleading,
+          context,
+        ).reportCategoryFalseOrMisleading,
       ReportCategory.spamOrScam => L10n.of(context).reportCategorySpamOrScam,
       ReportCategory.other => L10n.of(context).reportCategoryOther,
     };

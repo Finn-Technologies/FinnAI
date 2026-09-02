@@ -39,10 +39,10 @@ class DeviceProfile {
           supportedAbis.contains('arm64-v8a'));
 
   String get processorLabel => switch (processor) {
-    ProcessorClass.entry => 'Efficiency processor',
-    ProcessorClass.balanced => 'Balanced processor',
-    ProcessorClass.flagship => 'High-performance processor',
-  };
+        ProcessorClass.entry => 'Efficiency processor',
+        ProcessorClass.balanced => 'Balanced processor',
+        ProcessorClass.flagship => 'High-performance processor',
+      };
 }
 
 @immutable
@@ -125,8 +125,7 @@ class DeviceProfiler {
     Map<Object?, Object?> native = const {};
     if (Platform.isAndroid) {
       try {
-        native =
-            await _channel.invokeMapMethod<Object?, Object?>(
+        native = await _channel.invokeMapMethod<Object?, Object?>(
               'getDeviceProfile',
             ) ??
             const {};
@@ -139,8 +138,7 @@ class DeviceProfiler {
 
     final total =
         _asInt(native['totalRamBytes']) ?? await _memoryBytes('MemTotal');
-    final available =
-        _asInt(native['availableRamBytes']) ??
+    final available = _asInt(native['availableRamBytes']) ??
         await _memoryBytes('MemAvailable');
     final socParts = <Object?>[
       native['socManufacturer'],
@@ -175,8 +173,7 @@ class DeviceProfiler {
   static InferencePlan plan(DeviceProfile profile) {
     final processor = profile.processor;
 
-    final constrained =
-        profile.lowMemory ||
+    final constrained = profile.lowMemory ||
         (profile.availableRamBytes != null &&
             profile.availableRamBytes! < 1800 * 1024 * 1024) ||
         (profile.totalRamBytes != null &&
@@ -214,9 +211,8 @@ class DeviceProfiler {
       threads,
       math.min(batchCeiling, profile.cores),
     );
-    final batchThreads = batchThreadOverride > 0
-        ? batchThreadOverride
-        : normalBatchThreads;
+    final batchThreads =
+        batchThreadOverride > 0 ? batchThreadOverride : normalBatchThreads;
     const batchOverride = int.fromEnvironment(
       'FINN_BENCH_BATCH',
       defaultValue: 0,
@@ -224,8 +220,8 @@ class DeviceProfiler {
     final normalBatchSize = constrained
         ? 128
         : processor == ProcessorClass.entry
-        ? 256
-        : 512;
+            ? 256
+            : 512;
     final batchSize = batchOverride > 0 ? batchOverride : normalBatchSize;
     const microBatchOverride = int.fromEnvironment(
       'FINN_BENCH_UBATCH',
@@ -234,11 +230,10 @@ class DeviceProfiler {
     final normalMicroBatchSize = constrained
         ? 64
         : processor == ProcessorClass.entry
-        ? 128
-        : 256;
-    final microBatchSize = microBatchOverride > 0
-        ? microBatchOverride
-        : normalMicroBatchSize;
+            ? 128
+            : 256;
+    final microBatchSize =
+        microBatchOverride > 0 ? microBatchOverride : normalMicroBatchSize;
     const f16Kv = bool.fromEnvironment('FINN_BENCH_F16_KV');
     const flashOff = bool.fromEnvironment('FINN_BENCH_FLASH_OFF');
     final overrides = planOverrides;
@@ -247,8 +242,7 @@ class DeviceProfiler {
     final effectiveBatch = overrides.batchSize ?? batchSize;
     final effectiveMicroBatch = overrides.microBatchSize ?? microBatchSize;
     final effectiveCompactKv = overrides.compactKv ?? !f16Kv;
-    final effectiveFlash =
-        overrides.flashAttention ??
+    final effectiveFlash = overrides.flashAttention ??
         (!flashOff && processor != ProcessorClass.entry);
     return InferencePlan(
       contextSize: context,

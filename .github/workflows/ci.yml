@@ -22,10 +22,10 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Java JDK
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: 'temurin'
           java-version: '17'
@@ -36,7 +36,7 @@ jobs:
           # Pinned stable for reproducible CI. Verify this is still a real
           # current release (and find the next pin) at
           # https://docs.flutter.dev/release/archive before bumping.
-          flutter-version: '3.44.7'
+          flutter-version: '3.47.2'
           channel: 'stable'
           cache: true
 
@@ -65,7 +65,7 @@ jobs:
 
       - name: Upload Coverage Artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-lcov
           path: coverage/lcov.info
@@ -79,10 +79,10 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Java JDK
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: 'temurin'
           java-version: '17'
@@ -93,7 +93,7 @@ jobs:
           # Pinned stable for reproducible CI. Verify this is still a real
           # current release (and find the next pin) at
           # https://docs.flutter.dev/release/archive before bumping.
-          flutter-version: '3.44.7'
+          flutter-version: '3.47.2'
           channel: 'stable'
           cache: true
 
@@ -159,14 +159,14 @@ jobs:
           python3 tool/verify_native_alignment.py build/app/outputs/bundle/release/app-release.aab
 
       - name: Upload Release APK Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-apk-arm64
           path: build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
 
       - name: Upload Release AAB Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-aab-arm64
           path: build/app/outputs/bundle/release/app-release.aab

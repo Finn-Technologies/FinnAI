@@ -22,9 +22,9 @@ class _CrossPlatformGoldenComparator extends LocalFileComparator {
     super.testFile, {
     required this.precisionTolerance,
   }) : assert(
-         precisionTolerance >= 0 && precisionTolerance <= 1,
-         'precisionTolerance must be between 0 and 1',
-       );
+          precisionTolerance >= 0 && precisionTolerance <= 1,
+          'precisionTolerance must be between 0 and 1',
+        );
 
   final double precisionTolerance;
 

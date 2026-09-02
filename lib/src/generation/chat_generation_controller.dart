@@ -56,22 +56,24 @@ class ChatGenerationJob {
     bool? cancellationRequested,
     String? errorMessage,
     List<WebSource>? sources,
-  }) => ChatGenerationJob(
-    generationId: generationId,
-    conversationId: conversationId,
-    assistantMessageId: assistantMessageId,
-    originalPrompt: originalPrompt,
-    modelName: modelName ?? this.modelName,
-    state: state ?? this.state,
-    responseText: responseText ?? this.responseText,
-    finishReason: finishReason ?? this.finishReason,
-    startedAt: startedAt,
-    cancellationRequested: cancellationRequested ?? this.cancellationRequested,
-    continuationCount: continuationCount,
-    epoch: epoch,
-    sources: sources ?? this.sources,
-    errorMessage: errorMessage ?? this.errorMessage,
-  );
+  }) =>
+      ChatGenerationJob(
+        generationId: generationId,
+        conversationId: conversationId,
+        assistantMessageId: assistantMessageId,
+        originalPrompt: originalPrompt,
+        modelName: modelName ?? this.modelName,
+        state: state ?? this.state,
+        responseText: responseText ?? this.responseText,
+        finishReason: finishReason ?? this.finishReason,
+        startedAt: startedAt,
+        cancellationRequested:
+            cancellationRequested ?? this.cancellationRequested,
+        continuationCount: continuationCount,
+        epoch: epoch,
+        sources: sources ?? this.sources,
+        errorMessage: errorMessage ?? this.errorMessage,
+      );
 }
 
 @immutable
@@ -116,12 +118,12 @@ class FinnChatInferenceRuntime implements ChatInferenceRuntime {
 
   @override
   InferencePhase get phase => switch (inference.phase) {
-    InferencePhase.idle => InferencePhase.idle,
-    InferencePhase.downloading => InferencePhase.downloading,
-    InferencePhase.loading => InferencePhase.loading,
-    InferencePhase.generating => InferencePhase.generating,
-    InferencePhase.error => InferencePhase.error,
-  };
+        InferencePhase.idle => InferencePhase.idle,
+        InferencePhase.downloading => InferencePhase.downloading,
+        InferencePhase.loading => InferencePhase.loading,
+        InferencePhase.generating => InferencePhase.generating,
+        InferencePhase.error => InferencePhase.error,
+      };
   @override
   String get status => inference.status;
   @override
@@ -147,14 +149,15 @@ class FinnChatInferenceRuntime implements ChatInferenceRuntime {
     required String systemContext,
     PromptAnalysis? promptAnalysis,
     TtftTrace? trace,
-  }) => generateReplyWithContext(
-    prompt,
-    conversationId: conversationId,
-    history: history,
-    systemContext: systemContext,
-    promptAnalysis: promptAnalysis,
-    trace: trace,
-  );
+  }) =>
+      generateReplyWithContext(
+        prompt,
+        conversationId: conversationId,
+        history: history,
+        systemContext: systemContext,
+        promptAnalysis: promptAnalysis,
+        trace: trace,
+      );
 
   Stream<String> generateReplyWithContext(
     String prompt, {
@@ -165,16 +168,17 @@ class FinnChatInferenceRuntime implements ChatInferenceRuntime {
     PromptAnalysis? promptAnalysis,
     TtftTrace? trace,
     bool enableSearchDecision = true,
-  }) => inference.generateReply(
-    prompt,
-    conversationId: conversationId,
-    history: history,
-    systemContext: systemContext,
-    groundedContext: groundedContext,
-    promptAnalysis: promptAnalysis,
-    trace: trace,
-    enableSearchDecision: enableSearchDecision,
-  );
+  }) =>
+      inference.generateReply(
+        prompt,
+        conversationId: conversationId,
+        history: history,
+        systemContext: systemContext,
+        groundedContext: groundedContext,
+        promptAnalysis: promptAnalysis,
+        trace: trace,
+        enableSearchDecision: enableSearchDecision,
+      );
 
   @override
   Future<void> stopGeneration() => inference.stopGeneration();
@@ -215,6 +219,7 @@ class ChatGenerationController extends ChangeNotifier {
   Timer? _persistenceTimer;
   Timer? _notifyTimer;
   Future<void>? _stopFuture;
+
   /// Incremental token accumulator for the running job. Appending tokens to
   /// a StringBuffer avoids the O(n^2) re-allocation of string concatenation
   /// on every token; the job still exposes the same final [ChatGenerationJob.responseText].
@@ -278,7 +283,8 @@ class ChatGenerationController extends ChangeNotifier {
         : [
             ...history,
             if (imagePath != null)
-              LocalChatTurn(role: 'user', content: prompt, imagePath: imagePath),
+              LocalChatTurn(
+                  role: 'user', content: prompt, imagePath: imagePath),
           ];
     return _listen(
       generationId: generationId,
@@ -523,26 +529,25 @@ class ChatGenerationController extends ChangeNotifier {
       );
     });
 
-    _subscription =
-        _generateWithContext(
-          runtimePrompt,
-          conversationId: conversationId,
-          history: history,
-          systemContext: systemContext,
-          groundedContext: groundedContext,
-          analysis: analysis,
-          trace: trace,
-          enableSearchDecision: enableSearchDecision,
-        ).listen(
-          (token) => _token(generationId, epoch, token),
-          onError: (Object error, StackTrace stack) {
-            unawaited(_finishError(generationId, epoch, error));
-          },
-          onDone: () {
-            unawaited(_finish(generationId, epoch, responseSuffix));
-          },
-          cancelOnError: true,
-        );
+    _subscription = _generateWithContext(
+      runtimePrompt,
+      conversationId: conversationId,
+      history: history,
+      systemContext: systemContext,
+      groundedContext: groundedContext,
+      analysis: analysis,
+      trace: trace,
+      enableSearchDecision: enableSearchDecision,
+    ).listen(
+      (token) => _token(generationId, epoch, token),
+      onError: (Object error, StackTrace stack) {
+        unawaited(_finishError(generationId, epoch, error));
+      },
+      onDone: () {
+        unawaited(_finish(generationId, epoch, responseSuffix));
+      },
+      cancelOnError: true,
+    );
     return _job!;
   }
 
@@ -621,8 +626,7 @@ class ChatGenerationController extends ChangeNotifier {
         !current.busy) {
       return;
     }
-    final reportedReason =
-        runtime.lastGenerationReport?.finishReason ??
+    final reportedReason = runtime.lastGenerationReport?.finishReason ??
         GenerationFinishReason.eos;
     // Some llama.cpp Android builds surface a normal stream termination as
     // StopUserAbort. Only this controller's explicit stop path is allowed to
@@ -639,8 +643,7 @@ class ChatGenerationController extends ChangeNotifier {
         ConversationMessageStatus.stopped,
       GenerationFinishReason.error => ConversationMessageStatus.failed,
     };
-    final completedText =
-        (reason == GenerationFinishReason.eos ||
+    final completedText = (reason == GenerationFinishReason.eos ||
                 reason == GenerationFinishReason.tokenLimit) &&
             responseSuffix.isNotEmpty
         ? '${current.responseText.trimRight()}$responseSuffix'
@@ -654,9 +657,8 @@ class ChatGenerationController extends ChangeNotifier {
         responseText: completedText,
         // Continuations carry pre-supplied sources on the job; the runtime's
         // lastSources is only populated for model-driven search turns.
-        sources: _runtimeSources().isNotEmpty
-            ? _runtimeSources()
-            : current.sources,
+        sources:
+            _runtimeSources().isNotEmpty ? _runtimeSources() : current.sources,
       ),
       status,
     );

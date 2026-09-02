@@ -28,7 +28,8 @@ void main() {
       expect(rendered, contains('How do I write a Python function?'));
     });
 
-    test('personalization and enabled skills are rendered as private context '
+    test(
+        'personalization and enabled skills are rendered as private context '
         'without replacing safety instructions', () async {
       final directory = await Directory.systemTemp.createTemp(
         'finn_prompt_context_test_',

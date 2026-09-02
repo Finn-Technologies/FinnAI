@@ -4,7 +4,8 @@ import 'package:finn_ai/src/widgets/flux_context_menu.dart';
 import 'package:finn_ai/src/widgets/flux_controls.dart';
 
 void main() {
-  testWidgets('FluxSpringPressable responds to tap and long-press', (tester) async {
+  testWidgets('FluxSpringPressable responds to tap and long-press',
+      (tester) async {
     bool tapped = false;
     bool longPressed = false;
 
@@ -33,7 +34,8 @@ void main() {
     expect(longPressed, isTrue);
   });
 
-  testWidgets('showFluxContextMenu opens with actions and dismisses', (tester) async {
+  testWidgets('showFluxContextMenu opens with actions and dismisses',
+      (tester) async {
     final GlobalKey targetKey = GlobalKey();
     bool actionTapped = false;
 

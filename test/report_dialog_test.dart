@@ -25,10 +25,11 @@ void main() {
     required MockClient client,
     String endpoint = 'https://reports.finnai.app/v1/reports',
     String? reportEmail = 'finn_org@proton.me',
-  }) => ReportService(endpoint: endpoint, reportEmail: reportEmail, client: client);
+  }) =>
+      ReportService(
+          endpoint: endpoint, reportEmail: reportEmail, client: client);
 
-  ReportService serviceReturning(http.Response response) =>
-      serviceWith(
+  ReportService serviceReturning(http.Response response) => serviceWith(
         client: MockClient((request) async {
           capturedBodies.add(jsonDecode(request.body) as Map<String, dynamic>);
           return response;
@@ -68,11 +69,11 @@ void main() {
   void mockLauncher() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(launcherChannel, (call) async {
-          if (call.method == 'launch') {
-            launchedUrls.add(call.arguments['url'] as String);
-          }
-          return true;
-        });
+      if (call.method == 'launch') {
+        launchedUrls.add(call.arguments['url'] as String);
+      }
+      return true;
+    });
   }
 
   group('ReportDialog submission', () {

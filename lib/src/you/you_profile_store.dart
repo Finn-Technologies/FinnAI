@@ -47,20 +47,21 @@ class FinnUserProfile {
     String? about,
     String? customInstructions,
     FinnResponseStyle? responseStyle,
-  }) => FinnUserProfile(
-    preferredName: preferredName ?? this.preferredName,
-    about: about ?? this.about,
-    customInstructions: customInstructions ?? this.customInstructions,
-    responseStyle: responseStyle ?? this.responseStyle,
-  );
+  }) =>
+      FinnUserProfile(
+        preferredName: preferredName ?? this.preferredName,
+        about: about ?? this.about,
+        customInstructions: customInstructions ?? this.customInstructions,
+        responseStyle: responseStyle ?? this.responseStyle,
+      );
 
   Map<String, Object?> toJson() => {
-    'version': 1,
-    'preferredName': preferredName,
-    'about': about,
-    'customInstructions': customInstructions,
-    'responseStyle': responseStyle.name,
-  };
+        'version': 1,
+        'preferredName': preferredName,
+        'about': about,
+        'customInstructions': customInstructions,
+        'responseStyle': responseStyle.name,
+      };
 
   factory FinnUserProfile.fromJson(Map<String, Object?> json) {
     final rawStyle = json['responseStyle']?.toString();

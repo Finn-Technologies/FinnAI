@@ -55,53 +55,54 @@ class RuntimeConfig {
     int? gpuLayers,
     String? deviceName,
     bool? isCpu,
-  }) => RuntimeConfig(
-    contextSize: contextSize ?? this.contextSize,
-    threads: threads ?? this.threads,
-    batchThreads: batchThreads ?? this.batchThreads,
-    batchSize: batchSize ?? this.batchSize,
-    microBatchSize: microBatchSize ?? this.microBatchSize,
-    sessionCount: sessionCount ?? this.sessionCount,
-    kvType: kvType ?? this.kvType,
-    flashAttention: flashAttention ?? this.flashAttention,
-    gpuLayers: gpuLayers ?? this.gpuLayers,
-    deviceName: deviceName ?? this.deviceName,
-    isCpu: isCpu ?? this.isCpu,
-  );
+  }) =>
+      RuntimeConfig(
+        contextSize: contextSize ?? this.contextSize,
+        threads: threads ?? this.threads,
+        batchThreads: batchThreads ?? this.batchThreads,
+        batchSize: batchSize ?? this.batchSize,
+        microBatchSize: microBatchSize ?? this.microBatchSize,
+        sessionCount: sessionCount ?? this.sessionCount,
+        kvType: kvType ?? this.kvType,
+        flashAttention: flashAttention ?? this.flashAttention,
+        gpuLayers: gpuLayers ?? this.gpuLayers,
+        deviceName: deviceName ?? this.deviceName,
+        isCpu: isCpu ?? this.isCpu,
+      );
 
   Map<String, Object?> toJson() => {
-    'contextSize': contextSize,
-    'threads': threads,
-    'batchThreads': batchThreads,
-    'batchSize': batchSize,
-    'microBatchSize': microBatchSize,
-    'sessionCount': sessionCount,
-    'kvType': kvType.name,
-    'flashAttention': flashAttention.name,
-    'gpuLayers': gpuLayers,
-    'deviceName': deviceName,
-    'isCpu': isCpu,
-  };
+        'contextSize': contextSize,
+        'threads': threads,
+        'batchThreads': batchThreads,
+        'batchSize': batchSize,
+        'microBatchSize': microBatchSize,
+        'sessionCount': sessionCount,
+        'kvType': kvType.name,
+        'flashAttention': flashAttention.name,
+        'gpuLayers': gpuLayers,
+        'deviceName': deviceName,
+        'isCpu': isCpu,
+      };
 
   factory RuntimeConfig.fromJson(Map<String, Object?> json) => RuntimeConfig(
-    contextSize: json['contextSize'] as int,
-    threads: json['threads'] as int,
-    batchThreads: json['batchThreads'] as int,
-    batchSize: json['batchSize'] as int,
-    microBatchSize: json['microBatchSize'] as int,
-    sessionCount: json['sessionCount'] as int,
-    kvType: KvCacheType.values.firstWhere(
-      (e) => e.name == json['kvType'],
-      orElse: () => KvCacheType.iq4_nl,
-    ),
-    flashAttention: FlashAttention.values.firstWhere(
-      (e) => e.name == json['flashAttention'],
-      orElse: () => FlashAttention.on,
-    ),
-    gpuLayers: json['gpuLayers'] as int,
-    deviceName: json['deviceName'] as String? ?? '',
-    isCpu: json['isCpu'] as bool? ?? true,
-  );
+        contextSize: json['contextSize'] as int,
+        threads: json['threads'] as int,
+        batchThreads: json['batchThreads'] as int,
+        batchSize: json['batchSize'] as int,
+        microBatchSize: json['microBatchSize'] as int,
+        sessionCount: json['sessionCount'] as int,
+        kvType: KvCacheType.values.firstWhere(
+          (e) => e.name == json['kvType'],
+          orElse: () => KvCacheType.iq4_nl,
+        ),
+        flashAttention: FlashAttention.values.firstWhere(
+          (e) => e.name == json['flashAttention'],
+          orElse: () => FlashAttention.on,
+        ),
+        gpuLayers: json['gpuLayers'] as int,
+        deviceName: json['deviceName'] as String? ?? '',
+        isCpu: json['isCpu'] as bool? ?? true,
+      );
 }
 
 /// Broad class of the selected compute backend.
@@ -129,19 +130,21 @@ class BackendSelection {
 RuntimeConfig runtimeConfigFromPlan(
   InferencePlan plan,
   DeviceProfile profile,
-) => RuntimeConfig(
-  contextSize: plan.contextSize,
-  threads: plan.threads,
-  batchThreads: plan.batchThreads,
-  batchSize: plan.batchSize,
-  microBatchSize: plan.microBatchSize,
-  sessionCount: plan.sessionCacheEntries,
-  kvType: plan.compactKv ? KvCacheType.q4_0 : KvCacheType.f16,
-  flashAttention: plan.flashAttention ? FlashAttention.on : FlashAttention.off,
-  gpuLayers: 0,
-  deviceName: '',
-  isCpu: true,
-);
+) =>
+    RuntimeConfig(
+      contextSize: plan.contextSize,
+      threads: plan.threads,
+      batchThreads: plan.batchThreads,
+      batchSize: plan.batchSize,
+      microBatchSize: plan.microBatchSize,
+      sessionCount: plan.sessionCacheEntries,
+      kvType: plan.compactKv ? KvCacheType.q4_0 : KvCacheType.f16,
+      flashAttention:
+          plan.flashAttention ? FlashAttention.on : FlashAttention.off,
+      gpuLayers: 0,
+      deviceName: '',
+      isCpu: true,
+    );
 
 /// Picks the single most promising accelerator device from the runtime's
 /// backend enumeration.
@@ -160,8 +163,7 @@ BackendDevice? preferredAccelerator(List<BackendDevice> devices) {
 
     final registry = device.registryName.toLowerCase();
     final name = device.name.toUpperCase();
-    final isNpu =
-        device.type == BackendDeviceType.accel ||
+    final isNpu = device.type == BackendDeviceType.accel ||
         registry.contains('hexagon') ||
         registry.contains('htp') ||
         name.startsWith('HTP');
@@ -180,11 +182,11 @@ BackendDevice? preferredAccelerator(List<BackendDevice> devices) {
 }
 
 int _gpuPriority(String registryName) => switch (registryName) {
-  'Metal' || 'CUDA' => 4,
-  'Vulkan' => 3,
-  'OpenCL' => 2,
-  _ => 1,
-};
+      'Metal' || 'CUDA' => 4,
+      'Vulkan' => 3,
+      'OpenCL' => 2,
+      _ => 1,
+    };
 
 /// Classifies a discovered device as NPU or GPU for diagnostics.
 ComputeBackend classifyBackend(BackendDevice device) {
@@ -342,8 +344,7 @@ class AdaptiveInferenceEngine {
       backend: backend,
       deviceName: device.name,
       registryName: device.registryName,
-      reason:
-          'Discovered ${backend.name} device ${device.name} '
+      reason: 'Discovered ${backend.name} device ${device.name} '
           '(${device.registryName}).',
     );
     _config = selection.config;
@@ -362,7 +363,8 @@ class AdaptiveInferenceEngine {
   Future<bool> isBenchmarkStale({
     required DeviceProfile profile,
     required String modelSha256,
-  }) async => (await _readCachedSelection(profile, modelSha256)) == null;
+  }) async =>
+      (await _readCachedSelection(profile, modelSha256)) == null;
 
   /// Drops a persisted accelerator decision (e.g. after a cached backend
   /// failed or timed out at spawn). The next cold start re-runs discovery
@@ -408,13 +410,13 @@ class AdaptiveInferenceEngine {
   Future<BenchmarkProfile?> performanceProfile() async => null;
 
   EngineStatus status() => EngineStatus(
-    ready: _config != null,
-    message: _config == null
-        ? 'Profile not selected'
-        : (_selection == null
-              ? 'Ready (CPU)'
-              : 'Ready (${_selection!.backend.name})'),
-  );
+        ready: _config != null,
+        message: _config == null
+            ? 'Profile not selected'
+            : (_selection == null
+                ? 'Ready (CPU)'
+                : 'Ready (${_selection!.backend.name})'),
+      );
 
   @visibleForTesting
   BackendSelection? get selectionForTest => _selection;
@@ -430,8 +432,7 @@ class AdaptiveInferenceEngine {
         _appVersion = 'unknown';
       }
     }
-    final raw =
-        '${profile.processor}|${profile.totalRamBytes}|$modelSha256|'
+    final raw = '${profile.processor}|${profile.totalRamBytes}|$modelSha256|'
         '${profile.nativeLibraryDir}|$_appVersion';
     return sha256.convert(utf8.encode(raw)).toString();
   }

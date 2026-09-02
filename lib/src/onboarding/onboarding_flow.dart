@@ -66,28 +66,28 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   PageRouteBuilder<void> _blurRoute(Widget child) => PageRouteBuilder(
-    transitionDuration: const Duration(milliseconds: 350),
-    reverseTransitionDuration: const Duration(milliseconds: 280),
-    pageBuilder: (_, animation, __) => child,
-    transitionsBuilder: (context, animation, _, page) {
-      if (MediaQuery.disableAnimationsOf(context)) return page;
-      final curved = CurvedAnimation(
-        parent: animation,
-        curve: Curves.easeInOutCubicEmphasized,
-        reverseCurve: Curves.easeInCubic,
+        transitionDuration: const Duration(milliseconds: 350),
+        reverseTransitionDuration: const Duration(milliseconds: 280),
+        pageBuilder: (_, animation, __) => child,
+        transitionsBuilder: (context, animation, _, page) {
+          if (MediaQuery.disableAnimationsOf(context)) return page;
+          final curved = CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeInOutCubicEmphasized,
+            reverseCurve: Curves.easeInCubic,
+          );
+          return FadeTransition(
+            opacity: curved,
+            child: SlideTransition(
+              position: Tween(
+                begin: const Offset(0, .06),
+                end: Offset.zero,
+              ).animate(curved),
+              child: page,
+            ),
+          );
+        },
       );
-      return FadeTransition(
-        opacity: curved,
-        child: SlideTransition(
-          position: Tween(
-            begin: const Offset(0, .06),
-            end: Offset.zero,
-          ).animate(curved),
-          child: page,
-        ),
-      );
-    },
-  );
 
   @override
   void dispose() {
@@ -157,51 +157,52 @@ class _WelcomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => _SwipeAdvance(
-    onAdvance: onNext,
-    child: AmbientBackground(
-      primaryColor: FluxColors.lime,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final sy = constraints.maxHeight / 844;
-          return Stack(
-            children: [
-              Positioned(
-                top: 415 * sy,
-                left: 0,
-                right: 0,
-                child: Center(
-                  child: Text(
-                    L10n.of(context).onboardingWelcome,
-                    style: Theme.of(
-                      context,
-                    ).textTheme.titleMedium?.copyWith(fontSize: 21),
-                  ),
-                ),
-              ),
-              Positioned(
-                top: 655 * sy,
-                left: 0,
-                right: 0,
-                child: Column(
-                  children: [
-                    const _FloatingArrow(),
-                    const SizedBox(height: 12),
-                    Text(
-                      L10n.of(context).onboardingSwipeToStart,
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: FluxColors.mutedOf(context),
-                        fontSize: 16,
+        onAdvance: onNext,
+        child: AmbientBackground(
+          primaryColor: FluxColors.lime,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final sy = constraints.maxHeight / 844;
+              return Stack(
+                children: [
+                  Positioned(
+                    top: 415 * sy,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: Text(
+                        L10n.of(context).onboardingWelcome,
+                        style: Theme.of(
+                          context,
+                        ).textTheme.titleMedium?.copyWith(fontSize: 21),
                       ),
                     ),
-                  ],
-                ),
-              ),
-            ],
-          );
-        },
-      ),
-    ),
-  );
+                  ),
+                  Positioned(
+                    top: 655 * sy,
+                    left: 0,
+                    right: 0,
+                    child: Column(
+                      children: [
+                        const _FloatingArrow(),
+                        const SizedBox(height: 12),
+                        Text(
+                          L10n.of(context).onboardingSwipeToStart,
+                          style:
+                              Theme.of(context).textTheme.labelMedium?.copyWith(
+                                    color: FluxColors.mutedOf(context),
+                                    fontSize: 16,
+                                  ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      );
 }
 
 class _SwipeAdvance extends StatefulWidget {
@@ -346,80 +347,80 @@ class _DetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, constraints) {
-      final sy = constraints.maxHeight / 844;
-      return Stack(
-        children: [
-          Positioned(
-            left: 20,
-            top: 71 * sy,
-            child: IgnorePointer(
-              ignoring: !backEnabled,
-              child: AnimatedOpacity(
-                opacity: backEnabled ? 1 : .38,
-                duration: const Duration(milliseconds: 240),
-                child: BackControl(onTap: onBack),
-              ),
-            ),
-          ),
-          Positioned(
-            top: 210 * sy,
-            left: (constraints.maxWidth - 90) / 2,
-            child: _SoftIconEntrance(iconAsset: iconAsset),
-          ),
-          Positioned(
-            top: 415 * sy,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: ClipRRect(
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(FluxRadius.card),
-              ),
-              child: ColoredBox(
-                color: FluxColors.cardOf(context),
-                child: Stack(
-                  children: [
-                    Positioned(
-                      left: 25,
-                      right: 25,
-                      top: 40,
-                      height: 24,
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          title,
-                          maxLines: 1,
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      left: 25,
-                      right: 25,
-                      top: contentTop,
-                      height: 216,
-                      child: child,
-                    ),
-                    Positioned(
-                      right: 25,
-                      bottom: 79,
-                      child: FluxPillButton(
-                        label: L10n.of(context).commonNext,
-                        onTap: onNext,
-                        compact: true,
-                      ),
-                    ),
-                  ],
+        builder: (context, constraints) {
+          final sy = constraints.maxHeight / 844;
+          return Stack(
+            children: [
+              Positioned(
+                left: 20,
+                top: 71 * sy,
+                child: IgnorePointer(
+                  ignoring: !backEnabled,
+                  child: AnimatedOpacity(
+                    opacity: backEnabled ? 1 : .38,
+                    duration: const Duration(milliseconds: 240),
+                    child: BackControl(onTap: onBack),
+                  ),
                 ),
               ),
-            ),
-          ),
-        ],
+              Positioned(
+                top: 210 * sy,
+                left: (constraints.maxWidth - 90) / 2,
+                child: _SoftIconEntrance(iconAsset: iconAsset),
+              ),
+              Positioned(
+                top: 415 * sy,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(FluxRadius.card),
+                  ),
+                  child: ColoredBox(
+                    color: FluxColors.cardOf(context),
+                    child: Stack(
+                      children: [
+                        Positioned(
+                          left: 25,
+                          right: 25,
+                          top: 40,
+                          height: 24,
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              title,
+                              maxLines: 1,
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          left: 25,
+                          right: 25,
+                          top: contentTop,
+                          height: 216,
+                          child: child,
+                        ),
+                        Positioned(
+                          right: 25,
+                          bottom: 79,
+                          child: FluxPillButton(
+                            label: L10n.of(context).commonNext,
+                            onTap: onNext,
+                            compact: true,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
       );
-    },
-  );
 }
 
 class _SoftIconEntrance extends StatelessWidget {
@@ -429,9 +430,9 @@ class _SoftIconEntrance extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox.square(
-    dimension: 90,
-    child: Center(child: FigmaSvg(asset: iconAsset, width: 90, height: 90)),
-  );
+        dimension: 90,
+        child: Center(child: FigmaSvg(asset: iconAsset, width: 90, height: 90)),
+      );
 }
 
 class _AutomaticModelPage extends StatefulWidget {
@@ -516,7 +517,8 @@ class _AutomaticModelPageState extends State<_AutomaticModelPage> {
           setState(() => _progress = index / models.length);
         }
         final model = models[index];
-        debugPrint('FINN_INSTALLING_MODEL: ${model.name} (${model.downloadUrl})');
+        debugPrint(
+            'FINN_INSTALLING_MODEL: ${model.name} (${model.downloadUrl})');
         // Calling install even for an existing language model also completes
         // the post-model mmproj download after an upgrade or interrupted
         // first run.
@@ -528,8 +530,8 @@ class _AutomaticModelPageState extends State<_AutomaticModelPage> {
       // Measure the best CPU/GPU/NPU backend now that the model is present.
       try {
         await _inference.optimizeForDevice().timeout(
-          const Duration(seconds: 35),
-        );
+              const Duration(seconds: 35),
+            );
       } catch (e) {
         debugPrint('FINN_OPTIMIZE timed out or failed: $e');
       }
@@ -550,23 +552,25 @@ class _AutomaticModelPageState extends State<_AutomaticModelPage> {
 
   @override
   Widget build(BuildContext context) => _DetailPage(
-    iconAsset: FigmaAssets.magic,
-    title: _ready ? L10n.of(context).onboardingInstallTitleReady : L10n.of(context).onboardingInstallTitleInstalling,
-    contentTop: 79,
-    onBack: widget.onBack,
-    backEnabled: _ready,
-    onNext: _ready ? widget.onNext : null,
-    child: _AutomaticInstallPanel(
-      models: _inference.requiredModels,
-      progress: _progress,
-      ready: _ready,
-      started: _started,
-      error: _error,
-      statusKey: _inference.statusKey,
-      status: _inference.status,
-      onRetry: start,
-    ),
-  );
+        iconAsset: FigmaAssets.magic,
+        title: _ready
+            ? L10n.of(context).onboardingInstallTitleReady
+            : L10n.of(context).onboardingInstallTitleInstalling,
+        contentTop: 79,
+        onBack: widget.onBack,
+        backEnabled: _ready,
+        onNext: _ready ? widget.onNext : null,
+        child: _AutomaticInstallPanel(
+          models: _inference.requiredModels,
+          progress: _progress,
+          ready: _ready,
+          started: _started,
+          error: _error,
+          statusKey: _inference.statusKey,
+          status: _inference.status,
+          onRetry: start,
+        ),
+      );
 }
 
 class _AutomaticInstallPanel extends StatelessWidget {
@@ -610,9 +614,11 @@ class _AutomaticInstallPanel extends StatelessWidget {
     final remainingBytes = inference.installRemainingBytes;
     final transferMeta = [
       if (downloading)
-        L10n.of(context).onboardingInstallBytesOf(_formatBytes(receivedBytes), _formatBytes(totalBytes)),
+        L10n.of(context).onboardingInstallBytesOf(
+            _formatBytes(receivedBytes), _formatBytes(totalBytes)),
       if (downloading && remainingBytes > 0)
-        L10n.of(context).onboardingInstallBytesLeft(_formatBytes(remainingBytes)),
+        L10n.of(context)
+            .onboardingInstallBytesLeft(_formatBytes(remainingBytes)),
       if (downloading && inference.downloadSpeedLabel != null)
         inference.downloadSpeedLabel!,
       if (downloading && inference.downloadEtaLabel != null)
@@ -633,9 +639,8 @@ class _AutomaticInstallPanel extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               AnimatedSwitcher(
-                duration: reduced
-                    ? Duration.zero
-                    : const Duration(milliseconds: 360),
+                duration:
+                    reduced ? Duration.zero : const Duration(milliseconds: 360),
                 transitionBuilder: (child, animation) =>
                     ScaleTransition(scale: animation, child: child),
                 child: FluxIcon(
@@ -650,18 +655,18 @@ class _AutomaticInstallPanel extends StatelessWidget {
               Text(
                 ready
                     ? L10n.of(context).onboardingInstallReadyForChat
-                    : L10n.of(context).onboardingInstallModelWithComponent(model.name, _formatBytes(totalBytes)),
+                    : L10n.of(context).onboardingInstallModelWithComponent(
+                        model.name, _formatBytes(totalBytes)),
                 maxLines: 2,
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: FluxColors.mutedOf(context),
-                ),
+                      color: FluxColors.mutedOf(context),
+                    ),
               ),
               const SizedBox(height: 10),
               AnimatedSwitcher(
-                duration: reduced
-                    ? Duration.zero
-                    : const Duration(milliseconds: 320),
+                duration:
+                    reduced ? Duration.zero : const Duration(milliseconds: 320),
                 switchInCurve: Curves.easeOutCubic,
                 child: error != null
                     ? Column(
@@ -671,7 +676,9 @@ class _AutomaticInstallPanel extends StatelessWidget {
                             error!,
                             maxLines: 2,
                             textAlign: TextAlign.center,
-                            style: Theme.of(context).textTheme.labelMedium
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelMedium
                                 ?.copyWith(color: FluxColors.mutedOf(context)),
                           ),
                           const SizedBox(height: 10),
@@ -709,19 +716,23 @@ class _AutomaticInstallPanel extends StatelessWidget {
                         ready
                             ? L10n.of(context).onboardingInstallModelReady
                             : started
-                            ? L10n.of(context).onboardingInstallProgressStatus(
-                                localizedEngineStatus(context, statusKey, status),
-                                (effectiveProgress * 100).round().toString(),
-                              )
-                            : L10n.of(context).onboardingInstallPreparing,
+                                ? L10n.of(context)
+                                    .onboardingInstallProgressStatus(
+                                    localizedEngineStatus(
+                                        context, statusKey, status),
+                                    (effectiveProgress * 100)
+                                        .round()
+                                        .toString(),
+                                  )
+                                : L10n.of(context).onboardingInstallPreparing,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.labelMedium
-                            ?.copyWith(
-                              color: FluxColors.mutedOf(context),
-                              height: 1.3,
-                            ),
+                        style:
+                            Theme.of(context).textTheme.labelMedium?.copyWith(
+                                  color: FluxColors.mutedOf(context),
+                                  height: 1.3,
+                                ),
                       ),
               ),
               if (!ready && started) ...[
@@ -750,8 +761,8 @@ class _AutomaticInstallPanel extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: FluxColors.mutedOf(context),
-                      ),
+                            color: FluxColors.mutedOf(context),
+                          ),
                     ),
                   ),
                 ],
@@ -806,11 +817,11 @@ class _Precautions extends StatelessWidget {
                         ),
                         child: Text(
                           '${i + 1}',
-                          style: Theme.of(context).textTheme.labelMedium
-                              ?.copyWith(
-                                color: FluxColors.canvasOf(context),
-                                fontSize: 13,
-                              ),
+                          style:
+                              Theme.of(context).textTheme.labelMedium?.copyWith(
+                                    color: FluxColors.canvasOf(context),
+                                    fontSize: 13,
+                                  ),
                         ),
                       ),
                     ),
@@ -981,56 +992,57 @@ class _FinishPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => _SwipeAdvance(
-    onAdvance: onDone,
-    child: AmbientBackground(
-      primaryColor: FluxColors.lime,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final sy = constraints.maxHeight / 844;
-          return Stack(
-            children: [
-              Positioned(
-                left: 20,
-                top: 71 * sy,
-                child: BackControl(onTap: onBack),
-              ),
-              Positioned(
-                top: 415 * sy,
-                left: 0,
-                right: 0,
-                child: Center(
-                  child: Text(
-                    L10n.of(context).onboardingReadyTitle,
-                    style: Theme.of(
-                      context,
-                    ).textTheme.titleMedium?.copyWith(fontSize: 21),
+        onAdvance: onDone,
+        child: AmbientBackground(
+          primaryColor: FluxColors.lime,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final sy = constraints.maxHeight / 844;
+              return Stack(
+                children: [
+                  Positioned(
+                    left: 20,
+                    top: 71 * sy,
+                    child: BackControl(onTap: onBack),
                   ),
-                ),
-              ),
-              Positioned(
-                top: 655 * sy,
-                left: 0,
-                right: 0,
-                child: Column(
-                  children: [
-                    const _FloatingArrow(),
-                    const SizedBox(height: 12),
-                    Text(
-                      L10n.of(context).onboardingReadySubtitle,
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: FluxColors.mutedOf(context),
-                        fontSize: 16,
+                  Positioned(
+                    top: 415 * sy,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: Text(
+                        L10n.of(context).onboardingReadyTitle,
+                        style: Theme.of(
+                          context,
+                        ).textTheme.titleMedium?.copyWith(fontSize: 21),
                       ),
                     ),
-                  ],
-                ),
-              ),
-            ],
-          );
-        },
-      ),
-    ),
-  );
+                  ),
+                  Positioned(
+                    top: 655 * sy,
+                    left: 0,
+                    right: 0,
+                    child: Column(
+                      children: [
+                        const _FloatingArrow(),
+                        const SizedBox(height: 12),
+                        Text(
+                          L10n.of(context).onboardingReadySubtitle,
+                          style:
+                              Theme.of(context).textTheme.labelMedium?.copyWith(
+                                    color: FluxColors.mutedOf(context),
+                                    fontSize: 16,
+                                  ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      );
 }
 
 /// Compact human-readable size used by the download card, e.g. "1.28 GB" or

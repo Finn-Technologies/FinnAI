@@ -50,10 +50,7 @@ class _SettingsPageState extends State<SettingsPage>
     _scrollController.addListener(_onScroll);
     _loadSettingsData();
     if (WidgetsBinding
-        .instance
-        .platformDispatcher
-        .accessibilityFeatures
-        .disableAnimations) {
+        .instance.platformDispatcher.accessibilityFeatures.disableAnimations) {
       _entranceController.value = 1;
     } else {
       _entranceController.forward();
@@ -110,7 +107,8 @@ class _SettingsPageState extends State<SettingsPage>
     showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(FluxRadius.sheet)),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(FluxRadius.sheet)),
         title: Text(L10n.of(context).settingsPurgeMemoryTitle),
         content: Text(
           L10n.of(context).settingsPurgeMemoryBody,
@@ -147,7 +145,8 @@ class _SettingsPageState extends State<SettingsPage>
     showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(FluxRadius.sheet)),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(FluxRadius.sheet)),
         title: Text(L10n.of(context).settingsClearHistoryTitle),
         content: Text(
           L10n.of(context).settingsClearHistoryBody,
@@ -208,7 +207,8 @@ class _SettingsPageState extends State<SettingsPage>
     showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(FluxRadius.sheet)),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(FluxRadius.sheet)),
         title: Text(L10n.of(context).settingsDeleteAllDataTitle),
         content: Text(
           L10n.of(context).settingsDeleteAllDataBody,
@@ -262,7 +262,8 @@ class _SettingsPageState extends State<SettingsPage>
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
-                        L10n.of(context).settingsDeleteAllDataPartialFailure(result.failedItems.join(', ')),
+                        L10n.of(context).settingsDeleteAllDataPartialFailure(
+                            result.failedItems.join(', ')),
                       ),
                       behavior: SnackBarBehavior.floating,
                       shape: RoundedRectangleBorder(
@@ -317,7 +318,8 @@ class _SettingsPageState extends State<SettingsPage>
             final double safeBottom = MediaQuery.paddingOf(context).bottom;
 
             const double pageHorizontalInset = 20;
-            final metrics = FinnPageHeaderMetrics.forHeight(constraints.maxHeight);
+            final metrics =
+                FinnPageHeaderMetrics.forHeight(constraints.maxHeight);
             const double headerHeight = 34;
             final double headerTop = metrics.headerTop;
             final double initialTitleTop = metrics.initialTitleTop;
@@ -366,7 +368,9 @@ class _SettingsPageState extends State<SettingsPage>
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    _SectionHeader(label: L10n.of(context).settingsAiModel),
+                                    _SectionHeader(
+                                        label:
+                                            L10n.of(context).settingsAiModel),
                                     const SizedBox(height: 8),
                                     FluxGlass(
                                       radius: 20,
@@ -381,18 +385,16 @@ class _SettingsPageState extends State<SettingsPage>
                                                   height: 22,
                                                   child:
                                                       CircularProgressIndicator(
-                                                        strokeWidth: 2,
-                                                      ),
+                                                    strokeWidth: 2,
+                                                  ),
                                                 ),
                                               ),
                                             )
                                           : Column(
                                               children: [
-                                                for (
-                                                  int i = 0;
-                                                  i < states.length;
-                                                  i++
-                                                ) ...[
+                                                for (int i = 0;
+                                                    i < states.length;
+                                                    i++) ...[
                                                   if (i > 0)
                                                     Divider(
                                                       height: 1,
@@ -404,7 +406,7 @@ class _SettingsPageState extends State<SettingsPage>
                                                     state: states[i],
                                                     isActive:
                                                         states[i].model.tier ==
-                                                        selectedTier,
+                                                            selectedTier,
                                                   ),
                                                 ],
                                               ],
@@ -435,7 +437,8 @@ class _SettingsPageState extends State<SettingsPage>
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     _SectionHeader(
-                                      label: L10n.of(context).settingsStorageData,
+                                      label:
+                                          L10n.of(context).settingsStorageData,
                                     ),
                                     const SizedBox(height: 8),
                                     FluxGlass(
@@ -444,43 +447,56 @@ class _SettingsPageState extends State<SettingsPage>
                                         children: [
                                           _InfoRow(
                                             icon: FluxIcons.settings,
-                                            label: L10n.of(context).settingsSavedConversationsLabel,
+                                            label: L10n.of(context)
+                                                .settingsSavedConversationsLabel,
                                             value: totalChats == 1
-                                                ? L10n.of(context).settingsSavedConversations(1)
-                                                : L10n.of(context).settingsSavedConversations(totalChats),
+                                                ? L10n.of(context)
+                                                    .settingsSavedConversations(
+                                                        1)
+                                                : L10n.of(context)
+                                                    .settingsSavedConversations(
+                                                        totalChats),
                                           ),
                                           Divider(
                                             height: 1,
-                                            color: FluxColors.lineOf(context).withValues(alpha: 0.5),
+                                            color: FluxColors.lineOf(context)
+                                                .withValues(alpha: 0.5),
                                           ),
                                           _DestructiveRow(
                                             icon: FluxIcons.chip,
                                             label: _clearingMemory
-                                                ? L10n.of(context).settingsReleasingMemory
-                                                : L10n.of(context).settingsPurgeMemory,
+                                                ? L10n.of(context)
+                                                    .settingsReleasingMemory
+                                                : L10n.of(context)
+                                                    .settingsPurgeMemory,
                                             enabled: !_clearingMemory,
                                             loading: _clearingMemory,
                                             onTap: _confirmPurgeMemory,
                                           ),
                                           Divider(
                                             height: 1,
-                                            color: FluxColors.lineOf(context).withValues(alpha: 0.5),
+                                            color: FluxColors.lineOf(context)
+                                                .withValues(alpha: 0.5),
                                           ),
                                           _DestructiveRow(
                                             icon: FluxIcons.refresh,
-                                            label: L10n.of(context).settingsClearHistory,
+                                            label: L10n.of(context)
+                                                .settingsClearHistory,
                                             enabled: totalChats > 0,
                                             onTap: _confirmClearAllChats,
                                           ),
                                           Divider(
                                             height: 1,
-                                            color: FluxColors.lineOf(context).withValues(alpha: 0.5),
+                                            color: FluxColors.lineOf(context)
+                                                .withValues(alpha: 0.5),
                                           ),
                                           _DestructiveRow(
                                             icon: FluxIcons.security,
                                             label: _deletingAllData
-                                                ? L10n.of(context).settingsDeleteAllDataDeleting
-                                                : L10n.of(context).settingsDeleteAllData,
+                                                ? L10n.of(context)
+                                                    .settingsDeleteAllDataDeleting
+                                                : L10n.of(context)
+                                                    .settingsDeleteAllData,
                                             enabled: !_deletingAllData,
                                             loading: _deletingAllData,
                                             onTap: _confirmDeleteAllData,
@@ -513,7 +529,8 @@ class _SettingsPageState extends State<SettingsPage>
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     _SectionHeader(
-                                      label: L10n.of(context).settingsPrivacyLegal,
+                                      label:
+                                          L10n.of(context).settingsPrivacyLegal,
                                     ),
                                     const SizedBox(height: 8),
                                     FluxGlass(
@@ -522,7 +539,8 @@ class _SettingsPageState extends State<SettingsPage>
                                         children: [
                                           _ActionRow(
                                             icon: FluxIcons.lock,
-                                            label: L10n.of(context).settingsPrivacyPolicy,
+                                            label: L10n.of(context)
+                                                .settingsPrivacyPolicy,
                                             onTap: () async {
                                               if (LegalConfig
                                                   .hasPrivacyPolicyUrl) {
@@ -542,7 +560,10 @@ class _SettingsPageState extends State<SettingsPage>
                                                     ).showSnackBar(
                                                       SnackBar(
                                                         content: Text(
-                                                          L10n.of(context).settingsPrivacyPolicyLaunchFailed(LegalConfig.privacyPolicyUrl),
+                                                          L10n.of(context)
+                                                              .settingsPrivacyPolicyLaunchFailed(
+                                                                  LegalConfig
+                                                                      .privacyPolicyUrl),
                                                         ),
                                                       ),
                                                     );
@@ -554,7 +575,8 @@ class _SettingsPageState extends State<SettingsPage>
                                                 ).showSnackBar(
                                                   SnackBar(
                                                     content: Text(
-                                                      L10n.of(context).settingsPrivacyPolicyUnconfigured,
+                                                      L10n.of(context)
+                                                          .settingsPrivacyPolicyUnconfigured,
                                                     ),
                                                   ),
                                                 );
@@ -563,11 +585,13 @@ class _SettingsPageState extends State<SettingsPage>
                                           ),
                                           Divider(
                                             height: 1,
-                                            color: FluxColors.lineOf(context).withValues(alpha: 0.5),
+                                            color: FluxColors.lineOf(context)
+                                                .withValues(alpha: 0.5),
                                           ),
                                           _ActionRow(
                                             icon: FluxIcons.security,
-                                            label: L10n.of(context).settingsTermsOfUse,
+                                            label: L10n.of(context)
+                                                .settingsTermsOfUse,
                                             onTap: () async {
                                               if (LegalConfig.hasTermsUrl) {
                                                 final uri = Uri.parse(
@@ -586,7 +610,10 @@ class _SettingsPageState extends State<SettingsPage>
                                                     ).showSnackBar(
                                                       SnackBar(
                                                         content: Text(
-                                                          L10n.of(context).settingsTermsLaunchFailed(LegalConfig.termsUrl),
+                                                          L10n.of(context)
+                                                              .settingsTermsLaunchFailed(
+                                                                  LegalConfig
+                                                                      .termsUrl),
                                                         ),
                                                       ),
                                                     );
@@ -598,7 +625,8 @@ class _SettingsPageState extends State<SettingsPage>
                                                 ).showSnackBar(
                                                   SnackBar(
                                                     content: Text(
-                                                      L10n.of(context).settingsTermsUnconfigured,
+                                                      L10n.of(context)
+                                                          .settingsTermsUnconfigured,
                                                     ),
                                                   ),
                                                 );
@@ -607,11 +635,13 @@ class _SettingsPageState extends State<SettingsPage>
                                           ),
                                           Divider(
                                             height: 1,
-                                            color: FluxColors.lineOf(context).withValues(alpha: 0.5),
+                                            color: FluxColors.lineOf(context)
+                                                .withValues(alpha: 0.5),
                                           ),
                                           _ActionRow(
                                             icon: FluxIcons.security,
-                                            label: L10n.of(context).settingsSupportContact,
+                                            label: L10n.of(context)
+                                                .settingsSupportContact,
                                             onTap: () async {
                                               if (LegalConfig.hasSupportEmail) {
                                                 final uri = Uri.parse(
@@ -626,7 +656,10 @@ class _SettingsPageState extends State<SettingsPage>
                                                     ).showSnackBar(
                                                       SnackBar(
                                                         content: Text(
-                                                          L10n.of(context).settingsSupportEmailLabel(LegalConfig.supportEmail),
+                                                          L10n.of(context)
+                                                              .settingsSupportEmailLabel(
+                                                                  LegalConfig
+                                                                      .supportEmail),
                                                         ),
                                                       ),
                                                     );
@@ -649,7 +682,10 @@ class _SettingsPageState extends State<SettingsPage>
                                                   ).showSnackBar(
                                                     SnackBar(
                                                       content: Text(
-                                                        L10n.of(context).settingsSupportLaunchFailed(LegalConfig.supportUrl),
+                                                        L10n.of(context)
+                                                            .settingsSupportLaunchFailed(
+                                                                LegalConfig
+                                                                    .supportUrl),
                                                       ),
                                                     ),
                                                   );
@@ -660,7 +696,8 @@ class _SettingsPageState extends State<SettingsPage>
                                                 ).showSnackBar(
                                                   SnackBar(
                                                     content: Text(
-                                                      L10n.of(context).settingsSupportUnavailable,
+                                                      L10n.of(context)
+                                                          .settingsSupportUnavailable,
                                                     ),
                                                   ),
                                                 );
@@ -669,11 +706,13 @@ class _SettingsPageState extends State<SettingsPage>
                                           ),
                                           Divider(
                                             height: 1,
-                                            color: FluxColors.lineOf(context).withValues(alpha: 0.5),
+                                            color: FluxColors.lineOf(context)
+                                                .withValues(alpha: 0.5),
                                           ),
                                           _ActionRow(
                                             icon: FluxIcons.leaf,
-                                            label: L10n.of(context).settingsOpenSourceLicenses,
+                                            label: L10n.of(context)
+                                                .settingsOpenSourceLicenses,
                                             onTap: () {
                                               showLicensePage(
                                                 context: context,
@@ -712,7 +751,8 @@ class _SettingsPageState extends State<SettingsPage>
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    _SectionHeader(label: L10n.of(context).settingsAbout),
+                                    _SectionHeader(
+                                        label: L10n.of(context).settingsAbout),
                                     const SizedBox(height: 8),
                                     FluxGlass(
                                       radius: 20,
@@ -720,35 +760,45 @@ class _SettingsPageState extends State<SettingsPage>
                                         children: [
                                           _InfoRow(
                                             icon: FluxIcons.magic,
-                                            label: L10n.of(context).settingsAppVersion,
+                                            label: L10n.of(context)
+                                                .settingsAppVersion,
                                             value: _appVersion,
                                           ),
                                           Divider(
                                             height: 1,
-                                            color: FluxColors.lineOf(context).withValues(alpha: 0.5),
+                                            color: FluxColors.lineOf(context)
+                                                .withValues(alpha: 0.5),
                                           ),
                                           _InfoRow(
                                             icon: FluxIcons.robot,
-                                            label: L10n.of(context).settingsInferenceEngine,
-                                            value: L10n.of(context).settingsInferenceEngineValue,
+                                            label: L10n.of(context)
+                                                .settingsInferenceEngine,
+                                            value: L10n.of(context)
+                                                .settingsInferenceEngineValue,
                                           ),
                                           Divider(
                                             height: 1,
-                                            color: FluxColors.lineOf(context).withValues(alpha: 0.5),
+                                            color: FluxColors.lineOf(context)
+                                                .withValues(alpha: 0.5),
                                           ),
                                           _InfoRow(
                                             icon: FluxIcons.security,
-                                            label: L10n.of(context).settingsPrivacyMode,
-                                            value: L10n.of(context).settingsPrivacyModeValue,
+                                            label: L10n.of(context)
+                                                .settingsPrivacyMode,
+                                            value: L10n.of(context)
+                                                .settingsPrivacyModeValue,
                                           ),
                                           Divider(
                                             height: 1,
-                                            color: FluxColors.lineOf(context).withValues(alpha: 0.5),
+                                            color: FluxColors.lineOf(context)
+                                                .withValues(alpha: 0.5),
                                           ),
                                           _InfoRow(
                                             icon: FluxIcons.leaf,
-                                            label: L10n.of(context).settingsModelArchitecture,
-                                            value: L10n.of(context).settingsModelArchitectureValue,
+                                            label: L10n.of(context)
+                                                .settingsModelArchitecture,
+                                            value: L10n.of(context)
+                                                .settingsModelArchitectureValue,
                                           ),
                                         ],
                                       ),
@@ -927,8 +977,7 @@ class _ModelRow extends StatelessWidget {
     final isDark = FluxColors.isDark(context);
 
     final inference = FinnInference.instance;
-    final downloading =
-        inference.phase == InferencePhase.downloading &&
+    final downloading = inference.phase == InferencePhase.downloading &&
         inference.workingModel?.tier == state.model.tier;
     final progress = downloading
         ? (inference.installProgress ?? inference.downloadProgress ?? 0)
@@ -940,22 +989,22 @@ class _ModelRow extends StatelessWidget {
     final statusLabel = downloading
         ? '${(progress * 100).round()}%'
         : activeAndInstalled
-        ? L10n.of(context).settingsModelActive
-        : state.installed
-        ? L10n.of(context).settingsModelInstalled
-        : state.resumable
-        ? L10n.of(context).settingsModelPartial
-        : L10n.of(context).settingsModelNotInstalled;
+            ? L10n.of(context).settingsModelActive
+            : state.installed
+                ? L10n.of(context).settingsModelInstalled
+                : state.resumable
+                    ? L10n.of(context).settingsModelPartial
+                    : L10n.of(context).settingsModelNotInstalled;
 
     final statusColor = downloading
         ? FluxColors.accentBlue
         : activeAndInstalled
-        ? (isDark ? FluxColors.accentGreenDark : FluxColors.accentGreen)
-        : state.installed
-        ? (isDark ? FluxColors.accentGreenDark : FluxColors.accentGreen)
-        : state.resumable
-        ? FluxColors.accentAmber
-        : FluxColors.mutedOf(context);
+            ? (isDark ? FluxColors.accentGreenDark : FluxColors.accentGreen)
+            : state.installed
+                ? (isDark ? FluxColors.accentGreenDark : FluxColors.accentGreen)
+                : state.resumable
+                    ? FluxColors.accentAmber
+                    : FluxColors.mutedOf(context);
 
     final transferInfo = [
       if (speedLabel != null) speedLabel,
@@ -979,7 +1028,9 @@ class _ModelRow extends StatelessWidget {
             child: FluxIcon(
               icon: FluxIcons.chip,
               size: 18,
-              color: isActive ? FluxColors.inkOf(context) : FluxColors.mutedOf(context),
+              color: isActive
+                  ? FluxColors.inkOf(context)
+                  : FluxColors.mutedOf(context),
             ),
           ),
           const SizedBox(width: 14),
@@ -992,8 +1043,8 @@ class _ModelRow extends StatelessWidget {
                     Text(
                       model.name,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                            fontWeight: FontWeight.w600,
+                          ),
                     ),
                     if (isActive) ...[
                       const SizedBox(width: 6),
@@ -1012,17 +1063,17 @@ class _ModelRow extends StatelessWidget {
                 Text(
                   '${model.parameterLabel} · ${model.sizeLabel}',
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: FluxColors.mutedOf(context),
-                  ),
+                        color: FluxColors.mutedOf(context),
+                      ),
                 ),
                 if (downloading && transferInfo.isNotEmpty) ...[
                   const SizedBox(height: 2),
                   Text(
                     transferInfo,
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: FluxColors.accentBlue,
-                      fontWeight: FontWeight.w600,
-                    ),
+                          color: FluxColors.accentBlue,
+                          fontWeight: FontWeight.w600,
+                        ),
                   ),
                 ],
               ],
@@ -1037,9 +1088,9 @@ class _ModelRow extends StatelessWidget {
             child: Text(
               statusLabel,
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: statusColor,
-                fontWeight: FontWeight.w600,
-              ),
+                    color: statusColor,
+                    fontWeight: FontWeight.w600,
+                  ),
             ),
           ),
         ],
@@ -1060,11 +1111,11 @@ class _SectionHeader extends StatelessWidget {
       child: Text(
         label,
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          fontWeight: FontWeight.w700,
-          letterSpacing: 1.0,
-          fontSize: 11,
-          color: FluxColors.mutedOf(context),
-        ),
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.0,
+              fontSize: 11,
+              color: FluxColors.mutedOf(context),
+            ),
       ),
     );
   }
@@ -1109,15 +1160,15 @@ class _InfoRow extends StatelessWidget {
             child: Text(
               label,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w500,
-              ),
+                    fontWeight: FontWeight.w500,
+                  ),
             ),
           ),
           Text(
             value,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: FluxColors.mutedOf(context),
-            ),
+                  color: FluxColors.mutedOf(context),
+                ),
           ),
         ],
       ),
@@ -1169,8 +1220,8 @@ class _ActionRow extends StatelessWidget {
                 child: Text(
                   label,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w500,
-                  ),
+                        fontWeight: FontWeight.w500,
+                      ),
                 ),
               ),
               Icon(
@@ -1232,9 +1283,9 @@ class _DestructiveRow extends StatelessWidget {
                 child: Text(
                   label,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w500,
-                    color: color,
-                  ),
+                        fontWeight: FontWeight.w500,
+                        color: color,
+                      ),
                 ),
               ),
               if (loading)

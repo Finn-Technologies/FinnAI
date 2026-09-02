@@ -5,9 +5,9 @@ class _LfmLicenseEntry extends LicenseEntry {
 
   @override
   Iterable<String> get packages => const [
-    'liquid_ai_lfm2_5_vl',
-    'lfm_open_license',
-  ];
+        'liquid_ai_lfm2_5_vl',
+        'lfm_open_license',
+      ];
 
   @override
   Iterable<LicenseParagraph> get paragraphs sync* {
@@ -38,9 +38,9 @@ class _LlamaCppLicenseEntry extends LicenseEntry {
 
   @override
   Iterable<String> get packages => const [
-    'llama_cpp',
-    'ggml',
-  ];
+        'llama_cpp',
+        'ggml',
+      ];
 
   @override
   Iterable<LicenseParagraph> get paragraphs sync* {

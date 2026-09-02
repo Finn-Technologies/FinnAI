@@ -61,41 +61,43 @@ class ConversationMessage {
     int? continuationCount,
     List<WebSource>? sources,
     bool clearSources = false,
-  }) => ConversationMessage(
-    id: id,
-    role: role,
-    text: text ?? this.text,
-    createdAt: createdAt,
-    imagePath: clearImagePath ? null : imagePath ?? this.imagePath,
-    modelTier: modelTier ?? this.modelTier,
-    status: status ?? this.status,
-    generationId: generationId ?? this.generationId,
-    finishReason: clearFinishReason ? null : finishReason ?? this.finishReason,
-    continuationCount: continuationCount ?? this.continuationCount,
-    sources: clearSources ? const [] : sources ?? this.sources,
-  );
+  }) =>
+      ConversationMessage(
+        id: id,
+        role: role,
+        text: text ?? this.text,
+        createdAt: createdAt,
+        imagePath: clearImagePath ? null : imagePath ?? this.imagePath,
+        modelTier: modelTier ?? this.modelTier,
+        status: status ?? this.status,
+        generationId: generationId ?? this.generationId,
+        finishReason:
+            clearFinishReason ? null : finishReason ?? this.finishReason,
+        continuationCount: continuationCount ?? this.continuationCount,
+        sources: clearSources ? const [] : sources ?? this.sources,
+      );
 
   Map<String, Object?> toJson() => {
-    'id': id,
-    'role': role.name,
-    'text': text,
-    'createdAt': createdAt.toIso8601String(),
-    if (imagePath != null) 'imagePath': imagePath,
-    'modelTier': modelTier,
-    'status': status.name,
-    if (generationId != null) 'generationId': generationId,
-    if (finishReason != null) 'finishReason': finishReason,
-    'continuationCount': continuationCount,
-    if (sources.isNotEmpty)
-      'sources': [
-        for (final source in sources)
-          {
-            'title': source.title,
-            'url': source.url.toString(),
-            'snippet': source.snippet,
-          },
-      ],
-  };
+        'id': id,
+        'role': role.name,
+        'text': text,
+        'createdAt': createdAt.toIso8601String(),
+        if (imagePath != null) 'imagePath': imagePath,
+        'modelTier': modelTier,
+        'status': status.name,
+        if (generationId != null) 'generationId': generationId,
+        if (finishReason != null) 'finishReason': finishReason,
+        'continuationCount': continuationCount,
+        if (sources.isNotEmpty)
+          'sources': [
+            for (final source in sources)
+              {
+                'title': source.title,
+                'url': source.url.toString(),
+                'snippet': source.snippet,
+              },
+          ],
+      };
 
   factory ConversationMessage.fromJson(Map<String, Object?> json) =>
       ConversationMessage(
@@ -154,21 +156,22 @@ class FinnConversation {
     String? title,
     DateTime? updatedAt,
     List<ConversationMessage>? messages,
-  }) => FinnConversation(
-    id: id,
-    title: title ?? this.title,
-    createdAt: createdAt,
-    updatedAt: updatedAt ?? this.updatedAt,
-    messages: messages ?? this.messages,
-  );
+  }) =>
+      FinnConversation(
+        id: id,
+        title: title ?? this.title,
+        createdAt: createdAt,
+        updatedAt: updatedAt ?? this.updatedAt,
+        messages: messages ?? this.messages,
+      );
 
   Map<String, Object?> toJson() => {
-    'id': id,
-    'title': title,
-    'createdAt': createdAt.toIso8601String(),
-    'updatedAt': updatedAt.toIso8601String(),
-    'messages': messages.map((message) => message.toJson()).toList(),
-  };
+        'id': id,
+        'title': title,
+        'createdAt': createdAt.toIso8601String(),
+        'updatedAt': updatedAt.toIso8601String(),
+        'messages': messages.map((message) => message.toJson()).toList(),
+      };
 
   factory FinnConversation.fromJson(Map<String, Object?> json) =>
       FinnConversation(
@@ -253,7 +256,8 @@ class _CipherEncryptPayload {
 }
 
 Future<Map<String, String>> _encryptPayloadOnIsolate(_CipherEncryptPayload p) =>
-    ConversationCipher.encrypt(p.keyBytes, p.plaintext, customNonce: p.customNonce);
+    ConversationCipher.encrypt(p.keyBytes, p.plaintext,
+        customNonce: p.customNonce);
 
 class _CipherDecryptPayload {
   const _CipherDecryptPayload(this.keyBytes, this.envelope);
@@ -266,7 +270,8 @@ Future<String> _decryptPayloadOnIsolate(_CipherDecryptPayload p) =>
 
 Future<Map<String, String>> _encryptOffMain(Uint8List key, String plaintext) {
   try {
-    return compute(_encryptPayloadOnIsolate, _CipherEncryptPayload(key, plaintext, null));
+    return compute(
+        _encryptPayloadOnIsolate, _CipherEncryptPayload(key, plaintext, null));
   } catch (_) {
     return ConversationCipher.encrypt(key, plaintext);
   }
@@ -274,7 +279,8 @@ Future<Map<String, String>> _encryptOffMain(Uint8List key, String plaintext) {
 
 Future<String> _decryptOffMain(Uint8List key, Map<String, Object?> envelope) {
   try {
-    return compute(_decryptPayloadOnIsolate, _CipherDecryptPayload(key, envelope));
+    return compute(
+        _decryptPayloadOnIsolate, _CipherDecryptPayload(key, envelope));
   } catch (_) {
     return ConversationCipher.decrypt(key, envelope);
   }
@@ -317,13 +323,14 @@ class ConversationStore extends ChangeNotifier {
     SecureKeyStorage? keyStorage,
     Future<Directory> Function()? directoryProvider,
     int? maxConversationsInMemory,
-  }) : _keyStorage = keyStorage ?? const DefaultFlutterSecureKeyStorage(),
-       _directoryProvider = directoryProvider,
-       _maxConversationsInMemoryOverride = maxConversationsInMemory;
+  })  : _keyStorage = keyStorage ?? const DefaultFlutterSecureKeyStorage(),
+        _directoryProvider = directoryProvider,
+        _maxConversationsInMemoryOverride = maxConversationsInMemory;
 
   static final instance = ConversationStore();
 
   static const String _keyStorageAlias = 'finn_ai_conversation_master_key_v2';
+
   /// Conversation ids become archive file names; reject anything that
   /// could escape the archive directory.
   static final RegExp _unsafeArchiveIdChars = RegExp(r'[^A-Za-z0-9._-]');
@@ -375,6 +382,7 @@ class ConversationStore extends ChangeNotifier {
   /// demand via [faultBack] / [activate]. Keeps PSS bounded when a user
   /// accumulates hundreds of chats without ever deleting history.
   static const int kMaxConversationsInMemory = 80;
+
   /// Max messages retained in memory per conversation. When a conversation
   /// grows beyond this cap, the full list is written to the conversation's
   /// archive file BEFORE the in-memory window is trimmed, so the messages
@@ -382,11 +390,13 @@ class ConversationStore extends ChangeNotifier {
   /// ever destroyed by trimming; the complete history is recoverable via
   /// [fullHistory].
   static const int kMaxMessagesInMemoryPerConversation = 400;
+
   /// UI viewport window size (newest N messages) when a conversation
   /// is very long. The full history remains encrypted on disk: the
   /// in-memory window inside `conversations.v2.enc` plus the archived
   /// prefix in `conversations/archive/<id>.enc`.
   static const int kViewportWindowSize = 120;
+
   /// Bypass in-memory eviction during tests that inject a custom
   /// directory provider (unless a cap override is passed explicitly).
   bool get _isTestStore => _directoryProvider != null;
@@ -412,7 +422,8 @@ class ConversationStore extends ChangeNotifier {
   /// by the chat list so very long histories do not inflate the widget
   /// tree or retained image decodes. The trimmed-out older messages stay
   /// encrypted in the conversation's archive file; see [fullHistory].
-  List<ConversationMessage> messagesWindow(String conversationId, {int count = kViewportWindowSize}) {
+  List<ConversationMessage> messagesWindow(String conversationId,
+      {int count = kViewportWindowSize}) {
     final c = conversationById(conversationId);
     if (c == null || c.messages.isEmpty) return const [];
     if (c.messages.length <= count) return List.unmodifiable(c.messages);
@@ -476,7 +487,8 @@ class ConversationStore extends ChangeNotifier {
   Future<List<ConversationMessage>> fullHistory(String conversationId) async {
     final conversation = conversationById(conversationId);
     if (conversation == null) return const [];
-    final window = List<ConversationMessage>.unmodifiable(conversation.messages);
+    final window =
+        List<ConversationMessage>.unmodifiable(conversation.messages);
     if (!_archivedIds.contains(conversationId)) return window;
     try {
       final archived = await _loadArchivedConversation(conversationId);
@@ -494,7 +506,6 @@ class ConversationStore extends ChangeNotifier {
       return window;
     }
   }
-
 
   bool get storageError => _storageError;
   String? get storageErrorMessage => _storageErrorMessage;
@@ -700,8 +711,8 @@ class ConversationStore extends ChangeNotifier {
 
       // Step 3: Read and decrypt temporary file while it is still temporary
       final tmpStr = await tempFile.readAsString();
-      final tmpEnv = (jsonDecode(tmpStr) as Map<Object?, Object?>)
-          .cast<String, Object?>();
+      final tmpEnv =
+          (jsonDecode(tmpStr) as Map<Object?, Object?>).cast<String, Object?>();
       final tmpDecrypted = await _decryptOffMain(key, tmpEnv);
 
       // Step 4: Verify decrypted content equals source plaintext
@@ -864,9 +875,8 @@ class ConversationStore extends ChangeNotifier {
       status: ConversationMessageStatus.generating,
       generationId: generationId,
     );
-    final title = conversation.messages.isEmpty
-        ? _title(userText)
-        : conversation.title;
+    final title =
+        conversation.messages.isEmpty ? _title(userText) : conversation.title;
     _replace(
       conversation.copyWith(
         title: title,
@@ -1423,8 +1433,9 @@ class ConversationStore extends ChangeNotifier {
     if (!await file.exists()) return null;
     final key = await _getOrCreateMasterKey();
     if (key == null) return null;
-    final envelope = (jsonDecode(await file.readAsString()) as Map<Object?, Object?>)
-        .cast<String, Object?>();
+    final envelope =
+        (jsonDecode(await file.readAsString()) as Map<Object?, Object?>)
+            .cast<String, Object?>();
     final decrypted = await _decryptOffMain(key, envelope);
     return FinnConversation.fromJson(
       (jsonDecode(decrypted) as Map<Object?, Object?>).cast<String, Object?>(),
@@ -1486,11 +1497,9 @@ class ConversationStore extends ChangeNotifier {
 
   bool _reconcileInterruptedGenerations() {
     var changed = false;
-    for (
-      var conversationIndex = 0;
-      conversationIndex < _conversations.length;
-      conversationIndex++
-    ) {
+    for (var conversationIndex = 0;
+        conversationIndex < _conversations.length;
+        conversationIndex++) {
       final conversation = _conversations[conversationIndex];
       final messages = [
         for (final message in conversation.messages)
