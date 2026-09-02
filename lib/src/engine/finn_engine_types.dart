@@ -71,9 +71,9 @@ class GenerationReport {
     required this.tokensPerSecond,
   });
 
-  final QwenModel model;
+  final FinnModelSpec model;
   final dynamic intent;
-  final QwenTier route;
+  final FinnModelTier route;
   final int outputBudget;
   final GenerationFinishReason finishReason;
   final Duration? firstTokenLatency;
@@ -111,7 +111,7 @@ class ModelStorageState {
     required this.partialBytes,
   });
 
-  final QwenModel model;
+  final FinnModelSpec model;
   final int installedBytes;
   final int partialBytes;
 

@@ -1,7 +1,7 @@
 // Tests: model-tier persistence and report metadata propagation
 //
 // These tests operate entirely through ConversationStore (updateMessage +
-// flush + reload). They do NOT invoke QwenInference.generateReply or any
+// flush + reload). They do NOT invoke FinnInference.generateReply or any
 // real on-device model. They verify that:
 //   1. updateMessage() stamps the caller-supplied modelTier on the assistant
 //      message and that value is distinct from the default 'FinnAI'.

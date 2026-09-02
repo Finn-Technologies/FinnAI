@@ -56,11 +56,11 @@ void main() {
     });
 
     test(
-      'FinnAccelerator aliases FinnEngine and QwenInference identically',
+      'FinnAccelerator aliases FinnEngine and FinnInference identically',
       () {
         final accelerator = FinnAccelerator.instance;
         final engine = FinnAccelerator.instance;
-        final inference = QwenInference.instance;
+        final inference = FinnInference.instance;
 
         expect(identical(accelerator, engine), isTrue);
         expect(identical(engine, inference), isTrue);

@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../inference/qwen_inference.dart';
+import '../inference/finn_inference.dart';
 import '../theme/flux_theme.dart';
 import '../../l10n/l10n_helper.dart';
 import '../widgets/ambient_background.dart';
@@ -27,7 +27,7 @@ class CreationsPage extends StatefulWidget {
 class _CreationsPageState extends State<CreationsPage> {
   late final CreationsController _controller;
   late final bool _ownsController;
-  final _inference = QwenInference.instance;
+  final _inference = FinnInference.instance;
   final _promptController = TextEditingController();
   final _focusNode = FocusNode();
   final ValueNotifier<double> _headerOffset = ValueNotifier(0);
@@ -38,7 +38,7 @@ class _CreationsPageState extends State<CreationsPage> {
     _ownsController = widget.controller == null;
     _controller =
         widget.controller ??
-        CreationsController(CreationStore(), QwenCreationGenerator());
+        CreationsController(CreationStore(), FinnCreationGenerator());
     _controller.addListener(_changed);
     _inference.addListener(_changed);
     _controller.load();

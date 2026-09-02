@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:finn_ai/src/inference/qwen_inference.dart';
+import 'package:finn_ai/src/inference/finn_inference.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:finn_ai/src/inference/qwen_inference.dart';
+import 'package:finn_ai/src/inference/finn_inference.dart';
 import 'package:finn_ai/src/inference/residency_policy.dart';
 import 'package:finn_ai/src/inference/ttft_metrics.dart';
 import 'package:flutter/material.dart';
@@ -168,7 +168,7 @@ void main() {
   });
 
   test('unchanged warm-turn policy is not redundantly prefixed', () {
-    final prompt = QwenInference.instance.renderPromptForTest(
+    final prompt = FinnInference.instance.renderPromptForTest(
       prompt: 'Hello',
       primed: true,
       includeTaskInstruction: false,

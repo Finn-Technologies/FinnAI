@@ -42,7 +42,7 @@ class _ModelRuntime {
     this.kvType = KvCacheType.iq4_nl,
   });
 
-  final QwenModel model;
+  final FinnModelSpec model;
   final LlamaEngine engine;
   final bool compactKv;
   final int contextSize;
@@ -160,9 +160,9 @@ class FinnAccelerator extends ChangeNotifier {
     '284a335aa3fb2ced3b1b01fcb40b08aa783e3b70832767f0dd2e3fdfa134bd54',
   };
 
-  QwenModel _selected = qwenModels.single;
-  QwenModel get selected => _selected;
-  List<QwenModel> get requiredModels => qwenModels;
+  FinnModelSpec _selected = finnModels.single;
+  FinnModelSpec get selected => _selected;
+  List<FinnModelSpec> get requiredModels => finnModels;
 
   /// Last known llama.cpp commit, surfaced by the adaptive engine so its
   /// profile cache key invalidates when the native build changes.
@@ -285,13 +285,13 @@ class FinnAccelerator extends ChangeNotifier {
     _setStatus(InferencePhase.idle, 'Ready');
   }
 
-  QwenModel? _workingModel;
-  QwenModel? get workingModel => _workingModel;
+  FinnModelSpec? _workingModel;
+  FinnModelSpec? get workingModel => _workingModel;
 
-  final Map<QwenTier, _ModelRuntime> _runtimes = {};
-  final Map<QwenTier, Future<_ModelRuntime>> _loadJobs = {};
-  final DeduplicatedLoadJob<QwenTier, _ModelRuntime> _deduplicatedLoads =
-      DeduplicatedLoadJob<QwenTier, _ModelRuntime>();
+  final Map<FinnModelTier, _ModelRuntime> _runtimes = {};
+  final Map<FinnModelTier, Future<_ModelRuntime>> _loadJobs = {};
+  final DeduplicatedLoadJob<FinnModelTier, _ModelRuntime> _deduplicatedLoads =
+      DeduplicatedLoadJob<FinnModelTier, _ModelRuntime>();
   StreamSubscription<GenerationEvent>? _generation;
   StreamController<String>? _activeOutput;
   int _generationEpoch = 0;
@@ -303,7 +303,7 @@ class FinnAccelerator extends ChangeNotifier {
   HttpClient? _downloadClient;
   bool _cancelDownload = false;
   bool _benchmarkRunning = false;
-  final Set<QwenTier> _verifiedModels = <QwenTier>{};
+  final Set<FinnModelTier> _verifiedModels = <FinnModelTier>{};
   Future<Directory>? _modelDirectoryJob;
 
   Future<void> initialize() async {
@@ -311,12 +311,12 @@ class FinnAccelerator extends ChangeNotifier {
     _plan = DeviceProfiler.plan(_deviceProfile!);
     // Clean up any retired legacy artifacts in background without blocking startup
     unawaited(_removeRetiredModelArtifacts());
-    _selected = qwenModels.single;
+    _selected = finnModels.single;
     _automaticSelection = true;
   }
 
-  void select(QwenTier tier) {
-    if (tier != QwenTier.standard || !_automaticSelection) return;
+  void select(FinnModelTier tier) {
+    if (tier != FinnModelTier.standard || !_automaticSelection) return;
     _automaticSelection = false;
     _setStatus(InferencePhase.idle, 'Ready');
   }
@@ -326,7 +326,7 @@ class FinnAccelerator extends ChangeNotifier {
     _setStatus(InferencePhase.idle, 'Optimized automatically');
   }
 
-  Future<bool> isInstalled(QwenModel model) async {
+  Future<bool> isInstalled(FinnModelSpec model) async {
     if (_verifiedModels.contains(model.tier)) return true;
     final file = await _modelFile(model);
     final installed = await _isVerifiedModelFile(model, file);
@@ -336,7 +336,7 @@ class FinnAccelerator extends ChangeNotifier {
 
   Future<List<ModelStorageState>> inspectModels() async {
     final states = <ModelStorageState>[];
-    for (final model in qwenModels) {
+    for (final model in finnModels) {
       final file = await _modelFile(model);
       final partial = File('${file.path}.part');
       final installed = await isInstalled(model);
@@ -351,11 +351,11 @@ class FinnAccelerator extends ChangeNotifier {
     return states;
   }
 
-  Future<QwenTier> recommendedTier() async {
-    return QwenTier.standard;
+  Future<FinnModelTier> recommendedTier() async {
+    return FinnModelTier.standard;
   }
 
-  Future<void> install(QwenModel model) {
+  Future<void> install(FinnModelSpec model) {
     // A model can be verified from a previous app run while the post-model
     // component is still missing. Re-entering install must finish that second
     // artifact instead of treating the whole install as complete.
@@ -418,7 +418,7 @@ class FinnAccelerator extends ChangeNotifier {
     // guard leaves it untouched.
     var trackedStandalone = false;
     if (_installTotalBytes <= 0) {
-      _installTotalBytes = qwenMmproj.expectedBytes;
+      _installTotalBytes = finnMmproj.expectedBytes;
       _installCompletedBytes = 0;
       trackedStandalone = true;
     }
@@ -439,7 +439,7 @@ class FinnAccelerator extends ChangeNotifier {
     }
   }
 
-  Future<void> _runInstall(QwenModel model) async {
+  Future<void> _runInstall(FinnModelSpec model) async {
     try {
       // Size the aggregate progress across every artifact this install must
       // fetch: the language model (unless already verified) plus the
@@ -448,7 +448,7 @@ class FinnAccelerator extends ChangeNotifier {
       final componentAlreadyInstalled = await isMmprojInstalled();
       _installTotalBytes =
           (modelAlreadyInstalled ? 0 : model.expectedBytes) +
-          (componentAlreadyInstalled ? 0 : qwenMmproj.expectedBytes);
+          (componentAlreadyInstalled ? 0 : finnMmproj.expectedBytes);
       _installCompletedBytes = 0;
       await _ensureDownloaded(model);
       _verifiedModels.add(model.tier);
@@ -537,8 +537,8 @@ class FinnAccelerator extends ChangeNotifier {
     }
   }
 
-  Future<void> prewarmTier(QwenTier tier) async {
-    final model = qwenModels.firstWhere((candidate) => candidate.tier == tier);
+  Future<void> prewarmTier(FinnModelTier tier) async {
+    final model = finnModels.firstWhere((candidate) => candidate.tier == tier);
     if (!await isInstalled(model)) return;
     final file = await _modelFile(model);
     final runtime = await _ensureLoaded(model, file.path);
@@ -596,7 +596,7 @@ class FinnAccelerator extends ChangeNotifier {
     if (profile.lowMemory || tightRam) await _unloadModel(_selected.tier);
   }
 
-  ModelResidencyLevel residencyFor(QwenTier tier) {
+  ModelResidencyLevel residencyFor(FinnModelTier tier) {
     final runtime = _runtimes[tier];
     if (runtime == null) return ModelResidencyLevel.unloaded;
     if (runtime.sessions.values.any((entry) => entry.primed)) {
@@ -608,7 +608,7 @@ class FinnAccelerator extends ChangeNotifier {
   @visibleForTesting
   bool get hasDuplicateLoadJobs => _deduplicatedLoads.activeJobCount > 1;
 
-  Future<Set<String>> remove(QwenModel model) async {
+  Future<Set<String>> remove(FinnModelSpec model) async {
     final failures = <String>{};
     await _unloadModel(model.tier);
     try {
@@ -645,7 +645,7 @@ class FinnAccelerator extends ChangeNotifier {
 
   Future<Set<String>> removeAllModels() async {
     final failures = <String>{};
-    for (final model in qwenModels) {
+    for (final model in finnModels) {
       final res = await remove(model);
       failures.addAll(res);
     }
@@ -674,8 +674,8 @@ class FinnAccelerator extends ChangeNotifier {
     return failures;
   }
 
-  QwenModel? _lastGeneratingModel;
-  QwenModel get lastGeneratingModel => _lastGeneratingModel ?? selected;
+  FinnModelSpec? _lastGeneratingModel;
+  FinnModelSpec get lastGeneratingModel => _lastGeneratingModel ?? selected;
   GenerationReport? _lastGenerationReport;
   GenerationReport? get lastGenerationReport => _lastGenerationReport;
 
@@ -726,7 +726,7 @@ class FinnAccelerator extends ChangeNotifier {
     String prompt, {
     required String path,
     required String modelLabel,
-    required QwenTier tier,
+    required FinnModelTier tier,
     required String conversationId,
     List<LocalChatTurn> history = const [],
     TtftTrace? trace,
@@ -735,7 +735,7 @@ class FinnAccelerator extends ChangeNotifier {
       throw StateError('Finn is already generating a response.');
     }
     _replyInFlight = true;
-    final model = QwenModel(
+    final model = FinnModelSpec(
       tier: tier,
       name: modelLabel,
       parameterLabel: modelLabel,
@@ -994,7 +994,7 @@ class FinnAccelerator extends ChangeNotifier {
   }
 
   Stream<String> _generateForModel(
-    QwenModel model,
+    FinnModelSpec model,
     String prompt, {
     required String conversationId,
     required List<LocalChatTurn> history,
@@ -1178,7 +1178,8 @@ class FinnAccelerator extends ChangeNotifier {
           );
           final includeTaskInstruction =
               !entry.primed || entry.lastTaskInstruction != taskInstruction;
-          // This runtime is intentionally Qwen-only. Its non-thinking template
+          // This runtime is intentionally single-model (LFM2.5-VL 1.6B). Its
+          // non-thinking ChatML template
           // needs an empty reasoning block to avoid hidden-chain generation
           // while keeping everyday replies fast.
           const primeEmptyThinking = true;
@@ -1668,7 +1669,7 @@ class FinnAccelerator extends ChangeNotifier {
   }
 
   Future<LlamaEngine> _spawnBenchmarkEngine({
-    required QwenModel model,
+    required FinnModelSpec model,
     required String path,
     required RuntimeConfig config,
     required DeviceProfile profile,
@@ -1677,7 +1678,7 @@ class FinnAccelerator extends ChangeNotifier {
     final mmprojFile = await _mmprojFile();
     final hasMmproj =
         await mmprojFile.exists() &&
-        await mmprojFile.length() == qwenMmproj.expectedBytes;
+        await mmprojFile.length() == finnMmproj.expectedBytes;
     return LlamaEngine.spawn(
       libraryPath: 'libllama.so',
       backendDirectory: profile.nativeLibraryDir,
@@ -1736,7 +1737,7 @@ class FinnAccelerator extends ChangeNotifier {
   }
 
   Future<double> _benchmarkTokensPerSecond(
-    QwenModel model,
+    FinnModelSpec model,
     String path,
     RuntimeConfig config,
     DeviceProfile profile, {
@@ -1796,7 +1797,7 @@ class FinnAccelerator extends ChangeNotifier {
     if (epoch != _generationEpoch) throw const _GenerationCancelled();
   }
 
-  Future<File> _ensureDownloaded(QwenModel model) async {
+  Future<File> _ensureDownloaded(FinnModelSpec model) async {
     final target = await _modelFile(model);
     if (_verifiedModels.contains(model.tier) ||
         await _isVerifiedModelFile(model, target)) {
@@ -2389,7 +2390,7 @@ class FinnAccelerator extends ChangeNotifier {
     }
   }
 
-  Future<_ModelRuntime> _ensureLoaded(QwenModel model, String path) async {
+  Future<_ModelRuntime> _ensureLoaded(FinnModelSpec model, String path) async {
     await _pendingUnload;
     final loaded = _runtimes[model.tier];
     if (loaded != null) return loaded;
@@ -2408,7 +2409,7 @@ class FinnAccelerator extends ChangeNotifier {
   }
 
   Future<_ModelRuntime> _loadModel(
-    QwenModel model,
+    FinnModelSpec model,
     String path,
     int epoch,
   ) async {
@@ -2453,7 +2454,7 @@ class FinnAccelerator extends ChangeNotifier {
     final mmprojFile = await _mmprojFile();
     final hasMmproj =
         await mmprojFile.exists() &&
-        await mmprojFile.length() == qwenMmproj.expectedBytes;
+        await mmprojFile.length() == finnMmproj.expectedBytes;
 
     if (engine != null && hasMmproj && !engine.multimodalLoaded) {
       await engine.dispose();
@@ -3237,7 +3238,7 @@ class FinnAccelerator extends ChangeNotifier {
     _pendingUnload = _pendingUnload.then((_) => _unload());
   }
 
-  Future<void> _unloadModel(QwenTier tier) async {
+  Future<void> _unloadModel(FinnModelTier tier) async {
     final runtime = _runtimes.remove(tier);
     if (runtime == null) return;
     for (final entry in runtime.sessions.values) {
@@ -3246,7 +3247,7 @@ class FinnAccelerator extends ChangeNotifier {
     await runtime.engine.dispose();
   }
 
-  Future<File> _modelFile(QwenModel model) async {
+  Future<File> _modelFile(FinnModelSpec model) async {
     final directory = await (_modelDirectoryJob ??= _createModelDirectory());
     return File('${directory.path}${Platform.pathSeparator}${model.fileName}');
   }
@@ -3254,7 +3255,7 @@ class FinnAccelerator extends ChangeNotifier {
   Future<File> _mmprojFile() async {
     final directory = await (_modelDirectoryJob ??= _createModelDirectory());
     return File(
-      '${directory.path}${Platform.pathSeparator}${qwenMmproj.fileName}',
+      '${directory.path}${Platform.pathSeparator}${finnMmproj.fileName}',
     );
   }
 
@@ -3264,24 +3265,24 @@ class FinnAccelerator extends ChangeNotifier {
   /// Lightweight existence check (no SHA) for UI toast path.
   Future<bool> hasMmprojFile() async {
     final file = await _mmprojFile();
-    return await file.exists() && await file.length() == qwenMmproj.expectedBytes;
+    return await file.exists() && await file.length() == finnMmproj.expectedBytes;
   }
 
   Future<bool> isMmprojInstalled() async {
     final file = await _mmprojFile();
     if (!await file.exists() ||
-        await file.length() != qwenMmproj.expectedBytes) {
+        await file.length() != finnMmproj.expectedBytes) {
       return false;
     }
     try {
-      await _verifyArtifactDigest(file, qwenMmproj.sha256Digest);
+      await _verifyArtifactDigest(file, finnMmproj.sha256Digest);
       return true;
     } catch (_) {
       return false;
     }
   }
 
-  /// Downloads and verifies the reserved Qwen3.5 projector artifact. It is
+  /// Downloads and verifies the reserved LFM2.5-VL projector artifact. It is
   /// intentionally not passed to llama.cpp until a later vision release.
   Future<void> installMmproj() async {
     if (await isMmprojInstalled()) return;
@@ -3290,36 +3291,36 @@ class FinnAccelerator extends ChangeNotifier {
       final availableStorage = storageProfile.availableStorageBytes;
       const reserve = 256 * 1024 * 1024;
       if (availableStorage != null &&
-          availableStorage < qwenMmproj.expectedBytes + reserve) {
+          availableStorage < finnMmproj.expectedBytes + reserve) {
         throw const FileSystemException(
           'Not enough storage for the multimodal component and safety reserve.',
         );
       }
     }
     final target = await _mmprojFile();
-    if (!await isInstalled(qwenModels.single)) {
+    if (!await isInstalled(finnModels.single)) {
       throw StateError(
-        'Download the Qwen language model before its component.',
+        'Download the language model before its component.',
       );
     }
     if (Platform.isAndroid) {
       final partial = File('${target.path}.part');
       await _ensureArtifactWithService(
-        url: qwenMmproj.downloadUrl,
+        url: finnMmproj.downloadUrl,
         target: target,
         partial: partial,
-        expectedBytes: qwenMmproj.expectedBytes,
+        expectedBytes: finnMmproj.expectedBytes,
         label: 'Qwen multimodal component',
-        sha256Digest: qwenMmproj.sha256Digest,
+        sha256Digest: finnMmproj.sha256Digest,
       );
       return;
     }
     await _ensureArtifactDart(
-      url: qwenMmproj.downloadUrl,
+      url: finnMmproj.downloadUrl,
       target: target,
-      expectedBytes: qwenMmproj.expectedBytes,
+      expectedBytes: finnMmproj.expectedBytes,
       label: 'Qwen multimodal component',
-      sha256Digest: qwenMmproj.sha256Digest,
+      sha256Digest: finnMmproj.sha256Digest,
     );
   }
 
@@ -3365,7 +3366,7 @@ class FinnAccelerator extends ChangeNotifier {
     }
   }
 
-  Future<bool> _isVerifiedModelFile(QwenModel model, File file) async {
+  Future<bool> _isVerifiedModelFile(FinnModelSpec model, File file) async {
     if (!await file.exists() || await file.length() != model.expectedBytes) {
       return false;
     }
@@ -3556,4 +3557,4 @@ Future<bool> promoteVerifiedModelPartial({
 }
 
 typedef FinnEngine = FinnAccelerator;
-typedef QwenInference = FinnAccelerator;
+typedef FinnInference = FinnAccelerator;

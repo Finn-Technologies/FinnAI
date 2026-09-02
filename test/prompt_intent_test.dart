@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:finn_ai/src/inference/prompt_intent.dart';
-import 'package:finn_ai/src/inference/qwen_inference.dart';
+import 'package:finn_ai/src/inference/finn_inference.dart';
 import 'package:finn_ai/src/widgets/safe_markdown_text.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:llama_cpp_dart/llama_cpp_dart.dart';
@@ -91,7 +91,7 @@ void main() {
   });
 
   test('recipe prompt contract is Italian, structured, and private-aware', () {
-    final rendered = QwenInference.instance.renderPromptForTest(
+    final rendered = FinnInference.instance.renderPromptForTest(
       prompt: 'Come fare una torta di ricotta e fragole?',
       systemContext: 'Dietary preference: vegetarian.',
     );
@@ -104,7 +104,7 @@ void main() {
     expect(rendered, contains('Dietary preference: vegetarian.'));
     expect(rendered, contains('Respect dietary restrictions'));
     expect(
-      rendered.indexOf(QwenInference.finnSafetySystemPrompt.trim()),
+      rendered.indexOf(FinnInference.finnSafetySystemPrompt.trim()),
       lessThan(rendered.indexOf('Provide a practical recipe')),
     );
   });
@@ -124,7 +124,7 @@ void main() {
         final analysis = classifier.classify(prompt);
         expect(analysis.intent, PromptIntent.howTo, reason: prompt);
         expect(analysis.hardwareGuidance, isTrue, reason: prompt);
-        final rendered = QwenInference.instance.renderPromptForTest(
+        final rendered = FinnInference.instance.renderPromptForTest(
           prompt: prompt,
         );
         expect(rendered, contains('exact manufacturer and model'));
@@ -138,7 +138,7 @@ void main() {
   );
 
   test('repeat requests receive an explicit novelty constraint', () {
-    final rendered = QwenInference.instance.renderPromptForTest(
+    final rendered = FinnInference.instance.renderPromptForTest(
       prompt: 'Make a new joke or pun.',
       primed: true,
     );

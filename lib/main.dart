@@ -8,7 +8,7 @@ import 'package:path_provider/path_provider.dart';
 
 import 'src/flux_app.dart';
 import 'src/inference/device_profile.dart';
-import 'src/inference/qwen_inference.dart';
+import 'src/inference/finn_inference.dart';
 import 'src/inference/evaluation.dart';
 import 'src/inference/prompt_intent.dart';
 import 'src/inference/ttft_metrics.dart';
@@ -24,11 +24,11 @@ Future<void> main() async {
   if (benchmark || evaluation) {
     // ignore: avoid_print
     print('FINN_MAIN start');
-    await QwenInference.instance.initialize();
+    await FinnInference.instance.initialize();
     // ignore: avoid_print
     print('FINN_MAIN initialized');
     if (const String.fromEnvironment('FINN_BENCH_TIER') == 'lite') {
-      QwenInference.instance.select(QwenTier.standard);
+      FinnInference.instance.select(FinnModelTier.standard);
     }
   }
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
@@ -131,23 +131,23 @@ Future<void> _runModelEvaluation() async {
     for (final index in selectedCases) {
       final prompt = prompts[index];
       final answer = StringBuffer();
-      await for (final token in QwenInference.instance.generateEvaluationReply(
+      await for (final token in FinnInference.instance.generateEvaluationReply(
         prompt,
         path: path,
         modelLabel: label,
-        tier: QwenTier.standard,
+        tier: FinnModelTier.standard,
         conversationId: 'eval-$label-$index',
       )) {
         answer.write(token);
       }
       final analysis = const PromptIntentClassifier().classify(prompt);
-      final report = QwenInference.instance.lastGenerationReport;
+      final report = FinnInference.instance.lastGenerationReport;
       final response = answer.toString();
       debugPrint(
         'FINN_EVAL ${jsonEncode({'selectedModel': label, 'intent': analysis.intent.name, 'route': report?.route.name, 'outputBudget': report?.outputBudget, 'finishReason': report?.finishReason.name, 'firstTokenLatencyMs': report?.firstTokenLatency?.inMilliseconds, 'totalGenerationTimeMs': report?.totalGenerationTime.inMilliseconds, 'outputTokens': report?.outputTokens, 'tokensPerSecond': report?.tokensPerSecond, if (prompt == 'Come fare una torta di ricotta e fragole?') 'recipeAcceptance': assessRicottaStrawberryCake(response).toJson(), if (prompt == 'Can you tell me how to upgrade the RAM in my laptop?') 'hardwareAcceptance': assessLaptopRamGuidance(response).toJson(), if (prompt == 'How does the routing in Bridgetown work?') 'bridgetownAcceptance': assessBridgetownRouting(response).toJson(), if (prompt == 'How do living ants know that an ant has died?') 'antNecrophoresisAcceptance': assessAntNecrophoresis(response).toJson(), 'response': response})}',
       );
     }
-    await QwenInference.instance.releaseMemory();
+    await FinnInference.instance.releaseMemory();
   }
 }
 
@@ -162,7 +162,7 @@ Future<void> _runModelEvaluation() async {
 Future<void> _runDeviceBenchmark() async {
   // ignore: avoid_print
   print('FINN_HARNESS begin');
-  final inference = QwenInference.instance;
+  final inference = FinnInference.instance;
   Map<Object?, Object?> runtimeOverrides = const {};
   try {
     runtimeOverrides =
@@ -219,18 +219,18 @@ Future<void> _runDeviceBenchmark() async {
   final noSearch = override('noSearch') == true || noSearchDefine;
   if (override('noPrefixCache') == true ||
       const bool.fromEnvironment('FINN_BENCH_NO_PREFIX')) {
-    QwenInference.debugDisablePrefixCache = true;
+    FinnInference.debugDisablePrefixCache = true;
   }
   if (override('cpu') == true || const bool.fromEnvironment('FINN_BENCH_CPU')) {
-    QwenInference.debugForceCpu = true;
+    FinnInference.debugForceCpu = true;
   }
   if (override('noSha') == true ||
       const bool.fromEnvironment('FINN_BENCH_NO_SHA')) {
-    QwenInference.debugSkipSha256 = true;
+    FinnInference.debugSkipSha256 = true;
   }
   debugPrint(
     'FINN_HARNESS overrides=${jsonEncode(runtimeOverrides)} '
-    'forceCpu=${QwenInference.debugForceCpu} '
+    'forceCpu=${FinnInference.debugForceCpu} '
     'nRsSeq=${DeviceProfiler.lookaheadSnapshots(await DeviceProfiler.read())}',
   );
   // Engine-config sweep overrides (intent extras): threads / batch threads /
@@ -269,10 +269,10 @@ Future<void> _runDeviceBenchmark() async {
 
   if (scenarioValue != 'true_cold') {
     if (prewarmValue == 'lite' || prewarmValue == 'both') {
-      await inference.prewarmTier(QwenTier.standard);
+      await inference.prewarmTier(FinnModelTier.standard);
     }
     if (prewarmValue == 'plus' || prewarmValue == 'both') {
-      await inference.prewarmTier(QwenTier.standard);
+      await inference.prewarmTier(FinnModelTier.standard);
     }
     if (prewarmValue == 'selected') await inference.prewarm();
   }
@@ -297,7 +297,7 @@ Future<void> _runDeviceBenchmark() async {
           input,
           path: candidatePath,
           modelLabel: candidateLabel,
-          tier: QwenTier.standard,
+          tier: FinnModelTier.standard,
           conversationId: conversationId,
           history: history,
           trace: trace,

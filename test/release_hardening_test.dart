@@ -8,15 +8,15 @@ void main() {
   test(
     'production model artifacts use immutable revisions and SHA-256 digests',
     () {
-      for (final model in qwenModels) {
+      for (final model in finnModels) {
         expect(model.downloadUrl, matches(RegExp(r'/resolve/[0-9a-f]{40}/')));
         expect(model.sha256Digest, matches(RegExp(r'^[0-9a-f]{64}$')));
       }
       expect(
-        qwenMmproj.downloadUrl,
+        finnMmproj.downloadUrl,
         matches(RegExp(r'/resolve/[0-9a-f]{40}/')),
       );
-      expect(qwenMmproj.sha256Digest, matches(RegExp(r'^[0-9a-f]{64}$')));
+      expect(finnMmproj.sha256Digest, matches(RegExp(r'^[0-9a-f]{64}$')));
     },
   );
 

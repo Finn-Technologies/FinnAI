@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import '../conversations/conversation_store.dart';
-import '../inference/qwen_inference.dart';
+import '../inference/finn_inference.dart';
 import '../inference/prompt_intent.dart';
 import '../inference/ttft_metrics.dart';
 import '../search/web_search_service.dart';
@@ -109,10 +109,10 @@ abstract interface class ChatInferenceRuntime implements Listenable {
   Future<void> resetAfterCancellationTimeout();
 }
 
-class QwenChatInferenceRuntime implements ChatInferenceRuntime {
-  QwenChatInferenceRuntime(this.inference);
+class FinnChatInferenceRuntime implements ChatInferenceRuntime {
+  FinnChatInferenceRuntime(this.inference);
 
-  final QwenInference inference;
+  final FinnInference inference;
 
   @override
   InferencePhase get phase => switch (inference.phase) {
@@ -198,7 +198,7 @@ class ChatGenerationController extends ChangeNotifier {
 
   static final instance = ChatGenerationController(
     conversations: ConversationStore.instance,
-    runtime: QwenChatInferenceRuntime(QwenInference.instance),
+    runtime: FinnChatInferenceRuntime(FinnInference.instance),
   );
 
   final ConversationStore conversations;
@@ -323,7 +323,7 @@ class ChatGenerationController extends ChangeNotifier {
       conversationId: conversationId,
       assistant: assistant,
       originalPrompt: originalPrompt,
-      runtimePrompt: QwenInference.continuationPrompt,
+      runtimePrompt: FinnInference.continuationPrompt,
       history: history,
       systemContext: systemContext,
       groundedContext: groundedContext,
@@ -441,7 +441,7 @@ class ChatGenerationController extends ChangeNotifier {
     required bool enableSearchDecision,
   }) {
     final current = runtime;
-    if (current is QwenChatInferenceRuntime) {
+    if (current is FinnChatInferenceRuntime) {
       return current.generateReplyWithContext(
         prompt,
         conversationId: conversationId,
@@ -591,12 +591,12 @@ class ChatGenerationController extends ChangeNotifier {
     if (!_disposed) notifyListeners();
   }
 
-  List<WebSource> _runtimeSources() => runtime is QwenChatInferenceRuntime
-      ? (runtime as QwenChatInferenceRuntime).lastSources
+  List<WebSource> _runtimeSources() => runtime is FinnChatInferenceRuntime
+      ? (runtime as FinnChatInferenceRuntime).lastSources
       : const [];
 
-  int _runtimeTokenPaintIntervalMs() => runtime is QwenChatInferenceRuntime
-      ? (runtime as QwenChatInferenceRuntime).tokenPaintIntervalMs
+  int _runtimeTokenPaintIntervalMs() => runtime is FinnChatInferenceRuntime
+      ? (runtime as FinnChatInferenceRuntime).tokenPaintIntervalMs
       : 50;
 
   Future<void> _finish(

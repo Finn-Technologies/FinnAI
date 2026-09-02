@@ -1,13 +1,14 @@
 import 'package:flutter/foundation.dart';
 
-/// The app deliberately exposes one model choice: a mobile-friendly Qwen
-/// 3.5 2B quantization. Keeping the catalog explicit makes downloads,
-/// verification, settings, and data deletion use the same artifact identity.
-enum QwenTier { standard }
+/// The app deliberately exposes one model choice: LiquidAI's LFM2.5-VL 1.6B
+/// (Q4_0 GGUF) plus its SigLIP2 vision projector. Keeping the catalog
+/// explicit makes downloads, verification, settings, and data deletion use
+/// the same artifact identity.
+enum FinnModelTier { standard }
 
 @immutable
-class QwenModel {
-  const QwenModel({
+class FinnModelSpec {
+  const FinnModelSpec({
     required this.tier,
     required this.name,
     required this.parameterLabel,
@@ -17,7 +18,7 @@ class QwenModel {
     required this.sha256Digest,
   });
 
-  final QwenTier tier;
+  final FinnModelTier tier;
   final String name;
   final String parameterLabel;
   final String fileName;
@@ -34,8 +35,8 @@ class QwenModel {
 }
 
 @immutable
-class QwenArtifact {
-  const QwenArtifact({
+class FinnModelArtifact {
+  const FinnModelArtifact({
     required this.name,
     required this.fileName,
     required this.downloadUrl,
@@ -54,9 +55,9 @@ class QwenArtifact {
 
 /// LFM2.5-VL 1.6B Q4_0 provides ultra-compact on-device multimodal intelligence,
 /// paired with the SigLIP2 vision projector for high-precision OCR and document understanding.
-const qwenModels = <QwenModel>[
-  QwenModel(
-    tier: QwenTier.standard,
+const finnModels = <FinnModelSpec>[
+  FinnModelSpec(
+    tier: FinnModelTier.standard,
     name: 'LFM2.5-VL 1.6B',
     parameterLabel: 'LFM2.5-VL · 1.6B · Q4_0',
     fileName: 'LFM2.5-VL-1.6B-Q4_0.gguf',
@@ -70,7 +71,7 @@ const qwenModels = <QwenModel>[
 
 /// Vision projector for LFM2.5-VL enabling high-resolution OCR, document understanding,
 /// and screenshot/UI grounding.
-const qwenMmproj = QwenArtifact(
+const finnMmproj = FinnModelArtifact(
   name: 'LFM2.5-VL multimodal component',
   fileName: 'mmproj-LFM2.5-VL-1.6b-F16.gguf',
   downloadUrl:
