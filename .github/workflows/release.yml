@@ -1,0 +1,137 @@
+name: FinnAI Signed Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build_signed_release:
+    name: Build & Publish Signed Android Release (AAB + APK)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          # Pinned stable for reproducible CI. Verify this is still a real
+          # current release (and find the next pin) at
+          # https://docs.flutter.dev/release/archive before bumping.
+          flutter-version: '3.44.7'
+          channel: 'stable'
+          cache: true
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Verify Engine Seam
+        run: bash tool/verify_engine_seam.sh
+
+      - name: Check Required Secrets
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          missing=0
+          for name in KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            if [ -z "${!name:-}" ]; then
+              echo "Missing required secret: $name" >&2
+              missing=1
+            fi
+          done
+          exit $missing
+
+      # android/app/build.gradle.kts accepts release signing through the
+      # KEYSTORE_PATH / KEYSTORE_PASSWORD / KEY_ALIAS / KEY_PASSWORD
+      # environment variables, matching what tool/build_play_release.sh
+      # expects when android/key.properties is absent.
+      - name: Decode Release Keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/upload-keystore.jks"
+
+      - name: Build Signed Release Android App Bundle (AAB)
+        env:
+          KEYSTORE_PATH: ${{ runner.temp }}/upload-keystore.jks
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          FINN_SUPPORT_URL: ${{ vars.FINN_SUPPORT_URL || 'https://finn-org.vercel.app/support' }}
+          FINN_SUPPORT_EMAIL: ${{ vars.FINN_SUPPORT_EMAIL || 'finn_org@proton.me' }}
+          FINN_REPORT_EMAIL: ${{ vars.FINN_REPORT_EMAIL || 'finn_org@proton.me' }}
+          FINN_PRIVACY_POLICY_URL: ${{ vars.FINN_PRIVACY_POLICY_URL || 'https://finn-org.vercel.app/privacy' }}
+          FINN_TERMS_URL: ${{ vars.FINN_TERMS_URL || 'https://finn-org.vercel.app/terms' }}
+        run: |
+          flutter build appbundle --release --target-platform android-arm64 \
+            --dart-define="FINN_SUPPORT_URL=$FINN_SUPPORT_URL" \
+            --dart-define="FINN_SUPPORT_EMAIL=$FINN_SUPPORT_EMAIL" \
+            --dart-define="FINN_REPORT_EMAIL=$FINN_REPORT_EMAIL" \
+            --dart-define="FINN_PRIVACY_POLICY_URL=$FINN_PRIVACY_POLICY_URL" \
+            --dart-define="FINN_TERMS_URL=$FINN_TERMS_URL"
+
+      - name: Build Signed Release APK
+        env:
+          KEYSTORE_PATH: ${{ runner.temp }}/upload-keystore.jks
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          FINN_SUPPORT_URL: ${{ vars.FINN_SUPPORT_URL || 'https://finn-org.vercel.app/support' }}
+          FINN_SUPPORT_EMAIL: ${{ vars.FINN_SUPPORT_EMAIL || 'finn_org@proton.me' }}
+          FINN_REPORT_EMAIL: ${{ vars.FINN_REPORT_EMAIL || 'finn_org@proton.me' }}
+          FINN_PRIVACY_POLICY_URL: ${{ vars.FINN_PRIVACY_POLICY_URL || 'https://finn-org.vercel.app/privacy' }}
+          FINN_TERMS_URL: ${{ vars.FINN_TERMS_URL || 'https://finn-org.vercel.app/terms' }}
+        run: |
+          flutter build apk --release --target-platform android-arm64 \
+            --dart-define="FINN_SUPPORT_URL=$FINN_SUPPORT_URL" \
+            --dart-define="FINN_SUPPORT_EMAIL=$FINN_SUPPORT_EMAIL" \
+            --dart-define="FINN_REPORT_EMAIL=$FINN_REPORT_EMAIL" \
+            --dart-define="FINN_PRIVACY_POLICY_URL=$FINN_PRIVACY_POLICY_URL" \
+            --dart-define="FINN_TERMS_URL=$FINN_TERMS_URL"
+
+      # python3 and unzip are preinstalled on ubuntu-latest runners.
+      - name: Verify 16 KB Page Alignment of Shipped Artifacts
+        run: |
+          python3 tool/verify_native_alignment.py build/app/outputs/flutter-apk/app-release.apk
+          python3 tool/verify_native_alignment.py build/app/outputs/bundle/release/app-release.aab
+
+      - name: Upload Signed Artifacts to Workflow Run
+        uses: actions/upload-artifact@v4
+        with:
+          name: signed-release-${{ github.ref_name }}
+          path: |
+            build/app/outputs/flutter-apk/app-release.apk
+            build/app/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+
+      - name: Upload Signed Artifacts to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "$GITHUB_REF_NAME" \
+            build/app/outputs/flutter-apk/app-release.apk \
+            build/app/outputs/bundle/release/app-release.aab \
+            --clobber
+
+      - name: Cleanup Decoded Keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/upload-keystore.jks"

@@ -6,13 +6,10 @@ history, Skills, profile, or private-context text.
 
 ## Root cause before this change
 
-The previous path called `prewarm()` before it selected a deterministic route.
-`prewarm()` always loaded Lite. A clear Plus request on a cold process
-therefore paid for the Lite load and then the Plus load sequentially.
-Historical Nord measurements put those independent cold costs at about
-23.1 seconds for Lite and 52.4 seconds for Plus. This explains cold direct-Plus
-runs that produced no visible token inside 32 seconds: the requested model had
-not necessarily begun loading yet.
+The previous path called `prewarm()` before it selected a deterministic route,
+so a cold process could pay for a model load that the selected route then
+could not reuse, and a cold run could produce no visible token inside 32
+seconds while the model was still loading.
 
 The first Flutter token was also held by the ordinary 50 ms repaint batch.
 Only one conversation session was retained per model, so switching chats
@@ -61,9 +58,9 @@ Pub-cache or inferred from wall-clock gaps.
 ## Residency and prewarming
 
 Residency levels are unloaded, engine ready, base-prefix ready, and
-conversation warm. The selected recommended/default model is prewarmed after
-the first frame and essential storage initialisation. One load job exists per
-tier; Send joins the same future if prewarming is in progress.
+conversation warm. The single production model (LFM2.5-VL 1.6B) is prewarmed
+after the first frame and essential storage initialisation. One load job
+exists for the model; Send joins the same future if prewarming is in progress.
 
 On a balanced device the runtime keeps two LRU conversation sessions per
 model, using distinct llama.cpp sequence IDs. Entry devices retain one and
@@ -89,9 +86,9 @@ incorrect, while retaining the sampled token would alter the prompt.
 
 FinnAI therefore implements the full compatibility key and exact
 conversation-session KV reuse, but does not claim a new-chat base-prefix hit.
-The compatibility key includes model SHA-256, tier, system-prompt version,
+The compatibility key includes model SHA-256, system-prompt version,
 chat-template version, private-context hash, context size, actual KV type,
-tokenizer settings, and router/direct mode. Raw private configuration is never
+tokenizer settings, and intent route. Raw private configuration is never
 metadata. Safe shared-prefix reuse requires a maintained prefill-only or
 sequence-clone command in the dependency worker protocol.
 
@@ -111,7 +108,7 @@ The profile harness accepts:
 - `FINN_BENCHMARK=true`
 - `FINN_BENCH_SCENARIO=true_cold|model_warm|prefix_warm|conversation_warm|direct_plus|ambiguous`
 - `FINN_BENCH_RUNS`
-- `FINN_BENCH_PREWARM=lite|plus|both|selected`
+- `FINN_BENCH_PREWARM=selected`
 - `FINN_BENCH_THREADS`
 - `FINN_BENCH_BATCH_THREADS`
 - `FINN_BENCH_BATCH`
@@ -119,4 +116,5 @@ The profile harness accepts:
 - `FINN_BENCH_F16_KV`
 - `FINN_BENCH_FLASH_OFF`
 
-The production model catalog and default tier are unchanged.
+The production model catalog (LFM2.5-VL 1.6B) is unchanged; there is a single
+model and no tier selection.

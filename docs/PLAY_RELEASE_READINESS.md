@@ -11,10 +11,10 @@ This document records the exact completion and verification status of all releas
 | **Android Application ID** | `COMPLETE` | `VERIFIED` | Confirmed `com.abhiflex.finnai` across `build.gradle.kts`, `namespace`, `applicationId`, and `MainActivity.kt`. |
 | **Custom Launcher Icon** | `COMPLETE` | `VERIFIED` | Custom FinnAI launcher icon packaged in `mipmap-anydpi-v26/ic_launcher.xml` and density folders. |
 | **Native llama.cpp AAR** | `COMPLETE` | `VERIFIED (Nord + static) / 16 KB RUNTIME PENDING` | Rebuilt all five arm64 libraries from the exact pinned `llama_cpp_dart` and `llama.cpp` sources with NDK r28. Multi-turn generation passed on a OnePlus Nord. APK/AAB are ARM64-only and every packaged ELF has at least `0x4000` `PT_LOAD` alignment. A runtime test on a 16 KB kernel remains required. |
-| **Runtime SVG Assets** | `COMPLETE` | `VERIFIED` | All 20 required Figma icons copied to `assets/runtime/` and verified via `test/asset_verification_test.dart`. |
+| **Runtime SVG Assets** | `COMPLETE` | `VERIFIED` | All 19 required Figma icons copied to `assets/runtime/` and verified via `test/asset_verification_test.dart`. |
 | **AES-256-GCM Encryption** | `COMPLETE` | `VERIFIED` | Replaced custom crypto with maintained `cryptography` package. Verified roundtrips, tampered tag detection, key persistence, and atomic legacy migration in `test/conversation_store_test.dart`. |
 | **Truthful AI Reporting** | `IMPLEMENTED` | `VERIFIED (payload + routing tests) / DELIVERY CHECK PENDING` | The app prepares a complete report addressed to `finn_org@proton.me`, then requires the user to review and send it from their mail client. No mail credentials are embedded in the APK. |
-| **System Safety Prompts** | `COMPLETE` | `VERIFIED (Templates + observed output)` | Applied the compact `finnSafetySystemPrompt` to all tiers and modes. Automated template tests pass and user-visible generation was observed on the physical Nord after correcting Qwen 3 non-thinking priming. |
+| **System Safety Prompts** | `COMPLETE` | `VERIFIED (Templates + observed output)` | Applied the compact `finnSafetySystemPrompt` to every rendered prompt. Automated template tests pass and user-visible generation was observed on the physical Nord after correcting the non-thinking chat-template priming. |
 | **Creations, You & Skills** | `COMPLETE` | `VERIFIED` | Persistent local creation generation, personalization, response styles, built-in/custom Skills, private inference-context integration, responsive screens, and deletion coverage. |
 | **Delete All Local Data** | `COMPLETE` | `VERIFIED` | Truthful deletion of onboarding state, encrypted history, keys, downloaded models, creations, profile preferences, and Skills. Returns `DeletionResult` with error reporting. Verified in `test/app_state_store_test.dart`. |
 | **Legal & Privacy Disclosures** | `IMPLEMENTED` | `VERIFIED` | The app defaults to public privacy, terms and support routes on `finn-org.vercel.app`; compile-time overrides remain available. `THIRD_PARTY_NOTICES.md` includes full licences. |
@@ -48,8 +48,9 @@ The repository checks are necessary but cannot replace physical-device and Play 
    - Use the configured monitored address `finn_org@proton.me` for the required
      Play Console support-email field.
 
-5. **Store Graphics and Account-Gated Testing**:
-   - Capture final phone screenshots and create the 1024 × 500 feature graphic
-     after the production identity and website are final.
+5. **Account-Gated Testing**:
+   - Store graphics are no longer a blocker: `store-listing/` contains the
+     512 × 512 app icon, the 1024 × 500 feature graphic, and three phone
+     screenshots (1080 × 1920).
    - New personal Play accounts created after November 13, 2023 must complete a
      closed test with at least 12 continuously opted-in testers for 14 days.

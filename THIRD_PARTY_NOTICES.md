@@ -12,7 +12,7 @@ FinnAI relies on open-source software and model weights. This document contains 
 ```text
 MIT License
 
-Copyright (c) 2023-2026 Georgi Gerganov and contributors
+Copyright (c) 2013-2024 Georgi Gerganov and contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -35,15 +35,83 @@ SOFTWARE.
 
 ---
 
-## 2. Qwen AI Model
-- **Model**: Qwen 3.5 2B (GGUF format, Q4_K_M quantization)
-- **Creator**: Qwen (Alibaba Cloud); quantized and hosted by Unsloth
-- **Attribution**: Created using the Qwen 3.5 2B model, quantized to Q4_K_M.
-- **License**: Apache License, Version 2.0.
+## 2. LFM2.5-VL 1.6B Model (Liquid AI)
+- **Model**: LFM2.5-VL 1.6B (GGUF format, Q4_0 weights + F16 vision projector)
+- **Creator**: Liquid AI, Inc.
+- **Source**: Downloaded at runtime from Hugging Face (`LiquidAI/LFM2.5-VL-1.6B-GGUF`)
+- **License**: LFM Open License v1.0
+
+```text
+LFM Open License v1.0
+Copyright (c) 2025-2026 Liquid AI, Inc. All rights reserved.
+
+1. Definitions
+"Model" means the machine learning model, weights, parameters, and associated
+software artifacts provided by Liquid AI under this License.
+"You" means an individual or Legal Entity exercising permissions granted by
+this License.
+
+2. Grant of Rights
+Subject to the terms and conditions of this License, Liquid AI hereby grants
+You a perpetual, worldwide, non-exclusive, no-charge, royalty-free copyright
+license to reproduce, prepare derivative works of, publicly display, publicly
+perform, sublicense, and distribute the Model and Derivative Works.
+
+3. Conditions and Restrictions
+a. Commercial Revenue Threshold: Use of the Model or Derivative Works by or on
+   behalf of any commercial entity whose aggregate annual gross revenue exceeds
+   $10,000,000 USD (or equivalent in other currencies) requires a separate
+   commercial license from Liquid AI (contact sales@liquid.ai).
+b. Attribution: You must retain all copyright, patent, trademark, and
+   attribution notices from the source form of the Model.
+c. Notice: You must cause any work that You distribute to include a prominent
+   notice stating that You modified the files if any modifications were made,
+   and provide a copy of this License.
+d. Acceptable Use: You agree not to use the Model for any illegal, hazardous,
+   or harmful purposes.
+
+4. Disclaimer of Warranty
+THE MODEL IS PROVIDED "AS IS", WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+EITHER EXPRESS OR IMPLIED.
+
+5. Limitation of Liability
+IN NO EVENT SHALL LIQUID AI BE LIABLE FOR ANY DAMAGES ARISING OUT OF THE USE
+OR INABILITY TO USE THE MODEL.
+```
 
 ---
 
-## 3. Cryptography Package (`package:cryptography`)
+## 3. Vendored `llama_cpp_dart` Dart Package
+- **Project**: `llama_cpp_dart` (vendored under `third_party/llama_cpp_dart`)
+- **License**: MIT License
+- **Modifications**: FinnAI carries local modifications to the upstream package (worker-protocol prefill operation, native runtime audit metadata). See `third_party/llama_cpp_dart/FINNAI_PATCH.md`.
+```text
+MIT License
+
+Copyright (c) 2024 adel boussaken
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+---
+
+## 4. Cryptography Package (`package:cryptography`)
 - **License**: Apache License, Version 2.0
 ```text
 Copyright 2019-2026 Gohilla.
@@ -63,7 +131,7 @@ limitations under the License.
 
 ---
 
-## 4. Flutter & Dart SDK Packages
+## 5. Flutter & Dart SDK Packages
 - **Flutter Framework**: BSD 3-Clause License
 - **flutter_secure_storage**: BSD 3-Clause License
 - **package_info_plus**: BSD 3-Clause License
@@ -71,8 +139,12 @@ limitations under the License.
 - **url_launcher**: BSD 3-Clause License
 - **http**: BSD 3-Clause License
 - **crypto**: BSD 3-Clause License
+- **image_picker**: BSD 3-Clause License
+- **intl**: BSD 3-Clause License
 - **flutter_svg**: MIT License
 - **hugeicons**: MIT License
+- **cupertino_icons**: MIT License
+- **file_picker**: MIT License
 
 ```text
 BSD 3-Clause License
@@ -105,5 +177,5 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ---
 
-## 5. Typography & Fonts
+## 6. Typography & Fonts
 - **Instrument Sans**: SIL Open Font License, Version 1.1.
