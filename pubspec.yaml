@@ -21,7 +21,7 @@ dependencies:
   llama_cpp_dart:
     path: third_party/llama_cpp_dart
   path_provider: ^2.1.5
-  path_provider_platform_interface: ^2.1.2
+  path_provider_platform_interface: ^2.1.3
   package_info_plus: ^8.2.2
   flutter_secure_storage: ^9.2.4
   cryptography: ^2.7.0
