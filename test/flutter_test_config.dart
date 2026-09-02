@@ -8,7 +8,11 @@ Future<void> testExecutable(FutureOr<void> Function() testMain) async {
   if (defaultComparator is LocalFileComparator) {
     goldenFileComparator = _CrossPlatformGoldenComparator(
       defaultComparator.basedir.resolve('flutter_test_config.dart'),
-      precisionTolerance: 0.01,
+      // 2.5% headroom for cross-platform text rasterization drift: denser
+      // text screens measured ~1.5% Linux-vs-macOS diff after the 3.47
+      // typography pass, so 1% tripped on CI. Meaningful layout regressions
+      // still fail well above this band.
+      precisionTolerance: 0.025,
     );
   }
 
