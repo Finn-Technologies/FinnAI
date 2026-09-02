@@ -176,6 +176,39 @@ class FinnAccelerator extends ChangeNotifier {
   bool get automaticSelection => _automaticSelection;
   bool get isDeviceSupported => _deviceProfile?.supported ?? true;
 
+  /// Short-lived cache for the Android per-turn profile refresh. Re-querying
+  /// the platform channel and /proc/meminfo on every turn cost measurable
+  /// latency per message while the values only matter when they change
+  /// materially. The cache is invalidated when the app releases memory
+  /// (backgrounded) so the first turn after a resume re-reads fresh values.
+  static const _deviceProfileCacheTtl = Duration(seconds: 30);
+  DeviceProfile? _deviceProfileCache;
+  DateTime? _deviceProfileCacheAt;
+
+  /// Returns a cached [DeviceProfile] when fresh, otherwise re-reads it and
+  /// refreshes the cache. Mirrors the profile into [_deviceProfile] so
+  /// diagnostics and planning stay on the latest observed state.
+  Future<DeviceProfile> _profileForTurn() async {
+    final cached = _deviceProfileCache;
+    final cachedAt = _deviceProfileCacheAt;
+    final now = DateTime.now();
+    if (cached != null &&
+        cachedAt != null &&
+        now.difference(cachedAt) < _deviceProfileCacheTtl) {
+      return cached;
+    }
+    final profile = await DeviceProfiler.read();
+    _deviceProfile = profile;
+    _deviceProfileCache = profile;
+    _deviceProfileCacheAt = now;
+    return profile;
+  }
+
+  void _invalidateDeviceProfileCache() {
+    _deviceProfileCache = null;
+    _deviceProfileCacheAt = null;
+  }
+
   InferencePhase _phase = InferencePhase.idle;
   InferencePhase get phase => _phase;
 
@@ -310,6 +343,13 @@ class FinnAccelerator extends ChangeNotifier {
   var _runtimeEpoch = 0;
   bool _replyInFlight = false;
   bool get isGeneratingReply => _replyInFlight;
+
+  /// FIFO gate for queued generations (see [generateReplyQueued]).
+  @visibleForTesting
+  final ReplyTurnGate replyGate = ReplyTurnGate(
+    capacity: maxQueuedReplyRequests,
+  );
+  static const int maxQueuedReplyRequests = 2;
   Future<void>? _installJob;
   HttpClient? _downloadClient;
   bool _cancelDownload = false;
@@ -319,6 +359,8 @@ class FinnAccelerator extends ChangeNotifier {
 
   Future<void> initialize() async {
     _deviceProfile = await DeviceProfiler.read();
+    _deviceProfileCache = _deviceProfile;
+    _deviceProfileCacheAt = DateTime.now();
     _plan = DeviceProfiler.plan(_deviceProfile!);
     // Clean up any retired legacy artifacts in background without blocking startup
     unawaited(_removeRetiredModelArtifacts());
@@ -603,7 +645,10 @@ class FinnAccelerator extends ChangeNotifier {
   }
 
   /// Releases the large native context when the app leaves the foreground.
+  /// Also drops the cached device profile: after a resume the first turn
+  /// must observe fresh memory/storage values.
   Future<void> releaseMemory() {
+    _invalidateDeviceProfileCache();
     _queueUnload();
     return _pendingUnload;
   }
@@ -634,8 +679,10 @@ class FinnAccelerator extends ChangeNotifier {
     for (final tier in _runtimes.keys.toList(growable: false)) {
       if (tier != _selected.tier) await _unloadModel(tier);
     }
-    final profile = await DeviceProfiler.read();
-    _deviceProfile = profile;
+    // Memory pressure is exactly when a stale profile would mislead the
+    // low-RAM decisions below, so force a fresh read and re-prime the cache.
+    _invalidateDeviceProfileCache();
+    final profile = await _profileForTurn();
     final tightRam = profile.availableRamBytes != null &&
         profile.availableRamBytes! < 1200 * 1024 * 1024;
     if (profile.lowMemory || tightRam) await _unloadModel(_selected.tier);
@@ -762,7 +809,52 @@ class FinnAccelerator extends ChangeNotifier {
       );
     } finally {
       _replyInFlight = false;
+      // Hand the engine to the oldest queued caller (no-op when none waits).
+      replyGate.signalNext();
     }
+  }
+
+  /// Like [generateReply], but waits for the engine to become available
+  /// instead of throwing when a generation is already in flight.
+  ///
+  /// Secondary callers (e.g. the creation generator) queue here so a user
+  /// creation no longer fails with "Finn is already generating" just because
+  /// a chat answer is streaming. Waiting is FIFO and bounded: at most
+  /// [maxQueuedReplyRequests] callers may hold a reservation; beyond that the
+  /// call throws [StateError] with an actionable message instead of growing
+  /// without bound. When the engine is idle this behaves exactly like
+  /// [generateReply] and never reserves a slot.
+  Stream<String> generateReplyQueued(
+    String prompt, {
+    required String conversationId,
+    List<LocalChatTurn> history = const [],
+    String systemContext = '',
+    String groundedContext = '',
+    PromptAnalysis? promptAnalysis,
+    TtftTrace? trace,
+    bool enableSearchDecision = true,
+  }) async* {
+    if (_replyInFlight) {
+      final turn = replyGate.waitTurn();
+      try {
+        await turn;
+      } finally {
+        // If this stream was cancelled while waiting, give the reservation
+        // back so capacity is not consumed by a dead waiter. A no-op when
+        // the turn was already granted.
+        replyGate.abandon(turn);
+      }
+    }
+    yield* generateReply(
+      prompt,
+      conversationId: conversationId,
+      history: history,
+      systemContext: systemContext,
+      groundedContext: groundedContext,
+      promptAnalysis: promptAnalysis,
+      trace: trace,
+      enableSearchDecision: enableSearchDecision,
+    );
   }
 
   /// Developer harness entry point for an already-installed GGUF at [path].
@@ -844,8 +936,9 @@ class FinnAccelerator extends ChangeNotifier {
       ?..modelTier = selected.name
       ..mark(TtftPhase.routeSelected);
     if (Platform.isAndroid) {
-      final freshProfile = await DeviceProfiler.read();
-      _deviceProfile = freshProfile;
+      // Cached per-turn refresh: avoids a platform-channel round trip plus
+      // /proc/meminfo reads on every message (see _profileForTurn).
+      final freshProfile = await _profileForTurn();
       if (_runtimes.isEmpty) _plan = DeviceProfiler.plan(freshProfile);
     }
     final model = selected;
@@ -3717,3 +3810,49 @@ Future<bool> promoteVerifiedModelPartial({
 
 typedef FinnEngine = FinnAccelerator;
 typedef FinnInference = FinnAccelerator;
+
+/// Bounded FIFO turn gate for queued generations (see
+/// [FinnAccelerator.generateReplyQueued]).
+///
+/// [waitTurn] reserves a place in line and resolves when [signalNext] hands
+/// the turn over (the engine became free). Reservations are capped at
+/// [capacity]; beyond that [waitTurn] throws [StateError] so callers get a
+/// clear failure instead of unbounded queue growth. A waiter that gives up
+/// before its turn arrives calls [abandon] to restore capacity; abandoning
+/// after the turn was granted is a no-op.
+@visibleForTesting
+class ReplyTurnGate {
+  ReplyTurnGate({this.capacity = 2});
+
+  /// Maximum number of callers that can wait at once.
+  final int capacity;
+
+  final List<Completer<void>> _waiters = [];
+
+  /// Number of callers currently waiting for their turn.
+  int get waitingCount => _waiters.length;
+
+  /// Reserves a place in line; resolves when the turn is granted.
+  Future<void> waitTurn() {
+    if (_waiters.length >= capacity) {
+      throw StateError(
+        'Finn already has $capacity queued generations; '
+        'try again when the current answer finishes.',
+      );
+    }
+    final completer = Completer<void>();
+    _waiters.add(completer);
+    return completer.future;
+  }
+
+  /// Gives up a reserved [turn] that was not granted yet (no-op afterwards).
+  void abandon(Future<void> turn) {
+    _waiters.removeWhere((completer) => identical(completer.future, turn));
+  }
+
+  /// Hands the engine to the oldest waiter, if any.
+  void signalNext() {
+    if (_waiters.isEmpty) return;
+    _waiters.removeAt(0).complete();
+  }
+}

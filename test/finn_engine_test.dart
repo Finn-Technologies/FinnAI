@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:llama_cpp_dart/llama_cpp_dart.dart';
 
@@ -86,5 +88,105 @@ void main() {
         expect(PromptFormatter.baseSystemPrefix, contains('Finn AI'));
       },
     );
+
+    test('status exposes a machine-readable key alongside the text', () {
+      final engine = FinnAccelerator.instance;
+      addTearDown(engine.resetDownloadStateForTest);
+
+      expect(engine.status, 'Ready');
+      expect(engine.statusKey, FinnStatusKey.ready);
+
+      engine.reportDownloadProgressForTest(0.25, 1000);
+      expect(engine.status, 'Downloading test');
+      expect(engine.statusKey, FinnStatusKey.downloadingModel);
+      expect(engine.downloadProgress, 0.25);
+
+      engine.resetDownloadStateForTest();
+      expect(engine.status, 'Ready');
+      expect(engine.statusKey, FinnStatusKey.ready);
+    });
+  });
+
+  group('ReplyTurnGate (queued generations)', () {
+    test('busy engine queues callers and runs them FIFO', () async {
+      final gate = ReplyTurnGate(capacity: 2);
+
+      // Two callers arrive while the engine is busy: both queue in order.
+      final first = gate.waitTurn();
+      final second = gate.waitTurn();
+      expect(gate.waitingCount, 2);
+
+      var firstRan = false;
+      var secondRan = false;
+      unawaited(first.then((_) => firstRan = true));
+      unawaited(second.then((_) => secondRan = true));
+      await Future<void>.delayed(Duration.zero);
+      expect(firstRan, isFalse, reason: 'engine is still busy');
+
+      // Chat generation finishes: the oldest queued caller runs first.
+      gate.signalNext();
+      await first;
+      expect(firstRan, isTrue);
+      expect(secondRan, isFalse);
+
+      gate.signalNext();
+      await second;
+      expect(secondRan, isTrue);
+      expect(gate.waitingCount, 0);
+    });
+
+    test('overflow beyond the bound fails fast and keeps the queue intact', () {
+      final gate = ReplyTurnGate(capacity: 2);
+      unawaited(gate.waitTurn());
+      unawaited(gate.waitTurn());
+
+      expect(
+        () => gate.waitTurn(),
+        throwsA(
+          isA<StateError>().having(
+            (error) => error.message,
+            'message',
+            contains('queued generations'),
+          ),
+        ),
+      );
+      expect(gate.waitingCount, 2, reason: 'rejected caller holds no slot');
+    });
+
+    test('abandoned reservations restore capacity and release others',
+        () async {
+      final gate = ReplyTurnGate(capacity: 2);
+      final first = gate.waitTurn();
+      final second = gate.waitTurn();
+
+      // The first caller is cancelled while waiting for the engine.
+      gate.abandon(first);
+      expect(gate.waitingCount, 1);
+
+      // Capacity restored: a new caller can still queue.
+      final third = gate.waitTurn();
+      expect(gate.waitingCount, 2);
+
+      // Only live waiters get their turn.
+      gate.signalNext();
+      await second;
+      gate.abandon(first);
+      gate.abandon(second);
+      gate.signalNext();
+      await third;
+      expect(gate.waitingCount, 0);
+    });
+
+    test('signalling an empty queue is a no-op', () {
+      final gate = ReplyTurnGate();
+      expect(gate.waitingCount, 0);
+      gate.signalNext();
+      expect(gate.waitingCount, 0);
+    });
+
+    test('accelerator queue is bounded at two pending creations', () {
+      expect(FinnAccelerator.maxQueuedReplyRequests, 2);
+      expect(FinnAccelerator.instance.replyGate.capacity, 2);
+    });
   });
 }
