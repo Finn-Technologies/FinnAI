@@ -265,12 +265,14 @@ class WebSearchService {
     if (value.isEmpty) return null;
 
     final normalizedKey = value.toLowerCase();
-    final cached = _cache[normalizedKey];
+    // Re-insert on hit so map insertion order reflects recency (LRU).
+    final cached = _cache.remove(normalizedKey);
     if (cached != null) {
       if (DateTime.now().difference(cached.timestamp) < _cacheTtl) {
+        _cache[normalizedKey] = cached;
         return cached.result;
       }
-      _cache.remove(normalizedKey);
+      // Expired: stay removed.
     }
 
     try {
@@ -383,6 +385,8 @@ class WebSearchService {
     }
   }
 
+  /// Evicts the least recently used entry: map insertion order is kept in
+  /// recency order because hits re-insert their key (see [search]).
   void _putCache(String key, WebSearchResult result) {
     if (_cache.length >= _maxCacheSize) {
       _cache.remove(_cache.keys.first);

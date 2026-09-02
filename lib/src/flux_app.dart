@@ -21,7 +21,7 @@ class FinnBootstrap extends StatefulWidget {
 }
 
 class _FinnBootstrapState extends State<FinnBootstrap> {
-  late final Future<void> _ready = _initialize();
+  late Future<void> _ready = _initialize();
   bool _modelInstalled = false;
 
   Future<void> _initialize() async {
@@ -37,6 +37,12 @@ class _FinnBootstrapState extends State<FinnBootstrap> {
       // asynchronously in the background so the home screen boots instantly.
       unawaited(_backgroundWarmup(inference));
     }
+  }
+
+  void _retryInitialization() {
+    setState(() {
+      _ready = _initialize();
+    });
   }
 
   Future<void> _backgroundWarmup(QwenInference inference) async {
@@ -60,6 +66,29 @@ class _FinnBootstrapState extends State<FinnBootstrap> {
   Widget build(BuildContext context) => FutureBuilder<void>(
     future: _ready,
     builder: (context, snapshot) {
+      // Surface engine bootstrap failures instead of silently falling back
+      // to the model-download screen and hiding the root cause.
+      if (snapshot.hasError) {
+        return MaterialApp(
+          title: 'FinnAI',
+          debugShowCheckedModeBanner: false,
+          theme: FluxTheme.light,
+          darkTheme: FluxTheme.dark,
+          themeMode: ThemeMode.system,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          builder: FluxTheme.applySystemUi,
+          home: _BootstrapErrorPage(
+            error: snapshot.error!,
+            onRetry: _retryInitialization,
+          ),
+        );
+      }
       if (snapshot.connectionState == ConnectionState.done) {
         return FluxApp(
           onboardingComplete: AppStateStore.instance.onboardingComplete,
@@ -192,4 +221,87 @@ class _UnsupportedDevicePage extends StatelessWidget {
       ),
     ),
   );
+}
+
+/// Shown when engine bootstrap fails so the root cause is visible and the
+/// user can re-run initialization. English strings are intentional; the
+/// localization pass happens in a separate branch.
+class _BootstrapErrorPage extends StatelessWidget {
+  const _BootstrapErrorPage({required this.error, required this.onRetry});
+
+  final Object error;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return Scaffold(
+      body: AmbientBackground(
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 30),
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 62,
+                    height: 62,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: FluxColors.surfaceOf(context),
+                    ),
+                    child: const Icon(
+                      Icons.error_outline_rounded,
+                      size: 27,
+                      color: FluxColors.destructive,
+                    ),
+                  ),
+                  const SizedBox(height: 22),
+                  Text(
+                    'FinnAI could not start',
+                    textAlign: TextAlign.center,
+                    style: textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Something went wrong while initializing the AI engine. '
+                    'Your conversations are safe.',
+                    textAlign: TextAlign.center,
+                    style: textTheme.bodyMedium?.copyWith(
+                      color: FluxColors.mutedOf(context),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 120),
+                    child: SingleChildScrollView(
+                      child: Text(
+                        '$error',
+                        textAlign: TextAlign.center,
+                        style: textTheme.bodySmall?.copyWith(
+                          color: FluxColors.mutedOf(context),
+                          fontFamily: 'monospace',
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  FilledButton.icon(
+                    onPressed: onRetry,
+                    icon: const Icon(Icons.refresh_rounded, size: 18),
+                    label: const Text('Try again'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: FluxColors.inkOf(context),
+                      foregroundColor: FluxColors.canvasOf(context),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

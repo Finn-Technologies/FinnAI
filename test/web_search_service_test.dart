@@ -250,4 +250,58 @@ void main() {
     );
     expect(await service.searchIfNeeded('news today'), isNull);
   });
+
+  test('search cache eviction is true LRU, not FIFO', () async {
+    var requests = 0;
+    final client = MockClient((request) async {
+      requests++;
+      final query = request.url.queryParameters['q'] ?? 'query';
+      return http.Response(
+        '<div class="result">'
+        '<a class="result__a" href="https://example.com/${Uri.encodeComponent(query)}">'
+        'Result for $query</a>'
+        '<a class="result__snippet">snippet for $query</a>'
+        '</div>',
+        200,
+      );
+    });
+    final service = WebSearchService(
+      client: client,
+      endpoint: Uri.parse('https://cache-test.local/search'),
+    );
+
+    // Fill the cache to capacity (30), displacing any earlier entries.
+    for (var i = 0; i < 30; i++) {
+      await service.search('filler query $i');
+    }
+    // The survivor is inserted BEFORE the victim but accessed more recently.
+    await service.search('lru survivor');
+    await service.search('lru victim');
+    final requestsAfterFill = requests;
+    await service.search('lru survivor'); // cache hit: no new request
+    expect(requests, requestsAfterFill);
+
+    // Push 29 fresh entries into the cache: the touched survivor must not
+    // be evicted even though it was inserted earlier than the victim.
+    for (var i = 0; i < 27; i++) {
+      await service.search('evictor query $i');
+    }
+    await service.search('evictor query final');
+
+    final before = requests;
+    final survivor = await service.search('lru survivor');
+    expect(requests, before, reason: 'recently used entry must survive eviction');
+    expect(survivor, isNotNull);
+
+    // One more eviction removes the least recently used entry (the victim).
+    await service.search('evictor query overflow');
+    final afterOverflow = requests;
+    final victim = await service.search('lru victim');
+    expect(
+      requests,
+      afterOverflow + 1,
+      reason: 'least recently used entry must be evicted',
+    );
+    expect(victim, isNotNull);
+  });
 }

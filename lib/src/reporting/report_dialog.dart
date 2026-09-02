@@ -14,6 +14,7 @@ class ReportDialog extends StatefulWidget {
     this.userPrompt,
     required this.modelTier,
     this.appVersion,
+    this.reportService,
   });
 
   final String assistantResponse;
@@ -21,12 +22,16 @@ class ReportDialog extends StatefulWidget {
   final String modelTier;
   final String? appVersion;
 
+  /// Overrides the report service for tests; defaults to the app singleton.
+  final ReportService? reportService;
+
   static Future<void> show(
     BuildContext context, {
     required String assistantResponse,
     String? userPrompt,
     required String modelTier,
     String? appVersion,
+    ReportService? reportService,
   }) async {
     await showDialog<void>(
       context: context,
@@ -36,6 +41,7 @@ class ReportDialog extends StatefulWidget {
         userPrompt: userPrompt,
         modelTier: modelTier,
         appVersion: appVersion,
+        reportService: reportService,
       ),
     );
   }
@@ -51,6 +57,9 @@ class _ReportDialogState extends State<ReportDialog> {
   bool _isSubmitting = false;
   String? _errorMessage;
   String _resolvedVersion = '1.0.0';
+
+  late final ReportService _reportService =
+      widget.reportService ?? ReportService.instance;
 
   @override
   void initState() {
@@ -95,11 +104,36 @@ class _ReportDialogState extends State<ReportDialog> {
       timestamp: DateTime.now(),
       appVersion: _resolvedVersion,
       modelTier: widget.modelTier,
+      // The prompt is only included when the user opted in via the
+      // consent checkbox above — identical semantics for both paths.
       userPrompt: _includePrompt ? widget.userPrompt : null,
       additionalDetails: _detailsController.text.trim(),
     );
 
-    final emailUri = ReportService.instance.buildEmailUri(payload);
+    // Submit over the in-app HTTP endpoint first. Any non-accept outcome
+    // (unconfigured endpoint, network failure, timeout, server rejection)
+    // falls back to the email flow below so the report can always be sent.
+    final httpStatus = await _reportService.submitReport(payload);
+    if (httpStatus == ReportSubmitStatus.success) {
+      if (!mounted) return;
+      setState(() {
+        _isSubmitting = false;
+      });
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(
+          SnackBar(
+            content: const Text(
+              'Report sent. Thank you for helping keep FinnAI safe.',
+            ),
+            duration: Duration(seconds: 4),
+          ),
+        );
+      return;
+    }
+
+    final emailUri = _reportService.buildEmailUri(payload);
     var opened = false;
     if (emailUri != null) {
       try {
@@ -140,7 +174,9 @@ class _ReportDialogState extends State<ReportDialog> {
   Widget build(BuildContext context) {
     final isDark = FluxColors.isDark(context);
     final textTheme = Theme.of(context).textTheme;
-    final isConfigured = ReportService.instance.canComposeEmail;
+    // Submission is possible when either the HTTP endpoint or the email
+    // fallback is configured.
+    final isConfigured = _reportService.isConfigured;
 
     return AlertDialog(
       backgroundColor: isDark

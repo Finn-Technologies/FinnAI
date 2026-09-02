@@ -507,4 +507,277 @@ void main() {
       expect(store.conversations.single.messages, isNotEmpty);
     });
   });
+
+  group('3. Archive fault-back & trim durability', () {
+    test(
+      '>80 conversations survive a restart via archive fault-back',
+      () async {
+        final keyStore = FakeKeyStorage();
+        final store = ConversationStore(
+          keyStorage: keyStore,
+          directoryProvider: () async => tempDir,
+          maxConversationsInMemory: 80,
+        );
+        await store.initialize();
+
+        final ids = <String>[];
+        for (var i = 0; i < 85; i++) {
+          final conversation = store.startNew();
+          store.add(ConversationRole.user, 'message $i');
+          ids.add(conversation.id);
+        }
+        await store.flush();
+
+        // 5 conversations were archived, not deleted.
+        expect(store.residentConversationCount, 80);
+        expect(store.archivedIds.length, 5);
+
+        // Simulate an app restart with a NEW store over the same directory.
+        final reloaded = ConversationStore(
+          keyStorage: keyStore,
+          directoryProvider: () async => tempDir,
+          maxConversationsInMemory: 80,
+        );
+        await reloaded.initialize();
+
+        expect(reloaded.residentConversationCount, 80);
+        expect(reloaded.archivedIds.length, 5);
+        // The archived ids are exactly the ones missing from memory.
+        final residentIds = reloaded.conversations
+            .map((conversation) => conversation.id)
+            .toSet();
+        expect(
+          residentIds.intersection(reloaded.archivedIds),
+          isEmpty,
+        );
+        expect(residentIds.length, 80);
+
+        // Every conversation still exists: residents directly, evicted
+        // ones via fault-back, each with its original message intact.
+        for (var i = 0; i < ids.length; i++) {
+          final restored = await reloaded.faultBack(ids[i]);
+          expect(
+            restored,
+            isNotNull,
+            reason: 'conversation $i (${ids[i]}) must survive a restart',
+          );
+          expect(restored!.messages.single.text, 'message $i');
+        }
+        expect(reloaded.residentConversationCount, 80);
+      },
+    );
+
+    test(
+      'thread with >400 messages survives restart with full history',
+      () async {
+        const totalMessages = 450;
+        final base = DateTime.utc(2026, 1, 1);
+        final key = Uint8List(32)..fillRange(0, 32, 7);
+        final keyStore = FakeKeyStorage(
+          initialData: {'finn_ai_conversation_master_key_v2': key},
+        );
+
+        // Seed the main file with a thread that is already over the cap.
+        final payload = jsonEncode(<String, Object?>{
+          'activeId': 'c1',
+          'conversations': [
+            {
+              'id': 'c1',
+              'title': 'Long thread',
+              'createdAt': base.toIso8601String(),
+              'updatedAt': base
+                  .add(const Duration(minutes: totalMessages))
+                  .toIso8601String(),
+              'messages': [
+                for (var i = 0; i < totalMessages; i++)
+                  {
+                    'id': 'm$i',
+                    'role': 'user',
+                    'text': 'message $i',
+                    'createdAt': base
+                        .add(Duration(minutes: i))
+                        .toIso8601String(),
+                    'modelTier': 'FinnAI',
+                  },
+              ],
+            },
+          ],
+        });
+        final encFile = File(
+          '${tempDir.path}${Platform.pathSeparator}conversations.v2.enc',
+        );
+        await encFile.writeAsString(
+          jsonEncode(await ConversationCipher.encrypt(key, payload)),
+        );
+
+        final store = ConversationStore(
+          keyStorage: keyStore,
+          directoryProvider: () async => tempDir,
+        );
+        await store.initialize();
+        expect(store.conversationById('c1')!.messages.length, totalMessages);
+
+        // A live message pushes the thread past the cap: the full list is
+        // archived BEFORE the in-memory window is trimmed and persisted.
+        store.add(ConversationRole.user, 'live message');
+        await store.flush();
+
+        expect(store.conversationById('c1')!.messages.length, 400);
+
+        final reloaded = ConversationStore(
+          keyStorage: keyStore,
+          directoryProvider: () async => tempDir,
+        );
+        await reloaded.initialize();
+
+        // The in-memory window respects the cap...
+        final resident = reloaded.conversationById('c1');
+        expect(resident, isNotNull);
+        expect(resident!.messages.length, 400);
+        expect(resident.messages.last.text, 'live message');
+
+        // ...and no history was destroyed: the archived prefix merges with
+        // the in-memory window into the complete thread.
+        final history = await reloaded.fullHistory('c1');
+        expect(history.length, totalMessages + 1);
+        expect(history.first.id, 'm0');
+        expect(history.first.text, 'message 0');
+        expect(history[totalMessages - 1].id, 'm449');
+        expect(history.last.text, 'live message');
+      },
+    );
+
+    test(
+      'faulted-back conversation can be opened and re-saved correctly',
+      () async {
+        final keyStore = FakeKeyStorage();
+        final store = ConversationStore(
+          keyStorage: keyStore,
+          directoryProvider: () async => tempDir,
+          maxConversationsInMemory: 4,
+        );
+        await store.initialize();
+
+        final ids = <String>[];
+        for (var i = 0; i < 5; i++) {
+          final conversation = store.startNew();
+          store.add(ConversationRole.user, 'original $i');
+          ids.add(conversation.id);
+        }
+        await store.flush();
+
+        // Exactly one conversation was evicted to the archive.
+        final evictedId = store.archivedIds.single;
+        final evictedIndex = ids.indexOf(evictedId);
+
+        // Restart, then fault the evicted conversation back.
+        final reloaded = ConversationStore(
+          keyStorage: keyStore,
+          directoryProvider: () async => tempDir,
+          maxConversationsInMemory: 4,
+        );
+        await reloaded.initialize();
+        expect(reloaded.conversationById(evictedId), isNull);
+
+        final restored = await reloaded.faultBack(evictedId);
+        expect(restored, isNotNull);
+        expect(restored!.messages.single.text, 'original $evictedIndex');
+        expect(reloaded.conversationById(evictedId), isNotNull);
+        // The archive copy was retired after the fault-back re-persisted it.
+        expect(reloaded.archivedIds, isNot(contains(evictedId)));
+
+        // Open it and continue the exchange; the re-save must persist.
+        reloaded.activate(evictedId);
+        expect(reloaded.active?.id, evictedId);
+        reloaded.beginExchangeInConversation(evictedId, 'follow-up');
+        await reloaded.flush();
+
+        final thirdStore = ConversationStore(
+          keyStorage: keyStore,
+          directoryProvider: () async => tempDir,
+          maxConversationsInMemory: 4,
+        );
+        await thirdStore.initialize();
+
+        final reopened = thirdStore.conversationById(evictedId);
+        expect(reopened, isNotNull);
+        final texts = reopened!.messages.map((message) => message.text);
+        expect(texts, contains('original $evictedIndex'));
+        expect(texts, contains('follow-up'));
+        expect(thirdStore.archivedIds, isNot(contains(evictedId)));
+      },
+    );
+
+    test('archived prefix respects in-memory message cap on eviction', () async {
+      const totalMessages = 420;
+      final base = DateTime.utc(2026, 1, 1);
+      final key = Uint8List(32)..fillRange(0, 32, 7);
+      final keyStore = FakeKeyStorage(
+        initialData: {'finn_ai_conversation_master_key_v2': key},
+      );
+      final payload = jsonEncode(<String, Object?>{
+        'activeId': 'c1',
+        'conversations': [
+          {
+            'id': 'c1',
+            'title': 'Evict long thread',
+            'createdAt': base.toIso8601String(),
+            'updatedAt': base.toIso8601String(),
+            'messages': [
+              for (var i = 0; i < totalMessages; i++)
+                {
+                  'id': 'm$i',
+                  'role': 'user',
+                  'text': 'message $i',
+                  'createdAt': base
+                      .add(Duration(minutes: i))
+                      .toIso8601String(),
+                  'modelTier': 'FinnAI',
+                },
+            ],
+          },
+        ],
+      });
+      final encFile = File(
+        '${tempDir.path}${Platform.pathSeparator}conversations.v2.enc',
+      );
+      await encFile.writeAsString(
+        jsonEncode(await ConversationCipher.encrypt(key, payload)),
+      );
+
+      // Evict the long thread by filling the memory cap with new chats;
+      // startNew() activates each new chat so the seeded thread ages out.
+      final store = ConversationStore(
+        keyStorage: keyStore,
+        directoryProvider: () async => tempDir,
+        maxConversationsInMemory: 2,
+      );
+      await store.initialize();
+      final ids = <String>[];
+      for (var i = 0; i < 4; i++) {
+        final conversation = store.startNew();
+        store.add(ConversationRole.user, 'filler $i');
+        ids.add(conversation.id);
+      }
+
+      await store.flush();
+      expect(store.archivedIds, contains('c1'));
+
+      // Restart and fault the long thread back: the archive holds the
+      // complete conversation.
+      final reloaded = ConversationStore(
+        keyStorage: keyStore,
+        directoryProvider: () async => tempDir,
+        maxConversationsInMemory: 2,
+      );
+      await reloaded.initialize();
+      expect(reloaded.conversationById('c1'), isNull);
+
+      final restored = await reloaded.faultBack('c1');
+      expect(restored, isNotNull);
+      expect(restored!.messages.length, totalMessages);
+      expect(restored.messages.first.id, 'm0');
+      expect(restored.messages.last.id, 'm419');
+    });
+  });
 }

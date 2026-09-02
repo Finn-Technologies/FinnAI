@@ -170,5 +170,13 @@ void main() {
         expect(transmittedModelTier, isNot(equals('FinnAI')));
       },
     );
+
+    test('Default endpoint is the production reports API', () {
+      // No explicit endpoint override: the built-in default is used.
+      final service = ReportService(reportEmail: 'finn_org@proton.me');
+
+      expect(service.endpoint, 'https://finn-org.vercel.app/v1/reports');
+      expect(service.isConfigured, isTrue);
+    });
   });
 }

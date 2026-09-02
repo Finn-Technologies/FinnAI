@@ -215,6 +215,10 @@ class ChatGenerationController extends ChangeNotifier {
   Timer? _persistenceTimer;
   Timer? _notifyTimer;
   Future<void>? _stopFuture;
+  /// Incremental token accumulator for the running job. Appending tokens to
+  /// a StringBuffer avoids the O(n^2) re-allocation of string concatenation
+  /// on every token; the job still exposes the same final [ChatGenerationJob.responseText].
+  StringBuffer? _responseText;
   var _epoch = 0;
   var _idSequence = 0;
   var _lateTokenCount = 0;
@@ -483,6 +487,7 @@ class ChatGenerationController extends ChangeNotifier {
     final epoch = ++_epoch;
     _lateTokenCount = 0;
     _activeTrace = trace;
+    _responseText = StringBuffer(initialText);
     _job = ChatGenerationJob(
       generationId: generationId,
       conversationId: conversationId,
@@ -556,9 +561,11 @@ class ChatGenerationController extends ChangeNotifier {
       _preparingGuard?.cancel();
       _preparingGuard = null;
     }
+    final responseText = (_responseText ??= StringBuffer(current.responseText))
+      ..write(token);
     _job = current.copyWith(
       state: ChatGenerationState.generating,
-      responseText: '${current.responseText}$token',
+      responseText: responseText.toString(),
       modelName: runtime.lastGeneratingModelName,
     );
     _schedulePersistence();
