@@ -85,6 +85,10 @@ class OpenHarmonyPathProvider extends PathProviderPlatform {
 
   @override
   Future<String?> getDownloadsPath() async {
+    try {
+      final path = await _channel.invokeMethod<String>('getDownloadsPath');
+      if (path != null && path.isNotEmpty) return path;
+    } catch (_) {}
     return '/data/storage/el2/base/haps/entry/files';
   }
 }
