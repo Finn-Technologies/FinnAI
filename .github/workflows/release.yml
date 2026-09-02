@@ -115,7 +115,7 @@ jobs:
           python3 tool/verify_native_alignment.py build/app/outputs/bundle/release/app-release.aab
 
       - name: Upload Signed Artifacts to Workflow Run
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: signed-release-${{ github.ref_name }}
           path: |
