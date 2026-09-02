@@ -1,10 +1,19 @@
 {
   "app": {
+    // Release signing materials (.p12 key + .cer certificate + provisioning
+    // profile) are provisioned OUT-OF-BAND and are never committed to the
+    // repository. To produce a signed release HAP locally, add a signing
+    // config here (or configure it via DevEco Studio: File > Project
+    // Structure > Signing Configs) using your locally provisioned materials.
+    // See docs/OHOS_BUILD.md for the full signing story.
     "signingConfigs": [],
     "products": [
       {
         "name": "default",
-        "signingConfig": "default",
+        // No "signingConfig" reference on purpose: the config list above is
+        // empty on a clean checkout, so naming a non-existent entry here
+        // would fail hvigor configuration. Debug builds simply produce an
+        // unsigned HAP; release artifacts are signed out-of-band.
         "compileSdkVersion": "6.1.1(24)",
         "compatibleSdkVersion": "5.0.0(12)",
         "runtimeOS": "HarmonyOS"
