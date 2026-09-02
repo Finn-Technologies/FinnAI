@@ -4,6 +4,12 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    ignore:
+      # v10 drops the encryptedSharedPreferences backend the app's key store
+      # uses; upgrading without a tested key-migration path would make
+      # existing installs' conversation-encryption keys unreadable.
+      - dependency-name: flutter_secure_storage
+        versions: [">=10.0.0"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
