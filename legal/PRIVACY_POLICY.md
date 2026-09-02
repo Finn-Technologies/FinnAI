@@ -13,21 +13,28 @@ FinnAI is designed as an on-device AI assistant. AI-generated responses are proc
 
 ## Automatic Web Search
 
-FinnAI decides locally whether a request needs current internet information,
-including news, recipes, explicit web lookups, and other time-sensitive
-questions. When it searches, only the latest user request is sent over HTTPS
-to the configured search provider. Conversation history, saved profile data,
+FinnAI automatically decides locally whether a request needs current internet
+information — including news, recipes, explicit web lookups, and other
+time-sensitive questions — and runs the web search on its own for those
+search-intent prompts; no separate confirmation step is required. When it
+searches, only the latest user request is sent over HTTPS to the search
+providers DuckDuckGo (`api.duckduckgo.com` and `html.duckduckgo.com`) and
+Wikipedia (`en.wikipedia.org`). Conversation history, saved profile data,
 custom instructions, and Skills are not included. Search requests expose the
-query and ordinary network metadata such as the device IP address to the search
-provider. Retrieved excerpts are processed by the on-device model, and FinnAI
-shows the source links used. If search is unavailable, FinnAI falls back to a
-local answer.
+query and ordinary network metadata such as the device IP address to those
+search providers. Retrieved excerpts are processed by the on-device model, and
+FinnAI shows the source links used. If search is unavailable, FinnAI falls
+back to a local answer.
 
 ## 2. Network Usage & Third-Party Services
 FinnAI uses network access exclusively for the following specific purposes:
 
 ### A. Model Downloads
-When you download or update an AI model, the application connects to the configured model repository over HTTPS to fetch licensed `.gguf` model files. The request necessarily exposes ordinary network metadata, such as an IP address, to that host, but it does not include prompts or conversation content. FinnAI itself is proprietary software, not an open-source application.
+When you download or update an AI model, the application connects to Hugging
+Face (`huggingface.co`) over HTTPS to fetch the licensed LFM2.5-VL 1.6B `.gguf`
+model files. The request necessarily exposes ordinary network metadata, such as
+an IP address, to that host, but it does not include prompts or conversation
+content. FinnAI itself is proprietary software, not an open-source application.
 
 ### B. Optional In-App AI Response Reporting
 If you explicitly choose to report an AI response via the in-app "Report" feature:

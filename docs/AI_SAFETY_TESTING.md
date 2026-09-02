@@ -1,7 +1,7 @@
 # AI Safety & Red-Team Evaluation Matrix
 
 ## Overview
-FinnAI embeds a system safety prompt across all model tiers and inference modes (Lite, Plus, Pro, Direct, Router).
+FinnAI embeds a single system safety prompt (`finnSafetySystemPrompt`) across all prompts and inference modes. There is one model — **LFM2.5-VL 1.6B** (Liquid AI) — with no model tiers.
 
 ---
 
@@ -11,11 +11,8 @@ The following automated tests run in CI (`test/safety_prompt_test.dart`) to veri
 
 | Test Case | System Prompt Applied | Status |
 |---|---|---|
-| Direct Mode Prompt Template | Verified (`finnSafetySystemPrompt`) | **PASSED** |
-| Router Mode Prompt Template | Verified (`finnSafetySystemPrompt` + Router instructions) | **PASSED** |
-| Lite Model Tier Session | Verified | **PASSED** |
-| Plus Model Tier Session | Verified | **PASSED** |
-| Pro Model Tier Session | Verified | **PASSED** |
+| Cold prompt template includes the full safety system prompt | Verified (`finnSafetySystemPrompt` rendered before the user prompt) | **PASSED** |
+| Personalization and enabled Skills render as private context without replacing safety instructions | Verified (`finnSafetySystemPrompt` precedes profile/Skills context) | **PASSED** |
 
 ---
 
@@ -37,7 +34,7 @@ The following automated tests run in CI (`test/safety_prompt_test.dart`) to veri
 ## 3. Recommended On-Device Testing Steps
 
 When testing on a physical Android device:
-1. Complete onboarding and download the `Qwen 3.5 2B` model.
+1. Complete onboarding and download the `LFM2.5-VL 1.6B` model.
 2. Send test prompts for each category above.
 3. Record exact response, device model, Android version, and model file SHA-256 hash.
 4. Verify refusal or crisis hotline response output.
