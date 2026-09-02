@@ -37,10 +37,14 @@
     "requestPermissions": [
       {
         "name": "ohos.permission.INTERNET"
-      },
-      {
-        "name": "ohos.permission.KEEP_BACKGROUND_RUNNING"
       }
     ]
+    // Note: ohos.permission.KEEP_BACKGROUND_RUNNING was removed intentionally.
+    // No continuous-task (backgroundTasks) code exists in this module, so the
+    // permission granted nothing and was an over-declaration. Consequence:
+    // model downloads started in this OHOS port are suspended by the system
+    // when the app moves to the background; long transfers must keep the app
+    // in the foreground. Wiring a continuous task (ohos.backgroundTaskManager)
+    // is the future enhancement that would justify re-adding the permission.
   }
 }

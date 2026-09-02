@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Dark-mode launch splash: the FinnAI mark is near-black, so on the black
+     canvas it is tinted to the light canvas color to stay visible.
+     android:tint on a bitmap requires API 21+; the app minSdk is 26. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/launch_background" />
+    <item>
+        <bitmap
+            android:gravity="center"
+            android:src="@drawable/launch_icon"
+            android:tint="@color/launch_background_light"
+            android:tintMode="src_in" />
+    </item>
+</layer-list>

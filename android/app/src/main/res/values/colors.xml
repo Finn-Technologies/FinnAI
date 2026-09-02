@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_launcher_background">#0F172A</color>
+    <!-- Launch splash canvas (light mode); see drawable*/launch_background.xml -->
+    <color name="launch_background">#F8F8F8</color>
+    <!-- Brand canvas tone used to keep the near-black mark visible on the
+         dark splash background; see drawable-night/launch_background.xml -->
+    <color name="launch_background_light">#F8F8F8</color>
 </resources>

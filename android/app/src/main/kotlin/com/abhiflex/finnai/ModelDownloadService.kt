@@ -142,8 +142,21 @@ class ModelDownloadService : Service() {
         return START_REDELIVER_INTENT
     }
 
+    /**
+     * Thrown when a model transfer would leave https (an insecure source URL
+     * or an insecure redirect target). Surfaced as a download failure with a
+     * clear error instead of silently downgrading an 854 MB transfer to
+     * cleartext.
+     */
+    private class InsecureModelTransferException(message: String) : IllegalStateException(message)
+
+    /**
+     * Walks the redirect chain with HEAD requests so the transfer starts from
+     * its final destination. Every hop - including the original URL - must
+     * stay on https; see [resolveRedirectTarget].
+     */
     private fun resolveFinalUrl(urlString: String): String {
-        var currentUrl = urlString
+        var currentUrl = requireHttps(urlString, "model source").toString()
         var redirects = 0
         while (redirects < 6) {
             try {
@@ -160,20 +173,41 @@ class ModelDownloadService : Service() {
                 val location = conn.getHeaderField("Location")
                 conn.disconnect()
                 if (code in listOf(HttpURLConnection.HTTP_MOVED_PERM, HttpURLConnection.HTTP_MOVED_TEMP, HttpURLConnection.HTTP_SEE_OTHER, 307, 308) && location != null) {
-                    currentUrl = if (location.startsWith("http://") || location.startsWith("https://")) {
-                        location
-                    } else {
-                        URL(URL(currentUrl), location).toString()
-                    }
+                    currentUrl = resolveRedirectTarget(currentUrl, location)
                     redirects++
                 } else {
                     break
                 }
-            } catch (_: Exception) {
+            } catch (error: Exception) {
+                // A policy failure is deterministic; never swallow it into a
+                // cleartext retry like the transient network errors below.
+                if (error is InsecureModelTransferException) throw error
                 break
             }
         }
         return currentUrl
+    }
+
+    /** Resolves a Location header against [currentUrl], refusing non-https targets. */
+    private fun resolveRedirectTarget(currentUrl: String, location: String): String {
+        val resolved = if (location.startsWith("http://") || location.startsWith("https://")) {
+            location
+        } else {
+            // Relative (and protocol-relative) targets inherit the scheme of
+            // the URL they redirect from, which is already https-validated.
+            URL(URL(currentUrl), location).toString()
+        }
+        return requireHttps(resolved, "redirect from $currentUrl").toString()
+    }
+
+    private fun requireHttps(urlString: String, source: String): URL {
+        val parsed = URL(urlString)
+        if (parsed.protocol != "https") {
+            throw InsecureModelTransferException(
+                "Model download requires https but the $source points at '${parsed.protocol}:'",
+            )
+        }
+        return parsed
     }
 
     private fun download(url: String, partial: File, target: String, expectedBytes: Long, label: String) {
@@ -240,6 +274,9 @@ class ModelDownloadService : Service() {
                 return
             } catch (error: Exception) {
                 if (wasCancelled(target)) throw error
+                // An insecure redirect target is a policy failure, not a
+                // transient network problem; retrying cannot fix it.
+                if (error is InsecureModelTransferException) throw error
                 if (attempt >= 2) throw error
                 attempt++
                 Thread.sleep(600L * attempt)
@@ -453,6 +490,12 @@ class ModelDownloadService : Service() {
                         failure.set(IllegalStateException("Download paused"))
                         return
                     }
+                    // An insecure redirect target is a policy failure, not a
+                    // transient network problem; retrying cannot fix it.
+                    if (error is InsecureModelTransferException) {
+                        failure.set(error)
+                        return
+                    }
                     // Retry a flaky range several times with backoff so a
                     // transient drop never kills the whole transfer; the
                     // Dart-side supervisor additionally restarts the service
@@ -484,7 +527,7 @@ class ModelDownloadService : Service() {
     }
 
     private fun openConnection(url: String, rangeStart: Long, rangeEnd: Long): HttpURLConnection {
-        var currentUrl = url
+        var currentUrl = requireHttps(url, "model source").toString()
         var redirects = 0
         while (true) {
             val connection = (URL(currentUrl).openConnection() as HttpURLConnection).apply {
@@ -503,11 +546,7 @@ class ModelDownloadService : Service() {
                 val location = connection.getHeaderField("Location")
                 connection.disconnect()
                 if (location != null && redirects < 6) {
-                    currentUrl = if (location.startsWith("http://") || location.startsWith("https://")) {
-                        location
-                    } else {
-                        URL(URL(currentUrl), location).toString()
-                    }
+                    currentUrl = resolveRedirectTarget(currentUrl, location)
                     redirects++
                     continue
                 }
