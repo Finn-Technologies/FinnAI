@@ -2,7 +2,7 @@
 
 **Owner:** Track 5 (Engine abstraction), co-signed by Track 1 (Multimodal).  
 **Status:** Phase 1 (now) — interface + adapter; no kernel changes.  
-**Worktree:** `~/.commandcode/worktrees/FinnAI/wt-engine` (`worktree-track5-engine`).
+**Branch:** `worktree-track5-engine` (work in the repository root; paths below are repo-relative).
 
 ## Purpose
 

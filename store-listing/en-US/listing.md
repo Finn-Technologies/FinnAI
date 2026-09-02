@@ -6,8 +6,7 @@ Finn AI: Local AI Assistant
 
 ## Short description
 
-Private AI conversations powered on your Android device, with automatic web
-search when a request needs current information.
+Private on-device AI assistant. No account needed. Chat offline.
 
 ## Full description
 

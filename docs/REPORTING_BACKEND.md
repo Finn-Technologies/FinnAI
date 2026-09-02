@@ -24,7 +24,7 @@ duplicated in the private Flutter repository.
 ```json
 {
   "reportId": "string (alphanumeric/underscores/dashes, max 100 chars)",
-  "category": "harmfulOrDangerous | hateOrHarassment | sexualContent | childSafety | selfHarm | illegalOrDeceptive | falseOrMisleading | other",
+  "category": "harmfulOrDangerous | hateOrHarassment | sexualContent | childSafety | selfHarm | illegalOrDeceptive | falseOrMisleading | spamOrScam | other",
   "assistantResponse": "string (max 4000 chars)",
   "timestamp": "ISO-8601 string",
   "appVersion": "string (max 50 chars)",
@@ -64,6 +64,19 @@ The deployed routes are:
 
 ---
 
-## Operational Status
-The release builder refuses to produce a publishable AAB until `/health`
-returns HTTP 200 with `{"status":"ok"}`.
+## Operational Status (Legacy / Test-Only)
+
+The `/health` endpoint flow described above is **legacy and test-only**: it is
+part of the optional landing-page backend design and is not exercised by the
+release builder.
+
+`tool/build_play_release.sh` does **not** query `/health`. Before building the
+publishable AAB it only verifies that the three hosted public pages return
+HTTP 200 over HTTPS:
+
+- `FINN_PRIVACY_POLICY_URL` (default `https://finn-org.vercel.app/privacy`)
+- `FINN_TERMS_URL` (default `https://finn-org.vercel.app/terms`)
+- `FINN_SUPPORT_URL` (default `https://finn-org.vercel.app/support`)
+
+The production app itself prepares user-reviewable email reports addressed to
+`finn_org@proton.me` and never calls the `POST /v1/reports` endpoint.
