@@ -128,15 +128,15 @@
   "@onboardingPrecautionFour": {
     "description": "Precaution 4"
   },
-  "onboardingInstallTitleInstalling": "Installing Qwen 3.5 2B",
+  "onboardingInstallTitleInstalling": "Instalando LFM2.5-VL 1.6B",
   "@onboardingInstallTitleInstalling": {
     "description": "Install title in progress"
   },
-  "onboardingInstallTitleReady": "Qwen 3.5 2B ready",
+  "onboardingInstallTitleReady": "LFM2.5-VL 1.6B listo",
   "@onboardingInstallTitleReady": {
     "description": "Install title ready"
   },
-  "onboardingInstallPreparing": "Preparing Qwen 3.5 2B for this device…",
+  "onboardingInstallPreparing": "Preparando LFM2.5-VL 1.6B para este dispositivo…",
   "@onboardingInstallPreparing": {
     "description": "Preparing message"
   },
@@ -245,7 +245,7 @@
   "@chatFinnTyping": {
     "description": "Typing indicator"
   },
-  "chatAskAnything": "Ask me anything — I run entirely on this device, so your\nchats stay private.",
+  "chatAskAnything": "Pregúntame lo que quieras — funciono por completo en este dispositivo, así que tus\nconversaciones nunca salen de tu teléfono.",
   "@chatAskAnything": {
     "description": "Welcome ask anything"
   },
@@ -327,7 +327,7 @@
   "@chatDownloadModelTitle": {
     "description": "Download prompt title"
   },
-  "chatDownloadModelBody": "{size} downloads once and is verified before use. The download continues in the background.",
+  "chatDownloadModelBody": "{size} se descarga una vez y se verifica antes de usarlo. La descarga se reanuda de forma segura tras una conexión interrumpida, y tus chats permanecen en este dispositivo.",
   "@chatDownloadModelBody": {
     "description": "Download body",
     "placeholders": {
@@ -336,7 +336,7 @@
       }
     }
   },
-  "chatHiPrefix": "Hi, I’m Finn",
+  "chatHiPrefix": "Hola, soy Finn.",
   "@chatHiPrefix": {
     "description": "Hi prefix"
   },
@@ -421,7 +421,7 @@
   "@settingsDeleteAllDataTitle": {
     "description": "Delete all title"
   },
-  "settingsDeleteAllDataBody": "This permanently deletes encrypted conversations and keys, downloaded AI models, creations, profile preferences, skills, and onboarding state. Finn AI will return to a clean first run.",
+  "settingsDeleteAllDataBody": "Esto elimina definitivamente las conversaciones y claves cifradas, los modelos de IA descargados, las creaciones, las preferencias del perfil, las Skills y el estado de onboarding. FinnAI volverá a un primer inicio limpio.",
   "@settingsDeleteAllDataBody": {
     "description": "Delete all body"
   },
@@ -619,7 +619,7 @@
     "description": "Skills subtitle",
     "placeholders": {
       "count": {
-        "type": "String"
+        "type": "int"
       }
     }
   },
@@ -788,5 +788,121 @@
   "settingsSavedConversationsLabel": "Saved Conversations",
   "@settingsSavedConversationsLabel": {
     "description": "Saved conversations row label"
-  }
+  },
+  "commonClose": "Cerrar",
+  "commonTryAgain": "Reintentar",
+  "commonDismiss": "Descartar",
+  "bootstrapErrorTitle": "FinnAI no pudo iniciarse",
+  "bootstrapErrorBody": "Algo salió mal al inicializar el motor de IA. Tus conversaciones están a salvo.",
+  "chatHeicNotSupported": "Las imágenes HEIC no son compatibles. Compártelas como JPEG o PNG.",
+  "chatImageAnalysisUnavailable": "Análisis de imágenes no disponible: instala el componente de imágenes en Ajustes.",
+  "attachmentCamera": "Cámara",
+  "attachmentPhotos": "Fotos",
+  "attachmentFiles": "Archivos",
+  "chatAddAttachmentSemantic": "Añadir archivo adjunto",
+  "chatImagePromptDefault": "Analiza esta imagen adjunta en detalle.",
+  "chatFilePromptDefault": "Resume el archivo adjunto y destaca sus puntos clave.",
+  "suggestionSummarizeArticle": "Resúme un artículo web",
+  "suggestionExplainSimply": "Explica un tema complejo de forma sencilla",
+  "suggestionPlanDay": "Planifica mi día en tres pasos",
+  "suggestionDraftEmail": "Redacta un correo breve",
+  "suggestionBrainstormNames": "Propón nombres para mi nuevo proyecto",
+  "suggestionIdeaToPlan": "Convierte una idea aproximada en un plan paso a paso",
+  "suggestionDebugError": "Ayúdame a depurar un error confuso",
+  "suggestionGoodbyeNote": "Escribe una nota de despedida rápida",
+  "suggestionCompareOptions": "Compara dos opciones antes de decidir",
+  "suggestionFreshPerspective": "Dame una perspectiva nueva sobre un problema",
+  "chatAnotherChatFallback": "otro chat",
+  "chatSelectText": "Seleccionar texto",
+  "chatReportAction": "Denunciar",
+  "chatMessageActionsHint": "Mantén pulsado el mensaje para ver las acciones",
+  "chatGeneratingInOtherChat": "Generando en otro chat",
+  "chatRegenerate": "Regenerar",
+  "chatHideSources": "Ocultar fuentes",
+  "chatShowSources": "Mostrar fuentes",
+  "chatRewriteHint": "Reescribe tu mensaje",
+  "chatAskAnythingHint": "Pregunta algo",
+  "chatMessageToFinnSemantic": "Mensaje para Finn",
+  "chatStopGeneratingSemantic": "Detener la generación",
+  "chatSendMessageSemantic": "Enviar mensaje",
+  "chatOpenMenuTooltip": "Abrir menú",
+  "chatRenameAction": "Renombrar",
+  "chatRenameEnterTitleHint": "Introduce el título del chat",
+  "chatDeleteActiveGenerationBody": "Detén la generación activa antes de eliminar este chat. Su respuesta parcial se conservará.",
+  "chatDeleteConfirmBody": "¿Seguro que quieres eliminar este historial de chat? Esta acción no se puede deshacer.",
+  "settingsModelActive": "Activo",
+  "settingsModelInstalled": "Instalado",
+  "settingsModelPartial": "Parcial",
+  "settingsModelNotInstalled": "No instalado",
+  "creationsAll": "Todo",
+  "creationsFilterSemantic": "Creaciones: {kind}",
+  "creationsEmptyFilteredTitle": "Aquí no hay nada todavía",
+  "creationsEmptyTitle": "Crea algo útil",
+  "creationsEmptyFilteredBody": "Prueba otra categoría o crea una nueva.",
+  "creationsEmptyBody": "Describe abajo una app, un widget o una presentación. Finn lo convertirá en un plan práctico.",
+  "creationsDescribeHint": "Describe una creación",
+  "creationsCreateSemantic": "Crear",
+  "creationsCreatingSemantic": "Creando",
+  "creationsKindApp": "App",
+  "creationsKindWidget": "Widget",
+  "creationsKindPresentation": "Presentación",
+  "skillsSaveFailed": "No se pudo guardar esa Skill.",
+  "skillsBuiltForFinn": "Diseñado para Finn",
+  "skillsBuiltForFinnSubtitle": "Activa solo lo que necesites para cada tipo de trabajo.",
+  "skillsYourSkills": "Tus Skills",
+  "skillsYourSkillsSubtitle": "Crea instrucciones reutilizables para tus propios flujos de trabajo.",
+  "skillsNoneActive": "No hay Skills activas",
+  "skillsActiveCount": "{count} activas",
+  "skillsActionsTooltip": "Acciones de la Skill",
+  "skillsNameSemantic": "Skill {name}",
+  "skillsEditTitle": "Editar Skill",
+  "skillsEditorName": "Nombre",
+  "skillsEditorNameHint": "¿Qué hace esta Skill?",
+  "skillsEditorDescription": "Descripción breve",
+  "skillsEditorDescriptionHint": "Un recordatorio rápido para ti",
+  "skillsEditorInstructions": "Instrucciones",
+  "skillsEditorInstructionsHint": "Di a Finn cómo abordar este tipo de tarea",
+  "skillsCategoryWriting": "Escritura",
+  "skillsCategoryDevelopment": "Desarrollo",
+  "skillsCategoryLearning": "Aprendizaje",
+  "skillsCategoryPlanning": "Planificación",
+  "skillsCategoryCustom": "Personalizada",
+  "youNamePlaceholder": "Nombre preferido",
+  "youAboutQuestion": "¿Algo que Finn deba saber?",
+  "youAboutPlaceholder": "Tu trabajo, intereses, metas o contexto",
+  "youInstructionsQuestion": "¿Cómo debe responder Finn?",
+  "youInstructionsPlaceholder": "Por ejemplo: explica los términos técnicos, usa unidades métricas…",
+  "youSaving": "Guardando…",
+  "youSavePreferences": "Guardar preferencias",
+  "youStyleSemantic": "Estilo de respuesta {style}",
+  "youResponseStyleConversational": "Conversacional",
+  "reportSentThanks": "Informe enviado. Gracias por ayudar a mantener FinnAI seguro.",
+  "reportNoEmailApp": "No se pudo abrir ninguna app de correo. Escribe directamente a finn_org@proton.me.",
+  "reportDetailsHint": "Detalles adicionales opcionales...",
+  "reportCategoryHarmfulOrDangerous": "Dañino o peligroso",
+  "reportCategoryHateOrHarassment": "Odio o acoso",
+  "reportCategorySexualContent": "Contenido sexual",
+  "reportCategoryChildSafety": "Preocupación de seguridad infantil",
+  "reportCategorySelfHarm": "Preocupación de autolesión",
+  "reportCategoryIllegalOrDeceptive": "Orientación ilegal o engañosa",
+  "reportCategoryFalseOrMisleading": "Respuesta falsa o engañosa",
+  "reportCategorySpamOrScam": "Spam o estafa",
+  "statusReady": "Listo",
+  "statusOptimizedAutomatically": "Optimizado automáticamente",
+  "statusModelReady": "El modelo de IA está listo",
+  "statusDownloadPaused": "Descarga en pausa",
+  "statusModelRemoved": "Modelo eliminado",
+  "statusCheckingWeb": "Consultando la web…",
+  "statusSearchingBrowser": "Buscando en el navegador…",
+  "statusThinkingOnDevice": "Pensando en este dispositivo",
+  "statusGeneratedLocally": "Generado localmente",
+  "statusStopped": "Detenido",
+  "statusReadyAfterRuntimeReset": "Listo tras el reinicio del runtime",
+  "statusOptimizingForDevice": "Configurando FinnAI para un rendimiento óptimo…",
+  "statusOptimizedForDevice": "FinnAI está optimizado para este dispositivo",
+  "statusCheckingDownload": "Verificando la descarga",
+  "statusDownloadingModel": "Descargando el modelo de IA",
+  "statusDownloadingArtifact": "Descargando {artifact}",
+  "statusVerifyingArtifact": "Verificando {artifact}",
+  "statusLoadingModel": "Cargando el modelo de IA"
 }

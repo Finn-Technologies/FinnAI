@@ -196,7 +196,7 @@ class _FluxContextMenuOverlay extends StatelessWidget {
     required this.animation,
   });
 
-  final _FluxContextMenuRoute route;
+  final _FluxContextMenuRoute<dynamic> route;
   final Animation<double> animation;
 
   @override

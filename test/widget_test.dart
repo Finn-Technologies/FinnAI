@@ -54,8 +54,8 @@ void main() {
     expect(find.text('Finn AI is Privacy-First'), findsOneWidget);
     expect(find.textContaining('proprietary software'), findsOneWidget);
     await moveForward();
-    expect(find.text('Installing Qwen 3.5 2B'), findsOneWidget);
-    expect(find.text('Preparing Qwen 3.5 2B for this device…'), findsOneWidget);
+    expect(find.text('Installing LFM2.5-VL 1.6B'), findsOneWidget);
+    expect(find.text('Preparing LFM2.5-VL 1.6B for this device…'), findsOneWidget);
 
     tester.widget<PageView>(find.byType(PageView)).controller!.jumpToPage(3);
     await tester.pump();

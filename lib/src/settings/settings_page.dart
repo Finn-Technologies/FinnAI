@@ -210,10 +210,8 @@ class _SettingsPageState extends State<SettingsPage>
       builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(FluxRadius.sheet)),
         title: Text(L10n.of(context).settingsDeleteAllDataTitle),
-        content: const Text(
-          'This permanently deletes encrypted conversations and keys, '
-          'downloaded AI models, creations, profile preferences, skills, and '
-          'onboarding state. FinnAI will return to a clean first run.',
+        content: Text(
+          L10n.of(context).settingsDeleteAllDataBody,
         ),
         actions: [
           TextButton(
@@ -942,12 +940,12 @@ class _ModelRow extends StatelessWidget {
     final statusLabel = downloading
         ? '${(progress * 100).round()}%'
         : activeAndInstalled
-        ? 'Active'
+        ? L10n.of(context).settingsModelActive
         : state.installed
-        ? 'Installed'
+        ? L10n.of(context).settingsModelInstalled
         : state.resumable
-        ? 'Partial'
-        : 'Not installed';
+        ? L10n.of(context).settingsModelPartial
+        : L10n.of(context).settingsModelNotInstalled;
 
     final statusColor = downloading
         ? FluxColors.accentBlue
@@ -1051,7 +1049,7 @@ class _ModelRow extends StatelessWidget {
 }
 
 class _SectionHeader extends StatelessWidget {
-  _SectionHeader({required this.label});
+  const _SectionHeader({required this.label});
 
   final String label;
 

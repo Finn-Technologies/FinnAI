@@ -65,7 +65,7 @@ CreationDraft parseCreationDraft(String response, String fallbackPrompt) {
         final rawSections = map['sections'];
         final sections = rawSections is List
             ? rawSections
-                  .whereType<Map>()
+                  .whereType<Map<dynamic, dynamic>>()
                   .map(
                     (item) => CreationSection.fromJson(
                       Map<String, Object?>.from(item),

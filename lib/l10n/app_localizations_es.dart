@@ -107,14 +107,14 @@ class AppLocalizationsEs extends AppLocalizations {
   String get onboardingPrecautionFour => 'Designed for battery efficiency';
 
   @override
-  String get onboardingInstallTitleInstalling => 'Installing Qwen 3.5 2B';
+  String get onboardingInstallTitleInstalling => 'Instalando LFM2.5-VL 1.6B';
 
   @override
-  String get onboardingInstallTitleReady => 'Qwen 3.5 2B ready';
+  String get onboardingInstallTitleReady => 'LFM2.5-VL 1.6B listo';
 
   @override
   String get onboardingInstallPreparing =>
-      'Preparing Qwen 3.5 2B for this device…';
+      'Preparando LFM2.5-VL 1.6B para este dispositivo…';
 
   @override
   String get onboardingInstallReadyForChat =>
@@ -185,7 +185,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get chatAskAnything =>
-      'Ask me anything — I run entirely on this device, so your\nchats stay private.';
+      'Pregúntame lo que quieras — funciono por completo en este dispositivo, así que tus\nconversaciones nunca salen de tu teléfono.';
 
   @override
   String get chatTryAsking => 'Try asking';
@@ -247,11 +247,11 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String chatDownloadModelBody(String size) {
-    return '$size downloads once and is verified before use. The download continues in the background.';
+    return '$size se descarga una vez y se verifica antes de usarlo. La descarga se reanuda de forma segura tras una conexión interrumpida, y tus chats permanecen en este dispositivo.';
   }
 
   @override
-  String get chatHiPrefix => 'Hi, I’m Finn';
+  String get chatHiPrefix => 'Hola, soy Finn.';
 
   @override
   String get chatFinnAI => 'Finn AI';
@@ -323,7 +323,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get settingsDeleteAllDataBody =>
-      'This permanently deletes encrypted conversations and keys, downloaded AI models, creations, profile preferences, skills, and onboarding state. Finn AI will return to a clean first run.';
+      'Esto elimina definitivamente las conversaciones y claves cifradas, los modelos de IA descargados, las creaciones, las preferencias del perfil, las Skills y el estado de onboarding. FinnAI volverá a un primer inicio limpio.';
 
   @override
   String get settingsDeleteAllDataDeleting => 'Deleting All Local Data…';
@@ -464,7 +464,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get skillsTitle => 'Skills';
 
   @override
-  String skillsSubtitle(String count) {
+  String skillsSubtitle(int count) {
     return '$count available · skills guide relevant replies';
   }
 
@@ -597,4 +597,389 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get settingsSavedConversationsLabel => 'Saved Conversations';
+
+  @override
+  String get commonClose => 'Cerrar';
+
+  @override
+  String get commonTryAgain => 'Reintentar';
+
+  @override
+  String get commonDismiss => 'Descartar';
+
+  @override
+  String get bootstrapErrorTitle => 'FinnAI no pudo iniciarse';
+
+  @override
+  String get bootstrapErrorBody =>
+      'Algo salió mal al inicializar el motor de IA. Tus conversaciones están a salvo.';
+
+  @override
+  String get chatHeicNotSupported =>
+      'Las imágenes HEIC no son compatibles. Compártelas como JPEG o PNG.';
+
+  @override
+  String get chatImageAnalysisUnavailable =>
+      'Análisis de imágenes no disponible: instala el componente de imágenes en Ajustes.';
+
+  @override
+  String get attachmentCamera => 'Cámara';
+
+  @override
+  String get attachmentPhotos => 'Fotos';
+
+  @override
+  String get attachmentFiles => 'Archivos';
+
+  @override
+  String get chatAddAttachmentSemantic => 'Añadir archivo adjunto';
+
+  @override
+  String get chatImagePromptDefault =>
+      'Analiza esta imagen adjunta en detalle.';
+
+  @override
+  String get chatFilePromptDefault =>
+      'Resume el archivo adjunto y destaca sus puntos clave.';
+
+  @override
+  String get suggestionSummarizeArticle => 'Resúme un artículo web';
+
+  @override
+  String get suggestionExplainSimply =>
+      'Explica un tema complejo de forma sencilla';
+
+  @override
+  String get suggestionPlanDay => 'Planifica mi día en tres pasos';
+
+  @override
+  String get suggestionDraftEmail => 'Redacta un correo breve';
+
+  @override
+  String get suggestionBrainstormNames =>
+      'Propón nombres para mi nuevo proyecto';
+
+  @override
+  String get suggestionIdeaToPlan =>
+      'Convierte una idea aproximada en un plan paso a paso';
+
+  @override
+  String get suggestionDebugError => 'Ayúdame a depurar un error confuso';
+
+  @override
+  String get suggestionGoodbyeNote => 'Escribe una nota de despedida rápida';
+
+  @override
+  String get suggestionCompareOptions =>
+      'Compara dos opciones antes de decidir';
+
+  @override
+  String get suggestionFreshPerspective =>
+      'Dame una perspectiva nueva sobre un problema';
+
+  @override
+  String get chatAnotherChatFallback => 'otro chat';
+
+  @override
+  String get chatSelectText => 'Seleccionar texto';
+
+  @override
+  String get chatReportAction => 'Denunciar';
+
+  @override
+  String get chatMessageActionsHint =>
+      'Mantén pulsado el mensaje para ver las acciones';
+
+  @override
+  String get chatGeneratingInOtherChat => 'Generando en otro chat';
+
+  @override
+  String get chatRegenerate => 'Regenerar';
+
+  @override
+  String get chatHideSources => 'Ocultar fuentes';
+
+  @override
+  String get chatShowSources => 'Mostrar fuentes';
+
+  @override
+  String get chatRewriteHint => 'Reescribe tu mensaje';
+
+  @override
+  String get chatAskAnythingHint => 'Pregunta algo';
+
+  @override
+  String get chatMessageToFinnSemantic => 'Mensaje para Finn';
+
+  @override
+  String get chatStopGeneratingSemantic => 'Detener la generación';
+
+  @override
+  String get chatSendMessageSemantic => 'Enviar mensaje';
+
+  @override
+  String get chatOpenMenuTooltip => 'Abrir menú';
+
+  @override
+  String get chatRenameAction => 'Renombrar';
+
+  @override
+  String get chatRenameEnterTitleHint => 'Introduce el título del chat';
+
+  @override
+  String get chatDeleteActiveGenerationBody =>
+      'Detén la generación activa antes de eliminar este chat. Su respuesta parcial se conservará.';
+
+  @override
+  String get chatDeleteConfirmBody =>
+      '¿Seguro que quieres eliminar este historial de chat? Esta acción no se puede deshacer.';
+
+  @override
+  String get settingsModelActive => 'Activo';
+
+  @override
+  String get settingsModelInstalled => 'Instalado';
+
+  @override
+  String get settingsModelPartial => 'Parcial';
+
+  @override
+  String get settingsModelNotInstalled => 'No instalado';
+
+  @override
+  String get creationsAll => 'Todo';
+
+  @override
+  String creationsFilterSemantic(String kind) {
+    return 'Creaciones: $kind';
+  }
+
+  @override
+  String get creationsEmptyFilteredTitle => 'Aquí no hay nada todavía';
+
+  @override
+  String get creationsEmptyTitle => 'Crea algo útil';
+
+  @override
+  String get creationsEmptyFilteredBody =>
+      'Prueba otra categoría o crea una nueva.';
+
+  @override
+  String get creationsEmptyBody =>
+      'Describe abajo una app, un widget o una presentación. Finn lo convertirá en un plan práctico.';
+
+  @override
+  String get creationsDescribeHint => 'Describe una creación';
+
+  @override
+  String get creationsCreateSemantic => 'Crear';
+
+  @override
+  String get creationsCreatingSemantic => 'Creando';
+
+  @override
+  String get creationsKindApp => 'App';
+
+  @override
+  String get creationsKindWidget => 'Widget';
+
+  @override
+  String get creationsKindPresentation => 'Presentación';
+
+  @override
+  String get skillsSaveFailed => 'No se pudo guardar esa Skill.';
+
+  @override
+  String get skillsBuiltForFinn => 'Diseñado para Finn';
+
+  @override
+  String get skillsBuiltForFinnSubtitle =>
+      'Activa solo lo que necesites para cada tipo de trabajo.';
+
+  @override
+  String get skillsYourSkills => 'Tus Skills';
+
+  @override
+  String get skillsYourSkillsSubtitle =>
+      'Crea instrucciones reutilizables para tus propios flujos de trabajo.';
+
+  @override
+  String get skillsNoneActive => 'No hay Skills activas';
+
+  @override
+  String skillsActiveCount(int count) {
+    return '$count activas';
+  }
+
+  @override
+  String get skillsActionsTooltip => 'Acciones de la Skill';
+
+  @override
+  String skillsNameSemantic(String name) {
+    return 'Skill $name';
+  }
+
+  @override
+  String get skillsEditTitle => 'Editar Skill';
+
+  @override
+  String get skillsEditorName => 'Nombre';
+
+  @override
+  String get skillsEditorNameHint => '¿Qué hace esta Skill?';
+
+  @override
+  String get skillsEditorDescription => 'Descripción breve';
+
+  @override
+  String get skillsEditorDescriptionHint => 'Un recordatorio rápido para ti';
+
+  @override
+  String get skillsEditorInstructions => 'Instrucciones';
+
+  @override
+  String get skillsEditorInstructionsHint =>
+      'Di a Finn cómo abordar este tipo de tarea';
+
+  @override
+  String get skillsCategoryWriting => 'Escritura';
+
+  @override
+  String get skillsCategoryDevelopment => 'Desarrollo';
+
+  @override
+  String get skillsCategoryLearning => 'Aprendizaje';
+
+  @override
+  String get skillsCategoryPlanning => 'Planificación';
+
+  @override
+  String get skillsCategoryCustom => 'Personalizada';
+
+  @override
+  String get youNamePlaceholder => 'Nombre preferido';
+
+  @override
+  String get youAboutQuestion => '¿Algo que Finn deba saber?';
+
+  @override
+  String get youAboutPlaceholder => 'Tu trabajo, intereses, metas o contexto';
+
+  @override
+  String get youInstructionsQuestion => '¿Cómo debe responder Finn?';
+
+  @override
+  String get youInstructionsPlaceholder =>
+      'Por ejemplo: explica los términos técnicos, usa unidades métricas…';
+
+  @override
+  String get youSaving => 'Guardando…';
+
+  @override
+  String get youSavePreferences => 'Guardar preferencias';
+
+  @override
+  String youStyleSemantic(String style) {
+    return 'Estilo de respuesta $style';
+  }
+
+  @override
+  String get youResponseStyleConversational => 'Conversacional';
+
+  @override
+  String get reportSentThanks =>
+      'Informe enviado. Gracias por ayudar a mantener FinnAI seguro.';
+
+  @override
+  String get reportNoEmailApp =>
+      'No se pudo abrir ninguna app de correo. Escribe directamente a finn_org@proton.me.';
+
+  @override
+  String get reportDetailsHint => 'Detalles adicionales opcionales...';
+
+  @override
+  String get reportCategoryHarmfulOrDangerous => 'Dañino o peligroso';
+
+  @override
+  String get reportCategoryHateOrHarassment => 'Odio o acoso';
+
+  @override
+  String get reportCategorySexualContent => 'Contenido sexual';
+
+  @override
+  String get reportCategoryChildSafety => 'Preocupación de seguridad infantil';
+
+  @override
+  String get reportCategorySelfHarm => 'Preocupación de autolesión';
+
+  @override
+  String get reportCategoryIllegalOrDeceptive =>
+      'Orientación ilegal o engañosa';
+
+  @override
+  String get reportCategoryFalseOrMisleading => 'Respuesta falsa o engañosa';
+
+  @override
+  String get reportCategorySpamOrScam => 'Spam o estafa';
+
+  @override
+  String get statusReady => 'Listo';
+
+  @override
+  String get statusOptimizedAutomatically => 'Optimizado automáticamente';
+
+  @override
+  String get statusModelReady => 'El modelo de IA está listo';
+
+  @override
+  String get statusDownloadPaused => 'Descarga en pausa';
+
+  @override
+  String get statusModelRemoved => 'Modelo eliminado';
+
+  @override
+  String get statusCheckingWeb => 'Consultando la web…';
+
+  @override
+  String get statusSearchingBrowser => 'Buscando en el navegador…';
+
+  @override
+  String get statusThinkingOnDevice => 'Pensando en este dispositivo';
+
+  @override
+  String get statusGeneratedLocally => 'Generado localmente';
+
+  @override
+  String get statusStopped => 'Detenido';
+
+  @override
+  String get statusReadyAfterRuntimeReset =>
+      'Listo tras el reinicio del runtime';
+
+  @override
+  String get statusOptimizingForDevice =>
+      'Configurando FinnAI para un rendimiento óptimo…';
+
+  @override
+  String get statusOptimizedForDevice =>
+      'FinnAI está optimizado para este dispositivo';
+
+  @override
+  String get statusCheckingDownload => 'Verificando la descarga';
+
+  @override
+  String get statusDownloadingModel => 'Descargando el modelo de IA';
+
+  @override
+  String statusDownloadingArtifact(String artifact) {
+    return 'Descargando $artifact';
+  }
+
+  @override
+  String statusVerifyingArtifact(String artifact) {
+    return 'Verificando $artifact';
+  }
+
+  @override
+  String get statusLoadingModel => 'Cargando el modelo de IA';
 }

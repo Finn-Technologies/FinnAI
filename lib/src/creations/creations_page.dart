@@ -230,7 +230,9 @@ class _CreationsPageState extends State<CreationsPage> {
 
   Widget _content() {
     if (_controller.loading) {
-      return const Center(child: _QuietLoader(label: 'Opening creations'));
+      return Center(
+        child: _QuietLoader(label: L10n.of(context).creationsOpening),
+      );
     }
     final visible = _controller.visible;
     if (visible.isEmpty) {
@@ -288,7 +290,11 @@ class _Filters extends StatelessWidget {
           return Semantics(
             button: true,
             selected: active,
-            label: '${value?.label ?? 'All'} creations',
+            label: L10n.of(context).creationsFilterSemantic(
+              value == null
+                  ? L10n.of(context).creationsAll
+                  : _kindLabel(context, value),
+            ),
             child: Material(
               color: active
                   ? FluxColors.inkOf(context)
@@ -301,7 +307,9 @@ class _Filters extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 14),
                   child: Center(
                     child: Text(
-                      value?.label ?? 'All',
+                      value == null
+                          ? L10n.of(context).creationsAll
+                          : _kindLabel(context, value),
                       style: Theme.of(context).textTheme.labelMedium?.copyWith(
                         color: active
                             ? FluxColors.canvasOf(context)
@@ -343,14 +351,16 @@ class _EmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 17),
           Text(
-            filtered ? 'Nothing here yet' : 'Make something useful',
+            filtered
+                ? L10n.of(context).creationsEmptyFilteredTitle
+                : L10n.of(context).creationsEmptyTitle,
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 8),
           Text(
             filtered
-                ? 'Try another category or create a new one.'
-                : 'Describe an app, widget or presentation below. Finn will shape it into a practical plan.',
+                ? L10n.of(context).creationsEmptyFilteredBody
+                : L10n.of(context).creationsEmptyBody,
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: FluxColors.mutedOf(context),
@@ -405,7 +415,7 @@ class _CreationCard extends StatelessWidget {
                   ),
                   const Spacer(),
                   Text(
-                    creation.kind.label,
+                    _kindLabel(context, creation.kind),
                     style: Theme.of(context).textTheme.labelMedium?.copyWith(
                       color: FluxColors.mutedOf(context),
                     ),
@@ -502,7 +512,7 @@ class _CreationComposerState extends State<_CreationComposer> {
                   onSubmitted: (_) => canSend ? widget.onSubmit() : null,
                   style: Theme.of(context).textTheme.bodyMedium,
                   decoration: InputDecoration.collapsed(
-                    hintText: 'Describe a creation',
+                    hintText: L10n.of(context).creationsDescribeHint,
                     hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: FluxColors.mutedOf(context),
                     ),
@@ -513,7 +523,7 @@ class _CreationComposerState extends State<_CreationComposer> {
               Semantics(
                 button: true,
                 enabled: canSend,
-                label: 'Create',
+                label: L10n.of(context).creationsCreateSemantic,
                 child: SizedBox.square(
                   dimension: 40,
                   child: InkWell(
@@ -562,7 +572,7 @@ class _ErrorNotice extends StatelessWidget {
         FluxIconButton(
           icon: FluxIcons.close,
           size: 30,
-          tooltip: 'Dismiss',
+          tooltip: L10n.of(context).commonDismiss,
           onTap: onDismiss,
         ),
       ],
@@ -628,7 +638,7 @@ class _KindPicker extends StatelessWidget {
                       FluxIcon(icon: _iconFor(kind), size: 21),
                       const SizedBox(width: 13),
                       Text(
-                        kind.label,
+                        _kindLabel(context, kind),
                         style: Theme.of(context).textTheme.bodyLarge,
                       ),
                       const Spacer(),
@@ -676,7 +686,7 @@ class _CreationDetail extends StatelessWidget {
               ),
               const SizedBox(width: 11),
               Text(
-                creation.kind.label,
+                _kindLabel(context, creation.kind),
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
                   color: FluxColors.mutedOf(context),
                 ),
@@ -709,7 +719,7 @@ class _CreationDetail extends StatelessWidget {
                   if (confirmed == true) onDelete();
                 },
                 child: Text(
-                  'Delete',
+                  L10n.of(context).commonDelete,
                   style: Theme.of(context).textTheme.labelMedium?.copyWith(
                     color: const Color(0xFFD34B4B),
                   ),
@@ -717,7 +727,7 @@ class _CreationDetail extends StatelessWidget {
               ),
               FluxIconButton(
                 icon: FluxIcons.close,
-                tooltip: 'Close',
+                tooltip: L10n.of(context).commonClose,
                 onTap: () => Navigator.pop(context),
               ),
             ],
@@ -826,7 +836,7 @@ class _QuietLoaderState extends State<_QuietLoader>
 
   @override
   Widget build(BuildContext context) => Semantics(
-    label: widget.label ?? 'Creating',
+    label: L10n.of(context).creationsCreatingSemantic,
     liveRegion: true,
     child: Row(
       mainAxisSize: MainAxisSize.min,
@@ -857,4 +867,12 @@ List<List<dynamic>> _iconFor(CreationKind kind) => switch (kind) {
   CreationKind.app => FluxIcons.canvas,
   CreationKind.widget => FluxIcons.chip,
   CreationKind.presentation => FluxIcons.skills,
+};
+
+/// Localized label for a creation kind (the enum's own label stays English
+/// data used for prompts and persistence).
+String _kindLabel(BuildContext context, CreationKind kind) => switch (kind) {
+  CreationKind.app => L10n.of(context).creationsKindApp,
+  CreationKind.widget => L10n.of(context).creationsKindWidget,
+  CreationKind.presentation => L10n.of(context).creationsKindPresentation,
 };

@@ -299,19 +299,19 @@ abstract class AppLocalizations {
   /// Install title in progress
   ///
   /// In en, this message translates to:
-  /// **'Installing Qwen 3.5 2B'**
+  /// **'Installing LFM2.5-VL 1.6B'**
   String get onboardingInstallTitleInstalling;
 
   /// Install title ready
   ///
   /// In en, this message translates to:
-  /// **'Qwen 3.5 2B ready'**
+  /// **'LFM2.5-VL 1.6B ready'**
   String get onboardingInstallTitleReady;
 
   /// Preparing message
   ///
   /// In en, this message translates to:
-  /// **'Preparing Qwen 3.5 2B for this device…'**
+  /// **'Preparing LFM2.5-VL 1.6B for this device…'**
   String get onboardingInstallPreparing;
 
   /// Ready subtitle
@@ -431,7 +431,7 @@ abstract class AppLocalizations {
   /// Welcome ask anything
   ///
   /// In en, this message translates to:
-  /// **'Ask me anything — I run entirely on this device, so your\nchats stay private.'**
+  /// **'Ask me anything — I run entirely on this device, so your\nconversations never leave your phone.'**
   String get chatAskAnything;
 
   /// Try asking heading
@@ -539,13 +539,13 @@ abstract class AppLocalizations {
   /// Download body
   ///
   /// In en, this message translates to:
-  /// **'{size} downloads once and is verified before use. The download continues in the background.'**
+  /// **'{size} downloads once and is verified before use. The download resumes safely after an interrupted connection, and your chats stay on this device.'**
   String chatDownloadModelBody(String size);
 
   /// Hi prefix
   ///
   /// In en, this message translates to:
-  /// **'Hi, I’m Finn'**
+  /// **'Hi, I\'m Finn.'**
   String get chatHiPrefix;
 
   /// Finn AI label
@@ -665,7 +665,7 @@ abstract class AppLocalizations {
   /// Delete all body
   ///
   /// In en, this message translates to:
-  /// **'This permanently deletes encrypted conversations and keys, downloaded AI models, creations, profile preferences, skills, and onboarding state. Finn AI will return to a clean first run.'**
+  /// **'This permanently deletes encrypted conversations and keys, downloaded AI models, creations, profile preferences, skills, and onboarding state. FinnAI will return to a clean first run.'**
   String get settingsDeleteAllDataBody;
 
   /// Deleting progress
@@ -918,7 +918,7 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'{count} available · skills guide relevant replies'**
-  String skillsSubtitle(String count);
+  String skillsSubtitle(int count);
 
   /// New skill
   ///
@@ -1153,6 +1153,702 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Saved Conversations'**
   String get settingsSavedConversationsLabel;
+
+  /// Close action
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get commonClose;
+
+  /// Retry after failure
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get commonTryAgain;
+
+  /// Dismiss a notice
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss'**
+  String get commonDismiss;
+
+  /// Bootstrap failure title
+  ///
+  /// In en, this message translates to:
+  /// **'FinnAI could not start'**
+  String get bootstrapErrorTitle;
+
+  /// Bootstrap failure body
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong while initializing the AI engine. Your conversations are safe.'**
+  String get bootstrapErrorBody;
+
+  /// HEIC snackbar
+  ///
+  /// In en, this message translates to:
+  /// **'HEIC images are not supported. Please share as JPEG or PNG.'**
+  String get chatHeicNotSupported;
+
+  /// Multimodal missing snackbar
+  ///
+  /// In en, this message translates to:
+  /// **'Image analysis unavailable: install the image component in Settings.'**
+  String get chatImageAnalysisUnavailable;
+
+  /// Attachment menu camera
+  ///
+  /// In en, this message translates to:
+  /// **'Camera'**
+  String get attachmentCamera;
+
+  /// Attachment menu photos
+  ///
+  /// In en, this message translates to:
+  /// **'Photos'**
+  String get attachmentPhotos;
+
+  /// Attachment menu files
+  ///
+  /// In en, this message translates to:
+  /// **'Files'**
+  String get attachmentFiles;
+
+  /// Attachment button semantics
+  ///
+  /// In en, this message translates to:
+  /// **'Add attachment'**
+  String get chatAddAttachmentSemantic;
+
+  /// Default prompt for an attached image
+  ///
+  /// In en, this message translates to:
+  /// **'Please analyze this attached image in detail.'**
+  String get chatImagePromptDefault;
+
+  /// Default prompt for an attached file
+  ///
+  /// In en, this message translates to:
+  /// **'Please summarize the attached file and highlight its key points.'**
+  String get chatFilePromptDefault;
+
+  /// Welcome suggestion
+  ///
+  /// In en, this message translates to:
+  /// **'Summarize a web article for me'**
+  String get suggestionSummarizeArticle;
+
+  /// Welcome suggestion
+  ///
+  /// In en, this message translates to:
+  /// **'Explain a complex topic simply'**
+  String get suggestionExplainSimply;
+
+  /// Welcome suggestion
+  ///
+  /// In en, this message translates to:
+  /// **'Plan my day in three steps'**
+  String get suggestionPlanDay;
+
+  /// Welcome suggestion
+  ///
+  /// In en, this message translates to:
+  /// **'Draft a short email'**
+  String get suggestionDraftEmail;
+
+  /// Welcome suggestion
+  ///
+  /// In en, this message translates to:
+  /// **'Brainstorm names for my new project'**
+  String get suggestionBrainstormNames;
+
+  /// Welcome suggestion
+  ///
+  /// In en, this message translates to:
+  /// **'Turn a rough idea into a step-by-step plan'**
+  String get suggestionIdeaToPlan;
+
+  /// Welcome suggestion
+  ///
+  /// In en, this message translates to:
+  /// **'Help me debug a confusing error'**
+  String get suggestionDebugError;
+
+  /// Welcome suggestion
+  ///
+  /// In en, this message translates to:
+  /// **'Write a quick goodbye note'**
+  String get suggestionGoodbyeNote;
+
+  /// Welcome suggestion
+  ///
+  /// In en, this message translates to:
+  /// **'Compare two options before I decide'**
+  String get suggestionCompareOptions;
+
+  /// Welcome suggestion
+  ///
+  /// In en, this message translates to:
+  /// **'Give me a fresh perspective on a problem'**
+  String get suggestionFreshPerspective;
+
+  /// Fallback title for another chat
+  ///
+  /// In en, this message translates to:
+  /// **'another chat'**
+  String get chatAnotherChatFallback;
+
+  /// Context menu select action
+  ///
+  /// In en, this message translates to:
+  /// **'Select Text'**
+  String get chatSelectText;
+
+  /// Context menu report action
+  ///
+  /// In en, this message translates to:
+  /// **'Report'**
+  String get chatReportAction;
+
+  /// Bubble semantics hint
+  ///
+  /// In en, this message translates to:
+  /// **'Press and hold for message actions'**
+  String get chatMessageActionsHint;
+
+  /// Other-chat notice semantics
+  ///
+  /// In en, this message translates to:
+  /// **'Generating in another chat'**
+  String get chatGeneratingInOtherChat;
+
+  /// Reply action tooltip
+  ///
+  /// In en, this message translates to:
+  /// **'Regenerate'**
+  String get chatRegenerate;
+
+  /// Sources list semantics collapsed
+  ///
+  /// In en, this message translates to:
+  /// **'Hide sources'**
+  String get chatHideSources;
+
+  /// Sources list semantics expanded
+  ///
+  /// In en, this message translates to:
+  /// **'Show sources'**
+  String get chatShowSources;
+
+  /// Edit message field hint
+  ///
+  /// In en, this message translates to:
+  /// **'Rewrite your message'**
+  String get chatRewriteHint;
+
+  /// Composer hint
+  ///
+  /// In en, this message translates to:
+  /// **'Ask anything'**
+  String get chatAskAnythingHint;
+
+  /// Composer field semantics
+  ///
+  /// In en, this message translates to:
+  /// **'Message to Finn'**
+  String get chatMessageToFinnSemantic;
+
+  /// Stop button semantics
+  ///
+  /// In en, this message translates to:
+  /// **'Stop generating'**
+  String get chatStopGeneratingSemantic;
+
+  /// Send button semantics
+  ///
+  /// In en, this message translates to:
+  /// **'Send message'**
+  String get chatSendMessageSemantic;
+
+  /// Header menu tooltip
+  ///
+  /// In en, this message translates to:
+  /// **'Open menu'**
+  String get chatOpenMenuTooltip;
+
+  /// Conversation context menu rename
+  ///
+  /// In en, this message translates to:
+  /// **'Rename'**
+  String get chatRenameAction;
+
+  /// Rename field hint
+  ///
+  /// In en, this message translates to:
+  /// **'Enter chat title'**
+  String get chatRenameEnterTitleHint;
+
+  /// Delete dialog body while generating
+  ///
+  /// In en, this message translates to:
+  /// **'Stop the active generation before deleting this chat. Its partial response will be preserved.'**
+  String get chatDeleteActiveGenerationBody;
+
+  /// Delete dialog body
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete this chat history? This action cannot be undone.'**
+  String get chatDeleteConfirmBody;
+
+  /// Model status pill
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get settingsModelActive;
+
+  /// Model status pill
+  ///
+  /// In en, this message translates to:
+  /// **'Installed'**
+  String get settingsModelInstalled;
+
+  /// Model status pill
+  ///
+  /// In en, this message translates to:
+  /// **'Partial'**
+  String get settingsModelPartial;
+
+  /// Model status pill
+  ///
+  /// In en, this message translates to:
+  /// **'Not installed'**
+  String get settingsModelNotInstalled;
+
+  /// Filter chip for every kind
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get creationsAll;
+
+  /// Filter chip semantics
+  ///
+  /// In en, this message translates to:
+  /// **'{kind} creations'**
+  String creationsFilterSemantic(String kind);
+
+  /// Empty state with a filter
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing here yet'**
+  String get creationsEmptyFilteredTitle;
+
+  /// Empty state
+  ///
+  /// In en, this message translates to:
+  /// **'Make something useful'**
+  String get creationsEmptyTitle;
+
+  /// Empty state body with a filter
+  ///
+  /// In en, this message translates to:
+  /// **'Try another category or create a new one.'**
+  String get creationsEmptyFilteredBody;
+
+  /// Empty state body
+  ///
+  /// In en, this message translates to:
+  /// **'Describe an app, widget or presentation below. Finn will shape it into a practical plan.'**
+  String get creationsEmptyBody;
+
+  /// Composer hint
+  ///
+  /// In en, this message translates to:
+  /// **'Describe a creation'**
+  String get creationsDescribeHint;
+
+  /// Send button semantics
+  ///
+  /// In en, this message translates to:
+  /// **'Create'**
+  String get creationsCreateSemantic;
+
+  /// Quiet loader semantics
+  ///
+  /// In en, this message translates to:
+  /// **'Creating'**
+  String get creationsCreatingSemantic;
+
+  /// Creation kind
+  ///
+  /// In en, this message translates to:
+  /// **'App'**
+  String get creationsKindApp;
+
+  /// Creation kind
+  ///
+  /// In en, this message translates to:
+  /// **'Widget'**
+  String get creationsKindWidget;
+
+  /// Creation kind
+  ///
+  /// In en, this message translates to:
+  /// **'Presentation'**
+  String get creationsKindPresentation;
+
+  /// Save failure snackbar
+  ///
+  /// In en, this message translates to:
+  /// **'That skill could not be saved.'**
+  String get skillsSaveFailed;
+
+  /// Built-in skills section
+  ///
+  /// In en, this message translates to:
+  /// **'Built for Finn'**
+  String get skillsBuiltForFinn;
+
+  /// Built-in skills subtitle
+  ///
+  /// In en, this message translates to:
+  /// **'Enable only what you need for each kind of work.'**
+  String get skillsBuiltForFinnSubtitle;
+
+  /// Custom skills section
+  ///
+  /// In en, this message translates to:
+  /// **'Your skills'**
+  String get skillsYourSkills;
+
+  /// Custom skills subtitle
+  ///
+  /// In en, this message translates to:
+  /// **'Create reusable instructions for your own workflows.'**
+  String get skillsYourSkillsSubtitle;
+
+  /// Summary when nothing is enabled
+  ///
+  /// In en, this message translates to:
+  /// **'No skills active'**
+  String get skillsNoneActive;
+
+  /// Summary active count
+  ///
+  /// In en, this message translates to:
+  /// **'{count} active'**
+  String skillsActiveCount(int count);
+
+  /// Skill card menu tooltip
+  ///
+  /// In en, this message translates to:
+  /// **'Skill actions'**
+  String get skillsActionsTooltip;
+
+  /// Skill toggle semantics
+  ///
+  /// In en, this message translates to:
+  /// **'{name} skill'**
+  String skillsNameSemantic(String name);
+
+  /// Editor title for an existing skill
+  ///
+  /// In en, this message translates to:
+  /// **'Edit skill'**
+  String get skillsEditTitle;
+
+  /// Editor field label
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get skillsEditorName;
+
+  /// Editor field hint
+  ///
+  /// In en, this message translates to:
+  /// **'What does this skill do?'**
+  String get skillsEditorNameHint;
+
+  /// Editor field label
+  ///
+  /// In en, this message translates to:
+  /// **'Short description'**
+  String get skillsEditorDescription;
+
+  /// Editor field hint
+  ///
+  /// In en, this message translates to:
+  /// **'A quick reminder for you'**
+  String get skillsEditorDescriptionHint;
+
+  /// Editor field label
+  ///
+  /// In en, this message translates to:
+  /// **'Instructions'**
+  String get skillsEditorInstructions;
+
+  /// Editor field hint
+  ///
+  /// In en, this message translates to:
+  /// **'Tell Finn how to approach this kind of task'**
+  String get skillsEditorInstructionsHint;
+
+  /// Skill category label
+  ///
+  /// In en, this message translates to:
+  /// **'Writing'**
+  String get skillsCategoryWriting;
+
+  /// Skill category label
+  ///
+  /// In en, this message translates to:
+  /// **'Development'**
+  String get skillsCategoryDevelopment;
+
+  /// Skill category label
+  ///
+  /// In en, this message translates to:
+  /// **'Learning'**
+  String get skillsCategoryLearning;
+
+  /// Skill category label
+  ///
+  /// In en, this message translates to:
+  /// **'Planning'**
+  String get skillsCategoryPlanning;
+
+  /// Skill category label
+  ///
+  /// In en, this message translates to:
+  /// **'Custom'**
+  String get skillsCategoryCustom;
+
+  /// Name field hint
+  ///
+  /// In en, this message translates to:
+  /// **'Preferred name'**
+  String get youNamePlaceholder;
+
+  /// About field label
+  ///
+  /// In en, this message translates to:
+  /// **'Anything Finn should know?'**
+  String get youAboutQuestion;
+
+  /// About field hint
+  ///
+  /// In en, this message translates to:
+  /// **'Your work, interests, goals, or context'**
+  String get youAboutPlaceholder;
+
+  /// Instructions field label
+  ///
+  /// In en, this message translates to:
+  /// **'How should Finn respond?'**
+  String get youInstructionsQuestion;
+
+  /// Instructions field hint
+  ///
+  /// In en, this message translates to:
+  /// **'For example: explain technical terms, use metric units…'**
+  String get youInstructionsPlaceholder;
+
+  /// Save button while saving
+  ///
+  /// In en, this message translates to:
+  /// **'Saving…'**
+  String get youSaving;
+
+  /// Save button
+  ///
+  /// In en, this message translates to:
+  /// **'Save preferences'**
+  String get youSavePreferences;
+
+  /// Style chip semantics
+  ///
+  /// In en, this message translates to:
+  /// **'{style} response style'**
+  String youStyleSemantic(String style);
+
+  /// Response style label
+  ///
+  /// In en, this message translates to:
+  /// **'Conversational'**
+  String get youResponseStyleConversational;
+
+  /// HTTP submit success snackbar
+  ///
+  /// In en, this message translates to:
+  /// **'Report sent. Thank you for helping keep FinnAI safe.'**
+  String get reportSentThanks;
+
+  /// No mail app error
+  ///
+  /// In en, this message translates to:
+  /// **'No email app could be opened. Email finn_org@proton.me directly.'**
+  String get reportNoEmailApp;
+
+  /// Details field hint
+  ///
+  /// In en, this message translates to:
+  /// **'Optional additional details...'**
+  String get reportDetailsHint;
+
+  /// Report category
+  ///
+  /// In en, this message translates to:
+  /// **'Harmful or dangerous'**
+  String get reportCategoryHarmfulOrDangerous;
+
+  /// Report category
+  ///
+  /// In en, this message translates to:
+  /// **'Hate or harassment'**
+  String get reportCategoryHateOrHarassment;
+
+  /// Report category
+  ///
+  /// In en, this message translates to:
+  /// **'Sexual content'**
+  String get reportCategorySexualContent;
+
+  /// Report category
+  ///
+  /// In en, this message translates to:
+  /// **'Child-safety concern'**
+  String get reportCategoryChildSafety;
+
+  /// Report category
+  ///
+  /// In en, this message translates to:
+  /// **'Self-harm concern'**
+  String get reportCategorySelfHarm;
+
+  /// Report category
+  ///
+  /// In en, this message translates to:
+  /// **'Illegal or deceptive guidance'**
+  String get reportCategoryIllegalOrDeceptive;
+
+  /// Report category
+  ///
+  /// In en, this message translates to:
+  /// **'False or misleading response'**
+  String get reportCategoryFalseOrMisleading;
+
+  /// Report category
+  ///
+  /// In en, this message translates to:
+  /// **'Spam or scam'**
+  String get reportCategorySpamOrScam;
+
+  /// Engine status
+  ///
+  /// In en, this message translates to:
+  /// **'Ready'**
+  String get statusReady;
+
+  /// Engine status
+  ///
+  /// In en, this message translates to:
+  /// **'Optimized automatically'**
+  String get statusOptimizedAutomatically;
+
+  /// Engine status
+  ///
+  /// In en, this message translates to:
+  /// **'AI model is ready'**
+  String get statusModelReady;
+
+  /// Engine status
+  ///
+  /// In en, this message translates to:
+  /// **'Download paused'**
+  String get statusDownloadPaused;
+
+  /// Engine status
+  ///
+  /// In en, this message translates to:
+  /// **'Model removed'**
+  String get statusModelRemoved;
+
+  /// Engine status
+  ///
+  /// In en, this message translates to:
+  /// **'Checking web…'**
+  String get statusCheckingWeb;
+
+  /// Engine status
+  ///
+  /// In en, this message translates to:
+  /// **'Searching browser…'**
+  String get statusSearchingBrowser;
+
+  /// Engine status
+  ///
+  /// In en, this message translates to:
+  /// **'Thinking on this device'**
+  String get statusThinkingOnDevice;
+
+  /// Engine status
+  ///
+  /// In en, this message translates to:
+  /// **'Generated locally'**
+  String get statusGeneratedLocally;
+
+  /// Engine status
+  ///
+  /// In en, this message translates to:
+  /// **'Stopped'**
+  String get statusStopped;
+
+  /// Engine status
+  ///
+  /// In en, this message translates to:
+  /// **'Ready after runtime reset'**
+  String get statusReadyAfterRuntimeReset;
+
+  /// Engine status
+  ///
+  /// In en, this message translates to:
+  /// **'Setting up FinnAI for optimal performance…'**
+  String get statusOptimizingForDevice;
+
+  /// Engine status
+  ///
+  /// In en, this message translates to:
+  /// **'FinnAI is optimized for this device'**
+  String get statusOptimizedForDevice;
+
+  /// Engine status
+  ///
+  /// In en, this message translates to:
+  /// **'Checking the download'**
+  String get statusCheckingDownload;
+
+  /// Engine status
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading the AI model'**
+  String get statusDownloadingModel;
+
+  /// Engine status
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading {artifact}'**
+  String statusDownloadingArtifact(String artifact);
+
+  /// Engine status
+  ///
+  /// In en, this message translates to:
+  /// **'Verifying {artifact}'**
+  String statusVerifyingArtifact(String artifact);
+
+  /// Engine status
+  ///
+  /// In en, this message translates to:
+  /// **'Loading the AI model'**
+  String get statusLoadingModel;
 }
 
 class _AppLocalizationsDelegate

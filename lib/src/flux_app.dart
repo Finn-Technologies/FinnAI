@@ -115,9 +115,19 @@ class _FinnBootstrapState extends State<FinnBootstrap> {
               child: ListenableBuilder(
                 listenable: FinnInference.instance,
                 builder: (context, _) {
-                  final status = FinnInference.instance.status;
+                  final inference = FinnInference.instance;
+                  // Engine statuses are localized at this display layer via
+                  // the machine-readable statusKey; the raw engine text is
+                  // only a fallback for dynamic/unmapped values.
+                  final status = inference.statusKey == FinnStatusKey.ready
+                      ? 'FinnAI'
+                      : localizedEngineStatus(
+                          context,
+                          inference.statusKey,
+                          inference.status,
+                        );
                   return Text(
-                    status == 'Ready' ? 'FinnAI' : status,
+                    status,
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontFamily: 'InstrumentSans',
@@ -224,8 +234,7 @@ class _UnsupportedDevicePage extends StatelessWidget {
 }
 
 /// Shown when engine bootstrap fails so the root cause is visible and the
-/// user can re-run initialization. English strings are intentional; the
-/// localization pass happens in a separate branch.
+/// user can re-run initialization.
 class _BootstrapErrorPage extends StatelessWidget {
   const _BootstrapErrorPage({required this.error, required this.onRetry});
 
@@ -259,14 +268,13 @@ class _BootstrapErrorPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 22),
                   Text(
-                    'FinnAI could not start',
+                    L10n.of(context).bootstrapErrorTitle,
                     textAlign: TextAlign.center,
                     style: textTheme.titleLarge,
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    'Something went wrong while initializing the AI engine. '
-                    'Your conversations are safe.',
+                    L10n.of(context).bootstrapErrorBody,
                     textAlign: TextAlign.center,
                     style: textTheme.bodyMedium?.copyWith(
                       color: FluxColors.mutedOf(context),
@@ -290,7 +298,7 @@ class _BootstrapErrorPage extends StatelessWidget {
                   FilledButton.icon(
                     onPressed: onRetry,
                     icon: const Icon(Icons.refresh_rounded, size: 18),
-                    label: const Text('Try again'),
+                    label: Text(L10n.of(context).commonTryAgain),
                     style: FilledButton.styleFrom(
                       backgroundColor: FluxColors.inkOf(context),
                       foregroundColor: FluxColors.canvasOf(context),

@@ -505,6 +505,11 @@ class _AutomaticModelPageState extends State<_AutomaticModelPage> {
     _inference.useAutomaticSelection();
     final models = _inference.requiredModels;
     debugPrint('FINN_START_MODELS: ${models.length}');
+    // Resolved before the first await so no BuildContext is used across an
+    // async gap.
+    final verificationFailedMessage = L10n.of(
+      context,
+    ).onboardingInstallVerificationFailed;
     try {
       for (var index = 0; index < models.length; index++) {
         if (mounted) {
@@ -517,7 +522,7 @@ class _AutomaticModelPageState extends State<_AutomaticModelPage> {
         // first run.
         await _inference.install(model);
         if (!await _inference.isInstalled(model)) {
-          throw FormatException(L10n.of(context).onboardingInstallVerificationFailed);
+          throw FormatException(verificationFailedMessage);
         }
       }
       // Measure the best CPU/GPU/NPU backend now that the model is present.
@@ -557,6 +562,7 @@ class _AutomaticModelPageState extends State<_AutomaticModelPage> {
       ready: _ready,
       started: _started,
       error: _error,
+      statusKey: _inference.statusKey,
       status: _inference.status,
       onRetry: start,
     ),
@@ -570,6 +576,7 @@ class _AutomaticInstallPanel extends StatelessWidget {
     required this.ready,
     required this.started,
     required this.error,
+    required this.statusKey,
     required this.status,
     required this.onRetry,
   });
@@ -579,6 +586,11 @@ class _AutomaticInstallPanel extends StatelessWidget {
   final bool ready;
   final bool started;
   final String? error;
+
+  /// Machine-readable engine status, localized at this display layer.
+  final FinnStatusKey statusKey;
+
+  /// Raw engine status text, used as the fallback for unmapped values.
   final String status;
   final VoidCallback onRetry;
 
@@ -697,7 +709,10 @@ class _AutomaticInstallPanel extends StatelessWidget {
                         ready
                             ? L10n.of(context).onboardingInstallModelReady
                             : started
-                            ? L10n.of(context).onboardingInstallProgressStatus(status, (effectiveProgress * 100).round().toString())
+                            ? L10n.of(context).onboardingInstallProgressStatus(
+                                localizedEngineStatus(context, statusKey, status),
+                                (effectiveProgress * 100).round().toString(),
+                              )
                             : L10n.of(context).onboardingInstallPreparing,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
@@ -872,11 +887,16 @@ class _SoftwareUpgradeScreenState extends State<SoftwareUpgradeScreen> {
       _progress = .02;
     });
     _inference.useAutomaticSelection();
+    // Resolved before the first await so no BuildContext is used across an
+    // async gap.
+    final verificationFailedMessage = L10n.of(
+      context,
+    ).onboardingInstallVerificationFailed;
     try {
       for (final model in _inference.requiredModels) {
         await _inference.install(model);
         if (!await _inference.isInstalled(model)) {
-          throw FormatException(L10n.of(context).onboardingInstallVerificationFailed);
+          throw FormatException(verificationFailedMessage);
         }
       }
       // Measure the best CPU/GPU/NPU backend now that the new model is ready.
@@ -940,6 +960,7 @@ class _SoftwareUpgradeScreenState extends State<SoftwareUpgradeScreen> {
                     ready: _ready,
                     started: _started,
                     error: _error,
+                    statusKey: _inference.statusKey,
                     status: _inference.status,
                     onRetry: start,
                   ),

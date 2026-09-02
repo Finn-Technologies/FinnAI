@@ -124,9 +124,7 @@ class _ReportDialogState extends State<ReportDialog> {
         ..clearSnackBars()
         ..showSnackBar(
           SnackBar(
-            content: const Text(
-              'Report sent. Thank you for helping keep FinnAI safe.',
-            ),
+            content: Text(L10n.of(context).reportSentThanks),
             duration: Duration(seconds: 4),
           ),
         );
@@ -164,8 +162,7 @@ class _ReportDialogState extends State<ReportDialog> {
         );
     } else {
       setState(() {
-        _errorMessage =
-            'No email app could be opened. Email finn_org@proton.me directly.';
+        _errorMessage = L10n.of(context).reportNoEmailApp;
       });
     }
   }
@@ -262,7 +259,10 @@ class _ReportDialogState extends State<ReportDialog> {
                   items: ReportCategory.values.map((cat) {
                     return DropdownMenuItem(
                       value: cat,
-                      child: Text(cat.displayName, style: textTheme.bodyMedium),
+                      child: Text(
+                        _categoryLabel(context, cat),
+                        style: textTheme.bodyMedium,
+                      ),
                     );
                   }).toList(),
                   onChanged: (val) {
@@ -320,7 +320,7 @@ class _ReportDialogState extends State<ReportDialog> {
               maxLines: 2,
               style: textTheme.bodySmall,
               decoration: InputDecoration(
-                hintText: 'Optional additional details...',
+                hintText: L10n.of(context).reportDetailsHint,
                 hintStyle: textTheme.bodySmall?.copyWith(
                   color: FluxColors.mutedOf(context),
                 ),
@@ -380,3 +380,30 @@ class _ReportDialogState extends State<ReportDialog> {
     );
   }
 }
+
+/// Localized label for a report category (the enum's own [ReportCategory.displayName]
+/// stays English because it is also used in the exported report payload).
+String _categoryLabel(BuildContext context, ReportCategory category) =>
+    switch (category) {
+      ReportCategory.harmfulOrDangerous => L10n.of(
+        context,
+      ).reportCategoryHarmfulOrDangerous,
+      ReportCategory.hateOrHarassment => L10n.of(
+        context,
+      ).reportCategoryHateOrHarassment,
+      ReportCategory.sexualContent => L10n.of(
+        context,
+      ).reportCategorySexualContent,
+      ReportCategory.childSafety => L10n.of(
+        context,
+      ).reportCategoryChildSafety,
+      ReportCategory.selfHarm => L10n.of(context).reportCategorySelfHarm,
+      ReportCategory.illegalOrDeceptive => L10n.of(
+        context,
+      ).reportCategoryIllegalOrDeceptive,
+      ReportCategory.falseOrMisleading => L10n.of(
+        context,
+      ).reportCategoryFalseOrMisleading,
+      ReportCategory.spamOrScam => L10n.of(context).reportCategorySpamOrScam,
+      ReportCategory.other => L10n.of(context).reportCategoryOther,
+    };

@@ -3557,7 +3557,7 @@ class FinnAccelerator extends ChangeNotifier {
         target: target,
         partial: partial,
         expectedBytes: finnMmproj.expectedBytes,
-        label: 'Qwen multimodal component',
+        label: 'Multimodal vision component',
         sha256Digest: finnMmproj.sha256Digest,
       );
       return;
@@ -3566,7 +3566,7 @@ class FinnAccelerator extends ChangeNotifier {
       url: finnMmproj.downloadUrl,
       target: target,
       expectedBytes: finnMmproj.expectedBytes,
-      label: 'Qwen multimodal component',
+      label: 'Multimodal vision component',
       sha256Digest: finnMmproj.sha256Digest,
     );
   }

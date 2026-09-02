@@ -466,7 +466,7 @@ class WebSearchService {
         json[1] is List &&
         json[3] is List) {
       final titles = json[1] as List;
-      final snippets = json[2] is List ? json[2] as List : const [];
+      final snippets = json[2] is List ? json[2] as List : const <String>[];
       final urls = json[3] as List;
       for (var i = 0; i < titles.length && sources.length < 3; i++) {
         final title = titles[i]?.toString() ?? '';

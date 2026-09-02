@@ -139,22 +139,24 @@ class _YouPageState extends State<YouPage> {
                                     _FinnTextField(
                                       key: const Key('you-name-field'),
                                       controller: _nameController,
-                                      label: 'What should Finn call you?',
-                                      hint: 'Preferred name',
+                                      label: L10n.of(context).youNameHint,
+                                      hint: L10n.of(context).youNamePlaceholder,
                                       maxLength: 60,
                                     ),
                                     const SizedBox(height: 10),
                                     _FinnTextField(
                                       key: const Key('you-about-field'),
                                       controller: _aboutController,
-                                      label: 'Anything Finn should know?',
+                                      label: L10n.of(context).youAboutQuestion,
                                       hint:
-                                          'Your work, interests, goals, or context',
+                                          L10n.of(context).youAboutPlaceholder,
                                       maxLines: 3,
                                       maxLength: 400,
                                     ),
                                     const SizedBox(height: 22),
-                                    const _SectionLabel('Response style'),
+                                    _SectionLabel(
+                                      L10n.of(context).youResponseStyle,
+                                    ),
                                     const SizedBox(height: 9),
                                     Wrap(
                                       spacing: 8,
@@ -172,14 +174,19 @@ class _YouPageState extends State<YouPage> {
                                           .toList(),
                                     ),
                                     const SizedBox(height: 22),
-                                    const _SectionLabel('Custom instructions'),
+                                    _SectionLabel(
+                                      L10n.of(context).youInstructionsLabel,
+                                    ),
                                     const SizedBox(height: 9),
                                     _FinnTextField(
                                       key: const Key('you-instructions-field'),
                                       controller: _instructionsController,
-                                      label: 'How should Finn respond?',
+                                      label:
+                                          L10n.of(context).youInstructionsQuestion,
                                       hint:
-                                          'For example: explain technical terms, use metric units…',
+                                          L10n.of(
+                                            context,
+                                          ).youInstructionsPlaceholder,
                                       maxLines: 5,
                                       maxLength: 1000,
                                     ),
@@ -213,8 +220,10 @@ class _YouPageState extends State<YouPage> {
                                               ),
                                               child: Text(
                                                 _store.saving
-                                                    ? 'Saving…'
-                                                    : 'Save preferences',
+                                                    ? L10n.of(context).youSaving
+                                                    : L10n.of(
+                                                        context,
+                                                      ).youSavePreferences,
                                               ),
                                             ),
                                           ),
@@ -242,7 +251,7 @@ class _YouPageState extends State<YouPage> {
                 ),
                 Positioned.fill(
                   child: FinnPageHeader(
-                    title: 'You',
+                    title: L10n.of(context).youTitle,
                     onBack: widget.onBack,
                     metrics: metrics,
                     scrollOffset: _scrollOffset,
@@ -386,7 +395,9 @@ class _StyleChip extends StatelessWidget {
   Widget build(BuildContext context) => Semantics(
     button: true,
     selected: selected,
-    label: '${style.label} response style',
+    label: L10n.of(
+      context,
+    ).youStyleSemantic(_styleLabel(context, style)),
     child: Material(
       color: selected ? FluxColors.inkOf(context) : FluxColors.cardOf(context),
       shape: StadiumBorder(
@@ -405,7 +416,7 @@ class _StyleChip extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
             child: Center(
               child: Text(
-                style.label,
+                _styleLabel(context, style),
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: selected
                       ? FluxColors.canvasOf(context)
@@ -419,3 +430,14 @@ class _StyleChip extends StatelessWidget {
     ),
   );
 }
+
+/// Localized label for a response style (the enum's own label stays English
+/// data used inside prompt instructions).
+String _styleLabel(BuildContext context, FinnResponseStyle style) =>
+    switch (style) {
+      FinnResponseStyle.balanced => L10n.of(context).youResponseStyleBalanced,
+      FinnResponseStyle.concise => L10n.of(context).youResponseStyleConcise,
+      FinnResponseStyle.detailed => L10n.of(context).youResponseStyleDetailed,
+      FinnResponseStyle.conversational =>
+        L10n.of(context).youResponseStyleConversational,
+    };

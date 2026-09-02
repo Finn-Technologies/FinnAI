@@ -78,7 +78,7 @@ class FinnCreation {
       summary: json['summary'] as String? ?? '',
       sections: rawSections is List
           ? rawSections
-                .whereType<Map>()
+                .whereType<Map<dynamic, dynamic>>()
                 .map(
                   (section) => CreationSection.fromJson(
                     Map<String, Object?>.from(section),

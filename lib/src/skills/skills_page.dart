@@ -65,7 +65,7 @@ class _SkillsPageState extends State<SkillsPage> {
         ..showSnackBar(
           SnackBar(
             content: Text(
-              _store.storageError ?? 'That skill could not be saved.',
+              _store.storageError ?? L10n.of(context).skillsSaveFailed,
             ),
             behavior: SnackBarBehavior.floating,
           ),
@@ -161,10 +161,12 @@ class _SkillsPageState extends State<SkillsPage> {
                                     total: _store.skills.length,
                                   ),
                                   const SizedBox(height: 24),
-                                  const _SectionTitle(
-                                    title: 'Built for Finn',
+                                  _SectionTitle(
+                                    title: L10n.of(context).skillsBuiltForFinn,
                                     subtitle:
-                                        'Enable only what you need for each kind of work.',
+                                        L10n.of(
+                                          context,
+                                        ).skillsBuiltForFinnSubtitle,
                                   ),
                                   const SizedBox(height: 10),
                                   ...builtIns.map(
@@ -180,10 +182,12 @@ class _SkillsPageState extends State<SkillsPage> {
                                     ),
                                   ),
                                   const SizedBox(height: 14),
-                                  const _SectionTitle(
-                                    title: 'Your skills',
+                                  _SectionTitle(
+                                    title: L10n.of(context).skillsYourSkills,
                                     subtitle:
-                                        'Create reusable instructions for your own workflows.',
+                                        L10n.of(
+                                          context,
+                                        ).skillsYourSkillsSubtitle,
                                   ),
                                   const SizedBox(height: 10),
                                   if (custom.isEmpty)
@@ -224,7 +228,7 @@ class _SkillsPageState extends State<SkillsPage> {
                 ),
                 Positioned.fill(
                   child: FinnPageHeader(
-                    title: 'Skills',
+                    title: L10n.of(context).skillsTitle,
                     onBack: widget.onBack,
                     metrics: metrics,
                     scrollOffset: _scrollOffset,
@@ -270,12 +274,14 @@ class _SkillsSummary extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                active == 0 ? 'No skills active' : '$active active',
+                active == 0
+                    ? L10n.of(context).skillsNoneActive
+                    : L10n.of(context).skillsActiveCount(active),
                 style: Theme.of(context).textTheme.bodyLarge,
               ),
               const SizedBox(height: 3),
               Text(
-                '$total available · skills guide relevant replies',
+                L10n.of(context).skillsSubtitle(total),
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: FluxColors.mutedOf(context),
                 ),
@@ -369,7 +375,7 @@ class _SkillCard extends StatelessWidget {
                     ),
                     if (!skill.builtIn)
                       PopupMenuButton<String>(
-                        tooltip: 'Skill actions',
+                        tooltip: L10n.of(context).skillsActionsTooltip,
                         padding: EdgeInsets.zero,
                         icon: const Icon(Icons.more_horiz_rounded, size: 21),
                         onSelected: (value) {
@@ -408,13 +414,13 @@ class _SkillCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(99),
                       ),
                       child: Text(
-                        skill.category,
+                        _categoryLabel(context, skill.category),
                         style: Theme.of(context).textTheme.labelMedium,
                       ),
                     ),
                     const Spacer(),
                     Semantics(
-                      label: '${skill.name} skill',
+                      label: L10n.of(context).skillsNameSemantic(skill.name),
                       toggled: skill.enabled,
                       child: ExcludeSemantics(
                         child: Switch.adaptive(
@@ -443,6 +449,17 @@ class _SkillCard extends StatelessWidget {
     _ => Icons.auto_awesome_outlined,
   };
 }
+
+/// Localized label for a skill category. Unknown categories (e.g. user-entered
+/// ones persisted by older builds) fall back to the raw value.
+String _categoryLabel(BuildContext context, String category) => switch (category) {
+  'Writing' => L10n.of(context).skillsCategoryWriting,
+  'Development' => L10n.of(context).skillsCategoryDevelopment,
+  'Learning' => L10n.of(context).skillsCategoryLearning,
+  'Planning' => L10n.of(context).skillsCategoryPlanning,
+  'Custom' => L10n.of(context).skillsCategoryCustom,
+  _ => category,
+};
 
 class _EmptyCustomSkills extends StatelessWidget {
   const _EmptyCustomSkills();
@@ -545,7 +562,9 @@ class _SkillEditorState extends State<_SkillEditor> {
               ),
               const SizedBox(height: 20),
               Text(
-                widget.skill == null ? L10n.of(context).skillsNewSkill : 'Edit skill',
+                widget.skill == null
+                    ? L10n.of(context).skillsNewSkill
+                    : L10n.of(context).skillsEditTitle,
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 5),
@@ -559,15 +578,15 @@ class _SkillEditorState extends State<_SkillEditor> {
               _EditorField(
                 key: const Key('skill-name-field'),
                 controller: _name,
-                label: 'Name',
-                hint: 'What does this skill do?',
+                label: L10n.of(context).skillsEditorName,
+                hint: L10n.of(context).skillsEditorNameHint,
                 maxLength: 60,
               ),
               const SizedBox(height: 10),
               _EditorField(
                 controller: _description,
-                label: 'Short description',
-                hint: 'A quick reminder for you',
+                label: L10n.of(context).skillsEditorDescription,
+                hint: L10n.of(context).skillsEditorDescriptionHint,
                 maxLength: 140,
                 maxLines: 2,
               ),
@@ -575,8 +594,8 @@ class _SkillEditorState extends State<_SkillEditor> {
               _EditorField(
                 key: const Key('skill-instructions-field'),
                 controller: _instructions,
-                label: 'Instructions',
-                hint: 'Tell Finn how to approach this kind of task',
+                label: L10n.of(context).skillsEditorInstructions,
+                hint: L10n.of(context).skillsEditorInstructionsHint,
                 maxLength: 500,
                 maxLines: 5,
               ),

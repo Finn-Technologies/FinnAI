@@ -45,7 +45,7 @@ void main() {
               builder: (context) => ElevatedButton(
                 key: targetKey,
                 onPressed: () {
-                  showFluxContextMenu(
+                  showFluxContextMenu<void>(
                     context: context,
                     targetKey: targetKey,
                     previewWidget: const Text('Target Preview'),

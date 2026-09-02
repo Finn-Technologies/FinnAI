@@ -52,7 +52,7 @@ class CreationStore {
         return await _quarantine(file, 'Invalid creations storage.');
       }
       final creations = <FinnCreation>[];
-      for (final record in records.whereType<Map>()) {
+      for (final record in records.whereType<Map<dynamic, dynamic>>()) {
         try {
           creations.add(
             FinnCreation.fromJson(Map<String, Object?>.from(record)),

@@ -123,6 +123,12 @@ abstract final class FluxTheme {
       fontWeight: FontWeight.w500,
       letterSpacing: -0.55,
     ),
+    headlineMedium: TextStyle(
+      fontSize: 22,
+      height: 1.1,
+      fontWeight: FontWeight.w500,
+      letterSpacing: -0.45,
+    ),
     titleLarge: TextStyle(
       fontSize: 20,
       height: 1.2,
@@ -130,10 +136,16 @@ abstract final class FluxTheme {
       letterSpacing: -0.3,
     ),
     titleMedium: TextStyle(
-      fontSize: 20,
-      height: 1.2,
+      fontSize: 16,
+      height: 1.25,
       fontWeight: FontWeight.w400,
       letterSpacing: -0.15,
+    ),
+    titleSmall: TextStyle(
+      fontSize: 14,
+      height: 1.25,
+      fontWeight: FontWeight.w500,
+      letterSpacing: -0.1,
     ),
     bodyLarge: TextStyle(
       fontSize: 15,
@@ -143,9 +155,15 @@ abstract final class FluxTheme {
     ),
     bodyMedium: TextStyle(
       fontSize: 15,
-      height: 1.2,
+      height: 1.35,
       fontWeight: FontWeight.w400,
       letterSpacing: -0.08,
+    ),
+    bodySmall: TextStyle(
+      fontSize: 13,
+      height: 1.3,
+      fontWeight: FontWeight.w400,
+      letterSpacing: -0.05,
     ),
     labelLarge: TextStyle(
       fontSize: 16,
@@ -154,6 +172,13 @@ abstract final class FluxTheme {
     ),
     labelMedium: TextStyle(
       fontSize: 12,
+      height: 1.25,
+      fontWeight: FontWeight.w400,
+    ),
+    // Matches the M3 default this role previously inherited, so existing
+    // labelSmall usages keep rendering at the same size.
+    labelSmall: TextStyle(
+      fontSize: 11,
       height: 1.25,
       fontWeight: FontWeight.w400,
     ),

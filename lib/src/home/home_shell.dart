@@ -5,6 +5,8 @@ import 'dart:ui' as ui;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+// ScrollCacheExtent lives in rendering and is not re-exported by material.
+import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:image_picker/image_picker.dart';
@@ -138,8 +140,8 @@ class _HomeShellState extends State<HomeShell>
             ScaffoldMessenger.of(context)
               ..clearSnackBars()
               ..showSnackBar(
-                const SnackBar(
-                  content: Text('HEIC images are not supported. Please share as JPEG or PNG.'),
+                SnackBar(
+                  content: Text(L10n.of(context).chatHeicNotSupported),
                   behavior: SnackBarBehavior.floating,
                 ),
               );
@@ -176,8 +178,8 @@ class _HomeShellState extends State<HomeShell>
             ScaffoldMessenger.of(context)
               ..clearSnackBars()
               ..showSnackBar(
-                const SnackBar(
-                  content: Text('HEIC images are not supported. Please share as JPEG or PNG.'),
+                SnackBar(
+                  content: Text(L10n.of(context).chatHeicNotSupported),
                   behavior: SnackBarBehavior.floating,
                 ),
               );
@@ -223,8 +225,8 @@ class _HomeShellState extends State<HomeShell>
             ScaffoldMessenger.of(context)
               ..clearSnackBars()
               ..showSnackBar(
-                const SnackBar(
-                  content: Text('HEIC images are not supported. Please share as JPEG or PNG.'),
+                SnackBar(
+                  content: Text(L10n.of(context).chatHeicNotSupported),
                   behavior: SnackBarBehavior.floating,
                 ),
               );
@@ -420,9 +422,25 @@ class _HomeShellState extends State<HomeShell>
     );
   }
 
+  /// Discrete (non-token) generation state the shell's layout depends on.
+  /// Token growth only changes [ChatGenerationJob.responseText], which the
+  /// streaming bubble tracks itself, so the shell does not rebuild at ~20 Hz
+  /// while tokens stream in.
+  String? _lastGenerationSignature;
+
+  String _generationSignature() {
+    final job = _generation.job;
+    return '${job?.generationId}|${job?.state.name}|${job?.sources.length}|'
+        '${_generation.busy}';
+  }
+
   void _generationChanged() {
     if (!mounted) return;
-    setState(() {});
+    final signature = _generationSignature();
+    if (signature != _lastGenerationSignature) {
+      _lastGenerationSignature = signature;
+      setState(() {});
+    }
     final trace = _generation.activeTrace;
     if (trace?.hasUiPaintScheduled == true &&
         trace?.hasUiPaintCompleted == false) {
@@ -447,8 +465,10 @@ class _HomeShellState extends State<HomeShell>
           ScaffoldMessenger.of(context)
             ..clearSnackBars()
             ..showSnackBar(
-              const SnackBar(
-                content: Text('Image analysis unavailable: install the image component in Settings.'),
+              SnackBar(
+                content: Text(
+                  L10n.of(context).chatImageAnalysisUnavailable,
+                ),
                 behavior: SnackBarBehavior.floating,
               ),
             );
@@ -526,15 +546,13 @@ class _HomeShellState extends State<HomeShell>
               borderRadius: BorderRadius.circular(FluxRadius.sheet),
             ),
             title: Text(
-              'Download the AI model for offline chat?',
+              L10n.of(context).chatDownloadModelTitle,
               style: Theme.of(
                 context,
               ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w400),
             ),
             content: Text(
-              '$size downloads once and is verified before use. The download '
-              'resumes safely after an interrupted connection, and your chats '
-              'stay on this device.',
+              L10n.of(context).chatDownloadModelBody(size),
             ),
             actions: [
               TextButton(
@@ -557,8 +575,8 @@ class _HomeShellState extends State<HomeShell>
       final effectivePrompt = value.isNotEmpty
           ? value
           : attached != null && _isImageAttachmentPath(attached)
-          ? 'Please analyze this attached image in detail.'
-          : 'Please summarize the attached file and highlight its key points.';
+          ? L10n.of(context).chatImagePromptDefault
+          : L10n.of(context).chatFilePromptDefault;
       final conversation = _conversations.active ?? _conversations.startNew();
       final attachedBytes = _attachedImageBytes;
       final history = [
@@ -609,9 +627,7 @@ class _HomeShellState extends State<HomeShell>
           ..clearSnackBars()
           ..showSnackBar(
             SnackBar(
-              content: const Text(
-                'Could not prepare chat. Check the model and storage, then try again.',
-              ),
+              content: Text(L10n.of(context).chatCouldNotPrepare),
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -790,14 +806,14 @@ class _HomeShellState extends State<HomeShell>
   Future<void> _openCreations() async {
     await _closeSidebarForNavigation();
     if (!mounted) return;
-    Navigator.of(context).push(_FinnPageRoute(child: const CreationsPage()));
+    Navigator.of(context).push(_FinnPageRoute<void>(child: const CreationsPage()));
   }
 
   Future<void> _openYou() async {
     await _closeSidebarForNavigation();
     if (!mounted) return;
     Navigator.of(context).push(
-      _FinnPageRoute(child: YouPage(onBack: () => Navigator.of(context).pop())),
+      _FinnPageRoute<void>(child: YouPage(onBack: () => Navigator.of(context).pop())),
     );
   }
 
@@ -805,7 +821,7 @@ class _HomeShellState extends State<HomeShell>
     await _closeSidebarForNavigation();
     if (!mounted) return;
     Navigator.of(context).push(
-      _FinnPageRoute(
+      _FinnPageRoute<void>(
         child: SkillsPage(onBack: () => Navigator.of(context).pop()),
       ),
     );
@@ -815,7 +831,7 @@ class _HomeShellState extends State<HomeShell>
     await _closeSidebarForNavigation();
     if (!mounted) return;
     Navigator.of(context).push(
-      _FinnPageRoute(
+      _FinnPageRoute<void>(
         child: SettingsPage(onBack: () => Navigator.of(context).pop()),
       ),
     );
@@ -936,7 +952,7 @@ class _HomeShellState extends State<HomeShell>
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
-                                  'Offline — answer may be less accurate. Connect for cited sources.',
+                                  L10n.of(context).chatOfflineNotice,
                                   style: Theme.of(context).textTheme.labelSmall
                                       ?.copyWith(
                                         color: FluxColors.mutedOf(context),
@@ -1109,7 +1125,7 @@ class _HomeHeader extends StatelessWidget {
     child: Row(
       children: [
         Tooltip(
-          message: 'Open menu',
+          message: L10n.of(context).chatOpenMenuTooltip,
           child: InkWell(
             onTap: onMenu,
             borderRadius: BorderRadius.circular(17),
@@ -1128,7 +1144,7 @@ class _HomeHeader extends StatelessWidget {
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
             child: Text(
-              'FinnAI',
+              L10n.of(context).appBrandFinnAI,
               style: Theme.of(
                 context,
               ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w400),
@@ -1194,26 +1210,25 @@ class _ConversationEmpty extends StatelessWidget {
   /// show a different set on every re-open.
   final int rotation;
 
-  static const _suggestionPool = [
-    'Summarize a web article for me',
-    'Explain a complex topic simply',
-    'Plan my day in three steps',
-    'Draft a short email',
-    'Brainstorm names for my new project',
-    'Turn a rough idea into a step-by-step plan',
-    'Help me debug a confusing error',
-    'Write a quick goodbye note',
-    'Compare two options before I decide',
-    'Give me a fresh perspective on a problem',
-  ];
-
-  /// Four suggestions, windowed through the pool so consecutive opens share
-  /// only a little overlap.
-  List<String> get _suggestions {
-    final start = (rotation * 3) % _suggestionPool.length;
+  /// The localized suggestion pool, windowed by [rotation] so consecutive
+  /// opens share only a little overlap.
+  List<String> _suggestions(BuildContext context) {
+    final l10n = L10n.of(context);
+    final pool = [
+      l10n.suggestionSummarizeArticle,
+      l10n.suggestionExplainSimply,
+      l10n.suggestionPlanDay,
+      l10n.suggestionDraftEmail,
+      l10n.suggestionBrainstormNames,
+      l10n.suggestionIdeaToPlan,
+      l10n.suggestionDebugError,
+      l10n.suggestionGoodbyeNote,
+      l10n.suggestionCompareOptions,
+      l10n.suggestionFreshPerspective,
+    ];
+    final start = (rotation * 3) % pool.length;
     return [
-      for (var i = 0; i < 4; i++)
-        _suggestionPool[(start + i) % _suggestionPool.length],
+      for (var i = 0; i < 4; i++) pool[(start + i) % pool.length],
     ];
   }
 
@@ -1229,7 +1244,7 @@ class _ConversationEmpty extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  "Hi, I'm Finn.",
+                  L10n.of(context).chatHiPrefix,
                   textAlign: TextAlign.center,
                   style: Theme.of(
                     context,
@@ -1237,8 +1252,7 @@ class _ConversationEmpty extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Ask me anything — I run entirely on this device, so your\n'
-                  'conversations never leave your phone.',
+                  L10n.of(context).chatAskAnything,
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: FluxColors.mutedOf(context),
@@ -1247,7 +1261,7 @@ class _ConversationEmpty extends StatelessWidget {
                 ),
                 const SizedBox(height: 30),
                 Text(
-                  'Try asking',
+                  L10n.of(context).chatTryAsking,
                   style: Theme.of(context).textTheme.labelMedium?.copyWith(
                     color: FluxColors.mutedOf(context),
                     letterSpacing: .4,
@@ -1259,7 +1273,7 @@ class _ConversationEmpty extends StatelessWidget {
                   runSpacing: 8,
                   alignment: WrapAlignment.center,
                   children: [
-                    for (final suggestion in _suggestions)
+                    for (final suggestion in _suggestions(context))
                       ActionChip(
                         label: Text(suggestion),
                         onPressed: () => onSuggestion(suggestion),
@@ -1337,28 +1351,57 @@ class _Conversation extends StatefulWidget {
 
 class _ConversationState extends State<_Conversation> {
   Timer? _scrollSettleTimer;
-  String _contentSignature = '';
+
+  /// (conversationId, messageCount, jobId, responseLength, state, preparing)
+  /// — the layout-relevant generation inputs. A change that only moves the
+  /// response length is a token event: the streaming bubble repaints itself
+  /// and the list only re-anchors the scroll, without a full rebuild.
+  late (String, int, String?, int, String?, bool) _contentSignature;
 
   @override
   void initState() {
     super.initState();
     _contentSignature = _signature();
+    widget.generation.addListener(_generationChanged);
   }
 
   @override
   void didUpdateWidget(covariant _Conversation oldWidget) {
     super.didUpdateWidget(oldWidget);
-    final nextSignature = _signature();
-    if (nextSignature == _contentSignature) return;
-    _contentSignature = nextSignature;
-    _queueLatestAlignment();
+    _syncSignature(rebuild: false);
   }
 
-  String _signature() {
+  (String, int, String?, int, String?, bool) _signature() {
     final active = widget.generation.activeJob;
-    return '${widget.activeConversationId}|${widget.messages.length}|'
-        '${active?.conversationId}|${active?.responseText.length}|'
-        '${active?.state.name}|${widget.preparing}';
+    return (
+      widget.activeConversationId ?? '',
+      widget.messages.length,
+      active?.conversationId,
+      active?.responseText.length ?? 0,
+      active?.state.name,
+      widget.preparing,
+    );
+  }
+
+  void _generationChanged() {
+    if (!mounted) return;
+    _syncSignature(rebuild: true);
+  }
+
+  void _syncSignature({required bool rebuild}) {
+    final nextSignature = _signature();
+    if (nextSignature == _contentSignature) return;
+    final previous = _contentSignature;
+    _contentSignature = nextSignature;
+    final textOnlyGrew = previous.$1 == nextSignature.$1 &&
+        previous.$2 == nextSignature.$2 &&
+        previous.$3 == nextSignature.$3 &&
+        previous.$5 == nextSignature.$5 &&
+        previous.$6 == nextSignature.$6;
+    if (rebuild && !textOnlyGrew) {
+      setState(() {});
+    }
+    _queueLatestAlignment();
   }
 
   void _queueLatestAlignment() {
@@ -1402,6 +1445,7 @@ class _ConversationState extends State<_Conversation> {
 
   @override
   void dispose() {
+    widget.generation.removeListener(_generationChanged);
     _scrollSettleTimer?.cancel();
     super.dispose();
   }
@@ -1457,7 +1501,7 @@ class _ConversationState extends State<_Conversation> {
             0,
             widget.bottomInset + 20,
           ),
-          cacheExtent: 700.0,
+          scrollCacheExtent: const ScrollCacheExtent.pixels(700.0),
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           physics: const FluxBouncingScrollPhysics(
             parent: AlwaysScrollableScrollPhysics(),
@@ -1469,16 +1513,19 @@ class _ConversationState extends State<_Conversation> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   if (ownsGeneration)
-                    _StreamingReply(text: activeJob.responseText)
+                    _StreamingReply(
+                      generation: widget.generation,
+                      text: activeJob.responseText,
+                    )
                   else if (widget.preparing)
-                    const _StreamingReply(text: '')
+                    _StreamingReply(generation: widget.generation, text: '')
                   else if (activeJob != null)
                     OtherChatGenerationNotice(
                       title:
                           widget.conversations
                               .conversationById(activeJob.conversationId)
                               ?.title ??
-                          'another chat',
+                          L10n.of(context).chatAnotherChatFallback,
                       onOpen: () =>
                           widget.onOpenConversation(activeJob.conversationId),
                       onStop: widget.onStop,
@@ -1806,23 +1853,23 @@ class _MessageBubbleState extends State<_MessageBubble> {
       if (widget.onEdit != null)
         FluxContextMenuItem(
           icon: FluxIcons.edit,
-          label: 'Edit',
+          label: L10n.of(context).commonEdit,
           onTap: () => widget.onEdit?.call(),
         ),
       FluxContextMenuItem(
         icon: FluxIcons.copy,
-        label: 'Copy',
+        label: L10n.of(context).chatCopy,
         onTap: _copy,
       ),
       FluxContextMenuItem(
         icon: FluxIcons.canvas,
-        label: 'Select Text',
+        label: L10n.of(context).chatSelectText,
         onTap: () => setState(() => _selecting = true),
       ),
       if (!widget.user)
         FluxContextMenuItem(
           icon: FluxIcons.flag,
-          label: 'Report',
+          label: L10n.of(context).chatReportAction,
           onTap: () {
             ReportDialog.show(
               context,
@@ -1834,7 +1881,7 @@ class _MessageBubbleState extends State<_MessageBubble> {
         ),
     ];
 
-    showFluxContextMenu(
+    showFluxContextMenu<void>(
       context: context,
       targetKey: _bubbleKey,
       previewWidget: preview,
@@ -1884,7 +1931,7 @@ class _MessageBubbleState extends State<_MessageBubble> {
 
     return Semantics(
       button: !_selecting,
-      hint: _selecting ? null : 'Press and hold for message actions',
+      hint: _selecting ? null : L10n.of(context).chatMessageActionsHint,
       child: FluxSpringPressable(
         enabled: !_selecting,
         onLongPress: _openContextMenu,
@@ -1897,9 +1944,18 @@ class _MessageBubbleState extends State<_MessageBubble> {
 /// The live AI response while it is being generated: the streaming text (if
 /// any) followed by a softly blinking caret. Replaces the old "Finn is
 /// typing…" bar and its stop affordance with an animated caret and smooth streaming.
+///
+/// The shell only rebuilds this subtree on discrete generation transitions;
+/// the widget listens to the generation controller itself so per-token growth
+/// repaints the bubble without re-laying-out the whole chat shell.
 class _StreamingReply extends StatefulWidget {
-  const _StreamingReply({required this.text});
+  const _StreamingReply({required this.generation, required this.text});
 
+  /// Controller to follow for token growth while this reply streams.
+  final ChatGenerationController generation;
+
+  /// Fallback text used when no generation job is active (the preparing
+  /// placeholder); superseded by the job's response text whenever one runs.
   final String text;
 
   @override
@@ -1913,26 +1969,48 @@ class _StreamingReplyState extends State<_StreamingReply>
     duration: const Duration(milliseconds: 1400),
   );
 
+  late String _text =
+      widget.generation.activeJob?.responseText ?? widget.text;
+
   @override
   void initState() {
     super.initState();
     _pulse.repeat(reverse: true);
+    widget.generation.addListener(_onGenerationChanged);
+  }
+
+  @override
+  void didUpdateWidget(covariant _StreamingReply oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _syncText();
+  }
+
+  void _onGenerationChanged() {
+    if (!mounted) return;
+    _syncText();
+  }
+
+  void _syncText() {
+    final next = widget.generation.activeJob?.responseText ?? widget.text;
+    if (next == _text) return;
+    setState(() => _text = next);
   }
 
   @override
   void dispose() {
+    widget.generation.removeListener(_onGenerationChanged);
     _pulse.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final fullText = widget.text;
+    final fullText = _text;
 
     if (fullText.isEmpty) {
       return Semantics(
         liveRegion: true,
-        label: 'Finn is generating…',
+        label: L10n.of(context).chatFinnGenerating,
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 4),
           child: Row(
@@ -1953,7 +2031,7 @@ class _StreamingReplyState extends State<_StreamingReply>
               ),
               const SizedBox(width: 8),
               Text(
-                'Finn is generating…',
+                L10n.of(context).chatFinnGenerating,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: FluxColors.mutedOf(context),
                   fontStyle: FontStyle.italic,
@@ -1991,7 +2069,7 @@ class OtherChatGenerationNotice extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Semantics(
     liveRegion: true,
-    label: 'Generating in another chat',
+    label: L10n.of(context).chatGeneratingInOtherChat,
     child: Container(
       padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
       decoration: BoxDecoration(
@@ -2003,7 +2081,7 @@ class OtherChatGenerationNotice extends StatelessWidget {
         children: [
           Expanded(
             child: Text(
-              'Generating in $title',
+              L10n.of(context).chatGeneratingIn(title),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.labelMedium,
@@ -2070,7 +2148,7 @@ class _CompleteReply extends StatelessWidget {
         if (status == ConversationMessageStatus.generating) ...[
           const SizedBox(height: 5),
           Text(
-            'Finn is typing…',
+            L10n.of(context).chatFinnTyping,
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
               color: FluxColors.mutedOf(context),
             ),
@@ -2124,21 +2202,21 @@ class _ReplyActions extends StatelessWidget {
       children: [
         _ReplyActionButton(
           icon: FluxIcons.copy,
-          tooltip: 'Copy',
+          tooltip: L10n.of(context).chatCopy,
           onTap: () => _copy(context),
         ),
         if (regenerate != null) ...[
           const SizedBox(width: 2),
           _ReplyActionButton(
             icon: FluxIcons.refresh,
-            tooltip: 'Regenerate',
+            tooltip: L10n.of(context).chatRegenerate,
             onTap: regenerate,
           ),
         ],
         const SizedBox(width: 2),
         _ReplyActionButton(
           icon: FluxIcons.flag,
-          tooltip: 'Report',
+          tooltip: L10n.of(context).chatReportAction,
           onTap: () => ReportDialog.show(
             context,
             assistantResponse: text,
@@ -2273,7 +2351,9 @@ class _SourceListState extends State<_SourceList>
       children: [
         Semantics(
           button: true,
-          label: _expanded ? 'Hide sources' : 'Show sources',
+          label: _expanded
+              ? L10n.of(context).chatHideSources
+              : L10n.of(context).chatShowSources,
           child: InkWell(
             onTap: _toggle,
             borderRadius: BorderRadius.circular(FluxRadius.pill),
@@ -2294,7 +2374,7 @@ class _SourceListState extends State<_SourceList>
                   ],
                   const SizedBox(width: 7),
                   Text(
-                    'Sources',
+                    L10n.of(context).chatSources,
                     style: Theme.of(context).textTheme.labelMedium?.copyWith(
                       color: muted,
                       fontWeight: FontWeight.w500,
@@ -2485,7 +2565,7 @@ class _EditMessageDialogState extends State<_EditMessageDialog> {
     surfaceTintColor: Colors.transparent,
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(FluxRadius.sheet)),
     title: Text(
-      'Edit message',
+      L10n.of(context).chatEditMessage,
       style: Theme.of(
         context,
       ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w400),
@@ -2497,7 +2577,7 @@ class _EditMessageDialogState extends State<_EditMessageDialog> {
       maxLines: 6,
       maxLength: 4000,
       textCapitalization: TextCapitalization.sentences,
-      decoration: const InputDecoration(hintText: 'Rewrite your message'),
+      decoration: InputDecoration(hintText: L10n.of(context).chatRewriteHint),
     ),
     actions: [
       TextButton(
@@ -2562,21 +2642,21 @@ class _IMessageAttachmentMenuState extends State<_IMessageAttachmentMenu>
 
     final items = [
       (
-        title: 'Camera',
+        title: L10n.of(context).attachmentCamera,
         icon: HugeIcons.strokeRoundedCamera01,
         iconBg: monochromeBg,
         iconColor: monochromeIcon,
         onTap: widget.onSelectCamera,
       ),
       (
-        title: 'Photos',
+        title: L10n.of(context).attachmentPhotos,
         icon: HugeIcons.strokeRoundedImage01,
         iconBg: monochromeBg,
         iconColor: monochromeIcon,
         onTap: widget.onSelectPhoto,
       ),
       (
-        title: 'Files',
+        title: L10n.of(context).attachmentFiles,
         icon: HugeIcons.strokeRoundedFolder01,
         iconBg: monochromeBg,
         iconColor: monochromeIcon,
@@ -2877,7 +2957,7 @@ class _ChatComposerState extends State<ChatComposer> {
               children: [
                 Semantics(
                   button: true,
-                  label: 'Add attachment',
+                  label: L10n.of(context).chatAddAttachmentSemantic,
                   child: SizedBox.square(
                     dimension: 34,
                     child: InkWell(
@@ -2912,7 +2992,7 @@ class _ChatComposerState extends State<ChatComposer> {
 
                 Expanded(
                   child: Semantics(
-                    label: 'Message to Finn',
+                    label: L10n.of(context).chatMessageToFinnSemantic,
                     textField: true,
                     child: TextField(
                       controller: widget.controller,
@@ -2931,8 +3011,8 @@ class _ChatComposerState extends State<ChatComposer> {
                       cursorColor: FluxColors.inkOf(context),
                       decoration: InputDecoration.collapsed(
                         hintText: widget.blocked
-                            ? 'Finn is typing…'
-                            : 'Ask anything',
+                            ? L10n.of(context).chatFinnTyping
+                            : L10n.of(context).chatAskAnythingHint,
                         hintStyle: Theme.of(context).textTheme.bodyMedium
                             ?.copyWith(color: FluxColors.mutedOf(context)),
                       ),
@@ -2943,7 +3023,7 @@ class _ChatComposerState extends State<ChatComposer> {
                 if (widget.busy)
                   Semantics(
                     button: true,
-                    label: 'Stop generating',
+                    label: L10n.of(context).chatStopGeneratingSemantic,
                     child: SizedBox.square(
                       key: const ValueKey('stop-button-surface'),
                       dimension: 36,
@@ -2984,7 +3064,7 @@ class _ChatComposerState extends State<ChatComposer> {
                   Semantics(
                     button: true,
                     enabled: canSend,
-                    label: 'Send message',
+                    label: L10n.of(context).chatSendMessageSemantic,
                     child: SizedBox.square(
                       key: const ValueKey('send-button-surface'),
                       dimension: 36,
@@ -3293,7 +3373,7 @@ class _SidebarState extends State<_Sidebar> {
                                     ),
                                     const SizedBox(height: 10),
                                     Text(
-                                      'No history',
+                                      L10n.of(context).chatNoHistory,
                                       style: Theme.of(context)
                                           .textTheme
                                           .labelMedium
@@ -3396,7 +3476,7 @@ class _SidebarState extends State<_Sidebar> {
                         child: Align(
                           alignment: Alignment.centerLeft,
                           child: Text(
-                            'FinnAI',
+                            L10n.of(context).appBrandFinnAI,
                             style: Theme.of(context).textTheme.titleLarge
                                 ?.copyWith(fontWeight: FontWeight.w400),
                           ),
@@ -3421,7 +3501,7 @@ class _SidebarState extends State<_Sidebar> {
                               width: 39,
                               bottom: 0,
                               child: Tooltip(
-                                message: 'Settings',
+                                message: L10n.of(context).settingsTitle,
                                 child: InkWell(
                                   onTap: widget.onSettings,
                                   borderRadius: const BorderRadius.horizontal(
@@ -3437,7 +3517,7 @@ class _SidebarState extends State<_Sidebar> {
                               right: 0,
                               bottom: 0,
                               child: Tooltip(
-                                message: 'New chat',
+                                message: L10n.of(context).chatNewChat,
                                 child: InkWell(
                                   onTap: widget.onNewConversation,
                                   borderRadius: const BorderRadius.horizontal(
@@ -3488,19 +3568,19 @@ class _SidebarState extends State<_Sidebar> {
                     children: [
                       _NavTile(
                         asset: FigmaAssets.sidebarCreations,
-                        label: 'Creations',
+                        label: L10n.of(context).creationsTitle,
                         onTap: widget.onCreations,
                         size: navSize,
                       ),
                       _NavTile(
                         asset: FigmaAssets.sidebarYou,
-                        label: 'You',
+                        label: L10n.of(context).youTitle,
                         onTap: widget.onYou,
                         size: navSize,
                       ),
                       _NavTile(
                         asset: FigmaAssets.sidebarSkills,
-                        label: 'Skills',
+                        label: L10n.of(context).skillsTitle,
                         onTap: widget.onSkills,
                         size: navSize,
                       ),
@@ -3532,7 +3612,7 @@ class _SidebarState extends State<_Sidebar> {
                   child: Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
-                      'Chat History',
+                      L10n.of(context).chatHistory,
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ),
@@ -3630,18 +3710,18 @@ class _SidebarConversationTile extends StatelessWidget {
     final items = <FluxContextMenuItem>[
       FluxContextMenuItem(
         icon: FluxIcons.edit,
-        label: 'Rename',
+        label: L10n.of(context).chatRenameAction,
         onTap: () => _showRenameDialog(context),
       ),
       FluxContextMenuItem(
         icon: FluxIcons.close,
-        label: 'Delete',
+        label: L10n.of(context).commonDelete,
         isDestructive: true,
         onTap: () => _showDeleteConfirmDialog(context),
       ),
     ];
 
-    showFluxContextMenu(
+    showFluxContextMenu<void>(
       context: context,
       targetKey: key,
       previewWidget: preview,
@@ -3660,7 +3740,9 @@ class _SidebarConversationTile extends StatelessWidget {
         content: TextField(
           controller: controller,
           autofocus: true,
-          decoration: const InputDecoration(hintText: 'Enter chat title'),
+          decoration: InputDecoration(
+            hintText: L10n.of(context).chatRenameEnterTitleHint,
+          ),
           onSubmitted: (text) {
             Navigator.of(dialogContext).pop();
             ConversationStore.instance.renameConversation(
@@ -3686,7 +3768,7 @@ class _SidebarConversationTile extends StatelessWidget {
               );
             },
             child: Text(
-              'Save',
+              L10n.of(context).commonSave,
               style: TextStyle(
                 color: FluxColors.inkOf(context),
                 fontWeight: FontWeight.w600,
@@ -3709,16 +3791,16 @@ class _SidebarConversationTile extends StatelessWidget {
         title: Text(L10n.of(context).chatDeleteTitle),
         content: Text(
           generationActive
-              ? 'Stop the active generation before deleting this chat. Its '
-                    'partial response will be preserved.'
-              : 'Are you sure you want to delete this chat history? This '
-                    'action cannot be undone.',
+              ? L10n.of(context).chatDeleteActiveGenerationBody
+              : L10n.of(context).chatDeleteConfirmBody,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
             child: Text(
-              generationActive ? 'Close' : L10n.of(context).commonCancel,
+              generationActive
+                  ? L10n.of(context).commonClose
+                  : L10n.of(context).commonCancel,
               style: TextStyle(color: FluxColors.mutedOf(context)),
             ),
           ),
@@ -3729,7 +3811,7 @@ class _SidebarConversationTile extends StatelessWidget {
                 ConversationStore.instance.deleteConversation(conversation.id);
               },
               child: Text(
-                'Delete',
+                L10n.of(context).commonDelete,
                 style: TextStyle(
                   color: FluxColors.isDark(context)
                       ? FluxColors.destructiveDark
