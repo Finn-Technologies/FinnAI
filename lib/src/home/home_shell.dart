@@ -14,7 +14,7 @@ import '../conversations/conversation_store.dart';
 import '../creations/creations_page.dart';
 import '../generation/chat_generation_controller.dart';
 import '../inference/device_profile.dart';
-import '../inference/qwen_inference.dart';
+import '../inference/finn_inference.dart';
 import '../inference/residency_policy.dart';
 import '../reporting/report_dialog.dart';
 import '../search/search_agent.dart';
@@ -49,7 +49,7 @@ class HomeShell extends StatefulWidget {
 
   final ChatGenerationController? generationController;
   final ConversationStore? conversationStore;
-  final QwenInference? inference;
+  final FinnInference? inference;
   @visibleForTesting
   final bool initializeServices;
   final WebSearchService? webSearch;
@@ -64,7 +64,7 @@ class _HomeShellState extends State<HomeShell>
   final _focusNode = FocusNode();
   final ScrollController _chatScrollController = ScrollController();
   final ValueNotifier<bool> _chatScrolledAway = ValueNotifier<bool>(false);
-  late final _inference = widget.inference ?? QwenInference.instance;
+  late final _inference = widget.inference ?? FinnInference.instance;
   late final _conversations =
       widget.conversationStore ?? ConversationStore.instance;
   late final _generation =
@@ -436,7 +436,7 @@ class _HomeShellState extends State<HomeShell>
     // Fire-and-forget check: if user attached an image but mmproj is absent,
     // surface a toast immediately so expectation is set.
     if (!_isImageAttachmentPath(path)) return;
-    // Best-effort: QwenInference mirrors FinnAccelerator; check via inference
+    // Best-effort: FinnInference mirrors FinnAccelerator; check via inference
     // without importing engine internals. Use a microtask to avoid build-time.
     Future.microtask(() async {
       try {
@@ -505,7 +505,7 @@ class _HomeShellState extends State<HomeShell>
         YouProfileStore.instance.promptContext,
         SkillsStore.instance.promptContextFor(value),
       ].where((item) => item.trim().isNotEmpty).join('\n\n');
-      final missing = <QwenModel>[];
+      final missing = <FinnModelSpec>[];
       for (final model in _inference.requiredModels) {
         if (!await _inference.isInstalled(model)) missing.add(model);
       }

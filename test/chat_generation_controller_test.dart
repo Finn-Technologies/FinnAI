@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:finn_ai/src/conversations/conversation_store.dart';
 import 'package:finn_ai/src/generation/chat_generation_controller.dart';
 import 'package:finn_ai/src/home/home_shell.dart';
-import 'package:finn_ai/src/inference/qwen_inference.dart';
+import 'package:finn_ai/src/inference/finn_inference.dart';
 import 'package:finn_ai/src/inference/prompt_intent.dart';
 import 'package:finn_ai/src/inference/ttft_metrics.dart';
 import 'package:finn_ai/src/theme/flux_theme.dart';
@@ -485,9 +485,9 @@ class _FakeRuntime extends ChangeNotifier implements ChatInferenceRuntime {
 
   Future<void> finish(GenerationFinishReason reason) async {
     _report = GenerationReport(
-      model: qwenModels.first,
+      model: finnModels.first,
       intent: PromptIntent.quickQuestion,
-      route: QwenTier.standard,
+      route: FinnModelTier.standard,
       outputBudget: 320,
       finishReason: reason,
       firstTokenLatency: const Duration(milliseconds: 1),

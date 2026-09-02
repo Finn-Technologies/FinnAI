@@ -395,7 +395,7 @@ class AdaptiveInferenceEngine {
         ? (_config?.isCpu == true ? 'CPU' : 'accelerated')
         : '${selection.backend.name} (${selection.deviceName})';
     return AdaptiveDiagnostics(
-      'Qwen 3.5 2B\n'
+      'LFM2.5-VL 1.6B\n'
       'runtime=${_llamaCppCommit ?? 'bundled llama.cpp'}\n'
       'backend=$backend\n'
       'context=${_config?.contextSize ?? 'not selected'}',

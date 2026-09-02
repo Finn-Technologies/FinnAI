@@ -1,16 +1,14 @@
-# FinnAI Engine seam — build decoupling (Track 5, Phase 1)
+# FinnAI Engine seam
 #
-# ONLY `lib/src/engine/backends/` may import `package:llama_cpp_dart`.
-# All other files in `lib/src/engine` must depend on the engine-owned seam
-# `lib/src/engine/api/engine_api.dart` and the shim
-# `lib/src/engine/backends/llama_shim.dart` is transitional only.
-# Enforcement is via `tool/verify_engine_seam.sh` (CI) which runs:
-#   ! grep -r "package:llama_cpp_dart" lib/src/engine --include="*.dart" | grep -v "lib/src/engine/backends/"
-# and via the `depend_on_referenced_packages` + custom lint in a future
-# analyzer plugin. New engine code that directly imports `llama_cpp_dart`
-# outside `backends/` will be rejected in review and blocked by CI.
+# ONLY `lib/src/engine/**` may import `package:llama_cpp_dart` (directly or
+# via the re-export shim `lib/src/engine/backends/llama_shim.dart`). The rule
+# applies to the whole app — everything outside `lib/src/engine/` (including
+# main.dart and the UI) depends on the public facade
+# `lib/src/engine/finn_engine.dart` instead.
+# Enforcement is via `tool/verify_engine_seam.sh` (CI), which scans all of
+# `lib/` and rejects any llama_cpp_dart import outside `lib/src/engine/`.
 #
-# See docs/ENGINE_API.md and docs/ENGINE_ROADMAP.md for the 12-month runway.
+# See docs/ENGINE_API.md for the engine contract.
 
 # This file configures the analyzer, which statically analyzes Dart code to
 # check for errors, warnings, and lints.

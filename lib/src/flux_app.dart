@@ -9,7 +9,7 @@ import '../l10n/l10n_helper.dart';
 import 'app_state_store.dart';
 import 'home/home_shell.dart';
 import 'onboarding/onboarding_flow.dart';
-import 'inference/qwen_inference.dart';
+import 'inference/finn_inference.dart';
 import 'theme/flux_theme.dart';
 import 'widgets/ambient_background.dart';
 
@@ -27,10 +27,10 @@ class _FinnBootstrapState extends State<FinnBootstrap> {
   Future<void> _initialize() async {
     await Future.wait([
       AppStateStore.instance.initialize(),
-      QwenInference.instance.initialize(),
+      FinnInference.instance.initialize(),
     ]);
 
-    final inference = QwenInference.instance;
+    final inference = FinnInference.instance;
     if (inference.isDeviceSupported) {
       _modelInstalled = await inference.isInstalled(inference.selected);
       // Run model download resumption and background accelerator benchmark
@@ -45,7 +45,7 @@ class _FinnBootstrapState extends State<FinnBootstrap> {
     });
   }
 
-  Future<void> _backgroundWarmup(QwenInference inference) async {
+  Future<void> _backgroundWarmup(FinnInference inference) async {
     try {
       await inference.resumeInterruptedDownloads();
     } catch (error, stack) {
@@ -113,9 +113,9 @@ class _FinnBootstrapState extends State<FinnBootstrap> {
           body: AmbientBackground(
             child: Center(
               child: ListenableBuilder(
-                listenable: QwenInference.instance,
+                listenable: FinnInference.instance,
                 builder: (context, _) {
-                  final status = QwenInference.instance.status;
+                  final status = FinnInference.instance.status;
                   return Text(
                     status == 'Ready' ? 'FinnAI' : status,
                     textAlign: TextAlign.center,
@@ -164,7 +164,7 @@ class FluxApp extends StatelessWidget {
       ],
       supportedLocales: AppLocalizations.supportedLocales,
       builder: FluxTheme.applySystemUi,
-      home: QwenInference.instance.isDeviceSupported
+      home: FinnInference.instance.isDeviceSupported
           ? onboardingComplete
                 ? modelInstalled
                       ? const HomeShell()

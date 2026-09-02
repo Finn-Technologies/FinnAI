@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:finn_ai/src/inference/qwen_inference.dart';
+import 'package:finn_ai/src/inference/finn_inference.dart';
 import 'package:finn_ai/src/skills/skills_store.dart';
 import 'package:finn_ai/src/you/you_profile_store.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -8,7 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   group('AI Safety System Prompt Template Verification', () {
     test('cold prompt template includes the full safety system prompt', () {
-      final rendered = QwenInference.instance.renderPromptForTest(
+      final rendered = FinnInference.instance.renderPromptForTest(
         prompt: 'How do I write a Python function?',
       );
 
@@ -61,7 +61,7 @@ void main() {
         profile.promptContext,
         skills.activePromptContext,
       ].join('\n\n');
-      final rendered = QwenInference.instance.renderPromptForTest(
+      final rendered = FinnInference.instance.renderPromptForTest(
         prompt: 'Review this Android implementation.',
         systemContext: systemContext,
       );

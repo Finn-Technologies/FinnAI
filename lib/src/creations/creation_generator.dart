@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import '../inference/qwen_inference.dart';
+import '../inference/finn_inference.dart';
 import 'creation_model.dart';
 
 abstract interface class CreationGenerator {
@@ -11,12 +11,12 @@ abstract interface class CancelableCreationGenerator {
   Future<void> cancel();
 }
 
-class QwenCreationGenerator
+class FinnCreationGenerator
     implements CreationGenerator, CancelableCreationGenerator {
-  QwenCreationGenerator({QwenInference? inference})
-    : _inference = inference ?? QwenInference.instance;
+  FinnCreationGenerator({FinnInference? inference})
+    : _inference = inference ?? FinnInference.instance;
 
-  final QwenInference _inference;
+  final FinnInference _inference;
 
   @override
   Future<CreationDraft> generate(String prompt, CreationKind kind) async {
@@ -30,7 +30,10 @@ Return only valid JSON in this exact shape:
 {"title":"short name","summary":"one sentence","sections":[{"heading":"...","body":"..."}]}
 Use exactly 3 compact sections with one sentence per body. For apps and widgets cover experience, behavior and implementation. For presentations provide slide groups and key talking points. Keep the complete JSON under 140 words. Do not use markdown fences.
 ''';
-    await for (final token in _inference.generateReply(
+    // Queued instead of direct: a creation requested while a chat answer is
+    // streaming waits for the engine instead of failing with "Finn is
+    // already generating a response." (bounded by the engine's queue).
+    await for (final token in _inference.generateReplyQueued(
       request,
       conversationId:
           'creation-${DateTime.now().microsecondsSinceEpoch.toRadixString(36)}',

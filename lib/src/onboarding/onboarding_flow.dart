@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../home/home_shell.dart';
 import '../inference/device_profile.dart';
-import '../inference/qwen_inference.dart';
+import '../inference/finn_inference.dart';
 import '../theme/flux_theme.dart';
 import '../widgets/ambient_background.dart';
 import '../widgets/flux_controls.dart';
@@ -52,9 +52,9 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       // Precautions and the final swipe give the mmap-backed engine time to
       // load before the user can type a first prompt on devices with ample RAM.
       // On entry/low-memory devices, skip eager prewarm to keep UI memory unpressured.
-      final profile = QwenInference.instance.deviceProfile;
+      final profile = FinnInference.instance.deviceProfile;
       if (profile == null || !DeviceProfiler.isLowEnd(profile)) {
-        unawaited(QwenInference.instance.prewarm());
+        unawaited(FinnInference.instance.prewarm());
       }
     }
   }
@@ -451,7 +451,7 @@ class _AutomaticModelPage extends StatefulWidget {
 }
 
 class _AutomaticModelPageState extends State<_AutomaticModelPage> {
-  final _inference = QwenInference.instance;
+  final _inference = FinnInference.instance;
   bool _started = false;
   bool _ready = false;
   String? _error;
@@ -574,7 +574,7 @@ class _AutomaticInstallPanel extends StatelessWidget {
     required this.onRetry,
   });
 
-  final List<QwenModel> models;
+  final List<FinnModelSpec> models;
   final double progress;
   final bool ready;
   final bool started;
@@ -588,12 +588,12 @@ class _AutomaticInstallPanel extends StatelessWidget {
     final reduced = MediaQuery.disableAnimationsOf(context);
     final effectiveProgress = ready ? 1.0 : progress.clamp(.02, .98);
     final isDark = FluxColors.isDark(context);
-    final inference = QwenInference.instance;
+    final inference = FinnInference.instance;
     final downloading =
         !ready && started && inference.phase == InferencePhase.downloading;
     // The whole install is one honest number: language model + multimodal
     // component, downloaded bytes so far, and what is left.
-    final totalBytes = model.expectedBytes + qwenMmproj.expectedBytes;
+    final totalBytes = model.expectedBytes + finnMmproj.expectedBytes;
     final receivedBytes = inference.installReceivedBytes;
     final remainingBytes = inference.installRemainingBytes;
     final transferMeta = [
@@ -832,10 +832,10 @@ class SoftwareUpgradeScreen extends StatefulWidget {
 
 /// Blocking screen shown when a returning user's required model is missing —
 /// for example after the app upgrades from the retired tiered catalog to the
-/// single Qwen model. It reuses the onboarding download panel and only
+/// single local model. It reuses the onboarding download panel and only
 /// continues to the home screen once the new model is installed.
 class _SoftwareUpgradeScreenState extends State<SoftwareUpgradeScreen> {
-  final _inference = QwenInference.instance;
+  final _inference = FinnInference.instance;
   bool _started = false;
   bool _ready = false;
   String? _error;

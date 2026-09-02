@@ -8,7 +8,7 @@ import '../app_state_store.dart';
 import '../config/legal_config.dart';
 import '../conversations/conversation_store.dart';
 import '../flux_app.dart';
-import '../inference/qwen_inference.dart';
+import '../inference/finn_inference.dart';
 import '../theme/flux_theme.dart';
 import '../../l10n/l10n_helper.dart';
 import '../widgets/ambient_background.dart';
@@ -67,7 +67,7 @@ class _SettingsPageState extends State<SettingsPage>
   }
 
   Future<void> _loadSettingsData() async {
-    final statesFuture = QwenInference.instance.inspectModels();
+    final statesFuture = FinnInference.instance.inspectModels();
     final packageFuture = PackageInfo.fromPlatform()
         .then<PackageInfo?>((value) => value)
         .catchError((_) => null);
@@ -91,7 +91,7 @@ class _SettingsPageState extends State<SettingsPage>
 
   Future<void> _clearMemory() async {
     setState(() => _clearingMemory = true);
-    await QwenInference.instance.releaseMemory();
+    await FinnInference.instance.releaseMemory();
     if (mounted) {
       setState(() => _clearingMemory = false);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -334,13 +334,13 @@ class _SettingsPageState extends State<SettingsPage>
                   child: ListenableBuilder(
                     listenable: Listenable.merge([
                       ConversationStore.instance,
-                      QwenInference.instance,
+                      FinnInference.instance,
                     ]),
                     builder: (context, _) {
                       final totalChats =
                           ConversationStore.instance.conversations.length;
                       final states = _storageStates;
-                      final selectedTier = QwenInference.instance.selected.tier;
+                      final selectedTier = FinnInference.instance.selected.tier;
 
                       final scrollView = CustomScrollView(
                         controller: _scrollController,
@@ -928,7 +928,7 @@ class _ModelRow extends StatelessWidget {
     final model = state.model;
     final isDark = FluxColors.isDark(context);
 
-    final inference = QwenInference.instance;
+    final inference = FinnInference.instance;
     final downloading =
         inference.phase == InferencePhase.downloading &&
         inference.workingModel?.tier == state.model.tier;

@@ -4,12 +4,11 @@ import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:llama_cpp_dart/llama_cpp_dart.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'src/flux_app.dart';
 import 'src/inference/device_profile.dart';
-import 'src/inference/qwen_inference.dart';
+import 'src/inference/finn_inference.dart';
 import 'src/inference/evaluation.dart';
 import 'src/inference/prompt_intent.dart';
 import 'src/inference/ttft_metrics.dart';
@@ -25,11 +24,11 @@ Future<void> main() async {
   if (benchmark || evaluation) {
     // ignore: avoid_print
     print('FINN_MAIN start');
-    await QwenInference.instance.initialize();
+    await FinnInference.instance.initialize();
     // ignore: avoid_print
     print('FINN_MAIN initialized');
     if (const String.fromEnvironment('FINN_BENCH_TIER') == 'lite') {
-      QwenInference.instance.select(QwenTier.standard);
+      FinnInference.instance.select(FinnModelTier.standard);
     }
   }
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
@@ -132,23 +131,23 @@ Future<void> _runModelEvaluation() async {
     for (final index in selectedCases) {
       final prompt = prompts[index];
       final answer = StringBuffer();
-      await for (final token in QwenInference.instance.generateEvaluationReply(
+      await for (final token in FinnInference.instance.generateEvaluationReply(
         prompt,
         path: path,
         modelLabel: label,
-        tier: QwenTier.standard,
+        tier: FinnModelTier.standard,
         conversationId: 'eval-$label-$index',
       )) {
         answer.write(token);
       }
       final analysis = const PromptIntentClassifier().classify(prompt);
-      final report = QwenInference.instance.lastGenerationReport;
+      final report = FinnInference.instance.lastGenerationReport;
       final response = answer.toString();
       debugPrint(
         'FINN_EVAL ${jsonEncode({'selectedModel': label, 'intent': analysis.intent.name, 'route': report?.route.name, 'outputBudget': report?.outputBudget, 'finishReason': report?.finishReason.name, 'firstTokenLatencyMs': report?.firstTokenLatency?.inMilliseconds, 'totalGenerationTimeMs': report?.totalGenerationTime.inMilliseconds, 'outputTokens': report?.outputTokens, 'tokensPerSecond': report?.tokensPerSecond, if (prompt == 'Come fare una torta di ricotta e fragole?') 'recipeAcceptance': assessRicottaStrawberryCake(response).toJson(), if (prompt == 'Can you tell me how to upgrade the RAM in my laptop?') 'hardwareAcceptance': assessLaptopRamGuidance(response).toJson(), if (prompt == 'How does the routing in Bridgetown work?') 'bridgetownAcceptance': assessBridgetownRouting(response).toJson(), if (prompt == 'How do living ants know that an ant has died?') 'antNecrophoresisAcceptance': assessAntNecrophoresis(response).toJson(), 'response': response})}',
       );
     }
-    await QwenInference.instance.releaseMemory();
+    await FinnInference.instance.releaseMemory();
   }
 }
 
@@ -163,7 +162,7 @@ Future<void> _runModelEvaluation() async {
 Future<void> _runDeviceBenchmark() async {
   // ignore: avoid_print
   print('FINN_HARNESS begin');
-  final inference = QwenInference.instance;
+  final inference = FinnInference.instance;
   Map<Object?, Object?> runtimeOverrides = const {};
   try {
     runtimeOverrides =
@@ -176,19 +175,22 @@ Future<void> _runDeviceBenchmark() async {
   }
   // Surface llama.cpp's native logs (engine init, graph, perf) to a file the
   // host can tail via `run-as` — Android's stderr is not connected to logcat.
+  // Routed through the engine facade: main.dart never imports the FFI
+  // package directly (engine seam rule, see analysis_options.yaml).
   final supportDir = await getApplicationSupportDirectory();
-  LlamaEngine.logCapturePath =
-      '${supportDir.path}${Platform.pathSeparator}llama_native.log';
+  setLlamaNativeLogCapturePath(
+    '${supportDir.path}${Platform.pathSeparator}llama_native.log',
+  );
   // Benchmark builds: also mirror the native log to the app's own external
   // files dir so an adb shell can read it without run-as (release builds are
   // not debuggable). The benchmark model lives on /data/local/tmp, which
   // SELinux keeps read-only for the app, so the repacked-weight cache is
   // redirected into the same app-writable dir.
   if (const bool.fromEnvironment('FINN_BENCHMARK')) {
-    LlamaEngine.logCapturePath =
-        '/sdcard/Android/data/com.abhiflex.finnai/files/llama_native.log';
-    LlamaEngine.repackCacheDir =
-        '/sdcard/Android/data/com.abhiflex.finnai/files';
+    setLlamaNativeLogCapturePath(
+      '/sdcard/Android/data/com.abhiflex.finnai/files/llama_native.log',
+    );
+    setLlamaRepackCacheDir('/sdcard/Android/data/com.abhiflex.finnai/files');
   }
   Object? override(String name) => runtimeOverrides[name];
   const scenario = String.fromEnvironment(
@@ -217,18 +219,18 @@ Future<void> _runDeviceBenchmark() async {
   final noSearch = override('noSearch') == true || noSearchDefine;
   if (override('noPrefixCache') == true ||
       const bool.fromEnvironment('FINN_BENCH_NO_PREFIX')) {
-    QwenInference.debugDisablePrefixCache = true;
+    FinnInference.debugDisablePrefixCache = true;
   }
   if (override('cpu') == true || const bool.fromEnvironment('FINN_BENCH_CPU')) {
-    QwenInference.debugForceCpu = true;
+    FinnInference.debugForceCpu = true;
   }
   if (override('noSha') == true ||
       const bool.fromEnvironment('FINN_BENCH_NO_SHA')) {
-    QwenInference.debugSkipSha256 = true;
+    FinnInference.debugSkipSha256 = true;
   }
   debugPrint(
     'FINN_HARNESS overrides=${jsonEncode(runtimeOverrides)} '
-    'forceCpu=${QwenInference.debugForceCpu} '
+    'forceCpu=${FinnInference.debugForceCpu} '
     'nRsSeq=${DeviceProfiler.lookaheadSnapshots(await DeviceProfiler.read())}',
   );
   // Engine-config sweep overrides (intent extras): threads / batch threads /
@@ -267,10 +269,10 @@ Future<void> _runDeviceBenchmark() async {
 
   if (scenarioValue != 'true_cold') {
     if (prewarmValue == 'lite' || prewarmValue == 'both') {
-      await inference.prewarmTier(QwenTier.standard);
+      await inference.prewarmTier(FinnModelTier.standard);
     }
     if (prewarmValue == 'plus' || prewarmValue == 'both') {
-      await inference.prewarmTier(QwenTier.standard);
+      await inference.prewarmTier(FinnModelTier.standard);
     }
     if (prewarmValue == 'selected') await inference.prewarm();
   }
@@ -295,7 +297,7 @@ Future<void> _runDeviceBenchmark() async {
           input,
           path: candidatePath,
           modelLabel: candidateLabel,
-          tier: QwenTier.standard,
+          tier: FinnModelTier.standard,
           conversationId: conversationId,
           history: history,
           trace: trace,

@@ -6,7 +6,8 @@ import 'dart:math' as math;
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'backends/llama_shim.dart'; 
+import 'backends/llama_shim.dart';
+import 'prompt/prompt_formatter.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'profiler/device_profile.dart';
@@ -41,7 +42,7 @@ class _ModelRuntime {
     this.kvType = KvCacheType.iq4_nl,
   });
 
-  final QwenModel model;
+  final FinnModelSpec model;
   final LlamaEngine engine;
   final bool compactKv;
   final int contextSize;
@@ -89,31 +90,18 @@ class _GenerationCancelled implements Exception {
 ///
 /// The runtime lives on a dedicated worker isolate, models are mmap-backed, and all
 /// settings retain CPU/GPU/NPU paths via the FinnAI-Accelerator architecture.
-// Engine seam (Phase 1): FinnAccelerator is the high-level facade over a
-// [FinnEngine] implementation. Production uses [LlamaBackend]; tests may
-// inject a fake via [debugEngineFactory]. Direct `LlamaEngine` construction
-// must stay inside `lib/src/engine/backends/` (see docs/ENGINE_API.md).
-// ignore: unused_element
-typedef _FinnEngineFactory = dynamic Function();
-
 class FinnAccelerator extends ChangeNotifier {
   static const _backgroundDownloadChannel = MethodChannel(
     'finn_ai/model_download',
   );
 
-  FinnAccelerator._({SearchAgent? searchAgent, dynamic debugEngineFactory})
-    : _searchAgent = searchAgent ?? SearchAgent(),
-      _debugEngineFactory = debugEngineFactory; // ignore: prefer_initializing_formals
+  FinnAccelerator._({SearchAgent? searchAgent})
+      : _searchAgent = searchAgent ?? SearchAgent();
 
   static final FinnAccelerator instance = FinnAccelerator._();
 
   /// Model-driven web search orchestration. Injected for tests.
   final SearchAgent _searchAgent;
-
-  // Engine seam injection (Phase 1). Null in production; tests inject a
-  // fake [FinnEngine] factory so they never import `llama_cpp_dart`.
-  // ignore: unused_field
-  final dynamic _debugEngineFactory;
 
   /// True when a web-search decision pass ran for the current/last turn and
   /// reached the search step. Used by the controller/UI to show status.
@@ -172,9 +160,9 @@ class FinnAccelerator extends ChangeNotifier {
     '284a335aa3fb2ced3b1b01fcb40b08aa783e3b70832767f0dd2e3fdfa134bd54',
   };
 
-  QwenModel _selected = qwenModels.single;
-  QwenModel get selected => _selected;
-  List<QwenModel> get requiredModels => qwenModels;
+  FinnModelSpec _selected = finnModels.single;
+  FinnModelSpec get selected => _selected;
+  List<FinnModelSpec> get requiredModels => finnModels;
 
   /// Last known llama.cpp commit, surfaced by the adaptive engine so its
   /// profile cache key invalidates when the native build changes.
@@ -188,11 +176,50 @@ class FinnAccelerator extends ChangeNotifier {
   bool get automaticSelection => _automaticSelection;
   bool get isDeviceSupported => _deviceProfile?.supported ?? true;
 
+  /// Short-lived cache for the Android per-turn profile refresh. Re-querying
+  /// the platform channel and /proc/meminfo on every turn cost measurable
+  /// latency per message while the values only matter when they change
+  /// materially. The cache is invalidated when the app releases memory
+  /// (backgrounded) so the first turn after a resume re-reads fresh values.
+  static const _deviceProfileCacheTtl = Duration(seconds: 30);
+  DeviceProfile? _deviceProfileCache;
+  DateTime? _deviceProfileCacheAt;
+
+  /// Returns a cached [DeviceProfile] when fresh, otherwise re-reads it and
+  /// refreshes the cache. Mirrors the profile into [_deviceProfile] so
+  /// diagnostics and planning stay on the latest observed state.
+  Future<DeviceProfile> _profileForTurn() async {
+    final cached = _deviceProfileCache;
+    final cachedAt = _deviceProfileCacheAt;
+    final now = DateTime.now();
+    if (cached != null &&
+        cachedAt != null &&
+        now.difference(cachedAt) < _deviceProfileCacheTtl) {
+      return cached;
+    }
+    final profile = await DeviceProfiler.read();
+    _deviceProfile = profile;
+    _deviceProfileCache = profile;
+    _deviceProfileCacheAt = now;
+    return profile;
+  }
+
+  void _invalidateDeviceProfileCache() {
+    _deviceProfileCache = null;
+    _deviceProfileCacheAt = null;
+  }
+
   InferencePhase _phase = InferencePhase.idle;
   InferencePhase get phase => _phase;
 
   String _status = 'Ready';
   String get status => _status;
+
+  /// Machine-readable counterpart of [status] for the UI layer. Carried by
+  /// every [_setStatus] call so localized labels can be derived without
+  /// parsing the display text (which stays unchanged for now).
+  FinnStatusKey _statusKey = FinnStatusKey.ready;
+  FinnStatusKey get statusKey => _statusKey;
 
   double? _downloadProgress;
   double? get downloadProgress => _downloadProgress;
@@ -286,6 +313,7 @@ class FinnAccelerator extends ChangeNotifier {
     _setStatus(
       InferencePhase.downloading,
       'Downloading test',
+      key: FinnStatusKey.downloadingModel,
       progress: progress,
       totalBytes: totalBytes,
     );
@@ -294,16 +322,20 @@ class FinnAccelerator extends ChangeNotifier {
   /// Test hook: returns the download phase to idle after simulated progress.
   @visibleForTesting
   void resetDownloadStateForTest() {
-    _setStatus(InferencePhase.idle, 'Ready');
+    _setStatus(
+      InferencePhase.idle,
+      'Ready',
+      key: FinnStatusKey.ready,
+    );
   }
 
-  QwenModel? _workingModel;
-  QwenModel? get workingModel => _workingModel;
+  FinnModelSpec? _workingModel;
+  FinnModelSpec? get workingModel => _workingModel;
 
-  final Map<QwenTier, _ModelRuntime> _runtimes = {};
-  final Map<QwenTier, Future<_ModelRuntime>> _loadJobs = {};
-  final DeduplicatedLoadJob<QwenTier, _ModelRuntime> _deduplicatedLoads =
-      DeduplicatedLoadJob<QwenTier, _ModelRuntime>();
+  final Map<FinnModelTier, _ModelRuntime> _runtimes = {};
+  final Map<FinnModelTier, Future<_ModelRuntime>> _loadJobs = {};
+  final DeduplicatedLoadJob<FinnModelTier, _ModelRuntime> _deduplicatedLoads =
+      DeduplicatedLoadJob<FinnModelTier, _ModelRuntime>();
   StreamSubscription<GenerationEvent>? _generation;
   StreamController<String>? _activeOutput;
   int _generationEpoch = 0;
@@ -311,34 +343,51 @@ class FinnAccelerator extends ChangeNotifier {
   var _runtimeEpoch = 0;
   bool _replyInFlight = false;
   bool get isGeneratingReply => _replyInFlight;
+
+  /// FIFO gate for queued generations (see [generateReplyQueued]).
+  @visibleForTesting
+  final ReplyTurnGate replyGate = ReplyTurnGate(
+    capacity: maxQueuedReplyRequests,
+  );
+  static const int maxQueuedReplyRequests = 2;
   Future<void>? _installJob;
   HttpClient? _downloadClient;
   bool _cancelDownload = false;
   bool _benchmarkRunning = false;
-  final Set<QwenTier> _verifiedModels = <QwenTier>{};
+  final Set<FinnModelTier> _verifiedModels = <FinnModelTier>{};
   Future<Directory>? _modelDirectoryJob;
 
   Future<void> initialize() async {
     _deviceProfile = await DeviceProfiler.read();
+    _deviceProfileCache = _deviceProfile;
+    _deviceProfileCacheAt = DateTime.now();
     _plan = DeviceProfiler.plan(_deviceProfile!);
     // Clean up any retired legacy artifacts in background without blocking startup
     unawaited(_removeRetiredModelArtifacts());
-    _selected = qwenModels.single;
+    _selected = finnModels.single;
     _automaticSelection = true;
   }
 
-  void select(QwenTier tier) {
-    if (tier != QwenTier.standard || !_automaticSelection) return;
+  void select(FinnModelTier tier) {
+    if (tier != FinnModelTier.standard || !_automaticSelection) return;
     _automaticSelection = false;
-    _setStatus(InferencePhase.idle, 'Ready');
+    _setStatus(
+      InferencePhase.idle,
+      'Ready',
+      key: FinnStatusKey.ready,
+    );
   }
 
   void useAutomaticSelection() {
     _automaticSelection = true;
-    _setStatus(InferencePhase.idle, 'Optimized automatically');
+    _setStatus(
+      InferencePhase.idle,
+      'Optimized automatically',
+      key: FinnStatusKey.optimizedAutomatically,
+    );
   }
 
-  Future<bool> isInstalled(QwenModel model) async {
+  Future<bool> isInstalled(FinnModelSpec model) async {
     if (_verifiedModels.contains(model.tier)) return true;
     final file = await _modelFile(model);
     final installed = await _isVerifiedModelFile(model, file);
@@ -348,7 +397,7 @@ class FinnAccelerator extends ChangeNotifier {
 
   Future<List<ModelStorageState>> inspectModels() async {
     final states = <ModelStorageState>[];
-    for (final model in qwenModels) {
+    for (final model in finnModels) {
       final file = await _modelFile(model);
       final partial = File('${file.path}.part');
       final installed = await isInstalled(model);
@@ -363,11 +412,11 @@ class FinnAccelerator extends ChangeNotifier {
     return states;
   }
 
-  Future<QwenTier> recommendedTier() async {
-    return QwenTier.standard;
+  Future<FinnModelTier> recommendedTier() async {
+    return FinnModelTier.standard;
   }
 
-  Future<void> install(QwenModel model) {
+  Future<void> install(FinnModelSpec model) {
     // A model can be verified from a previous app run while the post-model
     // component is still missing. Re-entering install must finish that second
     // artifact instead of treating the whole install as complete.
@@ -430,7 +479,7 @@ class FinnAccelerator extends ChangeNotifier {
     // guard leaves it untouched.
     var trackedStandalone = false;
     if (_installTotalBytes <= 0) {
-      _installTotalBytes = qwenMmproj.expectedBytes;
+      _installTotalBytes = finnMmproj.expectedBytes;
       _installCompletedBytes = 0;
       trackedStandalone = true;
     }
@@ -441,7 +490,11 @@ class FinnAccelerator extends ChangeNotifier {
       debugPrint('FINN_MMPROJ download skipped: $error\n$stack');
       if (_phase == InferencePhase.downloading ||
           _phase == InferencePhase.loading) {
-        _setStatus(InferencePhase.idle, 'AI model is ready');
+        _setStatus(
+          InferencePhase.idle,
+          'AI model is ready',
+          key: FinnStatusKey.modelReady,
+        );
       }
     } finally {
       if (trackedStandalone) {
@@ -451,16 +504,15 @@ class FinnAccelerator extends ChangeNotifier {
     }
   }
 
-  Future<void> _runInstall(QwenModel model) async {
+  Future<void> _runInstall(FinnModelSpec model) async {
     try {
       // Size the aggregate progress across every artifact this install must
       // fetch: the language model (unless already verified) plus the
       // post-model multimodal component (unless already present).
       final modelAlreadyInstalled = await isInstalled(model);
       final componentAlreadyInstalled = await isMmprojInstalled();
-      _installTotalBytes =
-          (modelAlreadyInstalled ? 0 : model.expectedBytes) +
-          (componentAlreadyInstalled ? 0 : qwenMmproj.expectedBytes);
+      _installTotalBytes = (modelAlreadyInstalled ? 0 : model.expectedBytes) +
+          (componentAlreadyInstalled ? 0 : finnMmproj.expectedBytes);
       _installCompletedBytes = 0;
       await _ensureDownloaded(model);
       _verifiedModels.add(model.tier);
@@ -468,13 +520,25 @@ class FinnAccelerator extends ChangeNotifier {
       // second verified artifact so a future vision release does not need to
       // redownload the model package.
       await _preinstallMmproj();
-      _setStatus(InferencePhase.idle, 'AI model is ready');
+      _setStatus(
+        InferencePhase.idle,
+        'AI model is ready',
+        key: FinnStatusKey.modelReady,
+      );
     } catch (error) {
       if (_cancelDownload) {
-        _setStatus(InferencePhase.idle, 'Download paused');
+        _setStatus(
+          InferencePhase.idle,
+          'Download paused',
+          key: FinnStatusKey.downloadPaused,
+        );
         return;
       }
-      _setStatus(InferencePhase.error, _friendlyError(error));
+      _setStatus(
+        InferencePhase.error,
+        _friendlyError(error),
+        key: FinnStatusKey.error,
+      );
       rethrow;
     } finally {
       _workingModel = null;
@@ -539,23 +603,35 @@ class FinnAccelerator extends ChangeNotifier {
     try {
       final runtime = await _ensureLoaded(model, file.path);
       await _prepareBasePrefixState(runtime);
-      _setStatus(InferencePhase.idle, 'Ready');
+      _setStatus(
+        InferencePhase.idle,
+        'Ready',
+        key: FinnStatusKey.ready,
+      );
     } catch (error, stack) {
       // Prewarm is opportunistic. A background failure must not become the
       // visible result of the user's next request; foreground generation can
       // retry through its normal error handling.
       debugPrint('FINN_PREWARM failed: $error\n$stack');
-      _setStatus(InferencePhase.idle, 'Ready');
+      _setStatus(
+        InferencePhase.idle,
+        'Ready',
+        key: FinnStatusKey.ready,
+      );
     }
   }
 
-  Future<void> prewarmTier(QwenTier tier) async {
-    final model = qwenModels.firstWhere((candidate) => candidate.tier == tier);
+  Future<void> prewarmTier(FinnModelTier tier) async {
+    final model = finnModels.firstWhere((candidate) => candidate.tier == tier);
     if (!await isInstalled(model)) return;
     final file = await _modelFile(model);
     final runtime = await _ensureLoaded(model, file.path);
     await _prepareBasePrefixState(runtime);
-    _setStatus(InferencePhase.idle, 'Ready');
+    _setStatus(
+      InferencePhase.idle,
+      'Ready',
+      key: FinnStatusKey.ready,
+    );
   }
 
   Future<void> releaseConversationSessions() async {
@@ -569,7 +645,10 @@ class FinnAccelerator extends ChangeNotifier {
   }
 
   /// Releases the large native context when the app leaves the foreground.
+  /// Also drops the cached device profile: after a resume the first turn
+  /// must observe fresh memory/storage values.
   Future<void> releaseMemory() {
+    _invalidateDeviceProfileCache();
     _queueUnload();
     return _pendingUnload;
   }
@@ -600,15 +679,16 @@ class FinnAccelerator extends ChangeNotifier {
     for (final tier in _runtimes.keys.toList(growable: false)) {
       if (tier != _selected.tier) await _unloadModel(tier);
     }
-    final profile = await DeviceProfiler.read();
-    _deviceProfile = profile;
-    final tightRam =
-        profile.availableRamBytes != null &&
+    // Memory pressure is exactly when a stale profile would mislead the
+    // low-RAM decisions below, so force a fresh read and re-prime the cache.
+    _invalidateDeviceProfileCache();
+    final profile = await _profileForTurn();
+    final tightRam = profile.availableRamBytes != null &&
         profile.availableRamBytes! < 1200 * 1024 * 1024;
     if (profile.lowMemory || tightRam) await _unloadModel(_selected.tier);
   }
 
-  ModelResidencyLevel residencyFor(QwenTier tier) {
+  ModelResidencyLevel residencyFor(FinnModelTier tier) {
     final runtime = _runtimes[tier];
     if (runtime == null) return ModelResidencyLevel.unloaded;
     if (runtime.sessions.values.any((entry) => entry.primed)) {
@@ -620,7 +700,7 @@ class FinnAccelerator extends ChangeNotifier {
   @visibleForTesting
   bool get hasDuplicateLoadJobs => _deduplicatedLoads.activeJobCount > 1;
 
-  Future<Set<String>> remove(QwenModel model) async {
+  Future<Set<String>> remove(FinnModelSpec model) async {
     final failures = <String>{};
     await _unloadModel(model.tier);
     try {
@@ -651,13 +731,17 @@ class FinnAccelerator extends ChangeNotifier {
       }
     }
     _verifiedModels.remove(model.tier);
-    _setStatus(InferencePhase.idle, 'Model removed');
+    _setStatus(
+      InferencePhase.idle,
+      'Model removed',
+      key: FinnStatusKey.modelRemoved,
+    );
     return failures;
   }
 
   Future<Set<String>> removeAllModels() async {
     final failures = <String>{};
-    for (final model in qwenModels) {
+    for (final model in finnModels) {
       final res = await remove(model);
       failures.addAll(res);
     }
@@ -682,12 +766,16 @@ class FinnAccelerator extends ChangeNotifier {
         failures.add('Post-model component');
       }
     }
-    _setStatus(InferencePhase.idle, 'Model removed');
+    _setStatus(
+      InferencePhase.idle,
+      'Model removed',
+      key: FinnStatusKey.modelRemoved,
+    );
     return failures;
   }
 
-  QwenModel? _lastGeneratingModel;
-  QwenModel get lastGeneratingModel => _lastGeneratingModel ?? selected;
+  FinnModelSpec? _lastGeneratingModel;
+  FinnModelSpec get lastGeneratingModel => _lastGeneratingModel ?? selected;
   GenerationReport? _lastGenerationReport;
   GenerationReport? get lastGenerationReport => _lastGenerationReport;
 
@@ -721,18 +809,69 @@ class FinnAccelerator extends ChangeNotifier {
       );
     } finally {
       _replyInFlight = false;
+      // Hand the engine to the oldest queued caller (no-op when none waits).
+      replyGate.signalNext();
     }
+  }
+
+  /// Like [generateReply], but waits for the engine to become available
+  /// instead of throwing when a generation is already in flight.
+  ///
+  /// Secondary callers (e.g. the creation generator) queue here so a user
+  /// creation no longer fails with "Finn is already generating" just because
+  /// a chat answer is streaming. Waiting is FIFO and bounded: at most
+  /// [maxQueuedReplyRequests] callers may hold a reservation; beyond that the
+  /// call throws [StateError] with an actionable message instead of growing
+  /// without bound. When the engine is idle this behaves exactly like
+  /// [generateReply] and never reserves a slot.
+  Stream<String> generateReplyQueued(
+    String prompt, {
+    required String conversationId,
+    List<LocalChatTurn> history = const [],
+    String systemContext = '',
+    String groundedContext = '',
+    PromptAnalysis? promptAnalysis,
+    TtftTrace? trace,
+    bool enableSearchDecision = true,
+  }) async* {
+    if (_replyInFlight) {
+      final turn = replyGate.waitTurn();
+      try {
+        await turn;
+      } finally {
+        // If this stream was cancelled while waiting, give the reservation
+        // back so capacity is not consumed by a dead waiter. A no-op when
+        // the turn was already granted.
+        replyGate.abandon(turn);
+      }
+    }
+    yield* generateReply(
+      prompt,
+      conversationId: conversationId,
+      history: history,
+      systemContext: systemContext,
+      groundedContext: groundedContext,
+      promptAnalysis: promptAnalysis,
+      trace: trace,
+      enableSearchDecision: enableSearchDecision,
+    );
   }
 
   /// Developer harness entry point for an already-installed GGUF at [path].
   ///
   /// Production chat never calls this and model downloads/defaults are not
   /// changed. The caller must release memory between different model files.
+  ///
+  /// Security: an evaluation candidate carries no SHA-256 digest, so nothing
+  /// verifies its contents. Release builds therefore refuse to run such a
+  /// model unless the benchmark harness explicitly opted out via
+  /// [debugSkipSha256]; debug/profile builds only log a warning so quality
+  /// sweeps can evaluate arbitrary local candidates.
   Stream<String> generateEvaluationReply(
     String prompt, {
     required String path,
     required String modelLabel,
-    required QwenTier tier,
+    required FinnModelTier tier,
     required String conversationId,
     List<LocalChatTurn> history = const [],
     TtftTrace? trace,
@@ -741,7 +880,7 @@ class FinnAccelerator extends ChangeNotifier {
       throw StateError('Finn is already generating a response.');
     }
     _replyInFlight = true;
-    final model = QwenModel(
+    final model = FinnModelSpec(
       tier: tier,
       name: modelLabel,
       parameterLabel: modelLabel,
@@ -750,6 +889,15 @@ class FinnAccelerator extends ChangeNotifier {
       expectedBytes: 0,
       sha256Digest: '',
     );
+    if (model.sha256Digest.isEmpty && !debugSkipSha256) {
+      final message =
+          'Evaluation model "$modelLabel" has no SHA-256 digest; refusing to '
+          'load unverified weights.';
+      if (kReleaseMode) {
+        throw StateError(message);
+      }
+      debugPrint('FINN_EVAL_WARNING $message');
+    }
     try {
       _lastGeneratingModel = model;
       yield* _cleanModelStream(
@@ -788,8 +936,9 @@ class FinnAccelerator extends ChangeNotifier {
       ?..modelTier = selected.name
       ..mark(TtftPhase.routeSelected);
     if (Platform.isAndroid) {
-      final freshProfile = await DeviceProfiler.read();
-      _deviceProfile = freshProfile;
+      // Cached per-turn refresh: avoids a platform-channel round trip plus
+      // /proc/meminfo reads on every message (see _profileForTurn).
+      final freshProfile = await _profileForTurn();
       if (_runtimes.isEmpty) _plan = DeviceProfiler.plan(freshProfile);
     }
     final model = selected;
@@ -871,7 +1020,7 @@ class FinnAccelerator extends ChangeNotifier {
   /// whether to call the browser_search tool. When a tool call is emitted,
   /// the browser search is executed and returned with toolCallMade: true.
   Future<({String groundedContext, List<WebSource> sources, bool toolCallMade})>
-  _runSearchDecision(
+      _runSearchDecision(
     EngineSession session,
     String prompt,
     PromptAnalysis analysis,
@@ -901,7 +1050,11 @@ class FinnAccelerator extends ChangeNotifier {
       history: history,
       directive: directive,
     );
-    _setStatus(InferencePhase.generating, 'Checking web...');
+    _setStatus(
+      InferencePhase.generating,
+      'Checking web...',
+      key: FinnStatusKey.checkingWeb,
+    );
     trace?.mark(TtftPhase.decisionPass);
     final decisionText = StringBuffer();
     await for (final event in session.generate(
@@ -961,7 +1114,11 @@ class FinnAccelerator extends ChangeNotifier {
     String query, {
     bool markFailure = true,
   }) async {
-    _setStatus(InferencePhase.generating, 'Searching browser...');
+    _setStatus(
+      InferencePhase.generating,
+      'Searching browser...',
+      key: FinnStatusKey.searchingBrowser,
+    );
     try {
       final grounded = await _searchAgent
           .searchAndFetch(query)
@@ -991,7 +1148,7 @@ class FinnAccelerator extends ChangeNotifier {
   }
 
   Stream<String> _generateForModel(
-    QwenModel model,
+    FinnModelSpec model,
     String prompt, {
     required String conversationId,
     required List<LocalChatTurn> history,
@@ -1068,7 +1225,9 @@ class FinnAccelerator extends ChangeNotifier {
           final session = entry.session;
           // Collect ALL image attachments in history window + prefer in-memory bytes.
           final allImageTurns = history
-              .where((t) => (t.imagePath != null && t.imagePath!.isNotEmpty) || t.imageBytes != null)
+              .where((t) =>
+                  (t.imagePath != null && t.imagePath!.isNotEmpty) ||
+                  t.imageBytes != null)
               .toList(growable: false);
           final candidatePaths = <String>[];
           final candidateBytes = <Uint8List?>[];
@@ -1112,7 +1271,8 @@ class FinnAccelerator extends ChangeNotifier {
                 // stb_image cannot decode HEIC; treat as skipped, not crash
                 if (isHeic && !_bytesLookLikeImage(fileBytes, path)) {
                   skippedHeicPaths.add(path);
-                  debugPrint('FINN_HEIC skipped HEIC at $path (stb_image unsupported)');
+                  debugPrint(
+                      'FINN_HEIC skipped HEIC at $path (stb_image unsupported)');
                   continue;
                 }
                 if (!_bytesLookLikeImage(fileBytes, path) && isHeic) {
@@ -1136,9 +1296,8 @@ class FinnAccelerator extends ChangeNotifier {
           final useMediaMarker =
               hasAttachedImage && runtime.engine.multimodalLoaded;
           // Cap at reasonable N for prompt token budget; native supports N
-          final cappedMediaList = mediaList.length > 4
-              ? mediaList.sublist(0, 4)
-              : mediaList;
+          final cappedMediaList =
+              mediaList.length > 4 ? mediaList.sublist(0, 4) : mediaList;
           final effectiveMediaList = cappedMediaList;
 
           String? attachedDocContext;
@@ -1147,7 +1306,9 @@ class FinnAccelerator extends ChangeNotifier {
               .where((t) => t.imagePath != null && t.imagePath!.isNotEmpty)
               .firstOrNull
               ?.imagePath;
-          if (docPath != null && !_isImageFile(docPath) && !_isHeicPath(docPath)) {
+          if (docPath != null &&
+              !_isImageFile(docPath) &&
+              !_isHeicPath(docPath)) {
             try {
               final exists = await File(docPath).exists();
               if (exists) {
@@ -1164,10 +1325,11 @@ class FinnAccelerator extends ChangeNotifier {
           if (skippedHeicPaths.isNotEmpty && !useMediaMarker) {
             final heicNote =
                 'Note: ${skippedHeicPaths.length} HEIC image(s) could not be decoded on this device (unsupported format). Ask the user to share as JPEG/PNG.';
-            // ignore: unnecessary_non_null_assertion
-            attachedDocContext = (attachedDocContext == null || attachedDocContext!.isEmpty)
-                ? heicNote
-                : '$attachedDocContext\n\n$heicNote';
+            final previousContext = attachedDocContext;
+            attachedDocContext =
+                (previousContext == null || previousContext.isEmpty)
+                    ? heicNote
+                    : '$previousContext\n\n$heicNote';
           }
 
           final taskInstruction = PromptIntentPolicy.taskInstruction(
@@ -1175,7 +1337,8 @@ class FinnAccelerator extends ChangeNotifier {
           );
           final includeTaskInstruction =
               !entry.primed || entry.lastTaskInstruction != taskInstruction;
-          // This runtime is intentionally Qwen-only. Its non-thinking template
+          // This runtime is intentionally single-model (LFM2.5-VL 1.6B). Its
+          // non-thinking ChatML template
           // needs an empty reasoning block to avoid hidden-chain generation
           // while keeping everyday replies fast.
           const primeEmptyThinking = true;
@@ -1229,8 +1392,7 @@ class FinnAccelerator extends ChangeNotifier {
           // When an image is attached, skip the search pass to answer immediately from vision.
           var effectiveGroundedContext = groundedContext;
           var effectiveSources = const <WebSource>[];
-          final decisionEnabled =
-              enableSearchDecision &&
+          final decisionEnabled = enableSearchDecision &&
               !hasAttachedImage &&
               PromptIntentPolicy.needsSearchDecision(promptAnalysis);
           if (decisionEnabled) {
@@ -1251,7 +1413,8 @@ class FinnAccelerator extends ChangeNotifier {
             if (decision.toolCallMade) {
               final continuation = StringBuffer()..write('<|im_end|>\n');
               if (!entry.primed && systemContext.trim().isNotEmpty) {
-                _writePrivateContext(continuation, systemContext);
+                PromptFormatter.writePrivateContext(
+                    continuation, systemContext);
               }
               if (effectiveGroundedContext.isNotEmpty) {
                 continuation.write(
@@ -1290,14 +1453,16 @@ class FinnAccelerator extends ChangeNotifier {
           }
           // If multimodal not loaded but user attached image, surface fallback
           if (hasAttachedImage && !runtime.engine.multimodalLoaded) {
-            debugPrint('FINN_MEDIA fallback: multimodal not loaded, answering without image');
+            debugPrint(
+                'FINN_MEDIA fallback: multimodal not loaded, answering without image');
             // Inject a system note so answer acknowledges missing vision capability
             final fallbackNote =
                 'Note: The user attached ${effectiveMediaList.length} image(s) but the image component is not installed. Explain that image analysis is unavailable on this device and ask them to describe the image or install the image component.';
-            // ignore: unnecessary_non_null_assertion
-            attachedDocContext = (attachedDocContext == null || attachedDocContext!.isEmpty)
-                ? fallbackNote
-                : '$attachedDocContext\n\n$fallbackNote';
+            final previousContext = attachedDocContext;
+            attachedDocContext =
+                (previousContext == null || previousContext.isEmpty)
+                    ? fallbackNote
+                    : '$previousContext\n\n$fallbackNote';
             // Re-render without media marker so text path still works
             renderedPrompt = _renderPrompt(
               entry,
@@ -1314,115 +1479,130 @@ class FinnAccelerator extends ChangeNotifier {
             );
           }
           // HEIC graceful fallback: if we had skipped HEICs, note it
-          if (skippedHeicPaths.isNotEmpty && effectiveMediaList.isEmpty && hasAttachedImage == false) {
+          if (skippedHeicPaths.isNotEmpty &&
+              effectiveMediaList.isEmpty &&
+              hasAttachedImage == false) {
             // Already noted in attachedDocContext above
           }
-          _setStatus(InferencePhase.generating, 'Thinking on this device');
+          _setStatus(
+            InferencePhase.generating,
+            'Thinking on this device',
+            key: FinnStatusKey.thinkingOnDevice,
+          );
           trace?.mark(TtftPhase.generationRequested);
           _generation = session
               .generate(
-                prompt: renderedPrompt,
-                addSpecial: !entry.primed && !entry.basePrefixReady,
-                parseSpecial: true,
-                maxTokens: outputBudget,
-                media: (hasAttachedImage && runtime.engine.multimodalLoaded) ? effectiveMediaList : const <LlamaMedia>[],
-                shiftPolicy: runtime.engine.canShift && effectiveMediaList.isEmpty
-                    ? ContextShiftPolicy.auto
-                    : ContextShiftPolicy.off,
-                shift: ContextShift(
-                  nKeep: entry.basePrefixReady ? 321 : 0,
-                ),
-                sampler: PromptIntentPolicy.sampler(
-                  promptAnalysis.intent,
-                ).params.copyWith(seed: _nextGenerationSeed()),
-              )
+            prompt: renderedPrompt,
+            addSpecial: !entry.primed && !entry.basePrefixReady,
+            parseSpecial: true,
+            maxTokens: outputBudget,
+            media: (hasAttachedImage && runtime.engine.multimodalLoaded)
+                ? effectiveMediaList
+                : const <LlamaMedia>[],
+            shiftPolicy: runtime.engine.canShift && effectiveMediaList.isEmpty
+                ? ContextShiftPolicy.auto
+                : ContextShiftPolicy.off,
+            shift: ContextShift(
+              nKeep: entry.basePrefixReady ? 321 : 0,
+            ),
+            sampler: PromptIntentPolicy.sampler(
+              promptAnalysis.intent,
+            ).params.copyWith(seed: _nextGenerationSeed()),
+          )
               .listen(
-                (event) {
-                  if (generationEpoch != _generationEpoch) return;
-                  if (event case TokenEvent(:final text)) {
-                    emittedTokens++;
-                    trace?.mark(TtftPhase.nativeToken);
-                    if (text.isNotEmpty && firstTokenAt == null) {
-                      firstTokenAt = runWatch.elapsed;
-                      if (!kReleaseMode) {
-                        debugPrint(
-                          'FINN_PERF first_token_ms=${firstTokenAt!.inMilliseconds} '
-                          'model=${model.tier.name} '
-                          'ctx=${_plan?.contextSize} threads=${_plan?.threads}',
-                        );
-                      }
-                    }
-                    if (text.isNotEmpty) {
-                      output.add(text);
-                    }
-                  } else if (event case DoneEvent(
+            (event) {
+              if (generationEpoch != _generationEpoch) return;
+              if (event case TokenEvent(:final text)) {
+                emittedTokens++;
+                trace?.mark(TtftPhase.nativeToken);
+                if (text.isNotEmpty && firstTokenAt == null) {
+                  firstTokenAt = runWatch.elapsed;
+                  if (!kReleaseMode) {
+                    debugPrint(
+                      'FINN_PERF first_token_ms=${firstTokenAt!.inMilliseconds} '
+                      'model=${model.tier.name} '
+                      'ctx=${_plan?.contextSize} threads=${_plan?.threads}',
+                    );
+                  }
+                }
+                if (text.isNotEmpty) {
+                  output.add(text);
+                }
+              } else if (event
+                  case DoneEvent(
                     :final trailingText,
                     :final generatedCount,
                     :final reason,
                   )) {
-                    nativeFinished = true;
-                    if (trailingText.isNotEmpty) output.add(trailingText);
-                    final total = runWatch.elapsed;
-                    final decodeMs =
-                        total.inMilliseconds -
-                        (firstTokenAt?.inMilliseconds ?? total.inMilliseconds);
-                    final decodeTokens = math.max(0, generatedCount - 1);
-                    final tokensPerSecond = decodeMs <= 0
-                        ? 0.0
-                        : decodeTokens * 1000 / decodeMs;
-                    _lastGenerationReport = GenerationReport(
-                      model: model,
-                      intent: promptAnalysis.intent,
-                      route: model.tier,
-                      outputBudget: outputBudget,
-                      finishReason: finishReasonFromStopReason(reason),
-                      firstTokenLatency: firstTokenAt,
-                      totalGenerationTime: total,
-                      outputTokens: generatedCount,
-                      tokensPerSecond: tokensPerSecond,
-                    );
-                    if (!kReleaseMode) {
-                      final totalMs = total.inMilliseconds;
-                      debugPrint(
-                        'FINN_PERF done total_ms=$totalMs decode_ms=$decodeMs '
-                        'tokens=$generatedCount emitted=$emittedTokens '
-                        'tps=${tokensPerSecond.toStringAsFixed(2)}',
-                      );
-                    }
-                  }
-                },
-                onError: (Object error, StackTrace stack) {
-                  _lastGenerationReport = GenerationReport(
-                    model: model,
-                    intent: promptAnalysis.intent,
-                    route: model.tier,
-                    outputBudget: outputBudget,
-                    finishReason: GenerationFinishReason.error,
-                    firstTokenLatency: firstTokenAt,
-                    totalGenerationTime: runWatch.elapsed,
-                    outputTokens: emittedTokens,
-                    tokensPerSecond: 0,
+                nativeFinished = true;
+                if (trailingText.isNotEmpty) output.add(trailingText);
+                final total = runWatch.elapsed;
+                final decodeMs = total.inMilliseconds -
+                    (firstTokenAt?.inMilliseconds ?? total.inMilliseconds);
+                final decodeTokens = math.max(0, generatedCount - 1);
+                final tokensPerSecond =
+                    decodeMs <= 0 ? 0.0 : decodeTokens * 1000 / decodeMs;
+                _lastGenerationReport = GenerationReport(
+                  model: model,
+                  intent: promptAnalysis.intent,
+                  route: model.tier,
+                  outputBudget: outputBudget,
+                  finishReason: finishReasonFromStopReason(reason),
+                  firstTokenLatency: firstTokenAt,
+                  totalGenerationTime: total,
+                  outputTokens: generatedCount,
+                  tokensPerSecond: tokensPerSecond,
+                );
+                if (!kReleaseMode) {
+                  final totalMs = total.inMilliseconds;
+                  debugPrint(
+                    'FINN_PERF done total_ms=$totalMs decode_ms=$decodeMs '
+                    'tokens=$generatedCount emitted=$emittedTokens '
+                    'tps=${tokensPerSecond.toStringAsFixed(2)}',
                   );
-                  _setStatus(InferencePhase.error, _friendlyError(error));
-                  output.addError(error, stack);
-                  unawaited(output.close());
-                  unawaited(_recoverAfterError());
-                },
-                onDone: () {
-                  _generation = null;
-                  if (identical(_activeOutput, output)) {
-                    _activeOutput = null;
-                  }
-                  _lastSources = effectiveSources;
-                  entry.primed = true;
-                  entry.lastTaskInstruction = taskInstruction;
-                  entry.messageCount = history.length + 2;
-                  entry.lastUsed = ++runtime.useSequence;
-                  _setStatus(InferencePhase.idle, 'Generated locally');
-                  unawaited(output.close());
-                },
-                cancelOnError: true,
+                }
+              }
+            },
+            onError: (Object error, StackTrace stack) {
+              _lastGenerationReport = GenerationReport(
+                model: model,
+                intent: promptAnalysis.intent,
+                route: model.tier,
+                outputBudget: outputBudget,
+                finishReason: GenerationFinishReason.error,
+                firstTokenLatency: firstTokenAt,
+                totalGenerationTime: runWatch.elapsed,
+                outputTokens: emittedTokens,
+                tokensPerSecond: 0,
               );
+              _setStatus(
+                InferencePhase.error,
+                _friendlyError(error),
+                key: FinnStatusKey.error,
+              );
+              output.addError(error, stack);
+              unawaited(output.close());
+              unawaited(_recoverAfterError());
+            },
+            onDone: () {
+              _generation = null;
+              if (identical(_activeOutput, output)) {
+                _activeOutput = null;
+              }
+              _lastSources = effectiveSources;
+              entry.primed = true;
+              entry.lastTaskInstruction = taskInstruction;
+              entry.messageCount = history.length + 2;
+              entry.lastUsed = ++runtime.useSequence;
+              _setStatus(
+                InferencePhase.idle,
+                'Generated locally',
+                key: FinnStatusKey.generatedLocally,
+              );
+              unawaited(output.close());
+            },
+            cancelOnError: true,
+          );
         } on _GenerationCancelled {
           if (identical(_activeOutput, output)) _activeOutput = null;
           if (!output.isClosed) await output.close();
@@ -1439,7 +1619,11 @@ class FinnAccelerator extends ChangeNotifier {
             outputTokens: emittedTokens,
             tokensPerSecond: 0,
           );
-          _setStatus(InferencePhase.error, _friendlyError(error));
+          _setStatus(
+            InferencePhase.error,
+            _friendlyError(error),
+            key: FinnStatusKey.error,
+          );
           output.addError(error, stack);
           await output.close();
           unawaited(_recoverAfterError());
@@ -1453,7 +1637,11 @@ class FinnAccelerator extends ChangeNotifier {
         if (identical(_activeOutput, output)) _activeOutput = null;
         if (_phase == InferencePhase.generating ||
             _phase == InferencePhase.loading) {
-          _setStatus(InferencePhase.idle, 'Stopped');
+          _setStatus(
+            InferencePhase.idle,
+            'Stopped',
+            key: FinnStatusKey.stopped,
+          );
         }
       },
     );
@@ -1470,7 +1658,11 @@ class FinnAccelerator extends ChangeNotifier {
     if (output != null && !output.isClosed) await output.close();
     if (_phase == InferencePhase.generating ||
         _phase == InferencePhase.loading) {
-      _setStatus(InferencePhase.idle, 'Stopped');
+      _setStatus(
+        InferencePhase.idle,
+        'Stopped',
+        key: FinnStatusKey.stopped,
+      );
     }
   }
 
@@ -1496,7 +1688,11 @@ class FinnAccelerator extends ChangeNotifier {
       await runtime.engine.dispose();
     }
     _replyInFlight = false;
-    _setStatus(InferencePhase.idle, 'Ready after runtime reset');
+    _setStatus(
+      InferencePhase.idle,
+      'Ready after runtime reset',
+      key: FinnStatusKey.readyAfterRuntimeReset,
+    );
   }
 
   /// Clears the in-flight generation state after a native error so the app
@@ -1538,6 +1734,7 @@ class FinnAccelerator extends ChangeNotifier {
       _setStatus(
         InferencePhase.loading,
         'Setting up FinnAI for optimal performance…',
+        key: FinnStatusKey.optimizingForDevice,
       );
       final model = selected;
       if (!await isInstalled(model)) return;
@@ -1644,10 +1841,18 @@ class FinnAccelerator extends ChangeNotifier {
         'FINN_BENCH selected ${best.backend.name} '
         '${best.deviceName} at ${bestTps.toStringAsFixed(2)} tok/s',
       );
-      _setStatus(InferencePhase.idle, 'FinnAI is optimized for this device');
+      _setStatus(
+        InferencePhase.idle,
+        'FinnAI is optimized for this device',
+        key: FinnStatusKey.optimizedForDevice,
+      );
     } catch (e) {
       debugPrint('FINN_BENCH failed, keeping CPU fallback: $e');
-      _setStatus(InferencePhase.idle, 'FinnAI is optimized for this device');
+      _setStatus(
+        InferencePhase.idle,
+        'FinnAI is optimized for this device',
+        key: FinnStatusKey.optimizedForDevice,
+      );
     } finally {
       _benchmarkRunning = false;
     }
@@ -1665,23 +1870,23 @@ class FinnAccelerator extends ChangeNotifier {
   }
 
   Future<LlamaEngine> _spawnBenchmarkEngine({
-    required QwenModel model,
+    required FinnModelSpec model,
     required String path,
     required RuntimeConfig config,
     required DeviceProfile profile,
     required bool compactKv,
   }) async {
     final mmprojFile = await _mmprojFile();
-    final hasMmproj =
-        await mmprojFile.exists() &&
-        await mmprojFile.length() == qwenMmproj.expectedBytes;
+    final hasMmproj = await mmprojFile.exists() &&
+        await mmprojFile.length() == finnMmproj.expectedBytes;
     return LlamaEngine.spawn(
       libraryPath: 'libllama.so',
       backendDirectory: profile.nativeLibraryDir,
       multimodalParams: hasMmproj
           ? MultimodalParams(
               mmprojPath: mmprojFile.path,
-              useGpu: hasOffloadHeadroom(profile: profile, modelBytes: model.expectedBytes),
+              useGpu: hasOffloadHeadroom(
+                  profile: profile, modelBytes: model.expectedBytes),
               nThreads: config.batchThreads > 0 ? config.batchThreads : 8,
               imageMinTokens: (DeviceProfiler.isLowEnd(profile) ||
                       (profile.availableRamBytes != null &&
@@ -1695,7 +1900,6 @@ class FinnAccelerator extends ChangeNotifier {
                   : 256,
             )
           : null,
-
       modelParams: ModelParams(
         path: path,
         gpuLayers: config.gpuLayers,
@@ -1733,7 +1937,7 @@ class FinnAccelerator extends ChangeNotifier {
   }
 
   Future<double> _benchmarkTokensPerSecond(
-    QwenModel model,
+    FinnModelSpec model,
     String path,
     RuntimeConfig config,
     DeviceProfile profile, {
@@ -1756,9 +1960,8 @@ class FinnAccelerator extends ChangeNotifier {
         parseSpecial: true,
         sampler: SamplerParams.greedyDefault,
         maxTokens: 16,
-        shiftPolicy: engine.canShift
-            ? ContextShiftPolicy.auto
-            : ContextShiftPolicy.off,
+        shiftPolicy:
+            engine.canShift ? ContextShiftPolicy.auto : ContextShiftPolicy.off,
       )) {
         if (event case DoneEvent(:final generatedCount)) {
           tokens = generatedCount;
@@ -1793,7 +1996,7 @@ class FinnAccelerator extends ChangeNotifier {
     if (epoch != _generationEpoch) throw const _GenerationCancelled();
   }
 
-  Future<File> _ensureDownloaded(QwenModel model) async {
+  Future<File> _ensureDownloaded(FinnModelSpec model) async {
     final target = await _modelFile(model);
     if (_verifiedModels.contains(model.tier) ||
         await _isVerifiedModelFile(model, target)) {
@@ -1808,7 +2011,11 @@ class FinnAccelerator extends ChangeNotifier {
       existing = 0;
     }
     if (existing == model.expectedBytes) {
-      _setStatus(InferencePhase.loading, 'Checking the download');
+      _setStatus(
+        InferencePhase.loading,
+        'Checking the download',
+        key: FinnStatusKey.checkingDownload,
+      );
       final promoted = await promoteVerifiedModelPartial(
         partial: partial,
         target: target,
@@ -1840,14 +2047,17 @@ class FinnAccelerator extends ChangeNotifier {
         sha256Digest: model.sha256Digest,
       );
     }
+    // Default certificate validation stays enabled: the production model is
+    // additionally pinned via its SHA-256 digest after the transfer, but TLS
+    // must not be weakened for every other request on this client.
     final client = HttpClient()
-      ..connectionTimeout = const Duration(seconds: 20)
-      ..badCertificateCallback = ((cert, host, port) => true);
+      ..connectionTimeout = const Duration(seconds: 20);
     _downloadClient = client;
     try {
       _setStatus(
         InferencePhase.downloading,
         'Downloading the AI model',
+        key: FinnStatusKey.downloadingModel,
         progress: 0,
         totalBytes: model.expectedBytes,
       );
@@ -1893,6 +2103,7 @@ class FinnAccelerator extends ChangeNotifier {
             _setStatus(
               InferencePhase.downloading,
               'Downloading the AI model',
+              key: FinnStatusKey.downloadingModel,
               progress: (received / total).clamp(0, 1),
               totalBytes: total,
             );
@@ -1903,7 +2114,11 @@ class FinnAccelerator extends ChangeNotifier {
         await sink.close();
       }
       if (_cancelDownload) throw const HttpException('Download paused');
-      _setStatus(InferencePhase.loading, 'Checking the download');
+      _setStatus(
+        InferencePhase.loading,
+        'Checking the download',
+        key: FinnStatusKey.checkingDownload,
+      );
       if (await partial.length() != model.expectedBytes) {
         await partial.delete();
         throw const FormatException('Downloaded model has an invalid size');
@@ -1978,6 +2193,7 @@ class FinnAccelerator extends ChangeNotifier {
     _setStatus(
       InferencePhase.downloading,
       'Downloading $label',
+      key: FinnStatusKey.downloadingArtifact,
       progress: 0,
       totalBytes: expectedBytes,
     );
@@ -2016,6 +2232,7 @@ class FinnAccelerator extends ChangeNotifier {
         _setStatus(
           InferencePhase.downloading,
           'Downloading $label',
+          key: FinnStatusKey.downloadingArtifact,
           progress: progress,
           totalBytes: expectedBytes,
           speedBps: speedBps,
@@ -2032,8 +2249,7 @@ class FinnAccelerator extends ChangeNotifier {
       // miss) must never interrupt an in-flight download with an internet
       // error. The heartbeat advances only while a transfer is actually
       // writing bytes, so fresh progress also resets the failure counter.
-      final stalled =
-          sawProgress &&
+      final stalled = sawProgress &&
           active &&
           lastProgressAt != null &&
           now.difference(lastProgressAt) > const Duration(seconds: 20);
@@ -2090,7 +2306,11 @@ class FinnAccelerator extends ChangeNotifier {
         await requestStart();
       }
     }
-    _setStatus(InferencePhase.loading, 'Verifying $label');
+    _setStatus(
+      InferencePhase.loading,
+      'Verifying $label',
+      key: FinnStatusKey.verifyingArtifact,
+    );
     if (!await promoteVerifiedModelPartial(
       partial: partial,
       target: target,
@@ -2139,13 +2359,18 @@ class FinnAccelerator extends ChangeNotifier {
         return target;
       }
     }
+    // Default certificate validation stays enabled (see _ensureDownloaded).
     final client = HttpClient()
       ..connectionTimeout = const Duration(seconds: 20)
-      ..badCertificateCallback = ((cert, host, port) => true)
       ..maxConnectionsPerHost = _dartDownloadSegments + 2;
     _downloadClient = client;
     try {
-      _setStatus(InferencePhase.downloading, 'Downloading $label', progress: 0);
+      _setStatus(
+        InferencePhase.downloading,
+        'Downloading $label',
+        progress: 0,
+        key: FinnStatusKey.downloadingArtifact,
+      );
 
       // Probe for range support + total size.
       final probeRequest = await client.getUrl(Uri.parse(url));
@@ -2156,8 +2381,8 @@ class FinnAccelerator extends ChangeNotifier {
       final total = ranged
           ? _contentTotal(probe, 0) ?? expectedBytes
           : probe.contentLength > 0
-          ? probe.contentLength
-          : expectedBytes;
+              ? probe.contentLength
+              : expectedBytes;
       await probe.drain<void>();
 
       if (!ranged || total <= 0) {
@@ -2184,7 +2409,11 @@ class FinnAccelerator extends ChangeNotifier {
       }
 
       if (_cancelDownload) throw const HttpException('Download paused');
-      _setStatus(InferencePhase.loading, 'Verifying $label');
+      _setStatus(
+        InferencePhase.loading,
+        'Verifying $label',
+        key: FinnStatusKey.verifyingArtifact,
+      );
       if (await partial.length() != expectedBytes) {
         await partial.delete();
         throw const FormatException('Downloaded file has an invalid size');
@@ -2253,6 +2482,7 @@ class FinnAccelerator extends ChangeNotifier {
           _setStatus(
             InferencePhase.downloading,
             'Downloading $label',
+            key: FinnStatusKey.downloadingArtifact,
             progress: (received / effectiveTotal).clamp(0, 1),
           );
         }
@@ -2355,6 +2585,7 @@ class FinnAccelerator extends ChangeNotifier {
               _setStatus(
                 InferencePhase.downloading,
                 'Downloading $label',
+                key: FinnStatusKey.downloadingArtifact,
                 progress: (received / total).clamp(0, 1),
               );
             }
@@ -2384,7 +2615,7 @@ class FinnAccelerator extends ChangeNotifier {
     }
   }
 
-  Future<_ModelRuntime> _ensureLoaded(QwenModel model, String path) async {
+  Future<_ModelRuntime> _ensureLoaded(FinnModelSpec model, String path) async {
     await _pendingUnload;
     final loaded = _runtimes[model.tier];
     if (loaded != null) return loaded;
@@ -2403,13 +2634,17 @@ class FinnAccelerator extends ChangeNotifier {
   }
 
   Future<_ModelRuntime> _loadModel(
-    QwenModel model,
+    FinnModelSpec model,
     String path,
     int epoch,
   ) async {
     final loaded = _runtimes[model.tier];
     if (loaded != null) return loaded;
-    _setStatus(InferencePhase.loading, 'Loading the AI model');
+    _setStatus(
+      InferencePhase.loading,
+      'Loading the AI model',
+      key: FinnStatusKey.loadingModel,
+    );
 
     final profile = _deviceProfile ?? await DeviceProfiler.read();
     final hardwarePlan = _plan ?? DeviceProfiler.plan(profile);
@@ -2446,9 +2681,8 @@ class FinnAccelerator extends ChangeNotifier {
     LlamaEngine? engine = outcome.engine;
 
     final mmprojFile = await _mmprojFile();
-    final hasMmproj =
-        await mmprojFile.exists() &&
-        await mmprojFile.length() == qwenMmproj.expectedBytes;
+    final hasMmproj = await mmprojFile.exists() &&
+        await mmprojFile.length() == finnMmproj.expectedBytes;
 
     if (engine != null && hasMmproj && !engine.multimodalLoaded) {
       await engine.dispose();
@@ -2484,7 +2718,6 @@ class FinnAccelerator extends ChangeNotifier {
                 imageMaxTokens: projectorMaxTokens,
               )
             : null,
-
         modelParams: ModelParams(
           path: path,
           gpuLayers: cfg.gpuLayers,
@@ -2535,8 +2768,7 @@ class FinnAccelerator extends ChangeNotifier {
         // retry the same broken backend.
         await adaptive.invalidateCachedSelection();
         config = runtimeConfigFromPlan(hardwarePlan, profile);
-        compactKv =
-            config.kvType != KvCacheType.f16 &&
+        compactKv = config.kvType != KvCacheType.f16 &&
             config.kvType != KvCacheType.f32;
         fellBackFromAccelerator = true;
         try {
@@ -2563,8 +2795,7 @@ class FinnAccelerator extends ChangeNotifier {
         // baseline instead of failing startup.
         await adaptive.invalidateCachedSelection();
         config = runtimeConfigFromPlan(hardwarePlan, profile);
-        compactKv =
-            config.kvType != KvCacheType.f16 &&
+        compactKv = config.kvType != KvCacheType.f16 &&
             config.kvType != KvCacheType.f32;
         fellBackFromAccelerator = true;
         try {
@@ -2659,11 +2890,11 @@ class FinnAccelerator extends ChangeNotifier {
     }
     final modelSha256 = model.sha256Digest.isEmpty
         ? (debugSkipSha256
-              ? 'benchmark-skip-sha256'
-              : await sha256
-                    .bind(File(path).openRead())
-                    .first
-                    .then((digest) => digest.toString()))
+            ? 'benchmark-skip-sha256'
+            : await sha256
+                .bind(File(path).openRead())
+                .first
+                .then((digest) => digest.toString()))
         : model.sha256Digest;
     final runtime = _ModelRuntime(
       model,
@@ -2698,14 +2929,15 @@ class FinnAccelerator extends ChangeNotifier {
     String conversationId,
     List<LocalChatTurn> history,
     String systemContext,
-  ) => runtime.sessionSetupGate.run(
-    () => _prepareSessionUnlocked(
-      runtime,
-      conversationId,
-      history,
-      systemContext,
-    ),
-  );
+  ) =>
+      runtime.sessionSetupGate.run(
+        () => _prepareSessionUnlocked(
+          runtime,
+          conversationId,
+          history,
+          systemContext,
+        ),
+      );
 
   Future<_PreparedSession> _prepareSessionUnlocked(
     _ModelRuntime runtime,
@@ -2713,9 +2945,8 @@ class FinnAccelerator extends ChangeNotifier {
     List<LocalChatTurn> history,
     String systemContext,
   ) async {
-    final privateContextHash = sha256
-        .convert(utf8.encode(systemContext.trim()))
-        .toString();
+    final privateContextHash =
+        sha256.convert(utf8.encode(systemContext.trim())).toString();
     final commonConfiguration = _prefixCacheKey(runtime);
     final configuration = sha256
         .convert(
@@ -2725,8 +2956,7 @@ class FinnAccelerator extends ChangeNotifier {
         )
         .toString();
     final existing = runtime.sessions[conversationId];
-    final historyMatches =
-        existing != null &&
+    final historyMatches = existing != null &&
         existing.messageCount == history.length &&
         existing.promptConfigurationHash == configuration;
     if (historyMatches) {
@@ -2756,9 +2986,8 @@ class FinnAccelerator extends ChangeNotifier {
       runtime.sessions.remove(oldest.conversationId);
       await oldest.session.dispose();
     } else {
-      final used = runtime.sessions.values
-          .map((entry) => entry.sequenceId)
-          .toSet();
+      final used =
+          runtime.sessions.values.map((entry) => entry.sequenceId).toSet();
       while (used.contains(sequenceId)) {
         sequenceId++;
       }
@@ -2936,7 +3165,17 @@ class FinnAccelerator extends ChangeNotifier {
       );
       if (!kReleaseMode) {
         debugPrint(
-          'FINN_PREFIX ${jsonEncode({'cache_hit': report.cacheHit, 'tokens': report.tokens, 'file_bytes': report.fileBytes, 'preparation_ms': report.preparation.inMicroseconds / 1000, 'restoration_ms': report.restoration.inMicroseconds / 1000, 'prompt_tokens_per_second': report.promptTokensPerSecond, 'runtime': runtime.engine.packageVersion, 'llama_cpp_commit': runtime.engine.llamaCppCommit, 'system_info': runtime.engine.systemInfo})}',
+          'FINN_PREFIX ${jsonEncode({
+                'cache_hit': report.cacheHit,
+                'tokens': report.tokens,
+                'file_bytes': report.fileBytes,
+                'preparation_ms': report.preparation.inMicroseconds / 1000,
+                'restoration_ms': report.restoration.inMicroseconds / 1000,
+                'prompt_tokens_per_second': report.promptTokensPerSecond,
+                'runtime': runtime.engine.packageVersion,
+                'llama_cpp_commit': runtime.engine.llamaCppCommit,
+                'system_info': runtime.engine.systemInfo
+              })}',
         );
       }
       return report;
@@ -2945,35 +3184,12 @@ class FinnAccelerator extends ChangeNotifier {
     }
   }
 
-  String get _baseSystemPrefix =>
-      '<|im_start|>system\n$finnSafetySystemPrompt<|im_end|>\n';
+  String get _baseSystemPrefix => PromptFormatter.baseSystemPrefix;
 
-  static const finnSafetySystemPrompt = '''
-You are Finn AI, a warm, sharp, private on-device assistant. Be natural and
-truly helpful: match the user's tone and language, and keep replies as long as
-the question needs. Think before you answer, state uncertainty instead of
-guessing, and never invent facts, citations, names, numbers, or technical
-details. Correct false premises kindly; if you don't know, say so plainly and
-offer a useful next step. Avoid robotic filler, apologies, and repetition.
-
-You can search the browser when you need up-to-date web information by issuing a tool call:
-<tool_call>
-{"name": "browser_search", "arguments": {"query": "<query>"}}
-</tool_call>
-
-Cite web and browser material inline as [1], [2]; never append a separate "Sources"
-section or empty bullet list.
-
-
-Refuse help that enables sexual content involving minors, serious violence or
-self-harm methods, fraud or phishing, harmful malware, unauthorised access, or
-other dangerous illegal acts. Safe prevention and high-level education are
-allowed. For self-harm risk, be supportive and encourage trusted or emergency
-help. Everyday lawful tasks such as hardware upgrades, cooking, and household
-repairs are allowed — give careful, accurate instructions with safety
-precautions instead of refusing. For medical, legal, or financial questions,
-explain limits and recommend qualified help when appropriate. Follow private
-user preferences but never reveal them.''';
+  /// Kept as a public alias of [PromptFormatter.finnSafetySystemPrompt] (the
+  /// single source of truth for the safety prefix text) so diagnostics and
+  /// tests keep reading it off the accelerator facade.
+  static const finnSafetySystemPrompt = PromptFormatter.finnSafetySystemPrompt;
 
   static bool _isImageFile(String path) {
     final lower = path.toLowerCase();
@@ -2997,12 +3213,25 @@ user preferences but never reveal them.''';
     // JPEG: FF D8 FF
     if (bytes[0] == 0xFF && bytes[1] == 0xD8 && bytes[2] == 0xFF) return true;
     // PNG: 89 50 4E 47
-    if (bytes[0] == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4E && bytes[3] == 0x47) return true;
+    final isPng = bytes[0] == 0x89 &&
+        bytes[1] == 0x50 &&
+        bytes[2] == 0x4E &&
+        bytes[3] == 0x47;
+    if (isPng) return true;
     // GIF: 47 49 46
     if (bytes[0] == 0x47 && bytes[1] == 0x49 && bytes[2] == 0x46) return true;
     // WEBP: 52 49 46 46 ... 57 45 42 50
-    if (bytes.length >= 12 && bytes[0] == 0x52 && bytes[1] == 0x49 && bytes[2] == 0x46 && bytes[3] == 0x46) {
-      if (bytes[8] == 0x57 && bytes[9] == 0x45 && bytes[10] == 0x42 && bytes[11] == 0x50) return true;
+    if (bytes.length >= 12 &&
+        bytes[0] == 0x52 &&
+        bytes[1] == 0x49 &&
+        bytes[2] == 0x46 &&
+        bytes[3] == 0x46) {
+      final isWebp =
+          bytes[8] == 0x57 &&
+          bytes[9] == 0x45 &&
+          bytes[10] == 0x42 &&
+          bytes[11] == 0x50;
+      if (isWebp) return true;
     }
     // BMP: 42 4D
     if (bytes[0] == 0x42 && bytes[1] == 0x4D) return true;
@@ -3053,39 +3282,15 @@ user preferences but never reveal them.''';
     required List<LocalChatTurn> history,
     required String directive,
   }) {
-    final buffer = StringBuffer();
-    if (!primed) {
-      if (!basePrefixReady) buffer.write(_baseSystemPrefix);
-      buffer
-        ..write('<|im_start|>system\n')
-        ..write(PromptIntentPolicy.taskInstruction(analysis))
-        ..write('<|im_end|>\n');
-      buffer
-        ..write('<|im_start|>system\n')
-        ..write(directive)
-        ..write('<|im_end|>\n');
-      // The decision pass deliberately sees only the latest user request.
-      // Keeping prior turns out prevents personal conversation content from
-      // influencing a query that may leave the device.
-      buffer
-        ..write('<|im_start|>user\n')
-        ..write(prompt)
-        ..write('<|im_end|>\n<|im_start|>assistant\n');
-    } else {
-      // The prior assistant terminator was not committed by llama.cpp; the
-      // next turn begins by committing it, then the decision directive and the
-      // new user request. Omitting the user turn here makes warm conversations
-      // decide based on the previous answer instead of the latest prompt.
-      buffer
-        ..write('<|im_end|>\n')
-        ..write('<|im_start|>system\n')
-        ..write(directive)
-        ..write('<|im_end|>\n')
-        ..write('<|im_start|>user\n')
-        ..write(prompt)
-        ..write('<|im_end|>\n<|im_start|>assistant\n');
-    }
-    return buffer.toString();
+    return PromptFormatter.renderDecisionPromptText(
+      primed: primed,
+      basePrefixReady: basePrefixReady,
+      includeTaskInstruction: includeTaskInstruction,
+      analysis: analysis,
+      prompt: prompt,
+      history: history,
+      directive: directive,
+    );
   }
 
   String _renderPromptText({
@@ -3102,195 +3307,24 @@ user preferences but never reveal them.''';
     int? mediaCount,
     String? attachedDocContext,
   }) {
-    final promptAnalysis =
-        analysis ?? const PromptIntentClassifier().classify(prompt);
-    final priorRecipe = history.any(
-      (turn) => turn.role == 'assistant' && _isRecipeAnswer(turn.content),
+    // Single source of truth for prompt rendering lives in [PromptFormatter];
+    // the runtime only contributes its planned context size so history
+    // trimming matches the context the engine will actually run with.
+    return PromptFormatter.renderPromptText(
+      primed: primed,
+      prompt: prompt,
+      history: history,
+      contextTokens: _plan?.contextSize ?? 2048,
+      systemContext: systemContext,
+      groundedContext: groundedContext,
+      analysis: analysis,
+      includeTaskInstruction: includeTaskInstruction,
+      basePrefixReady: basePrefixReady,
+      primeEmptyThinking: primeEmptyThinking,
+      includeMediaMarker: includeMediaMarker,
+      mediaCount: mediaCount,
+      attachedDocContext: attachedDocContext,
     );
-    final isRecipeFollowUp =
-        promptAnalysis.intent == PromptIntent.recipe &&
-        priorRecipe &&
-        _freshRecipeRequest.hasMatch(prompt);
-    // Same-chat recipe follow-ups: the prior recipe lives in the session KV
-    // cache (the primed path replays no history), and compact Qwen models
-    // copy it verbatim instead of following the new dish name — an appended
-    // guard note alone proved insufficient on device. Rebuild the context
-    // without any prior recipe turns so the model cannot attend to them.
-    final rebuildContext = primed && isRecipeFollowUp;
-    final effectiveIncludeTask = includeTaskInstruction || rebuildContext;
-    final replayHistory = isRecipeFollowUp
-        ? _historyWithoutRecipes(history)
-        : history;
-    final buffer = StringBuffer();
-    if (!primed || rebuildContext) {
-      if (!basePrefixReady) buffer.write(_baseSystemPrefix);
-      buffer
-        ..write('<|im_start|>system\n')
-        ..write(PromptIntentPolicy.taskInstruction(promptAnalysis))
-        ..write('<|im_end|>\n');
-      _writePrivateContext(buffer, systemContext);
-      _writeGroundedContext(buffer, groundedContext);
-      if (attachedDocContext != null && attachedDocContext.isNotEmpty) {
-        buffer
-          ..write('<|im_start|>system\n')
-          ..write(attachedDocContext)
-          ..write('<|im_end|>\n');
-      }
-      final combinedForHistory = [
-        systemContext,
-        groundedContext,
-      ].where((s) => s.trim().isNotEmpty).join('\n\n');
-      for (final turn in _recentHistory(
-        prompt,
-        replayHistory,
-        systemContext: combinedForHistory,
-      )) {
-        buffer
-          ..write('<|im_start|>${turn.role}\n')
-          ..write(turn.content)
-          ..write('<|im_end|>\n');
-      }
-    } else {
-      // The stop token is not committed to the KV cache by llama.cpp, so the
-      // next turn begins by committing the prior assistant terminator.
-      buffer.write('<|im_end|>\n');
-      if (effectiveIncludeTask) {
-        buffer
-          ..write('<|im_start|>system\n')
-          ..write(PromptIntentPolicy.taskInstruction(promptAnalysis))
-          ..write('<|im_end|>\n');
-      }
-      // Grounded excerpts belong to the current turn. They must still be
-      // inserted on a warm session, where the shared system prefix is already
-      // in the KV cache.
-      _writeGroundedContext(buffer, groundedContext);
-      if (attachedDocContext != null && attachedDocContext.isNotEmpty) {
-        buffer
-          ..write('<|im_start|>system\n')
-          ..write(attachedDocContext)
-          ..write('<|im_end|>\n');
-      }
-    }
-    if (RegExp(
-      r'\b(?:joke|pun|another|new one|different one)\b',
-      caseSensitive: false,
-    ).hasMatch(prompt)) {
-      // Compact Qwen models are strongly peaked on their most frequent joke
-      // ("Why don't scientists trust atoms? ..."), so a generic novelty hint
-      // is not enough: surface the exact prior punchlines the model must not
-      // reuse. Only the last few assistant turns are quoted to bound tokens.
-      final priorJokes = history
-          .where((turn) => turn.role == 'assistant')
-          .map((turn) => turn.content.trim())
-          .where((content) => content.isNotEmpty)
-          .take(3)
-          .map(
-            (content) => content.length > 160
-                ? '${content.substring(0, 160)}…'
-                : content,
-          )
-          .toList();
-      buffer
-        ..write('<|im_start|>system\n')
-        ..write(
-          'Give a genuinely new response. Do not repeat an example or '
-          'answer that already appears in this conversation.',
-        )
-        ..write(
-          priorJokes.isEmpty
-              ? ''
-              : ' You already told: ${priorJokes.join(' | ')}. '
-                    'Tell a joke on a different topic with a different punchline.',
-        )
-        ..write('<|im_end|>\n');
-    }
-    if (isRecipeFollowUp) {
-      // Same-chat follow-up recipe: compact Qwen models tend to copy the
-      // previous recipe verbatim (ingredient list and steps) when a similar
-      // recipe already appears earlier in the conversation. An explicit
-      // instruction to ignore the prior recipe is far more reliable than
-      // hoping the model notices the new dish name on its own.
-      final dish = promptAnalysis.recipeDish;
-      buffer
-        ..write('<|im_start|>system\n')
-        ..write(
-          'This conversation already contains a recipe. The user is '
-          'now asking for a different dish.',
-        )
-        ..write(
-          dish.isEmpty
-              ? ''
-              : ' The requested dish is $dish. Write the recipe ONLY for '
-                    '$dish, with its own correct ingredients and steps.',
-        )
-        ..write(
-          ' Ignore the ingredient lists, quantities and steps of any '
-          'recipe already given in this conversation, and write a '
-          'completely new recipe for the dish the user just asked about, '
-          'with its own correct ingredients and steps.',
-        )
-        ..write('<|im_end|>\n');
-    }
-    buffer.write('<|im_start|>user\n');
-    final count = mediaCount ?? (includeMediaMarker ? 1 : 0);
-    for (var i = 0; i < count; i++) {
-      buffer.write('<__media__>\n');
-    }
-    buffer
-      ..write(prompt)
-      ..write('<|im_end|>\n<|im_start|>assistant\n');
-
-    // Qwen 3-family non-thinking templates prime an empty reasoning block.
-    // Other ChatML models do not understand these tags, so detect support
-    // from the GGUF's embedded template instead of contaminating every model.
-    if (primeEmptyThinking) buffer.write('<think>\n\n</think>\n\n');
-    return buffer.toString();
-  }
-
-  /// Heuristic for "this assistant turn is a recipe answer". Used to detect
-  /// prior recipe answers in the same conversation so a follow-up recipe
-  /// request can be told explicitly not to copy the earlier one.
-  static bool _isRecipeAnswer(String content) {
-    return RegExp(
-      r'^\s*(ingredienti|ingredients|ingredientes|zutaten|ingrédients|ingrediënten)\b',
-      caseSensitive: false,
-      multiLine: true,
-    ).hasMatch(content);
-  }
-
-  /// Prompts that read as a fresh recipe request ("come fare", "how to
-  /// make", "ricetta", ...) rather than a question about an existing recipe.
-  /// Only these trigger the same-chat context rebuild; genuine follow-up
-  /// questions ("how long should it bake?", "posso aggiungere mele?") keep
-  /// the prior recipe in context so the model can answer about it.
-  static final RegExp _freshRecipeRequest = RegExp(
-    r'\b(come fare|come si fa|come faccio|come preparare|come cucinare|'
-    r'fare una|fare la|preparare una|preparare la|facciamo una|'
-    r'how to make|how to cook|how to bake|how do i make|'
-    r'recipe for|recipe of|recipe to make|ricetta)\b',
-    caseSensitive: false,
-  );
-
-  /// Drops prior recipe exchanges (user request + assistant recipe answer)
-  /// from the replayed history so a same-chat follow-up recipe cannot copy
-  /// the previous one. Non-recipe turns are preserved.
-  static List<LocalChatTurn> _historyWithoutRecipes(
-    List<LocalChatTurn> history,
-  ) {
-    final drop = <int>{};
-    for (var i = 0; i < history.length; i++) {
-      final turn = history[i];
-      if (turn.role == 'assistant' && _isRecipeAnswer(turn.content)) {
-        drop.add(i);
-        // Drop the user question that preceded it (if any).
-        if (i > 0 && history[i - 1].role == 'user') drop.add(i - 1);
-      }
-    }
-    if (drop.isEmpty) return history;
-    return [
-      for (var i = 0; i < history.length; i++)
-        if (!drop.contains(i)) history[i],
-    ];
   }
 
   @visibleForTesting
@@ -3330,18 +3364,19 @@ user preferences but never reveal them.''';
     int tokens(String value) => (value.length / 3.2).ceil();
     final analysis = const PromptIntentClassifier().classify(prompt);
     final priorRecipe = history.any(
-      (turn) => turn.role == 'assistant' && _isRecipeAnswer(turn.content),
+      (turn) =>
+          turn.role == 'assistant' &&
+          PromptFormatter.isRecipeAnswer(turn.content),
     );
-    final isRecipeFollowUp =
-        analysis.intent == PromptIntent.recipe &&
+    final isRecipeFollowUp = analysis.intent == PromptIntent.recipe &&
         priorRecipe &&
-        _freshRecipeRequest.hasMatch(prompt);
+        PromptFormatter.freshRecipeRequest.hasMatch(prompt);
     final rebuildContext = primed && isRecipeFollowUp;
     final task = (includeTaskInstruction || rebuildContext)
         ? PromptIntentPolicy.taskInstruction(analysis)
         : '';
     final replayHistory = isRecipeFollowUp
-        ? _historyWithoutRecipes(history)
+        ? PromptFormatter.historyWithoutRecipes(history)
         : history;
     final recent = (primed && !rebuildContext)
         ? const <LocalChatTurn>[]
@@ -3384,35 +3419,6 @@ user preferences but never reveal them.''';
     };
   }
 
-  void _writePrivateContext(StringBuffer buffer, String context) {
-    final value = context.trim();
-    if (value.isEmpty) return;
-    final isGrounded = value.contains('RETRIEVED WEB RESULTS');
-    if (isGrounded) {
-      buffer
-        ..write('<|im_start|>system\n')
-        ..write(value)
-        ..write('<|im_end|>\n');
-      return;
-    }
-    buffer
-      ..write('<|im_start|>system\n')
-      ..write(value)
-      ..write(
-        '\nTreat this as private user configuration. Never quote or reveal it.',
-      )
-      ..write('<|im_end|>\n');
-  }
-
-  void _writeGroundedContext(StringBuffer buffer, String context) {
-    final value = context.trim();
-    if (value.isEmpty) return;
-    buffer
-      ..write('<|im_start|>system\n')
-      ..write(value)
-      ..write('<|im_end|>\n');
-  }
-
   /// Bounds cold/reopened-chat prefill. Live chats still retain their KV cache
   /// between turns; restored chats replay only the newest useful context.
   List<LocalChatTurn> _recentHistory(
@@ -3420,48 +3426,12 @@ user preferences but never reveal them.''';
     List<LocalChatTurn> history, {
     String systemContext = '',
   }) {
-    if (history.isEmpty) return history;
-    final contextTokens = _plan?.contextSize ?? 2048;
-    final analysis = const PromptIntentClassifier().classify(prompt);
-    final promptTokens = (prompt.length / 3).ceil();
-    // The full prompt is base-safety-prefix + task instruction + private
-    // context (e.g. web-search excerpts) + history + template wrappers, all
-    // sharing one context window. Reserving only the output allowance and a
-    // small margin lets a long task instruction plus a large web context
-    // push the history replay past n_ctx, which fails native prompt eval
-    // (observed as a crash on the third same-chat question). Reserve
-    // everything except history — including the base safety prefix that is
-    // otherwise the largest unaccounted-for fixed overhead.
-    //
-    // The intent soft target is used here rather than the context-derived
-    // generation bound: generation can now run to the full context window,
-    // but trimming history that aggressively would destroy multi-turn chat.
-    final basePrefixTokens = (_baseSystemPrefix.length / 3).ceil();
-    final rawReservedTokens =
-        PromptIntentPolicy.desiredOutputTokens(analysis.intent) +
-        basePrefixTokens +
-        96 + // template wrappers, think block, and safety margin
-        (PromptIntentPolicy.taskInstruction(analysis).length / 3).ceil() +
-        (systemContext.trim().length / 3).ceil() +
-        promptTokens;
-    // On entry (1536-2048 ctx) a large RAG block can eat all history budget.
-    // Reserve at most 65% of context so a follow-up keeps ~35% for history.
-    final reservedTokens = math.min(
-      rawReservedTokens,
-      (contextTokens * 0.65).ceil(),
+    return PromptFormatter.recentHistory(
+      prompt,
+      history,
+      contextTokens: _plan?.contextSize ?? 2048,
+      systemContext: systemContext,
     );
-    final historyCharacters = math.max(0, (contextTokens - reservedTokens) * 3);
-    var used = 0;
-    var start = history.length;
-    for (var index = history.length - 1; index >= 0; index--) {
-      final cost = history[index].content.length + 32;
-      if (used + cost > historyCharacters) break;
-      used += cost;
-      start = index;
-    }
-    // Do not spend context replaying an orphan assistant answer.
-    if (start < history.length && history[start].role == 'assistant') start++;
-    return start >= history.length ? const [] : history.sublist(start);
   }
 
   int _outputBudget(PromptAnalysis analysis) {
@@ -3514,7 +3484,7 @@ user preferences but never reveal them.''';
     _pendingUnload = _pendingUnload.then((_) => _unload());
   }
 
-  Future<void> _unloadModel(QwenTier tier) async {
+  Future<void> _unloadModel(FinnModelTier tier) async {
     final runtime = _runtimes.remove(tier);
     if (runtime == null) return;
     for (final entry in runtime.sessions.values) {
@@ -3523,7 +3493,7 @@ user preferences but never reveal them.''';
     await runtime.engine.dispose();
   }
 
-  Future<File> _modelFile(QwenModel model) async {
+  Future<File> _modelFile(FinnModelSpec model) async {
     final directory = await (_modelDirectoryJob ??= _createModelDirectory());
     return File('${directory.path}${Platform.pathSeparator}${model.fileName}');
   }
@@ -3531,7 +3501,7 @@ user preferences but never reveal them.''';
   Future<File> _mmprojFile() async {
     final directory = await (_modelDirectoryJob ??= _createModelDirectory());
     return File(
-      '${directory.path}${Platform.pathSeparator}${qwenMmproj.fileName}',
+      '${directory.path}${Platform.pathSeparator}${finnMmproj.fileName}',
     );
   }
 
@@ -3541,24 +3511,25 @@ user preferences but never reveal them.''';
   /// Lightweight existence check (no SHA) for UI toast path.
   Future<bool> hasMmprojFile() async {
     final file = await _mmprojFile();
-    return await file.exists() && await file.length() == qwenMmproj.expectedBytes;
+    return await file.exists() &&
+        await file.length() == finnMmproj.expectedBytes;
   }
 
   Future<bool> isMmprojInstalled() async {
     final file = await _mmprojFile();
     if (!await file.exists() ||
-        await file.length() != qwenMmproj.expectedBytes) {
+        await file.length() != finnMmproj.expectedBytes) {
       return false;
     }
     try {
-      await _verifyArtifactDigest(file, qwenMmproj.sha256Digest);
+      await _verifyArtifactDigest(file, finnMmproj.sha256Digest);
       return true;
     } catch (_) {
       return false;
     }
   }
 
-  /// Downloads and verifies the reserved Qwen3.5 projector artifact. It is
+  /// Downloads and verifies the reserved LFM2.5-VL projector artifact. It is
   /// intentionally not passed to llama.cpp until a later vision release.
   Future<void> installMmproj() async {
     if (await isMmprojInstalled()) return;
@@ -3567,36 +3538,36 @@ user preferences but never reveal them.''';
       final availableStorage = storageProfile.availableStorageBytes;
       const reserve = 256 * 1024 * 1024;
       if (availableStorage != null &&
-          availableStorage < qwenMmproj.expectedBytes + reserve) {
+          availableStorage < finnMmproj.expectedBytes + reserve) {
         throw const FileSystemException(
           'Not enough storage for the multimodal component and safety reserve.',
         );
       }
     }
     final target = await _mmprojFile();
-    if (!await isInstalled(qwenModels.single)) {
+    if (!await isInstalled(finnModels.single)) {
       throw StateError(
-        'Download the Qwen language model before its component.',
+        'Download the language model before its component.',
       );
     }
     if (Platform.isAndroid) {
       final partial = File('${target.path}.part');
       await _ensureArtifactWithService(
-        url: qwenMmproj.downloadUrl,
+        url: finnMmproj.downloadUrl,
         target: target,
         partial: partial,
-        expectedBytes: qwenMmproj.expectedBytes,
+        expectedBytes: finnMmproj.expectedBytes,
         label: 'Qwen multimodal component',
-        sha256Digest: qwenMmproj.sha256Digest,
+        sha256Digest: finnMmproj.sha256Digest,
       );
       return;
     }
     await _ensureArtifactDart(
-      url: qwenMmproj.downloadUrl,
+      url: finnMmproj.downloadUrl,
       target: target,
-      expectedBytes: qwenMmproj.expectedBytes,
+      expectedBytes: finnMmproj.expectedBytes,
       label: 'Qwen multimodal component',
-      sha256Digest: qwenMmproj.sha256Digest,
+      sha256Digest: finnMmproj.sha256Digest,
     );
   }
 
@@ -3619,8 +3590,8 @@ user preferences but never reveal them.''';
 
   Future<void> _removeRetiredModelArtifacts() async {
     try {
-      final modelDirectory = await (_modelDirectoryJob ??=
-          _createModelDirectory());
+      final modelDirectory =
+          await (_modelDirectoryJob ??= _createModelDirectory());
       for (final fileName in _retiredModelFiles) {
         for (final suffix in const ['', '.part']) {
           final file = File(
@@ -3642,7 +3613,7 @@ user preferences but never reveal them.''';
     }
   }
 
-  Future<bool> _isVerifiedModelFile(QwenModel model, File file) async {
+  Future<bool> _isVerifiedModelFile(FinnModelSpec model, File file) async {
     if (!await file.exists() || await file.length() != model.expectedBytes) {
       return false;
     }
@@ -3674,9 +3645,13 @@ user preferences but never reveal them.''';
     return length >= 0 ? length + existing : null;
   }
 
+  /// Updates the user-visible status. [key] is the stable machine-readable
+  /// counterpart of [status] (see [FinnStatusKey]); the display text itself
+  /// is unchanged behavior.
   void _setStatus(
     InferencePhase phase,
     String status, {
+    required FinnStatusKey key,
     double? progress,
     int? totalBytes,
     double? speedBps,
@@ -3717,6 +3692,7 @@ user preferences but never reveal them.''';
     }
     _phase = phase;
     _status = status;
+    _statusKey = key;
     _downloadProgress = nextProgress;
     notifyListeners();
   }
@@ -3833,4 +3809,50 @@ Future<bool> promoteVerifiedModelPartial({
 }
 
 typedef FinnEngine = FinnAccelerator;
-typedef QwenInference = FinnAccelerator;
+typedef FinnInference = FinnAccelerator;
+
+/// Bounded FIFO turn gate for queued generations (see
+/// [FinnAccelerator.generateReplyQueued]).
+///
+/// [waitTurn] reserves a place in line and resolves when [signalNext] hands
+/// the turn over (the engine became free). Reservations are capped at
+/// [capacity]; beyond that [waitTurn] throws [StateError] so callers get a
+/// clear failure instead of unbounded queue growth. A waiter that gives up
+/// before its turn arrives calls [abandon] to restore capacity; abandoning
+/// after the turn was granted is a no-op.
+@visibleForTesting
+class ReplyTurnGate {
+  ReplyTurnGate({this.capacity = 2});
+
+  /// Maximum number of callers that can wait at once.
+  final int capacity;
+
+  final List<Completer<void>> _waiters = [];
+
+  /// Number of callers currently waiting for their turn.
+  int get waitingCount => _waiters.length;
+
+  /// Reserves a place in line; resolves when the turn is granted.
+  Future<void> waitTurn() {
+    if (_waiters.length >= capacity) {
+      throw StateError(
+        'Finn already has $capacity queued generations; '
+        'try again when the current answer finishes.',
+      );
+    }
+    final completer = Completer<void>();
+    _waiters.add(completer);
+    return completer.future;
+  }
+
+  /// Gives up a reserved [turn] that was not granted yet (no-op afterwards).
+  void abandon(Future<void> turn) {
+    _waiters.removeWhere((completer) => identical(completer.future, turn));
+  }
+
+  /// Hands the engine to the oldest waiter, if any.
+  void signalNext() {
+    if (_waiters.isEmpty) return;
+    _waiters.removeAt(0).complete();
+  }
+}
