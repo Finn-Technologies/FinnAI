@@ -22,13 +22,13 @@ dependencies:
     path: third_party/llama_cpp_dart
   path_provider: ^2.1.5
   path_provider_platform_interface: ^2.1.2
-  package_info_plus: ^9.0.1
-  flutter_secure_storage: ^9.2.4
+  package_info_plus: ^10.2.1
+  flutter_secure_storage: ^11.0.0
   cryptography: ^2.7.0
   url_launcher: ^6.3.1
   http: ^1.2.2
   image_picker: ^1.2.3
-  file_picker: ^11.0.3
+  file_picker: ^12.0.0-beta.1
 
 dev_dependencies:
   flutter_test:
