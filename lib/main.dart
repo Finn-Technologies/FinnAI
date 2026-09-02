@@ -4,7 +4,6 @@ import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:llama_cpp_dart/llama_cpp_dart.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'src/flux_app.dart';
@@ -176,19 +175,22 @@ Future<void> _runDeviceBenchmark() async {
   }
   // Surface llama.cpp's native logs (engine init, graph, perf) to a file the
   // host can tail via `run-as` — Android's stderr is not connected to logcat.
+  // Routed through the engine facade: main.dart never imports the FFI
+  // package directly (engine seam rule, see analysis_options.yaml).
   final supportDir = await getApplicationSupportDirectory();
-  LlamaEngine.logCapturePath =
-      '${supportDir.path}${Platform.pathSeparator}llama_native.log';
+  setLlamaNativeLogCapturePath(
+    '${supportDir.path}${Platform.pathSeparator}llama_native.log',
+  );
   // Benchmark builds: also mirror the native log to the app's own external
   // files dir so an adb shell can read it without run-as (release builds are
   // not debuggable). The benchmark model lives on /data/local/tmp, which
   // SELinux keeps read-only for the app, so the repacked-weight cache is
   // redirected into the same app-writable dir.
   if (const bool.fromEnvironment('FINN_BENCHMARK')) {
-    LlamaEngine.logCapturePath =
-        '/sdcard/Android/data/com.abhiflex.finnai/files/llama_native.log';
-    LlamaEngine.repackCacheDir =
-        '/sdcard/Android/data/com.abhiflex.finnai/files';
+    setLlamaNativeLogCapturePath(
+      '/sdcard/Android/data/com.abhiflex.finnai/files/llama_native.log',
+    );
+    setLlamaRepackCacheDir('/sdcard/Android/data/com.abhiflex.finnai/files');
   }
   Object? override(String name) => runtimeOverrides[name];
   const scenario = String.fromEnvironment(

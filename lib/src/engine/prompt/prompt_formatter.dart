@@ -22,6 +22,7 @@ You can search the browser when you need up-to-date web information by issuing a
 Cite web and browser material inline as [1], [2]; never append a separate "Sources"
 section or empty bullet list.
 
+
 Refuse help that enables sexual content involving minors, serious violence or
 self-harm methods, fraud or phishing, harmful malware, unauthorised access, or
 other dangerous illegal acts. Safe prevention and high-level education are
@@ -35,7 +36,12 @@ user preferences but never reveal them.''';
   static String get baseSystemPrefix =>
       '<|im_start|>system\n$finnSafetySystemPrompt<|im_end|>\n';
 
-  static final RegExp _freshRecipeRequest = RegExp(
+  /// Prompts that read as a fresh recipe request ("come fare", "how to
+  /// make", "ricetta", ...) rather than a question about an existing recipe.
+  /// Only these trigger the same-chat context rebuild; genuine follow-up
+  /// questions ("how long should it bake?", "posso aggiungere mele?") keep
+  /// the prior recipe in context so the model can answer about it.
+  static final RegExp freshRecipeRequest = RegExp(
     r'\b(come fare|come si fa|come faccio|come preparare|come cucinare|'
     r'fare una|fare la|preparare una|preparare la|facciamo una|'
     r'how to make|how to cook|how to bake|how do i make|'
@@ -43,6 +49,9 @@ user preferences but never reveal them.''';
     caseSensitive: false,
   );
 
+  /// Heuristic for "this assistant turn is a recipe answer". Used to detect
+  /// prior recipe answers in the same conversation so a follow-up recipe
+  /// request can be told explicitly not to copy the earlier one.
   static bool isRecipeAnswer(String content) {
     return RegExp(
       r'^\s*(ingredienti|ingredients|ingredientes|zutaten|ingrédients|ingrediënten)\b',
@@ -129,7 +138,7 @@ user preferences but never reveal them.''';
     final isRecipeFollowUp =
         promptAnalysis.intent == PromptIntent.recipe &&
         priorRecipe &&
-        _freshRecipeRequest.hasMatch(prompt);
+        freshRecipeRequest.hasMatch(prompt);
 
     final rebuildContext = primed && isRecipeFollowUp;
     final effectiveIncludeTask = includeTaskInstruction || rebuildContext;

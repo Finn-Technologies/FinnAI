@@ -6,7 +6,8 @@ import 'dart:math' as math;
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'backends/llama_shim.dart'; 
+import 'backends/llama_shim.dart';
+import 'prompt/prompt_formatter.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'profiler/device_profile.dart';
@@ -89,31 +90,18 @@ class _GenerationCancelled implements Exception {
 ///
 /// The runtime lives on a dedicated worker isolate, models are mmap-backed, and all
 /// settings retain CPU/GPU/NPU paths via the FinnAI-Accelerator architecture.
-// Engine seam (Phase 1): FinnAccelerator is the high-level facade over a
-// [FinnEngine] implementation. Production uses [LlamaBackend]; tests may
-// inject a fake via [debugEngineFactory]. Direct `LlamaEngine` construction
-// must stay inside `lib/src/engine/backends/` (see docs/ENGINE_API.md).
-// ignore: unused_element
-typedef _FinnEngineFactory = dynamic Function();
-
 class FinnAccelerator extends ChangeNotifier {
   static const _backgroundDownloadChannel = MethodChannel(
     'finn_ai/model_download',
   );
 
-  FinnAccelerator._({SearchAgent? searchAgent, dynamic debugEngineFactory})
-    : _searchAgent = searchAgent ?? SearchAgent(),
-      _debugEngineFactory = debugEngineFactory; // ignore: prefer_initializing_formals
+  FinnAccelerator._({SearchAgent? searchAgent})
+    : _searchAgent = searchAgent ?? SearchAgent();
 
   static final FinnAccelerator instance = FinnAccelerator._();
 
   /// Model-driven web search orchestration. Injected for tests.
   final SearchAgent _searchAgent;
-
-  // Engine seam injection (Phase 1). Null in production; tests inject a
-  // fake [FinnEngine] factory so they never import `llama_cpp_dart`.
-  // ignore: unused_field
-  final dynamic _debugEngineFactory;
 
   /// True when a web-search decision pass ran for the current/last turn and
   /// reached the search step. Used by the controller/UI to show status.
@@ -728,6 +716,12 @@ class FinnAccelerator extends ChangeNotifier {
   ///
   /// Production chat never calls this and model downloads/defaults are not
   /// changed. The caller must release memory between different model files.
+  ///
+  /// Security: an evaluation candidate carries no SHA-256 digest, so nothing
+  /// verifies its contents. Release builds therefore refuse to run such a
+  /// model unless the benchmark harness explicitly opted out via
+  /// [debugSkipSha256]; debug/profile builds only log a warning so quality
+  /// sweeps can evaluate arbitrary local candidates.
   Stream<String> generateEvaluationReply(
     String prompt, {
     required String path,
@@ -750,6 +744,15 @@ class FinnAccelerator extends ChangeNotifier {
       expectedBytes: 0,
       sha256Digest: '',
     );
+    if (model.sha256Digest.isEmpty && !debugSkipSha256) {
+      final message =
+          'Evaluation model "$modelLabel" has no SHA-256 digest; refusing to '
+          'load unverified weights.';
+      if (kReleaseMode) {
+        throw StateError(message);
+      }
+      debugPrint('FINN_EVAL_WARNING $message');
+    }
     try {
       _lastGeneratingModel = model;
       yield* _cleanModelStream(
@@ -1251,7 +1254,7 @@ class FinnAccelerator extends ChangeNotifier {
             if (decision.toolCallMade) {
               final continuation = StringBuffer()..write('<|im_end|>\n');
               if (!entry.primed && systemContext.trim().isNotEmpty) {
-                _writePrivateContext(continuation, systemContext);
+                PromptFormatter.writePrivateContext(continuation, systemContext);
               }
               if (effectiveGroundedContext.isNotEmpty) {
                 continuation.write(
@@ -1840,9 +1843,11 @@ class FinnAccelerator extends ChangeNotifier {
         sha256Digest: model.sha256Digest,
       );
     }
+    // Default certificate validation stays enabled: the production model is
+    // additionally pinned via its SHA-256 digest after the transfer, but TLS
+    // must not be weakened for every other request on this client.
     final client = HttpClient()
-      ..connectionTimeout = const Duration(seconds: 20)
-      ..badCertificateCallback = ((cert, host, port) => true);
+      ..connectionTimeout = const Duration(seconds: 20);
     _downloadClient = client;
     try {
       _setStatus(
@@ -2139,9 +2144,9 @@ class FinnAccelerator extends ChangeNotifier {
         return target;
       }
     }
+    // Default certificate validation stays enabled (see _ensureDownloaded).
     final client = HttpClient()
       ..connectionTimeout = const Duration(seconds: 20)
-      ..badCertificateCallback = ((cert, host, port) => true)
       ..maxConnectionsPerHost = _dartDownloadSegments + 2;
     _downloadClient = client;
     try {
@@ -2945,35 +2950,13 @@ class FinnAccelerator extends ChangeNotifier {
     }
   }
 
-  String get _baseSystemPrefix =>
-      '<|im_start|>system\n$finnSafetySystemPrompt<|im_end|>\n';
+  String get _baseSystemPrefix => PromptFormatter.baseSystemPrefix;
 
-  static const finnSafetySystemPrompt = '''
-You are Finn AI, a warm, sharp, private on-device assistant. Be natural and
-truly helpful: match the user's tone and language, and keep replies as long as
-the question needs. Think before you answer, state uncertainty instead of
-guessing, and never invent facts, citations, names, numbers, or technical
-details. Correct false premises kindly; if you don't know, say so plainly and
-offer a useful next step. Avoid robotic filler, apologies, and repetition.
-
-You can search the browser when you need up-to-date web information by issuing a tool call:
-<tool_call>
-{"name": "browser_search", "arguments": {"query": "<query>"}}
-</tool_call>
-
-Cite web and browser material inline as [1], [2]; never append a separate "Sources"
-section or empty bullet list.
-
-
-Refuse help that enables sexual content involving minors, serious violence or
-self-harm methods, fraud or phishing, harmful malware, unauthorised access, or
-other dangerous illegal acts. Safe prevention and high-level education are
-allowed. For self-harm risk, be supportive and encourage trusted or emergency
-help. Everyday lawful tasks such as hardware upgrades, cooking, and household
-repairs are allowed — give careful, accurate instructions with safety
-precautions instead of refusing. For medical, legal, or financial questions,
-explain limits and recommend qualified help when appropriate. Follow private
-user preferences but never reveal them.''';
+  /// Kept as a public alias of [PromptFormatter.finnSafetySystemPrompt] (the
+  /// single source of truth for the safety prefix text) so diagnostics and
+  /// tests keep reading it off the accelerator facade.
+  static const finnSafetySystemPrompt =
+      PromptFormatter.finnSafetySystemPrompt;
 
   static bool _isImageFile(String path) {
     final lower = path.toLowerCase();
@@ -3053,39 +3036,15 @@ user preferences but never reveal them.''';
     required List<LocalChatTurn> history,
     required String directive,
   }) {
-    final buffer = StringBuffer();
-    if (!primed) {
-      if (!basePrefixReady) buffer.write(_baseSystemPrefix);
-      buffer
-        ..write('<|im_start|>system\n')
-        ..write(PromptIntentPolicy.taskInstruction(analysis))
-        ..write('<|im_end|>\n');
-      buffer
-        ..write('<|im_start|>system\n')
-        ..write(directive)
-        ..write('<|im_end|>\n');
-      // The decision pass deliberately sees only the latest user request.
-      // Keeping prior turns out prevents personal conversation content from
-      // influencing a query that may leave the device.
-      buffer
-        ..write('<|im_start|>user\n')
-        ..write(prompt)
-        ..write('<|im_end|>\n<|im_start|>assistant\n');
-    } else {
-      // The prior assistant terminator was not committed by llama.cpp; the
-      // next turn begins by committing it, then the decision directive and the
-      // new user request. Omitting the user turn here makes warm conversations
-      // decide based on the previous answer instead of the latest prompt.
-      buffer
-        ..write('<|im_end|>\n')
-        ..write('<|im_start|>system\n')
-        ..write(directive)
-        ..write('<|im_end|>\n')
-        ..write('<|im_start|>user\n')
-        ..write(prompt)
-        ..write('<|im_end|>\n<|im_start|>assistant\n');
-    }
-    return buffer.toString();
+    return PromptFormatter.renderDecisionPromptText(
+      primed: primed,
+      basePrefixReady: basePrefixReady,
+      includeTaskInstruction: includeTaskInstruction,
+      analysis: analysis,
+      prompt: prompt,
+      history: history,
+      directive: directive,
+    );
   }
 
   String _renderPromptText({
@@ -3102,195 +3061,24 @@ user preferences but never reveal them.''';
     int? mediaCount,
     String? attachedDocContext,
   }) {
-    final promptAnalysis =
-        analysis ?? const PromptIntentClassifier().classify(prompt);
-    final priorRecipe = history.any(
-      (turn) => turn.role == 'assistant' && _isRecipeAnswer(turn.content),
+    // Single source of truth for prompt rendering lives in [PromptFormatter];
+    // the runtime only contributes its planned context size so history
+    // trimming matches the context the engine will actually run with.
+    return PromptFormatter.renderPromptText(
+      primed: primed,
+      prompt: prompt,
+      history: history,
+      contextTokens: _plan?.contextSize ?? 2048,
+      systemContext: systemContext,
+      groundedContext: groundedContext,
+      analysis: analysis,
+      includeTaskInstruction: includeTaskInstruction,
+      basePrefixReady: basePrefixReady,
+      primeEmptyThinking: primeEmptyThinking,
+      includeMediaMarker: includeMediaMarker,
+      mediaCount: mediaCount,
+      attachedDocContext: attachedDocContext,
     );
-    final isRecipeFollowUp =
-        promptAnalysis.intent == PromptIntent.recipe &&
-        priorRecipe &&
-        _freshRecipeRequest.hasMatch(prompt);
-    // Same-chat recipe follow-ups: the prior recipe lives in the session KV
-    // cache (the primed path replays no history), and compact Qwen models
-    // copy it verbatim instead of following the new dish name — an appended
-    // guard note alone proved insufficient on device. Rebuild the context
-    // without any prior recipe turns so the model cannot attend to them.
-    final rebuildContext = primed && isRecipeFollowUp;
-    final effectiveIncludeTask = includeTaskInstruction || rebuildContext;
-    final replayHistory = isRecipeFollowUp
-        ? _historyWithoutRecipes(history)
-        : history;
-    final buffer = StringBuffer();
-    if (!primed || rebuildContext) {
-      if (!basePrefixReady) buffer.write(_baseSystemPrefix);
-      buffer
-        ..write('<|im_start|>system\n')
-        ..write(PromptIntentPolicy.taskInstruction(promptAnalysis))
-        ..write('<|im_end|>\n');
-      _writePrivateContext(buffer, systemContext);
-      _writeGroundedContext(buffer, groundedContext);
-      if (attachedDocContext != null && attachedDocContext.isNotEmpty) {
-        buffer
-          ..write('<|im_start|>system\n')
-          ..write(attachedDocContext)
-          ..write('<|im_end|>\n');
-      }
-      final combinedForHistory = [
-        systemContext,
-        groundedContext,
-      ].where((s) => s.trim().isNotEmpty).join('\n\n');
-      for (final turn in _recentHistory(
-        prompt,
-        replayHistory,
-        systemContext: combinedForHistory,
-      )) {
-        buffer
-          ..write('<|im_start|>${turn.role}\n')
-          ..write(turn.content)
-          ..write('<|im_end|>\n');
-      }
-    } else {
-      // The stop token is not committed to the KV cache by llama.cpp, so the
-      // next turn begins by committing the prior assistant terminator.
-      buffer.write('<|im_end|>\n');
-      if (effectiveIncludeTask) {
-        buffer
-          ..write('<|im_start|>system\n')
-          ..write(PromptIntentPolicy.taskInstruction(promptAnalysis))
-          ..write('<|im_end|>\n');
-      }
-      // Grounded excerpts belong to the current turn. They must still be
-      // inserted on a warm session, where the shared system prefix is already
-      // in the KV cache.
-      _writeGroundedContext(buffer, groundedContext);
-      if (attachedDocContext != null && attachedDocContext.isNotEmpty) {
-        buffer
-          ..write('<|im_start|>system\n')
-          ..write(attachedDocContext)
-          ..write('<|im_end|>\n');
-      }
-    }
-    if (RegExp(
-      r'\b(?:joke|pun|another|new one|different one)\b',
-      caseSensitive: false,
-    ).hasMatch(prompt)) {
-      // Compact Qwen models are strongly peaked on their most frequent joke
-      // ("Why don't scientists trust atoms? ..."), so a generic novelty hint
-      // is not enough: surface the exact prior punchlines the model must not
-      // reuse. Only the last few assistant turns are quoted to bound tokens.
-      final priorJokes = history
-          .where((turn) => turn.role == 'assistant')
-          .map((turn) => turn.content.trim())
-          .where((content) => content.isNotEmpty)
-          .take(3)
-          .map(
-            (content) => content.length > 160
-                ? '${content.substring(0, 160)}…'
-                : content,
-          )
-          .toList();
-      buffer
-        ..write('<|im_start|>system\n')
-        ..write(
-          'Give a genuinely new response. Do not repeat an example or '
-          'answer that already appears in this conversation.',
-        )
-        ..write(
-          priorJokes.isEmpty
-              ? ''
-              : ' You already told: ${priorJokes.join(' | ')}. '
-                    'Tell a joke on a different topic with a different punchline.',
-        )
-        ..write('<|im_end|>\n');
-    }
-    if (isRecipeFollowUp) {
-      // Same-chat follow-up recipe: compact Qwen models tend to copy the
-      // previous recipe verbatim (ingredient list and steps) when a similar
-      // recipe already appears earlier in the conversation. An explicit
-      // instruction to ignore the prior recipe is far more reliable than
-      // hoping the model notices the new dish name on its own.
-      final dish = promptAnalysis.recipeDish;
-      buffer
-        ..write('<|im_start|>system\n')
-        ..write(
-          'This conversation already contains a recipe. The user is '
-          'now asking for a different dish.',
-        )
-        ..write(
-          dish.isEmpty
-              ? ''
-              : ' The requested dish is $dish. Write the recipe ONLY for '
-                    '$dish, with its own correct ingredients and steps.',
-        )
-        ..write(
-          ' Ignore the ingredient lists, quantities and steps of any '
-          'recipe already given in this conversation, and write a '
-          'completely new recipe for the dish the user just asked about, '
-          'with its own correct ingredients and steps.',
-        )
-        ..write('<|im_end|>\n');
-    }
-    buffer.write('<|im_start|>user\n');
-    final count = mediaCount ?? (includeMediaMarker ? 1 : 0);
-    for (var i = 0; i < count; i++) {
-      buffer.write('<__media__>\n');
-    }
-    buffer
-      ..write(prompt)
-      ..write('<|im_end|>\n<|im_start|>assistant\n');
-
-    // Qwen 3-family non-thinking templates prime an empty reasoning block.
-    // Other ChatML models do not understand these tags, so detect support
-    // from the GGUF's embedded template instead of contaminating every model.
-    if (primeEmptyThinking) buffer.write('<think>\n\n</think>\n\n');
-    return buffer.toString();
-  }
-
-  /// Heuristic for "this assistant turn is a recipe answer". Used to detect
-  /// prior recipe answers in the same conversation so a follow-up recipe
-  /// request can be told explicitly not to copy the earlier one.
-  static bool _isRecipeAnswer(String content) {
-    return RegExp(
-      r'^\s*(ingredienti|ingredients|ingredientes|zutaten|ingrédients|ingrediënten)\b',
-      caseSensitive: false,
-      multiLine: true,
-    ).hasMatch(content);
-  }
-
-  /// Prompts that read as a fresh recipe request ("come fare", "how to
-  /// make", "ricetta", ...) rather than a question about an existing recipe.
-  /// Only these trigger the same-chat context rebuild; genuine follow-up
-  /// questions ("how long should it bake?", "posso aggiungere mele?") keep
-  /// the prior recipe in context so the model can answer about it.
-  static final RegExp _freshRecipeRequest = RegExp(
-    r'\b(come fare|come si fa|come faccio|come preparare|come cucinare|'
-    r'fare una|fare la|preparare una|preparare la|facciamo una|'
-    r'how to make|how to cook|how to bake|how do i make|'
-    r'recipe for|recipe of|recipe to make|ricetta)\b',
-    caseSensitive: false,
-  );
-
-  /// Drops prior recipe exchanges (user request + assistant recipe answer)
-  /// from the replayed history so a same-chat follow-up recipe cannot copy
-  /// the previous one. Non-recipe turns are preserved.
-  static List<LocalChatTurn> _historyWithoutRecipes(
-    List<LocalChatTurn> history,
-  ) {
-    final drop = <int>{};
-    for (var i = 0; i < history.length; i++) {
-      final turn = history[i];
-      if (turn.role == 'assistant' && _isRecipeAnswer(turn.content)) {
-        drop.add(i);
-        // Drop the user question that preceded it (if any).
-        if (i > 0 && history[i - 1].role == 'user') drop.add(i - 1);
-      }
-    }
-    if (drop.isEmpty) return history;
-    return [
-      for (var i = 0; i < history.length; i++)
-        if (!drop.contains(i)) history[i],
-    ];
   }
 
   @visibleForTesting
@@ -3330,18 +3118,18 @@ user preferences but never reveal them.''';
     int tokens(String value) => (value.length / 3.2).ceil();
     final analysis = const PromptIntentClassifier().classify(prompt);
     final priorRecipe = history.any(
-      (turn) => turn.role == 'assistant' && _isRecipeAnswer(turn.content),
+      (turn) => turn.role == 'assistant' && PromptFormatter.isRecipeAnswer(turn.content),
     );
     final isRecipeFollowUp =
         analysis.intent == PromptIntent.recipe &&
         priorRecipe &&
-        _freshRecipeRequest.hasMatch(prompt);
+        PromptFormatter.freshRecipeRequest.hasMatch(prompt);
     final rebuildContext = primed && isRecipeFollowUp;
     final task = (includeTaskInstruction || rebuildContext)
         ? PromptIntentPolicy.taskInstruction(analysis)
         : '';
     final replayHistory = isRecipeFollowUp
-        ? _historyWithoutRecipes(history)
+        ? PromptFormatter.historyWithoutRecipes(history)
         : history;
     final recent = (primed && !rebuildContext)
         ? const <LocalChatTurn>[]
@@ -3384,35 +3172,6 @@ user preferences but never reveal them.''';
     };
   }
 
-  void _writePrivateContext(StringBuffer buffer, String context) {
-    final value = context.trim();
-    if (value.isEmpty) return;
-    final isGrounded = value.contains('RETRIEVED WEB RESULTS');
-    if (isGrounded) {
-      buffer
-        ..write('<|im_start|>system\n')
-        ..write(value)
-        ..write('<|im_end|>\n');
-      return;
-    }
-    buffer
-      ..write('<|im_start|>system\n')
-      ..write(value)
-      ..write(
-        '\nTreat this as private user configuration. Never quote or reveal it.',
-      )
-      ..write('<|im_end|>\n');
-  }
-
-  void _writeGroundedContext(StringBuffer buffer, String context) {
-    final value = context.trim();
-    if (value.isEmpty) return;
-    buffer
-      ..write('<|im_start|>system\n')
-      ..write(value)
-      ..write('<|im_end|>\n');
-  }
-
   /// Bounds cold/reopened-chat prefill. Live chats still retain their KV cache
   /// between turns; restored chats replay only the newest useful context.
   List<LocalChatTurn> _recentHistory(
@@ -3420,48 +3179,12 @@ user preferences but never reveal them.''';
     List<LocalChatTurn> history, {
     String systemContext = '',
   }) {
-    if (history.isEmpty) return history;
-    final contextTokens = _plan?.contextSize ?? 2048;
-    final analysis = const PromptIntentClassifier().classify(prompt);
-    final promptTokens = (prompt.length / 3).ceil();
-    // The full prompt is base-safety-prefix + task instruction + private
-    // context (e.g. web-search excerpts) + history + template wrappers, all
-    // sharing one context window. Reserving only the output allowance and a
-    // small margin lets a long task instruction plus a large web context
-    // push the history replay past n_ctx, which fails native prompt eval
-    // (observed as a crash on the third same-chat question). Reserve
-    // everything except history — including the base safety prefix that is
-    // otherwise the largest unaccounted-for fixed overhead.
-    //
-    // The intent soft target is used here rather than the context-derived
-    // generation bound: generation can now run to the full context window,
-    // but trimming history that aggressively would destroy multi-turn chat.
-    final basePrefixTokens = (_baseSystemPrefix.length / 3).ceil();
-    final rawReservedTokens =
-        PromptIntentPolicy.desiredOutputTokens(analysis.intent) +
-        basePrefixTokens +
-        96 + // template wrappers, think block, and safety margin
-        (PromptIntentPolicy.taskInstruction(analysis).length / 3).ceil() +
-        (systemContext.trim().length / 3).ceil() +
-        promptTokens;
-    // On entry (1536-2048 ctx) a large RAG block can eat all history budget.
-    // Reserve at most 65% of context so a follow-up keeps ~35% for history.
-    final reservedTokens = math.min(
-      rawReservedTokens,
-      (contextTokens * 0.65).ceil(),
+    return PromptFormatter.recentHistory(
+      prompt,
+      history,
+      contextTokens: _plan?.contextSize ?? 2048,
+      systemContext: systemContext,
     );
-    final historyCharacters = math.max(0, (contextTokens - reservedTokens) * 3);
-    var used = 0;
-    var start = history.length;
-    for (var index = history.length - 1; index >= 0; index--) {
-      final cost = history[index].content.length + 32;
-      if (used + cost > historyCharacters) break;
-      used += cost;
-      start = index;
-    }
-    // Do not spend context replaying an orphan assistant answer.
-    if (start < history.length && history[start].role == 'assistant') start++;
-    return start >= history.length ? const [] : history.sublist(start);
   }
 
   int _outputBudget(PromptAnalysis analysis) {
