@@ -36,10 +36,16 @@ class MainActivity : FlutterActivity() {
 
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
-        // Forward Android trim signals to Dart so the accelerator can
+        // Forward Android memory-trim signals to Dart so the accelerator can
         // drop inactive sessions/engines and the image cache can clear.
-        // TRIM_MEMORY_RUNNING_* and above all indicate pressure; Dart
-        // decides how much to release based on availableRamBytes.
+        //
+        // Level meanings (see ComponentCallbacks2):
+        //   - TRIM_MEMORY_RUNNING_MODERATE / RUNNING_LOW / RUNNING_CRITICAL
+        //     report rising system-wide memory pressure while this app is in
+        //     the foreground (the common case for this handler).
+        //   - UI_HIDDEN, BACKGROUND_* and TRIM_MEMORY_COMPLETE arrive once
+        //     this process itself is partially or fully backgrounded.
+        // Dart decides how much to release based on availableRamBytes.
         flutterEngine?.let { engine ->
             try {
                 MethodChannel(engine.dartExecutor.binaryMessenger, "finn_ai/memory.pressure")
