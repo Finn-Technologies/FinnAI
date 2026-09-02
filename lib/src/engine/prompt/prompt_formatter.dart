@@ -135,16 +135,14 @@ user preferences but never reveal them.''';
     final priorRecipe = history.any(
       (turn) => turn.role == 'assistant' && isRecipeAnswer(turn.content),
     );
-    final isRecipeFollowUp =
-        promptAnalysis.intent == PromptIntent.recipe &&
+    final isRecipeFollowUp = promptAnalysis.intent == PromptIntent.recipe &&
         priorRecipe &&
         freshRecipeRequest.hasMatch(prompt);
 
     final rebuildContext = primed && isRecipeFollowUp;
     final effectiveIncludeTask = includeTaskInstruction || rebuildContext;
-    final replayHistory = isRecipeFollowUp
-        ? historyWithoutRecipes(history)
-        : history;
+    final replayHistory =
+        isRecipeFollowUp ? historyWithoutRecipes(history) : history;
     final buffer = StringBuffer();
     if (!primed || rebuildContext) {
       if (!basePrefixReady) buffer.write(baseSystemPrefix);
@@ -216,7 +214,7 @@ user preferences but never reveal them.''';
           priorJokes.isEmpty
               ? ''
               : ' You already told: ${priorJokes.join(' | ')}. '
-                    'Tell a joke on a different topic with a different punchline.',
+                  'Tell a joke on a different topic with a different punchline.',
         )
         ..write('<|im_end|>\n');
     }
@@ -232,7 +230,7 @@ user preferences but never reveal them.''';
           dish.isEmpty
               ? ''
               : ' The requested dish is $dish. Write the recipe ONLY for '
-                    '$dish, with its own correct ingredients and steps.',
+                  '$dish, with its own correct ingredients and steps.',
         )
         ..write(
           ' Ignore the ingredient lists, quantities and steps of any '
@@ -296,11 +294,11 @@ user preferences but never reveal them.''';
     final basePrefixTokens = (baseSystemPrefix.length / 3).ceil();
     final rawReservedTokens =
         PromptIntentPolicy.desiredOutputTokens(analysis.intent) +
-        basePrefixTokens +
-        96 +
-        (PromptIntentPolicy.taskInstruction(analysis).length / 3).ceil() +
-        (systemContext.trim().length / 3).ceil() +
-        promptTokens;
+            basePrefixTokens +
+            96 +
+            (PromptIntentPolicy.taskInstruction(analysis).length / 3).ceil() +
+            (systemContext.trim().length / 3).ceil() +
+            promptTokens;
     final reservedTokens = math.min(
       rawReservedTokens,
       (contextTokens * 0.65).ceil(),

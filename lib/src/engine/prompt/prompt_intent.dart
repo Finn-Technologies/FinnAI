@@ -348,10 +348,9 @@ class PromptIntentClassifier {
         .key;
     final languageSignals =
         _signals[language] ?? _signals[PromptLanguage.english]!;
-    final hardwareGuidance =
-        (_hardwareSignals[language] ??
-                _hardwareSignals[PromptLanguage.english]!)
-            .any((term) => _contains(value, term));
+    final hardwareGuidance = (_hardwareSignals[language] ??
+            _hardwareSignals[PromptLanguage.english]!)
+        .any((term) => _contains(value, term));
 
     final trimmed = value.replaceAll(RegExp(r'[!.,?\s]+$'), '');
     final greetingTerms = languageSignals[PromptIntent.greeting] ?? const [];
@@ -451,28 +450,29 @@ class IntentSamplerProfile {
   final int penaltyLastN;
 
   SamplerParams get params => SamplerParams(
-    temperature: temperature,
-    topK: topK,
-    topP: topP,
-    minP: minP,
-    repeatPenalty: repeatPenalty,
-    penaltyLastN: penaltyLastN,
-  );
+        temperature: temperature,
+        topK: topK,
+        topP: topP,
+        minP: minP,
+        repeatPenalty: repeatPenalty,
+        penaltyLastN: penaltyLastN,
+      );
 }
 
 class PromptIntentPolicy {
   const PromptIntentPolicy._();
 
   static int desiredOutputTokens(PromptIntent intent) => switch (intent) {
-    PromptIntent.greeting => 160,
-    PromptIntent.quickQuestion || PromptIntent.translation => 224,
-    PromptIntent.recipe || PromptIntent.howTo => 320,
-    PromptIntent.writing || PromptIntent.comparison => 512,
-    PromptIntent.coding ||
-    PromptIntent.analysis ||
-    PromptIntent.highStakes => 768,
-    PromptIntent.creative => 512,
-  };
+        PromptIntent.greeting => 160,
+        PromptIntent.quickQuestion || PromptIntent.translation => 224,
+        PromptIntent.recipe || PromptIntent.howTo => 320,
+        PromptIntent.writing || PromptIntent.comparison => 512,
+        PromptIntent.coding ||
+        PromptIntent.analysis ||
+        PromptIntent.highStakes =>
+          768,
+        PromptIntent.creative => 512,
+      };
 
   /// Whether a turn should run the smart on-device model-driven web-search decision pass.
   ///
@@ -497,54 +497,54 @@ class PromptIntentPolicy {
 
   static const IntentSamplerProfile searchDecisionSampler =
       IntentSamplerProfile(
-        temperature: .0,
-        topK: 1,
-        topP: .10,
-        minP: .05,
-        repeatPenalty: 1.0,
-        penaltyLastN: 32,
-      );
+    temperature: .0,
+    topK: 1,
+    topP: .10,
+    minP: .05,
+    repeatPenalty: 1.0,
+    penaltyLastN: 32,
+  );
 
   static IntentSamplerProfile sampler(PromptIntent intent) => switch (intent) {
-    PromptIntent.quickQuestion ||
-    PromptIntent.recipe ||
-    PromptIntent.howTo ||
-    PromptIntent.translation ||
-    PromptIntent.comparison ||
-    PromptIntent.coding ||
-    PromptIntent.analysis ||
-    PromptIntent.highStakes => const IntentSamplerProfile(
-      temperature: .30,
-      topK: 30,
-      topP: .90,
-      minP: .05,
-      repeatPenalty: 1.05,
-      penaltyLastN: 256,
-    ),
-    PromptIntent.creative => const IntentSamplerProfile(
-      temperature: .85,
-      topK: 60,
-      topP: .95,
-      minP: .03,
-      repeatPenalty: 1.05,
-      penaltyLastN: 256,
-    ),
-    _ => const IntentSamplerProfile(
-      temperature: .70,
-      topK: 40,
-      topP: .90,
-      minP: .05,
-      repeatPenalty: 1.05,
-      penaltyLastN: 256,
-    ),
-  };
+        PromptIntent.quickQuestion ||
+        PromptIntent.recipe ||
+        PromptIntent.howTo ||
+        PromptIntent.translation ||
+        PromptIntent.comparison ||
+        PromptIntent.coding ||
+        PromptIntent.analysis ||
+        PromptIntent.highStakes =>
+          const IntentSamplerProfile(
+            temperature: .30,
+            topK: 30,
+            topP: .90,
+            minP: .05,
+            repeatPenalty: 1.05,
+            penaltyLastN: 256,
+          ),
+        PromptIntent.creative => const IntentSamplerProfile(
+            temperature: .85,
+            topK: 60,
+            topP: .95,
+            minP: .03,
+            repeatPenalty: 1.05,
+            penaltyLastN: 256,
+          ),
+        _ => const IntentSamplerProfile(
+            temperature: .70,
+            topK: 40,
+            topP: .90,
+            minP: .05,
+            repeatPenalty: 1.05,
+            penaltyLastN: 256,
+          ),
+      };
 
   static String taskInstruction(PromptAnalysis analysis) {
     final language = analysis.language == PromptLanguage.unknown
         ? 'the language of the latest user message'
         : analysis.language.name;
-    final common =
-        'Reply in $language unless asked otherwise. '
+    final common = 'Reply in $language unless asked otherwise. '
         'Be warm, natural, and conversational: match the user\'s tone and length '
         'and avoid robotic preamble. ';
     final task = switch (analysis.intent) {
@@ -555,14 +555,13 @@ class PromptIntentPolicy {
             '${analysis.language == PromptLanguage.italian ? 'Use metric measurements. ' : ''}'
             'Respect dietary restrictions in the private configuration. If an essential detail is ambiguous, '
             'ask one concise clarification question. Do not list the finished dish itself as an ingredient.',
-      PromptIntent.howTo =>
-        analysis.hardwareGuidance
-            ? 'For hardware repair or upgrade guidance, first ask for the exact manufacturer and model before giving device-specific steps, '
-                  'and recommend its service manual or manufacturer specifications. For memory questions, explain that RAM may be soldered, '
-                  'socketed, or a combination; never assume two slots. Do not invent slot labels, slot sizes, screw locations, component layouts, '
-                  'or capacity limits. Give only cautious general steps, including electrostatic precautions and disconnecting external and '
-                  'internal power when appropriate. Never add citation numbers like [1] without real web sources.'
-            : 'Give practical, ordered steps, include prerequisites and relevant safety cautions, and do not omit the final step.',
+      PromptIntent.howTo => analysis.hardwareGuidance
+          ? 'For hardware repair or upgrade guidance, first ask for the exact manufacturer and model before giving device-specific steps, '
+              'and recommend its service manual or manufacturer specifications. For memory questions, explain that RAM may be soldered, '
+              'socketed, or a combination; never assume two slots. Do not invent slot labels, slot sizes, screw locations, component layouts, '
+              'or capacity limits. Give only cautious general steps, including electrostatic precautions and disconnecting external and '
+              'internal power when appropriate. Never add citation numbers like [1] without real web sources.'
+          : 'Give practical, ordered steps, include prerequisites and relevant safety cautions, and do not omit the final step.',
       PromptIntent.translation =>
         'Translate faithfully into the requested language. Preserve meaning, tone, names, and formatting; add no commentary unless asked.',
       PromptIntent.comparison =>

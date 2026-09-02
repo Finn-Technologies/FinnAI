@@ -96,7 +96,7 @@ class FinnAccelerator extends ChangeNotifier {
   );
 
   FinnAccelerator._({SearchAgent? searchAgent})
-    : _searchAgent = searchAgent ?? SearchAgent();
+      : _searchAgent = searchAgent ?? SearchAgent();
 
   static final FinnAccelerator instance = FinnAccelerator._();
 
@@ -181,6 +181,12 @@ class FinnAccelerator extends ChangeNotifier {
 
   String _status = 'Ready';
   String get status => _status;
+
+  /// Machine-readable counterpart of [status] for the UI layer. Carried by
+  /// every [_setStatus] call so localized labels can be derived without
+  /// parsing the display text (which stays unchanged for now).
+  FinnStatusKey _statusKey = FinnStatusKey.ready;
+  FinnStatusKey get statusKey => _statusKey;
 
   double? _downloadProgress;
   double? get downloadProgress => _downloadProgress;
@@ -274,6 +280,7 @@ class FinnAccelerator extends ChangeNotifier {
     _setStatus(
       InferencePhase.downloading,
       'Downloading test',
+      key: FinnStatusKey.downloadingModel,
       progress: progress,
       totalBytes: totalBytes,
     );
@@ -282,7 +289,11 @@ class FinnAccelerator extends ChangeNotifier {
   /// Test hook: returns the download phase to idle after simulated progress.
   @visibleForTesting
   void resetDownloadStateForTest() {
-    _setStatus(InferencePhase.idle, 'Ready');
+    _setStatus(
+      InferencePhase.idle,
+      'Ready',
+      key: FinnStatusKey.ready,
+    );
   }
 
   FinnModelSpec? _workingModel;
@@ -318,12 +329,20 @@ class FinnAccelerator extends ChangeNotifier {
   void select(FinnModelTier tier) {
     if (tier != FinnModelTier.standard || !_automaticSelection) return;
     _automaticSelection = false;
-    _setStatus(InferencePhase.idle, 'Ready');
+    _setStatus(
+      InferencePhase.idle,
+      'Ready',
+      key: FinnStatusKey.ready,
+    );
   }
 
   void useAutomaticSelection() {
     _automaticSelection = true;
-    _setStatus(InferencePhase.idle, 'Optimized automatically');
+    _setStatus(
+      InferencePhase.idle,
+      'Optimized automatically',
+      key: FinnStatusKey.optimizedAutomatically,
+    );
   }
 
   Future<bool> isInstalled(FinnModelSpec model) async {
@@ -429,7 +448,11 @@ class FinnAccelerator extends ChangeNotifier {
       debugPrint('FINN_MMPROJ download skipped: $error\n$stack');
       if (_phase == InferencePhase.downloading ||
           _phase == InferencePhase.loading) {
-        _setStatus(InferencePhase.idle, 'AI model is ready');
+        _setStatus(
+          InferencePhase.idle,
+          'AI model is ready',
+          key: FinnStatusKey.modelReady,
+        );
       }
     } finally {
       if (trackedStandalone) {
@@ -446,8 +469,7 @@ class FinnAccelerator extends ChangeNotifier {
       // post-model multimodal component (unless already present).
       final modelAlreadyInstalled = await isInstalled(model);
       final componentAlreadyInstalled = await isMmprojInstalled();
-      _installTotalBytes =
-          (modelAlreadyInstalled ? 0 : model.expectedBytes) +
+      _installTotalBytes = (modelAlreadyInstalled ? 0 : model.expectedBytes) +
           (componentAlreadyInstalled ? 0 : finnMmproj.expectedBytes);
       _installCompletedBytes = 0;
       await _ensureDownloaded(model);
@@ -456,13 +478,25 @@ class FinnAccelerator extends ChangeNotifier {
       // second verified artifact so a future vision release does not need to
       // redownload the model package.
       await _preinstallMmproj();
-      _setStatus(InferencePhase.idle, 'AI model is ready');
+      _setStatus(
+        InferencePhase.idle,
+        'AI model is ready',
+        key: FinnStatusKey.modelReady,
+      );
     } catch (error) {
       if (_cancelDownload) {
-        _setStatus(InferencePhase.idle, 'Download paused');
+        _setStatus(
+          InferencePhase.idle,
+          'Download paused',
+          key: FinnStatusKey.downloadPaused,
+        );
         return;
       }
-      _setStatus(InferencePhase.error, _friendlyError(error));
+      _setStatus(
+        InferencePhase.error,
+        _friendlyError(error),
+        key: FinnStatusKey.error,
+      );
       rethrow;
     } finally {
       _workingModel = null;
@@ -527,13 +561,21 @@ class FinnAccelerator extends ChangeNotifier {
     try {
       final runtime = await _ensureLoaded(model, file.path);
       await _prepareBasePrefixState(runtime);
-      _setStatus(InferencePhase.idle, 'Ready');
+      _setStatus(
+        InferencePhase.idle,
+        'Ready',
+        key: FinnStatusKey.ready,
+      );
     } catch (error, stack) {
       // Prewarm is opportunistic. A background failure must not become the
       // visible result of the user's next request; foreground generation can
       // retry through its normal error handling.
       debugPrint('FINN_PREWARM failed: $error\n$stack');
-      _setStatus(InferencePhase.idle, 'Ready');
+      _setStatus(
+        InferencePhase.idle,
+        'Ready',
+        key: FinnStatusKey.ready,
+      );
     }
   }
 
@@ -543,7 +585,11 @@ class FinnAccelerator extends ChangeNotifier {
     final file = await _modelFile(model);
     final runtime = await _ensureLoaded(model, file.path);
     await _prepareBasePrefixState(runtime);
-    _setStatus(InferencePhase.idle, 'Ready');
+    _setStatus(
+      InferencePhase.idle,
+      'Ready',
+      key: FinnStatusKey.ready,
+    );
   }
 
   Future<void> releaseConversationSessions() async {
@@ -590,8 +636,7 @@ class FinnAccelerator extends ChangeNotifier {
     }
     final profile = await DeviceProfiler.read();
     _deviceProfile = profile;
-    final tightRam =
-        profile.availableRamBytes != null &&
+    final tightRam = profile.availableRamBytes != null &&
         profile.availableRamBytes! < 1200 * 1024 * 1024;
     if (profile.lowMemory || tightRam) await _unloadModel(_selected.tier);
   }
@@ -639,7 +684,11 @@ class FinnAccelerator extends ChangeNotifier {
       }
     }
     _verifiedModels.remove(model.tier);
-    _setStatus(InferencePhase.idle, 'Model removed');
+    _setStatus(
+      InferencePhase.idle,
+      'Model removed',
+      key: FinnStatusKey.modelRemoved,
+    );
     return failures;
   }
 
@@ -670,7 +719,11 @@ class FinnAccelerator extends ChangeNotifier {
         failures.add('Post-model component');
       }
     }
-    _setStatus(InferencePhase.idle, 'Model removed');
+    _setStatus(
+      InferencePhase.idle,
+      'Model removed',
+      key: FinnStatusKey.modelRemoved,
+    );
     return failures;
   }
 
@@ -874,7 +927,7 @@ class FinnAccelerator extends ChangeNotifier {
   /// whether to call the browser_search tool. When a tool call is emitted,
   /// the browser search is executed and returned with toolCallMade: true.
   Future<({String groundedContext, List<WebSource> sources, bool toolCallMade})>
-  _runSearchDecision(
+      _runSearchDecision(
     EngineSession session,
     String prompt,
     PromptAnalysis analysis,
@@ -904,7 +957,11 @@ class FinnAccelerator extends ChangeNotifier {
       history: history,
       directive: directive,
     );
-    _setStatus(InferencePhase.generating, 'Checking web...');
+    _setStatus(
+      InferencePhase.generating,
+      'Checking web...',
+      key: FinnStatusKey.checkingWeb,
+    );
     trace?.mark(TtftPhase.decisionPass);
     final decisionText = StringBuffer();
     await for (final event in session.generate(
@@ -964,7 +1021,11 @@ class FinnAccelerator extends ChangeNotifier {
     String query, {
     bool markFailure = true,
   }) async {
-    _setStatus(InferencePhase.generating, 'Searching browser...');
+    _setStatus(
+      InferencePhase.generating,
+      'Searching browser...',
+      key: FinnStatusKey.searchingBrowser,
+    );
     try {
       final grounded = await _searchAgent
           .searchAndFetch(query)
@@ -1071,7 +1132,9 @@ class FinnAccelerator extends ChangeNotifier {
           final session = entry.session;
           // Collect ALL image attachments in history window + prefer in-memory bytes.
           final allImageTurns = history
-              .where((t) => (t.imagePath != null && t.imagePath!.isNotEmpty) || t.imageBytes != null)
+              .where((t) =>
+                  (t.imagePath != null && t.imagePath!.isNotEmpty) ||
+                  t.imageBytes != null)
               .toList(growable: false);
           final candidatePaths = <String>[];
           final candidateBytes = <Uint8List?>[];
@@ -1115,7 +1178,8 @@ class FinnAccelerator extends ChangeNotifier {
                 // stb_image cannot decode HEIC; treat as skipped, not crash
                 if (isHeic && !_bytesLookLikeImage(fileBytes, path)) {
                   skippedHeicPaths.add(path);
-                  debugPrint('FINN_HEIC skipped HEIC at $path (stb_image unsupported)');
+                  debugPrint(
+                      'FINN_HEIC skipped HEIC at $path (stb_image unsupported)');
                   continue;
                 }
                 if (!_bytesLookLikeImage(fileBytes, path) && isHeic) {
@@ -1139,9 +1203,8 @@ class FinnAccelerator extends ChangeNotifier {
           final useMediaMarker =
               hasAttachedImage && runtime.engine.multimodalLoaded;
           // Cap at reasonable N for prompt token budget; native supports N
-          final cappedMediaList = mediaList.length > 4
-              ? mediaList.sublist(0, 4)
-              : mediaList;
+          final cappedMediaList =
+              mediaList.length > 4 ? mediaList.sublist(0, 4) : mediaList;
           final effectiveMediaList = cappedMediaList;
 
           String? attachedDocContext;
@@ -1150,7 +1213,9 @@ class FinnAccelerator extends ChangeNotifier {
               .where((t) => t.imagePath != null && t.imagePath!.isNotEmpty)
               .firstOrNull
               ?.imagePath;
-          if (docPath != null && !_isImageFile(docPath) && !_isHeicPath(docPath)) {
+          if (docPath != null &&
+              !_isImageFile(docPath) &&
+              !_isHeicPath(docPath)) {
             try {
               final exists = await File(docPath).exists();
               if (exists) {
@@ -1167,10 +1232,11 @@ class FinnAccelerator extends ChangeNotifier {
           if (skippedHeicPaths.isNotEmpty && !useMediaMarker) {
             final heicNote =
                 'Note: ${skippedHeicPaths.length} HEIC image(s) could not be decoded on this device (unsupported format). Ask the user to share as JPEG/PNG.';
-            // ignore: unnecessary_non_null_assertion
-            attachedDocContext = (attachedDocContext == null || attachedDocContext!.isEmpty)
-                ? heicNote
-                : '$attachedDocContext\n\n$heicNote';
+            final previousContext = attachedDocContext;
+            attachedDocContext =
+                (previousContext == null || previousContext.isEmpty)
+                    ? heicNote
+                    : '$previousContext\n\n$heicNote';
           }
 
           final taskInstruction = PromptIntentPolicy.taskInstruction(
@@ -1233,8 +1299,7 @@ class FinnAccelerator extends ChangeNotifier {
           // When an image is attached, skip the search pass to answer immediately from vision.
           var effectiveGroundedContext = groundedContext;
           var effectiveSources = const <WebSource>[];
-          final decisionEnabled =
-              enableSearchDecision &&
+          final decisionEnabled = enableSearchDecision &&
               !hasAttachedImage &&
               PromptIntentPolicy.needsSearchDecision(promptAnalysis);
           if (decisionEnabled) {
@@ -1255,7 +1320,8 @@ class FinnAccelerator extends ChangeNotifier {
             if (decision.toolCallMade) {
               final continuation = StringBuffer()..write('<|im_end|>\n');
               if (!entry.primed && systemContext.trim().isNotEmpty) {
-                PromptFormatter.writePrivateContext(continuation, systemContext);
+                PromptFormatter.writePrivateContext(
+                    continuation, systemContext);
               }
               if (effectiveGroundedContext.isNotEmpty) {
                 continuation.write(
@@ -1294,14 +1360,16 @@ class FinnAccelerator extends ChangeNotifier {
           }
           // If multimodal not loaded but user attached image, surface fallback
           if (hasAttachedImage && !runtime.engine.multimodalLoaded) {
-            debugPrint('FINN_MEDIA fallback: multimodal not loaded, answering without image');
+            debugPrint(
+                'FINN_MEDIA fallback: multimodal not loaded, answering without image');
             // Inject a system note so answer acknowledges missing vision capability
             final fallbackNote =
                 'Note: The user attached ${effectiveMediaList.length} image(s) but the image component is not installed. Explain that image analysis is unavailable on this device and ask them to describe the image or install the image component.';
-            // ignore: unnecessary_non_null_assertion
-            attachedDocContext = (attachedDocContext == null || attachedDocContext!.isEmpty)
-                ? fallbackNote
-                : '$attachedDocContext\n\n$fallbackNote';
+            final previousContext = attachedDocContext;
+            attachedDocContext =
+                (previousContext == null || previousContext.isEmpty)
+                    ? fallbackNote
+                    : '$previousContext\n\n$fallbackNote';
             // Re-render without media marker so text path still works
             renderedPrompt = _renderPrompt(
               entry,
@@ -1318,115 +1386,130 @@ class FinnAccelerator extends ChangeNotifier {
             );
           }
           // HEIC graceful fallback: if we had skipped HEICs, note it
-          if (skippedHeicPaths.isNotEmpty && effectiveMediaList.isEmpty && hasAttachedImage == false) {
+          if (skippedHeicPaths.isNotEmpty &&
+              effectiveMediaList.isEmpty &&
+              hasAttachedImage == false) {
             // Already noted in attachedDocContext above
           }
-          _setStatus(InferencePhase.generating, 'Thinking on this device');
+          _setStatus(
+            InferencePhase.generating,
+            'Thinking on this device',
+            key: FinnStatusKey.thinkingOnDevice,
+          );
           trace?.mark(TtftPhase.generationRequested);
           _generation = session
               .generate(
-                prompt: renderedPrompt,
-                addSpecial: !entry.primed && !entry.basePrefixReady,
-                parseSpecial: true,
-                maxTokens: outputBudget,
-                media: (hasAttachedImage && runtime.engine.multimodalLoaded) ? effectiveMediaList : const <LlamaMedia>[],
-                shiftPolicy: runtime.engine.canShift && effectiveMediaList.isEmpty
-                    ? ContextShiftPolicy.auto
-                    : ContextShiftPolicy.off,
-                shift: ContextShift(
-                  nKeep: entry.basePrefixReady ? 321 : 0,
-                ),
-                sampler: PromptIntentPolicy.sampler(
-                  promptAnalysis.intent,
-                ).params.copyWith(seed: _nextGenerationSeed()),
-              )
+            prompt: renderedPrompt,
+            addSpecial: !entry.primed && !entry.basePrefixReady,
+            parseSpecial: true,
+            maxTokens: outputBudget,
+            media: (hasAttachedImage && runtime.engine.multimodalLoaded)
+                ? effectiveMediaList
+                : const <LlamaMedia>[],
+            shiftPolicy: runtime.engine.canShift && effectiveMediaList.isEmpty
+                ? ContextShiftPolicy.auto
+                : ContextShiftPolicy.off,
+            shift: ContextShift(
+              nKeep: entry.basePrefixReady ? 321 : 0,
+            ),
+            sampler: PromptIntentPolicy.sampler(
+              promptAnalysis.intent,
+            ).params.copyWith(seed: _nextGenerationSeed()),
+          )
               .listen(
-                (event) {
-                  if (generationEpoch != _generationEpoch) return;
-                  if (event case TokenEvent(:final text)) {
-                    emittedTokens++;
-                    trace?.mark(TtftPhase.nativeToken);
-                    if (text.isNotEmpty && firstTokenAt == null) {
-                      firstTokenAt = runWatch.elapsed;
-                      if (!kReleaseMode) {
-                        debugPrint(
-                          'FINN_PERF first_token_ms=${firstTokenAt!.inMilliseconds} '
-                          'model=${model.tier.name} '
-                          'ctx=${_plan?.contextSize} threads=${_plan?.threads}',
-                        );
-                      }
-                    }
-                    if (text.isNotEmpty) {
-                      output.add(text);
-                    }
-                  } else if (event case DoneEvent(
+            (event) {
+              if (generationEpoch != _generationEpoch) return;
+              if (event case TokenEvent(:final text)) {
+                emittedTokens++;
+                trace?.mark(TtftPhase.nativeToken);
+                if (text.isNotEmpty && firstTokenAt == null) {
+                  firstTokenAt = runWatch.elapsed;
+                  if (!kReleaseMode) {
+                    debugPrint(
+                      'FINN_PERF first_token_ms=${firstTokenAt!.inMilliseconds} '
+                      'model=${model.tier.name} '
+                      'ctx=${_plan?.contextSize} threads=${_plan?.threads}',
+                    );
+                  }
+                }
+                if (text.isNotEmpty) {
+                  output.add(text);
+                }
+              } else if (event
+                  case DoneEvent(
                     :final trailingText,
                     :final generatedCount,
                     :final reason,
                   )) {
-                    nativeFinished = true;
-                    if (trailingText.isNotEmpty) output.add(trailingText);
-                    final total = runWatch.elapsed;
-                    final decodeMs =
-                        total.inMilliseconds -
-                        (firstTokenAt?.inMilliseconds ?? total.inMilliseconds);
-                    final decodeTokens = math.max(0, generatedCount - 1);
-                    final tokensPerSecond = decodeMs <= 0
-                        ? 0.0
-                        : decodeTokens * 1000 / decodeMs;
-                    _lastGenerationReport = GenerationReport(
-                      model: model,
-                      intent: promptAnalysis.intent,
-                      route: model.tier,
-                      outputBudget: outputBudget,
-                      finishReason: finishReasonFromStopReason(reason),
-                      firstTokenLatency: firstTokenAt,
-                      totalGenerationTime: total,
-                      outputTokens: generatedCount,
-                      tokensPerSecond: tokensPerSecond,
-                    );
-                    if (!kReleaseMode) {
-                      final totalMs = total.inMilliseconds;
-                      debugPrint(
-                        'FINN_PERF done total_ms=$totalMs decode_ms=$decodeMs '
-                        'tokens=$generatedCount emitted=$emittedTokens '
-                        'tps=${tokensPerSecond.toStringAsFixed(2)}',
-                      );
-                    }
-                  }
-                },
-                onError: (Object error, StackTrace stack) {
-                  _lastGenerationReport = GenerationReport(
-                    model: model,
-                    intent: promptAnalysis.intent,
-                    route: model.tier,
-                    outputBudget: outputBudget,
-                    finishReason: GenerationFinishReason.error,
-                    firstTokenLatency: firstTokenAt,
-                    totalGenerationTime: runWatch.elapsed,
-                    outputTokens: emittedTokens,
-                    tokensPerSecond: 0,
+                nativeFinished = true;
+                if (trailingText.isNotEmpty) output.add(trailingText);
+                final total = runWatch.elapsed;
+                final decodeMs = total.inMilliseconds -
+                    (firstTokenAt?.inMilliseconds ?? total.inMilliseconds);
+                final decodeTokens = math.max(0, generatedCount - 1);
+                final tokensPerSecond =
+                    decodeMs <= 0 ? 0.0 : decodeTokens * 1000 / decodeMs;
+                _lastGenerationReport = GenerationReport(
+                  model: model,
+                  intent: promptAnalysis.intent,
+                  route: model.tier,
+                  outputBudget: outputBudget,
+                  finishReason: finishReasonFromStopReason(reason),
+                  firstTokenLatency: firstTokenAt,
+                  totalGenerationTime: total,
+                  outputTokens: generatedCount,
+                  tokensPerSecond: tokensPerSecond,
+                );
+                if (!kReleaseMode) {
+                  final totalMs = total.inMilliseconds;
+                  debugPrint(
+                    'FINN_PERF done total_ms=$totalMs decode_ms=$decodeMs '
+                    'tokens=$generatedCount emitted=$emittedTokens '
+                    'tps=${tokensPerSecond.toStringAsFixed(2)}',
                   );
-                  _setStatus(InferencePhase.error, _friendlyError(error));
-                  output.addError(error, stack);
-                  unawaited(output.close());
-                  unawaited(_recoverAfterError());
-                },
-                onDone: () {
-                  _generation = null;
-                  if (identical(_activeOutput, output)) {
-                    _activeOutput = null;
-                  }
-                  _lastSources = effectiveSources;
-                  entry.primed = true;
-                  entry.lastTaskInstruction = taskInstruction;
-                  entry.messageCount = history.length + 2;
-                  entry.lastUsed = ++runtime.useSequence;
-                  _setStatus(InferencePhase.idle, 'Generated locally');
-                  unawaited(output.close());
-                },
-                cancelOnError: true,
+                }
+              }
+            },
+            onError: (Object error, StackTrace stack) {
+              _lastGenerationReport = GenerationReport(
+                model: model,
+                intent: promptAnalysis.intent,
+                route: model.tier,
+                outputBudget: outputBudget,
+                finishReason: GenerationFinishReason.error,
+                firstTokenLatency: firstTokenAt,
+                totalGenerationTime: runWatch.elapsed,
+                outputTokens: emittedTokens,
+                tokensPerSecond: 0,
               );
+              _setStatus(
+                InferencePhase.error,
+                _friendlyError(error),
+                key: FinnStatusKey.error,
+              );
+              output.addError(error, stack);
+              unawaited(output.close());
+              unawaited(_recoverAfterError());
+            },
+            onDone: () {
+              _generation = null;
+              if (identical(_activeOutput, output)) {
+                _activeOutput = null;
+              }
+              _lastSources = effectiveSources;
+              entry.primed = true;
+              entry.lastTaskInstruction = taskInstruction;
+              entry.messageCount = history.length + 2;
+              entry.lastUsed = ++runtime.useSequence;
+              _setStatus(
+                InferencePhase.idle,
+                'Generated locally',
+                key: FinnStatusKey.generatedLocally,
+              );
+              unawaited(output.close());
+            },
+            cancelOnError: true,
+          );
         } on _GenerationCancelled {
           if (identical(_activeOutput, output)) _activeOutput = null;
           if (!output.isClosed) await output.close();
@@ -1443,7 +1526,11 @@ class FinnAccelerator extends ChangeNotifier {
             outputTokens: emittedTokens,
             tokensPerSecond: 0,
           );
-          _setStatus(InferencePhase.error, _friendlyError(error));
+          _setStatus(
+            InferencePhase.error,
+            _friendlyError(error),
+            key: FinnStatusKey.error,
+          );
           output.addError(error, stack);
           await output.close();
           unawaited(_recoverAfterError());
@@ -1457,7 +1544,11 @@ class FinnAccelerator extends ChangeNotifier {
         if (identical(_activeOutput, output)) _activeOutput = null;
         if (_phase == InferencePhase.generating ||
             _phase == InferencePhase.loading) {
-          _setStatus(InferencePhase.idle, 'Stopped');
+          _setStatus(
+            InferencePhase.idle,
+            'Stopped',
+            key: FinnStatusKey.stopped,
+          );
         }
       },
     );
@@ -1474,7 +1565,11 @@ class FinnAccelerator extends ChangeNotifier {
     if (output != null && !output.isClosed) await output.close();
     if (_phase == InferencePhase.generating ||
         _phase == InferencePhase.loading) {
-      _setStatus(InferencePhase.idle, 'Stopped');
+      _setStatus(
+        InferencePhase.idle,
+        'Stopped',
+        key: FinnStatusKey.stopped,
+      );
     }
   }
 
@@ -1500,7 +1595,11 @@ class FinnAccelerator extends ChangeNotifier {
       await runtime.engine.dispose();
     }
     _replyInFlight = false;
-    _setStatus(InferencePhase.idle, 'Ready after runtime reset');
+    _setStatus(
+      InferencePhase.idle,
+      'Ready after runtime reset',
+      key: FinnStatusKey.readyAfterRuntimeReset,
+    );
   }
 
   /// Clears the in-flight generation state after a native error so the app
@@ -1542,6 +1641,7 @@ class FinnAccelerator extends ChangeNotifier {
       _setStatus(
         InferencePhase.loading,
         'Setting up FinnAI for optimal performance…',
+        key: FinnStatusKey.optimizingForDevice,
       );
       final model = selected;
       if (!await isInstalled(model)) return;
@@ -1648,10 +1748,18 @@ class FinnAccelerator extends ChangeNotifier {
         'FINN_BENCH selected ${best.backend.name} '
         '${best.deviceName} at ${bestTps.toStringAsFixed(2)} tok/s',
       );
-      _setStatus(InferencePhase.idle, 'FinnAI is optimized for this device');
+      _setStatus(
+        InferencePhase.idle,
+        'FinnAI is optimized for this device',
+        key: FinnStatusKey.optimizedForDevice,
+      );
     } catch (e) {
       debugPrint('FINN_BENCH failed, keeping CPU fallback: $e');
-      _setStatus(InferencePhase.idle, 'FinnAI is optimized for this device');
+      _setStatus(
+        InferencePhase.idle,
+        'FinnAI is optimized for this device',
+        key: FinnStatusKey.optimizedForDevice,
+      );
     } finally {
       _benchmarkRunning = false;
     }
@@ -1676,8 +1784,7 @@ class FinnAccelerator extends ChangeNotifier {
     required bool compactKv,
   }) async {
     final mmprojFile = await _mmprojFile();
-    final hasMmproj =
-        await mmprojFile.exists() &&
+    final hasMmproj = await mmprojFile.exists() &&
         await mmprojFile.length() == finnMmproj.expectedBytes;
     return LlamaEngine.spawn(
       libraryPath: 'libllama.so',
@@ -1685,7 +1792,8 @@ class FinnAccelerator extends ChangeNotifier {
       multimodalParams: hasMmproj
           ? MultimodalParams(
               mmprojPath: mmprojFile.path,
-              useGpu: hasOffloadHeadroom(profile: profile, modelBytes: model.expectedBytes),
+              useGpu: hasOffloadHeadroom(
+                  profile: profile, modelBytes: model.expectedBytes),
               nThreads: config.batchThreads > 0 ? config.batchThreads : 8,
               imageMinTokens: (DeviceProfiler.isLowEnd(profile) ||
                       (profile.availableRamBytes != null &&
@@ -1699,7 +1807,6 @@ class FinnAccelerator extends ChangeNotifier {
                   : 256,
             )
           : null,
-
       modelParams: ModelParams(
         path: path,
         gpuLayers: config.gpuLayers,
@@ -1760,9 +1867,8 @@ class FinnAccelerator extends ChangeNotifier {
         parseSpecial: true,
         sampler: SamplerParams.greedyDefault,
         maxTokens: 16,
-        shiftPolicy: engine.canShift
-            ? ContextShiftPolicy.auto
-            : ContextShiftPolicy.off,
+        shiftPolicy:
+            engine.canShift ? ContextShiftPolicy.auto : ContextShiftPolicy.off,
       )) {
         if (event case DoneEvent(:final generatedCount)) {
           tokens = generatedCount;
@@ -1812,7 +1918,11 @@ class FinnAccelerator extends ChangeNotifier {
       existing = 0;
     }
     if (existing == model.expectedBytes) {
-      _setStatus(InferencePhase.loading, 'Checking the download');
+      _setStatus(
+        InferencePhase.loading,
+        'Checking the download',
+        key: FinnStatusKey.checkingDownload,
+      );
       final promoted = await promoteVerifiedModelPartial(
         partial: partial,
         target: target,
@@ -1854,6 +1964,7 @@ class FinnAccelerator extends ChangeNotifier {
       _setStatus(
         InferencePhase.downloading,
         'Downloading the AI model',
+        key: FinnStatusKey.downloadingModel,
         progress: 0,
         totalBytes: model.expectedBytes,
       );
@@ -1899,6 +2010,7 @@ class FinnAccelerator extends ChangeNotifier {
             _setStatus(
               InferencePhase.downloading,
               'Downloading the AI model',
+              key: FinnStatusKey.downloadingModel,
               progress: (received / total).clamp(0, 1),
               totalBytes: total,
             );
@@ -1909,7 +2021,11 @@ class FinnAccelerator extends ChangeNotifier {
         await sink.close();
       }
       if (_cancelDownload) throw const HttpException('Download paused');
-      _setStatus(InferencePhase.loading, 'Checking the download');
+      _setStatus(
+        InferencePhase.loading,
+        'Checking the download',
+        key: FinnStatusKey.checkingDownload,
+      );
       if (await partial.length() != model.expectedBytes) {
         await partial.delete();
         throw const FormatException('Downloaded model has an invalid size');
@@ -1984,6 +2100,7 @@ class FinnAccelerator extends ChangeNotifier {
     _setStatus(
       InferencePhase.downloading,
       'Downloading $label',
+      key: FinnStatusKey.downloadingArtifact,
       progress: 0,
       totalBytes: expectedBytes,
     );
@@ -2022,6 +2139,7 @@ class FinnAccelerator extends ChangeNotifier {
         _setStatus(
           InferencePhase.downloading,
           'Downloading $label',
+          key: FinnStatusKey.downloadingArtifact,
           progress: progress,
           totalBytes: expectedBytes,
           speedBps: speedBps,
@@ -2038,8 +2156,7 @@ class FinnAccelerator extends ChangeNotifier {
       // miss) must never interrupt an in-flight download with an internet
       // error. The heartbeat advances only while a transfer is actually
       // writing bytes, so fresh progress also resets the failure counter.
-      final stalled =
-          sawProgress &&
+      final stalled = sawProgress &&
           active &&
           lastProgressAt != null &&
           now.difference(lastProgressAt) > const Duration(seconds: 20);
@@ -2096,7 +2213,11 @@ class FinnAccelerator extends ChangeNotifier {
         await requestStart();
       }
     }
-    _setStatus(InferencePhase.loading, 'Verifying $label');
+    _setStatus(
+      InferencePhase.loading,
+      'Verifying $label',
+      key: FinnStatusKey.verifyingArtifact,
+    );
     if (!await promoteVerifiedModelPartial(
       partial: partial,
       target: target,
@@ -2151,7 +2272,12 @@ class FinnAccelerator extends ChangeNotifier {
       ..maxConnectionsPerHost = _dartDownloadSegments + 2;
     _downloadClient = client;
     try {
-      _setStatus(InferencePhase.downloading, 'Downloading $label', progress: 0);
+      _setStatus(
+        InferencePhase.downloading,
+        'Downloading $label',
+        progress: 0,
+        key: FinnStatusKey.downloadingArtifact,
+      );
 
       // Probe for range support + total size.
       final probeRequest = await client.getUrl(Uri.parse(url));
@@ -2162,8 +2288,8 @@ class FinnAccelerator extends ChangeNotifier {
       final total = ranged
           ? _contentTotal(probe, 0) ?? expectedBytes
           : probe.contentLength > 0
-          ? probe.contentLength
-          : expectedBytes;
+              ? probe.contentLength
+              : expectedBytes;
       await probe.drain<void>();
 
       if (!ranged || total <= 0) {
@@ -2190,7 +2316,11 @@ class FinnAccelerator extends ChangeNotifier {
       }
 
       if (_cancelDownload) throw const HttpException('Download paused');
-      _setStatus(InferencePhase.loading, 'Verifying $label');
+      _setStatus(
+        InferencePhase.loading,
+        'Verifying $label',
+        key: FinnStatusKey.verifyingArtifact,
+      );
       if (await partial.length() != expectedBytes) {
         await partial.delete();
         throw const FormatException('Downloaded file has an invalid size');
@@ -2259,6 +2389,7 @@ class FinnAccelerator extends ChangeNotifier {
           _setStatus(
             InferencePhase.downloading,
             'Downloading $label',
+            key: FinnStatusKey.downloadingArtifact,
             progress: (received / effectiveTotal).clamp(0, 1),
           );
         }
@@ -2361,6 +2492,7 @@ class FinnAccelerator extends ChangeNotifier {
               _setStatus(
                 InferencePhase.downloading,
                 'Downloading $label',
+                key: FinnStatusKey.downloadingArtifact,
                 progress: (received / total).clamp(0, 1),
               );
             }
@@ -2415,7 +2547,11 @@ class FinnAccelerator extends ChangeNotifier {
   ) async {
     final loaded = _runtimes[model.tier];
     if (loaded != null) return loaded;
-    _setStatus(InferencePhase.loading, 'Loading the AI model');
+    _setStatus(
+      InferencePhase.loading,
+      'Loading the AI model',
+      key: FinnStatusKey.loadingModel,
+    );
 
     final profile = _deviceProfile ?? await DeviceProfiler.read();
     final hardwarePlan = _plan ?? DeviceProfiler.plan(profile);
@@ -2452,8 +2588,7 @@ class FinnAccelerator extends ChangeNotifier {
     LlamaEngine? engine = outcome.engine;
 
     final mmprojFile = await _mmprojFile();
-    final hasMmproj =
-        await mmprojFile.exists() &&
+    final hasMmproj = await mmprojFile.exists() &&
         await mmprojFile.length() == finnMmproj.expectedBytes;
 
     if (engine != null && hasMmproj && !engine.multimodalLoaded) {
@@ -2490,7 +2625,6 @@ class FinnAccelerator extends ChangeNotifier {
                 imageMaxTokens: projectorMaxTokens,
               )
             : null,
-
         modelParams: ModelParams(
           path: path,
           gpuLayers: cfg.gpuLayers,
@@ -2541,8 +2675,7 @@ class FinnAccelerator extends ChangeNotifier {
         // retry the same broken backend.
         await adaptive.invalidateCachedSelection();
         config = runtimeConfigFromPlan(hardwarePlan, profile);
-        compactKv =
-            config.kvType != KvCacheType.f16 &&
+        compactKv = config.kvType != KvCacheType.f16 &&
             config.kvType != KvCacheType.f32;
         fellBackFromAccelerator = true;
         try {
@@ -2569,8 +2702,7 @@ class FinnAccelerator extends ChangeNotifier {
         // baseline instead of failing startup.
         await adaptive.invalidateCachedSelection();
         config = runtimeConfigFromPlan(hardwarePlan, profile);
-        compactKv =
-            config.kvType != KvCacheType.f16 &&
+        compactKv = config.kvType != KvCacheType.f16 &&
             config.kvType != KvCacheType.f32;
         fellBackFromAccelerator = true;
         try {
@@ -2665,11 +2797,11 @@ class FinnAccelerator extends ChangeNotifier {
     }
     final modelSha256 = model.sha256Digest.isEmpty
         ? (debugSkipSha256
-              ? 'benchmark-skip-sha256'
-              : await sha256
-                    .bind(File(path).openRead())
-                    .first
-                    .then((digest) => digest.toString()))
+            ? 'benchmark-skip-sha256'
+            : await sha256
+                .bind(File(path).openRead())
+                .first
+                .then((digest) => digest.toString()))
         : model.sha256Digest;
     final runtime = _ModelRuntime(
       model,
@@ -2704,14 +2836,15 @@ class FinnAccelerator extends ChangeNotifier {
     String conversationId,
     List<LocalChatTurn> history,
     String systemContext,
-  ) => runtime.sessionSetupGate.run(
-    () => _prepareSessionUnlocked(
-      runtime,
-      conversationId,
-      history,
-      systemContext,
-    ),
-  );
+  ) =>
+      runtime.sessionSetupGate.run(
+        () => _prepareSessionUnlocked(
+          runtime,
+          conversationId,
+          history,
+          systemContext,
+        ),
+      );
 
   Future<_PreparedSession> _prepareSessionUnlocked(
     _ModelRuntime runtime,
@@ -2719,9 +2852,8 @@ class FinnAccelerator extends ChangeNotifier {
     List<LocalChatTurn> history,
     String systemContext,
   ) async {
-    final privateContextHash = sha256
-        .convert(utf8.encode(systemContext.trim()))
-        .toString();
+    final privateContextHash =
+        sha256.convert(utf8.encode(systemContext.trim())).toString();
     final commonConfiguration = _prefixCacheKey(runtime);
     final configuration = sha256
         .convert(
@@ -2731,8 +2863,7 @@ class FinnAccelerator extends ChangeNotifier {
         )
         .toString();
     final existing = runtime.sessions[conversationId];
-    final historyMatches =
-        existing != null &&
+    final historyMatches = existing != null &&
         existing.messageCount == history.length &&
         existing.promptConfigurationHash == configuration;
     if (historyMatches) {
@@ -2762,9 +2893,8 @@ class FinnAccelerator extends ChangeNotifier {
       runtime.sessions.remove(oldest.conversationId);
       await oldest.session.dispose();
     } else {
-      final used = runtime.sessions.values
-          .map((entry) => entry.sequenceId)
-          .toSet();
+      final used =
+          runtime.sessions.values.map((entry) => entry.sequenceId).toSet();
       while (used.contains(sequenceId)) {
         sequenceId++;
       }
@@ -2942,7 +3072,17 @@ class FinnAccelerator extends ChangeNotifier {
       );
       if (!kReleaseMode) {
         debugPrint(
-          'FINN_PREFIX ${jsonEncode({'cache_hit': report.cacheHit, 'tokens': report.tokens, 'file_bytes': report.fileBytes, 'preparation_ms': report.preparation.inMicroseconds / 1000, 'restoration_ms': report.restoration.inMicroseconds / 1000, 'prompt_tokens_per_second': report.promptTokensPerSecond, 'runtime': runtime.engine.packageVersion, 'llama_cpp_commit': runtime.engine.llamaCppCommit, 'system_info': runtime.engine.systemInfo})}',
+          'FINN_PREFIX ${jsonEncode({
+                'cache_hit': report.cacheHit,
+                'tokens': report.tokens,
+                'file_bytes': report.fileBytes,
+                'preparation_ms': report.preparation.inMicroseconds / 1000,
+                'restoration_ms': report.restoration.inMicroseconds / 1000,
+                'prompt_tokens_per_second': report.promptTokensPerSecond,
+                'runtime': runtime.engine.packageVersion,
+                'llama_cpp_commit': runtime.engine.llamaCppCommit,
+                'system_info': runtime.engine.systemInfo
+              })}',
         );
       }
       return report;
@@ -2956,8 +3096,7 @@ class FinnAccelerator extends ChangeNotifier {
   /// Kept as a public alias of [PromptFormatter.finnSafetySystemPrompt] (the
   /// single source of truth for the safety prefix text) so diagnostics and
   /// tests keep reading it off the accelerator facade.
-  static const finnSafetySystemPrompt =
-      PromptFormatter.finnSafetySystemPrompt;
+  static const finnSafetySystemPrompt = PromptFormatter.finnSafetySystemPrompt;
 
   static bool _isImageFile(String path) {
     final lower = path.toLowerCase();
@@ -2981,12 +3120,25 @@ class FinnAccelerator extends ChangeNotifier {
     // JPEG: FF D8 FF
     if (bytes[0] == 0xFF && bytes[1] == 0xD8 && bytes[2] == 0xFF) return true;
     // PNG: 89 50 4E 47
-    if (bytes[0] == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4E && bytes[3] == 0x47) return true;
+    final isPng = bytes[0] == 0x89 &&
+        bytes[1] == 0x50 &&
+        bytes[2] == 0x4E &&
+        bytes[3] == 0x47;
+    if (isPng) return true;
     // GIF: 47 49 46
     if (bytes[0] == 0x47 && bytes[1] == 0x49 && bytes[2] == 0x46) return true;
     // WEBP: 52 49 46 46 ... 57 45 42 50
-    if (bytes.length >= 12 && bytes[0] == 0x52 && bytes[1] == 0x49 && bytes[2] == 0x46 && bytes[3] == 0x46) {
-      if (bytes[8] == 0x57 && bytes[9] == 0x45 && bytes[10] == 0x42 && bytes[11] == 0x50) return true;
+    if (bytes.length >= 12 &&
+        bytes[0] == 0x52 &&
+        bytes[1] == 0x49 &&
+        bytes[2] == 0x46 &&
+        bytes[3] == 0x46) {
+      final isWebp =
+          bytes[8] == 0x57 &&
+          bytes[9] == 0x45 &&
+          bytes[10] == 0x42 &&
+          bytes[11] == 0x50;
+      if (isWebp) return true;
     }
     // BMP: 42 4D
     if (bytes[0] == 0x42 && bytes[1] == 0x4D) return true;
@@ -3119,10 +3271,11 @@ class FinnAccelerator extends ChangeNotifier {
     int tokens(String value) => (value.length / 3.2).ceil();
     final analysis = const PromptIntentClassifier().classify(prompt);
     final priorRecipe = history.any(
-      (turn) => turn.role == 'assistant' && PromptFormatter.isRecipeAnswer(turn.content),
+      (turn) =>
+          turn.role == 'assistant' &&
+          PromptFormatter.isRecipeAnswer(turn.content),
     );
-    final isRecipeFollowUp =
-        analysis.intent == PromptIntent.recipe &&
+    final isRecipeFollowUp = analysis.intent == PromptIntent.recipe &&
         priorRecipe &&
         PromptFormatter.freshRecipeRequest.hasMatch(prompt);
     final rebuildContext = primed && isRecipeFollowUp;
@@ -3265,7 +3418,8 @@ class FinnAccelerator extends ChangeNotifier {
   /// Lightweight existence check (no SHA) for UI toast path.
   Future<bool> hasMmprojFile() async {
     final file = await _mmprojFile();
-    return await file.exists() && await file.length() == finnMmproj.expectedBytes;
+    return await file.exists() &&
+        await file.length() == finnMmproj.expectedBytes;
   }
 
   Future<bool> isMmprojInstalled() async {
@@ -3343,8 +3497,8 @@ class FinnAccelerator extends ChangeNotifier {
 
   Future<void> _removeRetiredModelArtifacts() async {
     try {
-      final modelDirectory = await (_modelDirectoryJob ??=
-          _createModelDirectory());
+      final modelDirectory =
+          await (_modelDirectoryJob ??= _createModelDirectory());
       for (final fileName in _retiredModelFiles) {
         for (final suffix in const ['', '.part']) {
           final file = File(
@@ -3398,9 +3552,13 @@ class FinnAccelerator extends ChangeNotifier {
     return length >= 0 ? length + existing : null;
   }
 
+  /// Updates the user-visible status. [key] is the stable machine-readable
+  /// counterpart of [status] (see [FinnStatusKey]); the display text itself
+  /// is unchanged behavior.
   void _setStatus(
     InferencePhase phase,
     String status, {
+    required FinnStatusKey key,
     double? progress,
     int? totalBytes,
     double? speedBps,
@@ -3441,6 +3599,7 @@ class FinnAccelerator extends ChangeNotifier {
     }
     _phase = phase;
     _status = status;
+    _statusKey = key;
     _downloadProgress = nextProgress;
     notifyListeners();
   }

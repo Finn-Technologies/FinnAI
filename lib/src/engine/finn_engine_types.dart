@@ -29,6 +29,98 @@ class LocalChatTurn {
 /// Lifecycle phases of the FinnEngine inference lifecycle.
 enum InferencePhase { idle, downloading, loading, generating, error }
 
+/// Machine-readable key for the accelerator's human-readable [status] text.
+///
+/// Every [FinnAccelerator] status update carries one stable key alongside
+/// the English display string, so the UI layer can map keys to localized
+/// strings instead of parsing text. Treat the values as a public contract:
+/// never rename or remove an entry (add new ones at the end), and keep the
+/// documentation in sync with the exact string the accelerator displays.
+///
+/// Companion strings (what the accelerator shows today):
+/// - ready: 'Ready'
+/// - optimizedAutomatically: 'Optimized automatically'
+/// - modelReady: 'AI model is ready'
+/// - downloadPaused: 'Download paused'
+/// - modelRemoved: 'Model removed'
+/// - checkingWeb: 'Checking web...'
+/// - searchingBrowser: 'Searching browser...'
+/// - thinkingOnDevice: 'Thinking on this device'
+/// - generatedLocally: 'Generated locally'
+/// - stopped: 'Stopped'
+/// - readyAfterRuntimeReset: 'Ready after runtime reset'
+/// - optimizingForDevice: 'Setting up FinnAI for optimal performance…'
+/// - optimizedForDevice: 'FinnAI is optimized for this device'
+/// - checkingDownload: 'Checking the download'
+/// - downloadingModel: 'Downloading the AI model'
+/// - downloadingArtifact: `Downloading <artifact label>`
+/// - verifyingArtifact: `Verifying <artifact label>`
+/// - loadingModel: 'Loading the AI model'
+/// - error: dynamic friendly error text (see _friendlyError)
+enum FinnStatusKey {
+  /// Engine idle and ready to accept work ('Ready').
+  ready,
+
+  /// Automatic tier selection re-engaged ('Optimized automatically').
+  optimizedAutomatically,
+
+  /// The required model finished installing and is ready ('AI model is ready').
+  modelReady,
+
+  /// A model download was paused by the user ('Download paused').
+  downloadPaused,
+
+  /// A model (or its artifacts) was removed from storage ('Model removed').
+  modelRemoved,
+
+  /// The model-driven web-search decision pass is running ('Checking web...').
+  checkingWeb,
+
+  /// The browser search tool is fetching results ('Searching browser...').
+  searchingBrowser,
+
+  /// On-device generation is in progress ('Thinking on this device').
+  thinkingOnDevice,
+
+  /// The last generation completed fully on-device ('Generated locally').
+  generatedLocally,
+
+  /// Generation was stopped by the user ('Stopped').
+  stopped,
+
+  /// The engine is ready again after a runtime reset ('Ready after runtime
+  /// reset').
+  readyAfterRuntimeReset,
+
+  /// The one-time post-download backend benchmark is running
+  /// ('Setting up FinnAI for optimal performance…').
+  optimizingForDevice,
+
+  /// The backend benchmark finished and the device choice is cached
+  /// ('FinnAI is optimized for this device').
+  optimizedForDevice,
+
+  /// A completed download is being validated before promotion
+  /// ('Checking the download').
+  checkingDownload,
+
+  /// The main language model is downloading ('Downloading the AI model').
+  downloadingModel,
+
+  /// A named artifact (e.g. the multimodal component) is downloading
+  /// (`Downloading <artifact label>`).
+  downloadingArtifact,
+
+  /// A downloaded artifact is being verified (`Verifying <artifact label>`).
+  verifyingArtifact,
+
+  /// The model engine is being loaded into memory ('Loading the AI model').
+  loadingModel,
+
+  /// A recoverable failure occurred; status carries the friendly error text.
+  error,
+}
+
 /// Reason why a generation turn terminated.
 enum GenerationFinishReason { eos, tokenLimit, userCancellation, error }
 
