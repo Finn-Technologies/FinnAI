@@ -800,6 +800,84 @@ abstract class AppLocalizations {
   /// **'Language'**
   String get settingsLanguage;
 
+  /// Spoken responses toggle label
+  ///
+  /// In en, this message translates to:
+  /// **'Spoken responses'**
+  String get settingsSpokenResponses;
+
+  /// Spoken responses toggle description
+  ///
+  /// In en, this message translates to:
+  /// **'Finn reads replies aloud in voice mode. Your voice transcript is processed by your device\'s speech recognition, which may need internet.'**
+  String get settingsSpokenResponsesBody;
+
+  /// Mic button semantics
+  ///
+  /// In en, this message translates to:
+  /// **'Talk to Finn'**
+  String get voiceMicSemantic;
+
+  /// Voice sheet listening state
+  ///
+  /// In en, this message translates to:
+  /// **'Listening…'**
+  String get voiceListening;
+
+  /// Voice sheet idle prompt
+  ///
+  /// In en, this message translates to:
+  /// **'Tap the mic and speak'**
+  String get voiceTapToSpeak;
+
+  /// Voice sheet transcript received
+  ///
+  /// In en, this message translates to:
+  /// **'Heard you'**
+  String get voiceHeardYou;
+
+  /// Voice sheet empty result message
+  ///
+  /// In en, this message translates to:
+  /// **'Didn\'t catch that — try again'**
+  String get voiceDidNotCatch;
+
+  /// Voice sheet thinking state
+  ///
+  /// In en, this message translates to:
+  /// **'Finn is thinking…'**
+  String get voiceThinking;
+
+  /// Voice sheet speaking state
+  ///
+  /// In en, this message translates to:
+  /// **'Finn is speaking — tap to interrupt'**
+  String get voiceSpeaking;
+
+  /// Voice mic denied message
+  ///
+  /// In en, this message translates to:
+  /// **'Microphone access is off. Enable it in system Settings to use voice mode.'**
+  String get voiceMicDenied;
+
+  /// Voice STT unavailable message
+  ///
+  /// In en, this message translates to:
+  /// **'Speech recognition isn\'t available right now. Type your message instead.'**
+  String get voiceUnavailable;
+
+  /// Voice stop button semantics
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get voiceStopSemantic;
+
+  /// Voice close button semantics
+  ///
+  /// In en, this message translates to:
+  /// **'Close voice mode'**
+  String get voiceCloseSemantic;
+
   /// You page title
   ///
   /// In en, this message translates to:

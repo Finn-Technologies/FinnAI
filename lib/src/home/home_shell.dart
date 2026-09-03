@@ -26,6 +26,9 @@ import '../settings/settings_page.dart';
 import '../skills/skills_page.dart';
 import '../skills/skills_store.dart';
 import '../theme/flux_theme.dart';
+import '../voice/voice_chat_controller.dart';
+import '../voice/voice_settings_store.dart';
+import '../voice/voice_sheet.dart';
 import '../you/you_page.dart';
 import '../you/you_profile_store.dart';
 import '../widgets/ambient_background.dart';
@@ -47,6 +50,7 @@ class HomeShell extends StatefulWidget {
     this.inference,
     this.initializeServices = true,
     this.webSearch,
+    this.voiceController,
   });
 
   final ChatGenerationController? generationController;
@@ -55,6 +59,7 @@ class HomeShell extends StatefulWidget {
   @visibleForTesting
   final bool initializeServices;
   final WebSearchService? webSearch;
+  final VoiceChatController? voiceController;
 
   @override
   State<HomeShell> createState() => _HomeShellState();
@@ -72,6 +77,8 @@ class _HomeShellState extends State<HomeShell>
   late final _generation =
       widget.generationController ?? ChatGenerationController.instance;
   late final _webSearch = widget.webSearch ?? WebSearchService();
+  late final _voice = widget.voiceController ?? VoiceChatController.instance;
+  String? _voiceReplyGenerationId;
   Timer? _memoryReleaseTimer;
   static const MethodChannel _memoryPressureChannel =
       MethodChannel('finn_ai/memory.pressure');
@@ -337,6 +344,7 @@ class _HomeShellState extends State<HomeShell>
       _conversations.initialize(),
       YouProfileStore.instance.initialize(),
       SkillsStore.instance.initialize(),
+      VoiceSettingsStore.instance.initialize(),
     ]);
     if (!mounted) return;
     // Every cold start lands on the welcome slate instead of dropping the
@@ -440,6 +448,7 @@ class _HomeShellState extends State<HomeShell>
       _lastGenerationSignature = signature;
       setState(() {});
     }
+    _pumpVoiceReply();
     final trace = _generation.activeTrace;
     if (trace?.hasUiPaintScheduled == true &&
         trace?.hasUiPaintCompleted == false) {
@@ -775,11 +784,56 @@ class _HomeShellState extends State<HomeShell>
     _focusNode.requestFocus();
   }
 
+  Future<void> _openVoiceMode() async {
+    if (!voiceSupportedOnPlatform || _busy) return;
+    _voice.setSpokenResponses(VoiceSettingsStore.instance.spokenResponses);
+    await openVoiceSheet(
+      context: context,
+      voice: _voice,
+      onSendTranscript: _sendVoiceTranscript,
+      onStopGeneration: _stopReply,
+    );
+  }
+
+  Future<void> _sendVoiceTranscript(String transcript) async {
+    final text = transcript.trim();
+    if (text.isEmpty || _busy || !mounted) return;
+    _voice.beginThinking();
+    _composer.text = text;
+    _composer.selection = TextSelection.collapsed(offset: text.length);
+    await _send();
+    final job = _generation.job;
+    if (job != null && job.busy) {
+      _voiceReplyGenerationId = job.generationId;
+      _voice.speakReplyChunk(job.responseText);
+    } else {
+      _voiceReplyGenerationId = null;
+      _voice.finishReply('');
+    }
+  }
+
+  void _pumpVoiceReply() {
+    final replyId = _voiceReplyGenerationId;
+    if (replyId == null) return;
+    final job = _generation.job;
+    if (job == null || job.generationId != replyId) {
+      _voiceReplyGenerationId = null;
+      return;
+    }
+    if (job.busy) {
+      _voice.speakReplyChunk(job.responseText);
+    } else {
+      _voiceReplyGenerationId = null;
+      _voice.finishReply(job.responseText);
+    }
+  }
+
   void _stopReply() {
     if (_preparing) {
       setState(() => _preparing = false);
       debugPrint('FINN_SEND cancelled during preparing');
     }
+    unawaited(_voice.interrupt());
     unawaited(_generation.stop());
   }
 
@@ -1044,6 +1098,8 @@ class _HomeShellState extends State<HomeShell>
                           width: contentWidth,
                           onSend: _send,
                           onStop: _stopReply,
+                          voiceEnabled: voiceSupportedOnPlatform,
+                          onMic: _openVoiceMode,
                         ),
                       ),
                     ),
@@ -2805,6 +2861,8 @@ class ChatComposer extends StatefulWidget {
     this.onReturnToLatest,
     this.width,
     this.onStop,
+    this.voiceEnabled = false,
+    this.onMic,
   });
   final TextEditingController controller;
   final FocusNode focusNode;
@@ -2842,6 +2900,13 @@ class ChatComposer extends StatefulWidget {
   /// Invoked while a reply is generating to stop it — the send button becomes
   /// a stop control while [busy] is true.
   final VoidCallback? onStop;
+
+  /// True when voice input is available on this platform. Shows a mic button
+  /// next to the send control.
+  final bool voiceEnabled;
+
+  /// Invoked when the user taps the mic button to open voice mode.
+  final VoidCallback? onMic;
 
   @override
   State<ChatComposer> createState() => _ChatComposerState();
@@ -3010,6 +3075,27 @@ class _ChatComposerState extends State<ChatComposer> {
                   ),
                 ),
                 const SizedBox(width: 6),
+                if (widget.voiceEnabled && !widget.busy && !widget.blocked)
+                  Semantics(
+                    button: true,
+                    label: L10n.of(context).voiceMicSemantic,
+                    child: SizedBox.square(
+                      key: const ValueKey('mic-button-surface'),
+                      dimension: 36,
+                      child: InkWell(
+                        onTap: widget.onMic,
+                        customBorder: const CircleBorder(),
+                        child: Center(
+                          child: HugeIcon(
+                            icon: HugeIcons.strokeRoundedMic01,
+                            size: 20,
+                            color: FluxColors.mutedOf(context),
+                            strokeWidth: 2.0,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 if (widget.busy)
                   Semantics(
                     button: true,
