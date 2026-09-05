@@ -91,7 +91,15 @@ The OHOS target is a functional subset of the Android app:
   `lib/src/openharmony/openharmony_path_provider.dart`).
 - **Single generic CPU inference backend.** `ohos/entry/libs/arm64-v8a/` ships
   the generic llama.cpp `.so` set (`libllama.so`, `libggml.so`,
-  `libggml-base.so`, `libmtmd.so`); there is no GPU or CPU-variant backend
+  `libggml-base.so`, `libggml-cpu.so`, `libmtmd.so`), built from the pinned
+  `llama_cpp_dart`/`llama.cpp` commits (`tool/rebuild_llama_android_aar.sh`
+  pins: package `1a8c7563`, llama.cpp `d6d0ce82`) with this repo's
+  OpenHarmony SDK (`native/build/cmake/ohos.toolchain.cmake`,
+  `OHOS_STL=c++_static`, plain unversioned `SONAME`s). Rebuilding with a
+  newer sysroot than the target OS (e.g. one referencing
+  `__register_atfork`, `@since` newer than the device) breaks `dlopen` at
+  startup, so the libs must be rebuilt — not just copied — when the SDK
+  moves. There is no GPU or CPU-variant backend
   dispatch as on Android, so performance/adaptive-backend features
   (see `docs/ENGINE_ROADMAP.md`) have no OHOS equivalent yet.
 - **No background downloads.** `ohos.permission.KEEP_BACKGROUND_RUNNING` was

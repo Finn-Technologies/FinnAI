@@ -5,8 +5,6 @@ import 'dart:ui' as ui;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-// ScrollCacheExtent lives in rendering and is not re-exported by material.
-import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:image_picker/image_picker.dart';
@@ -1500,7 +1498,8 @@ class _ConversationState extends State<_Conversation> {
             0,
             widget.bottomInset + 20,
           ),
-          scrollCacheExtent: const ScrollCacheExtent.pixels(700.0),
+          // ignore: deprecated_member_use (OHOS fork 3.27 lacks scrollCacheExtent)
+          cacheExtent: 700.0,
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           physics: const FluxBouncingScrollPhysics(
             parent: AlwaysScrollableScrollPhysics(),

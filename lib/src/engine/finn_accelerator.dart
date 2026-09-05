@@ -353,6 +353,23 @@ class FinnAccelerator extends ChangeNotifier {
   Future<void>? _installJob;
   HttpClient? _downloadClient;
   bool _cancelDownload = false;
+
+  /// Idle stall budget for the pure-Dart (non-Android) downloads: when no
+  /// bytes arrive on a range/stream for this long, the attempt is aborted and
+  /// retried from the persisted offset instead of hanging forever with a
+  /// frozen progress bar. The Android path has its own stall detector in the
+  /// foreground service; the Dart path previously had none, so one wedged
+  /// TCP stream (common with many parallel ranges through emulator NAT or a
+  /// throttling CDN) froze the whole transfer with no error and no recovery.
+  static const Duration _dartDownloadIdleTimeout = Duration(seconds: 25);
+
+  /// Bounded attempts per range/stream before a stalled transfer surfaces as
+  /// a real error (with Retry in the UI) instead of retrying forever.
+  static const int _dartDownloadMaxAttempts = 5;
+
+  /// HttpClients with in-flight download reads, so [pauseDownload] can abort
+  /// them even when no bytes are arriving to observe the cancel flag.
+  final Set<HttpClient> _activeDownloadClients = <HttpClient>{};
   bool _benchmarkRunning = false;
   final Set<FinnModelTier> _verifiedModels = <FinnModelTier>{};
   Future<Directory>? _modelDirectoryJob;
@@ -556,12 +573,20 @@ class FinnAccelerator extends ChangeNotifier {
   void _completeInstallArtifact(int expectedBytes) {
     _installCompletedBytes += expectedBytes;
     _downloadReceivedBytes = 0;
+    debugPrint('FINN_INSTALL_ARTIFACT_COMPLETE: $expectedBytes bytes');
   }
 
   void pauseDownload() {
     if (_workingModel == null || _phase != InferencePhase.downloading) return;
     _cancelDownload = true;
     _downloadClient?.close(force: true);
+    // Abort in-flight range/stream reads too: a stalled stream observes no
+    // bytes, so it would never reach the cancel check on its own.
+    for (final client in _activeDownloadClients.toList()) {
+      try {
+        client.close(force: true);
+      } catch (_) {}
+    }
     if (Platform.isAndroid) {
       final model = _workingModel;
       if (model != null) {
@@ -716,6 +741,7 @@ class FinnAccelerator extends ChangeNotifier {
       final file = await _modelFile(model);
       final partial = File('${file.path}.part');
       if (await partial.exists()) await partial.delete();
+      await _deleteRangeFiles(partial);
     } catch (e) {
       if (!e.toString().contains('MissingPluginException')) {
         debugPrint('Partial file removal error: $e');
@@ -749,6 +775,18 @@ class FinnAccelerator extends ChangeNotifier {
     return failures;
   }
 
+  /// Deletes per-range scratch files (`<partial>.r0` …) left by
+  /// [_downloadSegmented], so interrupted downloads leave nothing behind on
+  /// model removal or "delete all local data".
+  Future<void> _deleteRangeFiles(File partial) async {
+    for (var i = 0; i < _dartDownloadSegments; i++) {
+      try {
+        final rangeFile = File('${partial.path}.r$i');
+        if (await rangeFile.exists()) await rangeFile.delete();
+      } catch (_) {}
+    }
+  }
+
   /// Removes the downloaded projector separately from the language model.
   /// Vision is not exposed by this release, but data deletion must still
   /// remove the reserved artifact if it was installed.
@@ -760,6 +798,7 @@ class FinnAccelerator extends ChangeNotifier {
         final candidate = File('${file.path}$suffix');
         if (await candidate.exists()) await candidate.delete();
       }
+      await _deleteRangeFiles(File('${file.path}.part'));
     } catch (error) {
       if (!error.toString().contains('MissingPluginException')) {
         debugPrint('Projector file removal error: $error');
@@ -2388,22 +2427,18 @@ class FinnAccelerator extends ChangeNotifier {
       if (!ranged || total <= 0) {
         // Server doesn't support ranges: fall back to a single stream.
         await _downloadSingleStream(
-          client,
           url: url,
           partial: partial,
           total: total,
           expectedBytes: expectedBytes,
-          existing: existing,
           label: label,
         );
       } else {
         await _downloadSegmented(
-          client,
           url: url,
           partial: partial,
           total: total,
           existing: existing,
-          expectedBytes: expectedBytes,
           label: label,
         );
       }
@@ -2435,78 +2470,143 @@ class FinnAccelerator extends ChangeNotifier {
   }
 
   /// Single-stream (non-range) fallback for [ _ensureArtifactDart].
-  Future<void> _downloadSingleStream(
-    HttpClient client, {
+  ///
+  /// Transient stalls are retried with an idle watchdog: when no bytes arrive
+  /// for [_dartDownloadIdleTimeout] the attempt is aborted and resumed from
+  /// the persisted prefix, so a wedged connection surfaces as progress or —
+  /// after [_dartDownloadMaxAttempts] — as a real error instead of a bar
+  /// frozen forever.
+  Future<void> _downloadSingleStream({
     required String url,
     required File partial,
     required int total,
     required int expectedBytes,
-    required int existing,
     required String label,
   }) async {
-    final request = await client.getUrl(Uri.parse(url));
-    request.followRedirects = true;
-    if (existing > 0) {
-      request.headers.set(HttpHeaders.rangeHeader, 'bytes=$existing-');
-    }
-    final response = await request.close();
-    if (response.statusCode != HttpStatus.ok &&
-        response.statusCode != HttpStatus.partialContent) {
-      throw HttpException('Download failed (${response.statusCode})');
-    }
-    if (response.statusCode == HttpStatus.ok && existing > 0) {
-      await partial.writeAsBytes(const [], flush: true);
-      existing = 0;
-    }
-    final effectiveTotal = _contentTotal(response, existing) ?? total;
-    final sink = partial.openWrite(
-      mode: existing > 0 ? FileMode.append : FileMode.write,
-    );
-    var received = existing;
-    var lastNotification = DateTime.fromMillisecondsSinceEpoch(0);
-    final updateInterval = Duration(
-      milliseconds: switch (_deviceProfile?.processor) {
-        ProcessorClass.flagship => 140,
-        ProcessorClass.balanced => 190,
-        _ => 260,
-      },
-    );
-    try {
-      await for (final bytes in response) {
-        if (_cancelDownload) throw const HttpException('Download paused');
-        sink.add(bytes);
-        received += bytes.length;
-        final now = DateTime.now();
-        if (now.difference(lastNotification) > updateInterval) {
-          lastNotification = now;
-          _setStatus(
-            InferencePhase.downloading,
-            'Downloading $label',
-            key: FinnStatusKey.downloadingArtifact,
-            progress: (received / effectiveTotal).clamp(0, 1),
+    var attempt = 0;
+    while (true) {
+      HttpClient? attemptClient;
+      try {
+        attemptClient = HttpClient()
+          ..connectionTimeout = const Duration(seconds: 20);
+        _downloadClient = attemptClient;
+        _activeDownloadClients.add(attemptClient);
+        var resumeFrom =
+            await partial.exists() ? await partial.length() : 0;
+        if (resumeFrom > expectedBytes) {
+          await partial.delete();
+          resumeFrom = 0;
+        }
+        final request = await attemptClient.getUrl(Uri.parse(url));
+        request.followRedirects = true;
+        if (resumeFrom > 0) {
+          request.headers.set(
+            HttpHeaders.rangeHeader,
+            'bytes=$resumeFrom-',
           );
         }
+        final response =
+            await request.close().timeout(const Duration(seconds: 30));
+        if (response.statusCode == HttpStatus.requestedRangeNotSatisfiable &&
+            resumeFrom > 0) {
+          // The prefix already holds the whole file; let the caller's size
+          // and digest checks below decide.
+          return;
+        }
+        if (response.statusCode != HttpStatus.ok &&
+            response.statusCode != HttpStatus.partialContent) {
+          throw HttpException('Download failed (${response.statusCode})');
+        }
+        var received = resumeFrom;
+        if (response.statusCode == HttpStatus.ok && resumeFrom > 0) {
+          await partial.writeAsBytes(const [], flush: true);
+          received = 0;
+        }
+        final effectiveTotal = _contentTotal(response, received) ?? total;
+        final sink = partial.openWrite(
+          mode: received > 0 ? FileMode.append : FileMode.write,
+        );
+        var lastNotification = DateTime.fromMillisecondsSinceEpoch(0);
+        final updateInterval = Duration(
+          milliseconds: switch (_deviceProfile?.processor) {
+            ProcessorClass.flagship => 140,
+            ProcessorClass.balanced => 190,
+            _ => 260,
+          },
+        );
+        var lastByteAt = DateTime.now();
+        final watchdog = Timer.periodic(const Duration(seconds: 5), (_) {
+          if (DateTime.now().difference(lastByteAt) >
+              _dartDownloadIdleTimeout) {
+            // Abort the wedged read; the loop below errors out and the
+            // attempt is retried from the persisted prefix.
+            try {
+              attemptClient?.close(force: true);
+            } catch (_) {}
+          }
+        });
+        try {
+          await for (final bytes in response) {
+            if (_cancelDownload) throw const HttpException('Download paused');
+            sink.add(bytes);
+            received += bytes.length;
+            lastByteAt = DateTime.now();
+            final now = DateTime.now();
+            if (now.difference(lastNotification) > updateInterval) {
+              lastNotification = now;
+              _setStatus(
+                InferencePhase.downloading,
+                'Downloading $label',
+                key: FinnStatusKey.downloadingArtifact,
+                progress: (received / effectiveTotal).clamp(0, 1),
+                totalBytes: effectiveTotal,
+              );
+            }
+          }
+        } finally {
+          watchdog.cancel();
+          await sink.flush();
+          await sink.close();
+        }
+        // A completed loop means every expected byte arrived; a watchdog
+        // firing in the same instant must not discard the finished stream.
+        return;
+      } catch (error) {
+        if (_cancelDownload) rethrow;
+        attempt++;
+        if (attempt >= _dartDownloadMaxAttempts) rethrow;
+        await Future<void>.delayed(Duration(seconds: 2 * attempt));
+      } finally {
+        if (attemptClient != null) {
+          _activeDownloadClients.remove(attemptClient);
+          try {
+            attemptClient.close(force: true);
+          } catch (_) {}
+        }
       }
-    } finally {
-      await sink.flush();
-      await sink.close();
     }
   }
 
   /// Parallel HTTP-range downloader used by the non-Android path.
   ///
   /// Splits [total] bytes into [_dartDownloadSegments] ranges fetched
-  /// concurrently (the same strategy the Android foreground service uses),
-  /// writing each range to its own offset in the `.part` file. Progress is
-  /// reported from the sum of completed range bytes; a failed range retries
-  /// in place so a single flaky stream can't abort the whole transfer.
-  Future<void> _downloadSegmented(
-    HttpClient client, {
+  /// concurrently (the same strategy the Android foreground service uses).
+  /// Each range accumulates sequentially into its own `${partial.path}.r$index`
+  /// file; when every range file is complete they are concatenated into
+  /// [partial] in order. Per-range files (instead of positional writes into
+  /// one shared file) make resume safe: no open mode truncates another
+  /// range's bytes, and a retried range always re-requests from its own
+  /// persisted offset, so bytes can never land misaligned.
+  ///
+  /// Every range attempt carries an idle watchdog: when no bytes arrive for
+  /// [_dartDownloadIdleTimeout] the attempt is aborted and retried, so a
+  /// stalled stream surfaces as progress or — after
+  /// [_dartDownloadMaxAttempts] — as a real error, never a frozen bar.
+  Future<void> _downloadSegmented({
     required String url,
     required File partial,
     required int total,
     required int existing,
-    required int expectedBytes,
     required String label,
   }) async {
     final count = _dartDownloadSegments;
@@ -2516,31 +2616,37 @@ class FinnAccelerator extends ChangeNotifier {
       count,
       (i) => math.min((i + 1) * chunkSize - 1, total - 1),
     );
-    // Resume: an existing partial is a contiguous prefix. Ranges fully
-    // covered by it are skipped; the first partially covered range resumes
-    // from its byte offset; ranges after it start from their own start.
-    final receivedByRange = List<int>.filled(count, 0);
-    var covered = 0;
-    if (existing > 0 && existing <= total) {
-      for (var i = 0; i < count; i++) {
-        final rangeLen = endOffsets[i] - startOffsets[i] + 1;
-        if (covered + rangeLen <= existing) {
-          receivedByRange[i] = rangeLen;
-          covered += rangeLen;
-        } else {
-          final resume = math.max(0, existing - covered);
-          if (resume > 0) {
-            // Advance the range's start past the already-downloaded bytes.
-            // receivedByRange stays 0 relative to the new start, so the
-            // fetch writes from startOffsets[i] and counts only new bytes.
-            startOffsets[i] += resume;
-            covered += resume;
-          }
-          break;
-        }
+    final rangeFiles = List<File>.generate(
+      count,
+      (i) => File('${partial.path}.r$i'),
+    );
+    // Adopt a legacy contiguous `.part` prefix (written by older builds
+    // straight into [partial]) into per-range files, so progress from before
+    // the upgrade resumes instead of re-downloading.
+    await _seedRangeFilesFromPrefix(
+      partial: partial,
+      rangeFiles: rangeFiles,
+      startOffsets: startOffsets,
+      endOffsets: endOffsets,
+      existing: existing,
+    );
+    final receivedByRange = <int>[
+      for (var i = 0; i < count; i++)
+        await rangeFiles[i].exists() ? await rangeFiles[i].length() : 0,
+    ];
+    // Drop over-long range files (e.g. from a server that ignored Range and
+    // returned the whole file); they resume cleanly from zero below.
+    for (var i = 0; i < count; i++) {
+      final rangeLen = endOffsets[i] - startOffsets[i] + 1;
+      if (receivedByRange[i] > rangeLen) {
+        try {
+          await rangeFiles[i].delete();
+        } catch (_) {}
+        receivedByRange[i] = 0;
       }
     }
     var lastNotification = DateTime.fromMillisecondsSinceEpoch(0);
+    var lastLoggedBucket = -1;
     final updateInterval = Duration(
       milliseconds: switch (_deviceProfile?.processor) {
         ProcessorClass.flagship => 140,
@@ -2548,71 +2654,191 @@ class FinnAccelerator extends ChangeNotifier {
         _ => 260,
       },
     );
-    // Ranges write disjoint byte offsets, so a single RandomAccessFile is
-    // safe: every write happens at a distinct position and Dart's isolate
-    // event loop never interleaves two writes to the same offset.
-    // Keep a contiguous resumable prefix intact while range requests fill
-    // the remaining disjoint offsets.
-    final raf = partial.openSync(mode: FileMode.writeOnly);
-    Future<void> fetchRange(int index) async {
-      if (receivedByRange[index] >=
-          endOffsets[index] - startOffsets[index] + 1) {
-        return;
+    void reportProgress() {
+      final received = receivedByRange.fold<int>(0, (a, b) => a + b);
+      final fraction = (received / total).clamp(0.0, 1.0).toDouble();
+      final bucket = (fraction * 20).floor();
+      if (bucket != lastLoggedBucket) {
+        lastLoggedBucket = bucket;
+        debugPrint(
+          'FINN_SEGMENTED_PROGRESS: ${(fraction * 100).toStringAsFixed(0)}% '
+          '($received/$total bytes)',
+        );
       }
+      _setStatus(
+        InferencePhase.downloading,
+        'Downloading $label',
+        key: FinnStatusKey.downloadingArtifact,
+        progress: fraction,
+        totalBytes: total,
+      );
+    }
+
+    Future<void> fetchRange(int index) async {
+      final rangeLen = endOffsets[index] - startOffsets[index] + 1;
       var attempt = 0;
-      while (true) {
+      while (receivedByRange[index] < rangeLen) {
+        HttpClient? rangeClient;
         try {
-          final request = await client.getUrl(Uri.parse(url));
+          rangeClient = HttpClient()
+            ..connectionTimeout = const Duration(seconds: 20);
+          _activeDownloadClients.add(rangeClient);
+          final from = startOffsets[index] + receivedByRange[index];
+          final request = await rangeClient.getUrl(Uri.parse(url));
           request.followRedirects = true;
           request.headers.set(
             HttpHeaders.rangeHeader,
-            'bytes=${startOffsets[index]}-${endOffsets[index]}',
+            'bytes=$from-${endOffsets[index]}',
           );
-          final response = await request.close();
-          if (response.statusCode != HttpStatus.partialContent &&
-              response.statusCode != HttpStatus.ok) {
+          final response =
+              await request.close().timeout(const Duration(seconds: 30));
+          final wantLen = endOffsets[index] - from + 1;
+          if (response.statusCode == HttpStatus.ok &&
+              from == startOffsets[index] &&
+              (response.contentLength < 0 ||
+                  response.contentLength == rangeLen)) {
+            // Server ignored Range but returned the range from its start.
+          } else if (response.statusCode != HttpStatus.partialContent ||
+              (response.contentLength >= 0 &&
+                  response.contentLength != wantLen)) {
             throw HttpException('Range $index failed (${response.statusCode})');
           }
-          await for (final bytes in response) {
-            if (_cancelDownload) throw const HttpException('Download paused');
-            raf.setPositionSync(startOffsets[index] + receivedByRange[index]);
-            raf.writeFromSync(bytes);
-            receivedByRange[index] += bytes.length;
-            final now = DateTime.now();
-            if (now.difference(lastNotification) > updateInterval) {
-              lastNotification = now;
-              final received = receivedByRange.fold<int>(0, (a, b) => a + b);
-              _setStatus(
-                InferencePhase.downloading,
-                'Downloading $label',
-                key: FinnStatusKey.downloadingArtifact,
-                progress: (received / total).clamp(0, 1),
-              );
+          var lastByteAt = DateTime.now();
+          final watchdog = Timer.periodic(const Duration(seconds: 5), (_) {
+            if (DateTime.now().difference(lastByteAt) >
+                _dartDownloadIdleTimeout) {
+              // Abort the wedged read; the loop below errors out and the
+              // range is retried from its persisted offset.
+              try {
+                rangeClient?.close(force: true);
+              } catch (_) {}
             }
+          });
+          try {
+            final sink = rangeFiles[index].openWrite(mode: FileMode.append);
+            try {
+              await for (final bytes in response) {
+                if (_cancelDownload) {
+                  throw const HttpException('Download paused');
+                }
+                sink.add(bytes);
+                receivedByRange[index] += bytes.length;
+                lastByteAt = DateTime.now();
+                final now = DateTime.now();
+                if (now.difference(lastNotification) > updateInterval) {
+                  lastNotification = now;
+                  reportProgress();
+                }
+              }
+            } finally {
+              await sink.flush();
+              await sink.close();
+            }
+          } finally {
+            watchdog.cancel();
           }
-          final expectedLen = endOffsets[index] - startOffsets[index] + 1;
-          if (receivedByRange[index] < expectedLen) {
+          // A short read without an error is a stall, not success: retry from
+          // the persisted offset instead of accepting a gap.
+          if (receivedByRange[index] < rangeLen) {
             throw HttpException(
               'Range $index truncated '
-              '(${receivedByRange[index]}/$expectedLen)',
+              '(${receivedByRange[index]}/$rangeLen)',
             );
           }
           return;
         } catch (error) {
           if (_cancelDownload) rethrow;
-          if (attempt >= 2) rethrow;
           attempt++;
-          await Future<void>.delayed(Duration(milliseconds: 400 * attempt));
+          if (attempt >= _dartDownloadMaxAttempts) rethrow;
+          await Future<void>.delayed(Duration(seconds: 2 * attempt));
+        } finally {
+          if (rangeClient != null) {
+            _activeDownloadClients.remove(rangeClient);
+            try {
+              rangeClient.close(force: true);
+            } catch (_) {}
+          }
         }
       }
     }
 
+    await Future.wait([for (var i = 0; i < count; i++) fetchRange(i)]);
+    reportProgress();
+    // Concatenate the complete ranges into the partial in order.
+    final out = partial.openWrite(mode: FileMode.write);
     try {
-      await Future.wait([for (var i = 0; i < count; i++) fetchRange(i)]);
+      for (var i = 0; i < count; i++) {
+        final rangeLen = endOffsets[i] - startOffsets[i] + 1;
+        final len = await rangeFiles[i].length();
+        if (len != rangeLen) {
+          throw HttpException(
+            'Range $i incomplete ($len/$rangeLen)',
+          );
+        }
+        await out.addStream(rangeFiles[i].openRead());
+      }
     } finally {
-      raf.flushSync();
-      raf.closeSync();
+      await out.flush();
+      await out.close();
     }
+    for (var i = 0; i < count; i++) {
+      try {
+        await rangeFiles[i].delete();
+      } catch (_) {}
+    }
+  }
+
+  /// Copies a legacy contiguous `.part` prefix into per-range files so an
+  /// in-flight download from before the per-range layout resumes instead of
+  /// restarting. Ranges that already have content are left untouched.
+  Future<void> _seedRangeFilesFromPrefix({
+    required File partial,
+    required List<File> rangeFiles,
+    required List<int> startOffsets,
+    required List<int> endOffsets,
+    required int existing,
+  }) async {
+    if (existing <= 0 || !await partial.exists()) return;
+    final prefix = math.min(existing, await partial.length());
+    if (prefix <= 0) return;
+    final raf = await partial.open(mode: FileMode.read);
+    try {
+      for (var i = 0; i < rangeFiles.length; i++) {
+        final start = startOffsets[i];
+        if (start >= prefix) break;
+        if (await rangeFiles[i].exists() &&
+            await rangeFiles[i].length() > 0) {
+          continue;
+        }
+        final end = math.min(endOffsets[i], prefix - 1);
+        final need = end - start + 1;
+        if (need <= 0) continue;
+        await raf.setPosition(start);
+        final sink = rangeFiles[i].openWrite(mode: FileMode.write);
+        var left = need;
+        try {
+          while (left > 0) {
+            final chunk = await raf.read(math.min(left, 64 * 1024));
+            if (chunk.isEmpty) break;
+            sink.add(chunk);
+            left -= chunk.length;
+          }
+        } finally {
+          await sink.flush();
+          await sink.close();
+        }
+      }
+    } finally {
+      await raf.close();
+    }
+    // The prefix now lives in the range files; drop the legacy file so a
+    // resumed download never pays for the same bytes twice. Small disks
+    // (e.g. a 6 GB emulator data partition holding the 696 MB model plus an
+    // 854 MB component) cannot afford the duplicated footprint, and every
+    // later resume re-seeds from — and re-deletes — nothing.
+    try {
+      await partial.delete();
+    } catch (_) {}
   }
 
   Future<_ModelRuntime> _ensureLoaded(FinnModelSpec model, String path) async {
