@@ -193,6 +193,66 @@ void main() {
       expect(calls, 0);
       expect(controller.state, VoiceChatState.idle);
     });
+
+    test('speech_timeout with empty transcript returns to idle with no error',
+        () async {
+      final speech = FakeSpeechBackend();
+      final controller = makeController(speech: speech);
+      await controller.startListening();
+
+      speech.onError?.call(
+        SpeechRecognitionError('error_speech_timeout', true),
+      );
+
+      expect(controller.state, VoiceChatState.idle);
+      expect(controller.error, VoiceChatError.none);
+    });
+
+    test('speech_timeout with existing transcript submits transcript',
+        () async {
+      final speech = FakeSpeechBackend();
+      final controller = makeController(speech: speech);
+      var heard = '';
+      controller.onTranscript = (text) => heard = text;
+
+      await controller.startListening();
+      speech.emitResult('transcribed partial', finalResult: false);
+
+      speech.onError?.call(
+        SpeechRecognitionError('error_speech_timeout', true),
+      );
+
+      expect(controller.state, VoiceChatState.thinking);
+      expect(heard, 'transcribed partial');
+      expect(controller.error, VoiceChatError.none);
+    });
+
+    test('transient errors (no_match, busy) return to idle with no error',
+        () async {
+      final speech = FakeSpeechBackend();
+      final controller = makeController(speech: speech);
+      await controller.startListening();
+
+      speech.onError?.call(
+        SpeechRecognitionError('error_no_match', true),
+      );
+
+      expect(controller.state, VoiceChatState.idle);
+      expect(controller.error, VoiceChatError.none);
+    });
+
+    test('permanent mic permission error sets micDenied', () async {
+      final speech = FakeSpeechBackend();
+      final controller = makeController(speech: speech);
+      await controller.startListening();
+
+      speech.onError?.call(
+        SpeechRecognitionError('error_permission', true),
+      );
+
+      expect(controller.state, VoiceChatState.idle);
+      expect(controller.error, VoiceChatError.micDenied);
+    });
   });
 
   group('VoiceChatController TTS streaming', () {

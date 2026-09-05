@@ -135,91 +135,98 @@ class _VoiceSheetState extends State<VoiceSheet> {
             listenable: widget.voice,
             builder: (context, _) {
               final voice = widget.voice;
-              return Column(
-                children: [
-                  Align(
-                    alignment: Alignment.topRight,
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Semantics(
-                        button: true,
-                        label: L10n.of(context).voiceCloseSemantic,
-                        child: InkWell(
-                          onTap: _onClose,
-                          customBorder: const CircleBorder(),
-                          child: Padding(
-                            padding: const EdgeInsets.all(10),
-                            child: HugeIcon(
-                              icon: HugeIcons.strokeRoundedCancel01,
-                              size: 24,
-                              color: FluxColors.mutedOf(context),
+              return LayoutBuilder(
+                builder: (context, constraints) {
+                  final isCompact = constraints.maxHeight < 480;
+                  final orbScale = isCompact ? 0.72 : 1.0;
+                  return Column(
+                    children: [
+                      Align(
+                        alignment: Alignment.topRight,
+                        child: Padding(
+                          padding: EdgeInsets.all(isCompact ? 4 : 12),
+                          child: Semantics(
+                            button: true,
+                            label: L10n.of(context).voiceCloseSemantic,
+                            child: InkWell(
+                              onTap: _onClose,
+                              customBorder: const CircleBorder(),
+                              child: Padding(
+                                padding: const EdgeInsets.all(10),
+                                child: HugeIcon(
+                                  icon: HugeIcons.strokeRoundedCancel01,
+                                  size: 24,
+                                  color: FluxColors.mutedOf(context),
+                                ),
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                  ),
-                  const Spacer(),
-                  _VoiceOrb(
-                    state: voice.state,
-                    soundLevel: voice.soundLevel,
-                    onTap: _onMicTap,
-                  ),
-                  const SizedBox(height: 28),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 32),
-                    child: Text(
-                      _statusText(context, voice),
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: FluxColors.inkOf(context),
-                            fontWeight: FontWeight.w500,
-                          ),
-                    ),
-                  ),
-                  if (voice.transcript.trim().isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 32),
-                      child: Text(
-                        '“${voice.transcript.trim()}”',
-                        textAlign: TextAlign.center,
-                        maxLines: 4,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                              color: FluxColors.mutedOf(context),
-                            ),
+                      const Spacer(),
+                      _VoiceOrb(
+                        state: voice.state,
+                        soundLevel: voice.soundLevel,
+                        onTap: _onMicTap,
+                        scale: orbScale,
                       ),
-                    ),
-                  ],
-                  if (voice.error != VoiceChatError.none) ...[
-                    const SizedBox(height: 12),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 32),
-                      child: Text(
-                        voice.error == VoiceChatError.micDenied
-                            ? L10n.of(context).voiceMicDenied
-                            : L10n.of(context).voiceUnavailable,
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: isDark
-                                  ? FluxColors.destructiveDark
-                                  : FluxColors.destructive,
-                            ),
+                      SizedBox(height: isCompact ? 14 : 28),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 32),
+                        child: Text(
+                          _statusText(context, voice),
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                color: FluxColors.inkOf(context),
+                                fontWeight: FontWeight.w500,
+                              ),
+                        ),
                       ),
-                    ),
-                  ],
-                  const Spacer(),
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 24),
-                    child: Text(
-                      L10n.of(context).voiceTapToSpeak,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: FluxColors.mutedOf(context),
+                      if (voice.transcript.trim().isNotEmpty) ...[
+                        SizedBox(height: isCompact ? 6 : 12),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 32),
+                          child: Text(
+                            '“${voice.transcript.trim()}”',
+                            textAlign: TextAlign.center,
+                            maxLines: isCompact ? 2 : 4,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                  color: FluxColors.mutedOf(context),
+                                ),
                           ),
-                    ),
-                  ),
-                ],
+                        ),
+                      ],
+                      if (voice.error != VoiceChatError.none) ...[
+                        SizedBox(height: isCompact ? 6 : 12),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 32),
+                          child: Text(
+                            voice.error == VoiceChatError.micDenied
+                                ? L10n.of(context).voiceMicDenied
+                                : L10n.of(context).voiceUnavailable,
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  color: isDark
+                                      ? FluxColors.destructiveDark
+                                      : FluxColors.destructive,
+                                ),
+                          ),
+                        ),
+                      ],
+                      const Spacer(),
+                      Padding(
+                        padding: EdgeInsets.only(bottom: isCompact ? 8 : 24),
+                        child: Text(
+                          L10n.of(context).voiceTapToSpeak,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: FluxColors.mutedOf(context),
+                              ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
               );
             },
           ),
@@ -252,11 +259,13 @@ class _VoiceOrb extends StatelessWidget {
     required this.state,
     required this.soundLevel,
     required this.onTap,
+    this.scale = 1.0,
   });
 
   final VoiceChatState state;
   final double soundLevel;
   final VoidCallback onTap;
+  final double scale;
 
   @override
   Widget build(BuildContext context) {
@@ -272,8 +281,8 @@ class _VoiceOrb extends StatelessWidget {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 160),
           curve: Curves.easeOutCubic,
-          width: 148 * halo,
-          height: 148 * halo,
+          width: 148 * scale * halo,
+          height: 148 * scale * halo,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: baseColor.withValues(alpha: listening ? 0.92 : 0.12),
@@ -285,8 +294,8 @@ class _VoiceOrb extends StatelessWidget {
                 ? [
                     BoxShadow(
                       color: baseColor.withValues(alpha: 0.25),
-                      blurRadius: 42,
-                      spreadRadius: 6,
+                      blurRadius: 42 * scale,
+                      spreadRadius: 6 * scale,
                     ),
                   ]
                 : null,
@@ -294,7 +303,7 @@ class _VoiceOrb extends StatelessWidget {
           child: Center(
             child: state == VoiceChatState.thinking
                 ? SizedBox.square(
-                    dimension: 36,
+                    dimension: 36 * scale,
                     child: CircularProgressIndicator(
                       strokeWidth: 3,
                       color: isDark ? Colors.black : Colors.white,
@@ -304,7 +313,7 @@ class _VoiceOrb extends StatelessWidget {
                     icon: state == VoiceChatState.speaking
                         ? HugeIcons.strokeRoundedMicOff01
                         : HugeIcons.strokeRoundedMic01,
-                    size: 44,
+                    size: 44 * scale,
                     color: listening
                         ? (isDark ? Colors.black : Colors.white)
                         : FluxColors.inkOf(context),

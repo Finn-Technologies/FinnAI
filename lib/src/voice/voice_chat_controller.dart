@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_tts/flutter_tts.dart';
@@ -43,6 +44,7 @@ class SpeechToTextBackend implements SpeechBackend {
         onStatus: onStatus,
         options: [
           SpeechToText.androidIntentLookup,
+          SpeechToText.androidNoBluetooth,
         ],
       );
 
@@ -96,7 +98,33 @@ class FlutterTtsBackend implements TtsBackend {
     _tts.setCompletionHandler(onComplete ?? () {});
     _tts.setCancelHandler(onCancel ?? () {});
     if (onError != null) _tts.setErrorHandler(onError);
-    await _tts.awaitSpeakCompletion(true);
+    await _tts.awaitSpeakCompletion(false);
+    await _tts.setVolume(1.0);
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      try {
+        final engines = await _tts.getEngines;
+        if (engines is List && engines.contains('com.google.android.tts')) {
+          await _tts.setEngine('com.google.android.tts');
+        }
+      } catch (_) {}
+    } else if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
+      try {
+        await _tts.setIosAudioCategory(
+          IosTextToSpeechAudioCategory.playback,
+          [
+            IosTextToSpeechAudioCategoryOptions.defaultToSpeaker,
+            IosTextToSpeechAudioCategoryOptions.mixWithOthers,
+          ],
+          IosTextToSpeechAudioMode.defaultMode,
+        );
+      } catch (_) {}
+    }
+    try {
+      final tag = PlatformDispatcher.instance.locale.toLanguageTag();
+      if (await _tts.isLanguageAvailable(tag) == true) {
+        await _tts.setLanguage(tag);
+      }
+    } catch (_) {}
     await setQueueAdd();
     await setSpeechRate(voiceSpeechRate);
   }
@@ -108,7 +136,7 @@ class FlutterTtsBackend implements TtsBackend {
   Future<void> setQueueAdd() => _tts.setQueueMode(1);
 
   @override
-  Future<void> speak(String text) => _tts.speak(text);
+  Future<void> speak(String text) => _tts.speak(text, focus: true);
 
   @override
   Future<void> stop() => _tts.stop();
@@ -345,11 +373,36 @@ class VoiceChatController extends ChangeNotifier {
   }
 
   void _onSpeechError(SpeechRecognitionError error) {
+    _listenWatchdog?.cancel();
+    _listenWatchdog = null;
+
+    final msg = error.errorMsg.toLowerCase();
+    if (msg.contains('permission') || msg.contains('not-allowed')) {
+      _error = VoiceChatError.micDenied;
+      _setState(VoiceChatState.idle);
+      return;
+    }
+
+    // Conversational pauses, timeouts, no-match, or client cancellations
+    // are transient speech events and should not permanently mark speech
+    // recognition as unavailable.
+    if (msg.contains('timeout') ||
+        msg.contains('no_match') ||
+        msg.contains('no-match') ||
+        msg.contains('busy') ||
+        msg.contains('client') ||
+        msg.contains('cancel')) {
+      if (_state == VoiceChatState.listening && _transcript.trim().isNotEmpty) {
+        _setState(VoiceChatState.thinking);
+        onTranscript?.call(_transcript.trim());
+      } else {
+        _setState(VoiceChatState.idle);
+      }
+      return;
+    }
+
     if (error.permanent) {
-      _error = error.errorMsg.contains('permission') ||
-              error.errorMsg.contains('not-allowed')
-          ? VoiceChatError.micDenied
-          : VoiceChatError.unavailable;
+      _error = VoiceChatError.unavailable;
       _setState(VoiceChatState.idle);
     }
   }
@@ -375,6 +428,9 @@ class VoiceChatController extends ChangeNotifier {
 
   void _onTtsStop() {
     _queuedUtterances = 0;
+    if (_state == VoiceChatState.speaking) {
+      _setState(VoiceChatState.idle);
+    }
   }
 
   String? _nextSpeakableChunk() {
