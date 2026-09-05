@@ -1876,30 +1876,12 @@ class FinnAccelerator extends ChangeNotifier {
     required DeviceProfile profile,
     required bool compactKv,
   }) async {
-    final mmprojFile = await _mmprojFile();
-    final hasMmproj = await mmprojFile.exists() &&
-        await mmprojFile.length() == finnMmproj.expectedBytes;
     return LlamaEngine.spawn(
       libraryPath: 'libllama.so',
       backendDirectory: profile.nativeLibraryDir,
-      multimodalParams: hasMmproj
-          ? MultimodalParams(
-              mmprojPath: mmprojFile.path,
-              useGpu: hasOffloadHeadroom(
-                  profile: profile, modelBytes: model.expectedBytes),
-              nThreads: config.batchThreads > 0 ? config.batchThreads : 8,
-              imageMinTokens: (DeviceProfiler.isLowEnd(profile) ||
-                      (profile.availableRamBytes != null &&
-                          profile.availableRamBytes! < 1800 * 1024 * 1024))
-                  ? 96
-                  : 64,
-              imageMaxTokens: (DeviceProfiler.isLowEnd(profile) ||
-                      (profile.availableRamBytes != null &&
-                          profile.availableRamBytes! < 1800 * 1024 * 1024))
-                  ? 192
-                  : 256,
-            )
-          : null,
+      // The benchmark engine solely probes language model throughput and device
+      // performance; do not allocate the multimodal vision projector here.
+      multimodalParams: null,
       modelParams: ModelParams(
         path: path,
         gpuLayers: config.gpuLayers,
@@ -2693,12 +2675,13 @@ class FinnAccelerator extends ChangeNotifier {
       RuntimeConfig cfg, {
       required bool compactKv,
     }) async {
-      // Projector GPU offload and token caps derived from device profile
-      // (constrained: 96 min/192 max; otherwise 64 min/256 max).
-      final useProjectorGpu = hasOffloadHeadroom(
-        profile: profile,
-        modelBytes: model.expectedBytes,
-      );
+      // Projector GPU offload is disabled on Android to eliminate legacy Vulkan
+      // driver crashes and prevent gigabytes of GPU buffer memory allocation.
+      final useProjectorGpu = !Platform.isAndroid &&
+          hasOffloadHeadroom(
+            profile: profile,
+            modelBytes: model.expectedBytes,
+          );
       final constrainedForProjector = DeviceProfiler.isLowEnd(profile) ||
           (profile.availableRamBytes != null &&
               profile.availableRamBytes! < 1800 * 1024 * 1024) ||

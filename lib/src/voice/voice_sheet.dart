@@ -79,11 +79,14 @@ class _VoiceSheetState extends State<VoiceSheet> {
     unawaited(widget.voice.startListening());
   }
 
+  bool _isClosing = false;
+
   @override
   void dispose() {
     if (widget.voice.onTranscript == _handleTranscript) {
       widget.voice.onTranscript = null;
     }
+    unawaited(widget.voice.reset());
     super.dispose();
   }
 
@@ -112,9 +115,12 @@ class _VoiceSheetState extends State<VoiceSheet> {
     }
   }
 
-  Future<void> _onClose() async {
-    await widget.voice.reset();
-    if (mounted) Navigator.of(context).pop();
+  void _onClose() {
+    if (_isClosing) return;
+    _isClosing = true;
+    if (mounted && Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
   }
 
   @override

@@ -10,6 +10,8 @@ enum VoiceChatState { idle, listening, thinking, speaking }
 
 enum VoiceChatError { none, micDenied, unavailable }
 
+const double voiceSpeechRate = 0.45;
+
 abstract class SpeechBackend {
   Future<bool> initialize({
     void Function(SpeechRecognitionError error)? onError,
@@ -36,7 +38,13 @@ class SpeechToTextBackend implements SpeechBackend {
     void Function(SpeechRecognitionError error)? onError,
     void Function(String status)? onStatus,
   }) =>
-      _speech.initialize(onError: onError, onStatus: onStatus);
+      _speech.initialize(
+        onError: onError,
+        onStatus: onStatus,
+        options: [
+          SpeechToText.androidIntentLookup,
+        ],
+      );
 
   @override
   Future<bool> get hasPermission => _speech.hasPermission;
@@ -66,6 +74,8 @@ abstract class TtsBackend {
     VoidCallback? onCancel,
     void Function(dynamic message)? onError,
   });
+  Future<void> setSpeechRate(double rate);
+  Future<void> setQueueAdd();
   Future<void> speak(String text);
   Future<void> stop();
 }
@@ -87,8 +97,15 @@ class FlutterTtsBackend implements TtsBackend {
     _tts.setCancelHandler(onCancel ?? () {});
     if (onError != null) _tts.setErrorHandler(onError);
     await _tts.awaitSpeakCompletion(true);
-    await _tts.setSpeechRate(0.95);
+    await setQueueAdd();
+    await setSpeechRate(voiceSpeechRate);
   }
+
+  @override
+  Future<void> setSpeechRate(double rate) => _tts.setSpeechRate(rate);
+
+  @override
+  Future<void> setQueueAdd() => _tts.setQueueMode(1);
 
   @override
   Future<void> speak(String text) => _tts.speak(text);
@@ -111,7 +128,6 @@ class VoiceChatController extends ChangeNotifier {
   final TtsBackend _tts;
 
   VoidCallback? _onStateChangedForTest;
-  bool _ready = false;
   bool _spokenResponses = true;
   VoiceChatState _state = VoiceChatState.idle;
   VoiceChatError _error = VoiceChatError.none;
@@ -142,25 +158,30 @@ class VoiceChatController extends ChangeNotifier {
   }
 
   Future<bool> ensureReady() async {
-    if (_ready) return _sttAvailable || _ttsReady;
-    _ready = true;
-    try {
-      _sttAvailable = await _speech.initialize(
-        onError: _onSpeechError,
-        onStatus: _onSpeechStatus,
-      );
-    } catch (_) {
-      _sttAvailable = false;
-    }
+    if (_sttAvailable && _ttsReady) return true;
     if (!_sttAvailable) {
       try {
-        final granted = await _speech.hasPermission;
-        _error =
-            granted ? VoiceChatError.unavailable : VoiceChatError.micDenied;
+        _sttAvailable = await _speech.initialize(
+          onError: _onSpeechError,
+          onStatus: _onSpeechStatus,
+        );
       } catch (_) {
-        _error = VoiceChatError.unavailable;
+        _sttAvailable = false;
       }
-      notifyListeners();
+      if (!_sttAvailable) {
+        try {
+          final granted = await _speech.hasPermission;
+          _error =
+              granted ? VoiceChatError.unavailable : VoiceChatError.micDenied;
+        } catch (_) {
+          _error = VoiceChatError.unavailable;
+        }
+        notifyListeners();
+      } else if (_error == VoiceChatError.unavailable ||
+          _error == VoiceChatError.micDenied) {
+        _error = VoiceChatError.none;
+        notifyListeners();
+      }
     }
     try {
       await _tts.initialize(

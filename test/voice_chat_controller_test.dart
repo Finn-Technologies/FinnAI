@@ -67,6 +67,8 @@ class FakeSpeechBackend implements SpeechBackend {
 
 class FakeTtsBackend implements TtsBackend {
   final List<String> spoken = [];
+  final List<double> rates = [];
+  int queueAddCalls = 0;
   int stopCalls = 0;
   bool throwOnInit = false;
   VoidCallback? onStart;
@@ -82,6 +84,18 @@ class FakeTtsBackend implements TtsBackend {
     if (throwOnInit) throw StateError('no engine');
     this.onStart = onStart;
     this.onComplete = onComplete;
+    await setQueueAdd();
+    await setSpeechRate(voiceSpeechRate);
+  }
+
+  @override
+  Future<void> setSpeechRate(double rate) async {
+    rates.add(rate);
+  }
+
+  @override
+  Future<void> setQueueAdd() async {
+    queueAddCalls++;
   }
 
   @override
@@ -259,6 +273,17 @@ void main() {
       await controller.startListening();
 
       expect(controller.state, VoiceChatState.listening);
+    });
+
+    test('init applies conversational rate and queue-add mode', () async {
+      final tts = FakeTtsBackend();
+      final controller = makeController(tts: tts);
+
+      await controller.ensureReady();
+
+      expect(tts.queueAddCalls, 1);
+      expect(tts.rates, [voiceSpeechRate]);
+      expect(voiceSpeechRate, lessThan(0.6));
     });
   });
 }

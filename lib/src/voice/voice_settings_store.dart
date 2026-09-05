@@ -6,7 +6,7 @@ import 'package:path_provider/path_provider.dart';
 
 @immutable
 class VoiceSettings {
-  const VoiceSettings({this.spokenResponses = false});
+  const VoiceSettings({this.spokenResponses = true});
 
   final bool spokenResponses;
 
