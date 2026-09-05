@@ -35,6 +35,9 @@ abstract final class FluxIcons {
   static const loading = HugeIcons.strokeRoundedLoading03;
   static const check = HugeIcons.strokeRoundedCheckmarkCircle02;
   static const flag = HugeIcons.strokeRoundedFlag01;
+  static const mic = HugeIcons.strokeRoundedMic01;
+  static const micOff = HugeIcons.strokeRoundedMicOff01;
+  static const voiceWaveform = HugeIcons.strokeRoundedAudioWave01;
 }
 
 abstract final class FigmaAssets {

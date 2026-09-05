@@ -406,6 +406,48 @@ class AppLocalizationsIt extends AppLocalizations {
   String get settingsLanguage => 'Language';
 
   @override
+  String get settingsSpokenResponses => 'Spoken responses';
+
+  @override
+  String get settingsSpokenResponsesBody =>
+      'Finn reads replies aloud in voice mode. Your voice transcript is processed by your device\'s speech recognition, which may need internet.';
+
+  @override
+  String get voiceMicSemantic => 'Talk to Finn';
+
+  @override
+  String get voiceListening => 'Listening…';
+
+  @override
+  String get voiceTapToSpeak => 'Tap the mic and speak';
+
+  @override
+  String get voiceHeardYou => 'Heard you';
+
+  @override
+  String get voiceDidNotCatch => 'Didn\'t catch that — try again';
+
+  @override
+  String get voiceThinking => 'Finn is thinking…';
+
+  @override
+  String get voiceSpeaking => 'Finn is speaking — tap to interrupt';
+
+  @override
+  String get voiceMicDenied =>
+      'Microphone access is off. Enable it in system Settings to use voice mode.';
+
+  @override
+  String get voiceUnavailable =>
+      'Speech recognition isn\'t available right now. Type your message instead.';
+
+  @override
+  String get voiceStopSemantic => 'Stop';
+
+  @override
+  String get voiceCloseSemantic => 'Close voice mode';
+
+  @override
   String get youTitle => 'You';
 
   @override

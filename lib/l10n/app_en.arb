@@ -538,6 +538,58 @@
   "@settingsLanguage": {
     "description": "Language row"
   },
+  "settingsSpokenResponses": "Spoken responses",
+  "@settingsSpokenResponses": {
+    "description": "Spoken responses toggle label"
+  },
+  "settingsSpokenResponsesBody": "Finn reads replies aloud in voice mode. Your voice transcript is processed by your device's speech recognition, which may need internet.",
+  "@settingsSpokenResponsesBody": {
+    "description": "Spoken responses toggle description"
+  },
+  "voiceMicSemantic": "Talk to Finn",
+  "@voiceMicSemantic": {
+    "description": "Mic button semantics"
+  },
+  "voiceListening": "Listening…",
+  "@voiceListening": {
+    "description": "Voice sheet listening state"
+  },
+  "voiceTapToSpeak": "Tap the mic and speak",
+  "@voiceTapToSpeak": {
+    "description": "Voice sheet idle prompt"
+  },
+  "voiceHeardYou": "Heard you",
+  "@voiceHeardYou": {
+    "description": "Voice sheet transcript received"
+  },
+  "voiceDidNotCatch": "Didn't catch that — try again",
+  "@voiceDidNotCatch": {
+    "description": "Voice sheet empty result message"
+  },
+  "voiceThinking": "Finn is thinking…",
+  "@voiceThinking": {
+    "description": "Voice sheet thinking state"
+  },
+  "voiceSpeaking": "Finn is speaking — tap to interrupt",
+  "@voiceSpeaking": {
+    "description": "Voice sheet speaking state"
+  },
+  "voiceMicDenied": "Microphone access is off. Enable it in system Settings to use voice mode.",
+  "@voiceMicDenied": {
+    "description": "Voice mic denied message"
+  },
+  "voiceUnavailable": "Speech recognition isn't available right now. Type your message instead.",
+  "@voiceUnavailable": {
+    "description": "Voice STT unavailable message"
+  },
+  "voiceStopSemantic": "Stop",
+  "@voiceStopSemantic": {
+    "description": "Voice stop button semantics"
+  },
+  "voiceCloseSemantic": "Close voice mode",
+  "@voiceCloseSemantic": {
+    "description": "Voice close button semantics"
+  },
   "youTitle": "You",
   "@youTitle": {
     "description": "You page title"

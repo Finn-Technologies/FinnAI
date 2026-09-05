@@ -7,6 +7,7 @@ import 'conversations/conversation_store.dart';
 import 'creations/creation_store.dart';
 import 'inference/finn_inference.dart';
 import 'skills/skills_store.dart';
+import 'voice/voice_settings_store.dart';
 import 'you/you_profile_store.dart';
 
 class DeletionResult {
@@ -58,6 +59,7 @@ class AppStateStore extends ChangeNotifier {
     CreationStore? creationStore,
     YouProfileStore? youProfileStore,
     SkillsStore? skillsStore,
+    VoiceSettingsStore? voiceSettingsStore,
   }) async {
     final deleted = <String>[];
     final nonExistent = <String>[];
@@ -139,6 +141,17 @@ class AppStateStore extends ChangeNotifier {
       deleted.add('Skills');
     } else {
       failed.addAll(skillFailures);
+    }
+
+    final voiceTarget = voiceSettingsStore ??
+        (_directoryProvider == null
+            ? VoiceSettingsStore.instance
+            : VoiceSettingsStore(directoryProvider: _directoryProvider));
+    final voiceFailures = await voiceTarget.deleteStorage();
+    if (voiceFailures.isEmpty) {
+      deleted.add('Voice settings');
+    } else {
+      failed.addAll(voiceFailures);
     }
 
     notifyListeners();

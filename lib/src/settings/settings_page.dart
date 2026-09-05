@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -10,6 +11,8 @@ import '../conversations/conversation_store.dart';
 import '../flux_app.dart';
 import '../inference/finn_inference.dart';
 import '../theme/flux_theme.dart';
+import '../voice/voice_settings_store.dart';
+import '../voice/voice_sheet.dart';
 import '../../l10n/l10n_helper.dart';
 import '../widgets/ambient_background.dart';
 import '../widgets/finn_page_header.dart';
@@ -511,6 +514,70 @@ class _SettingsPageState extends State<SettingsPage>
                           ),
 
                           SliverToBoxAdapter(child: const SizedBox(height: 24)),
+
+                          // ── VOICE section (Android/iOS only) ──
+                          if (voiceSupportedOnPlatform)
+                            SliverToBoxAdapter(
+                              child: _SpringSection(
+                                scrollOffset: _scrollOffset,
+                                shiftFn: (offset) => _shiftFor(
+                                  offset,
+                                  downMultiplier: 0.20,
+                                  upMultiplier: 0.20,
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: pageHorizontalInset,
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      _SectionHeader(
+                                        label: L10n.of(context)
+                                            .settingsSpokenResponses,
+                                      ),
+                                      const SizedBox(height: 8),
+                                      FluxGlass(
+                                        radius: 20,
+                                        child: ListenableBuilder(
+                                          listenable:
+                                              VoiceSettingsStore.instance,
+                                          builder: (context, _) {
+                                            final store =
+                                                VoiceSettingsStore.instance;
+                                            return Column(
+                                              children: [
+                                                _SwitchRow(
+                                                  icon: FluxIcons.voiceWaveform,
+                                                  label: L10n.of(context)
+                                                      .settingsSpokenResponses,
+                                                  description: L10n.of(
+                                                    context,
+                                                  ).settingsSpokenResponsesBody,
+                                                  value: store.spokenResponses,
+                                                  onChanged: (value) =>
+                                                      unawaited(
+                                                    store.setSpokenResponses(
+                                                      value,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                          if (voiceSupportedOnPlatform)
+                            SliverToBoxAdapter(
+                              child: const SizedBox(height: 24),
+                            ),
 
                           // ── PRIVACY & LEGAL section ──
                           SliverToBoxAdapter(
@@ -1300,6 +1367,79 @@ class _DestructiveRow extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _SwitchRow extends StatelessWidget {
+  const _SwitchRow({
+    required this.icon,
+    required this.label,
+    required this.description,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final List<List<dynamic>> icon;
+  final String label;
+  final String description;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = FluxColors.isDark(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: FluxColors.inkOf(context).withValues(
+                alpha: isDark ? 0.08 : 0.05,
+              ),
+              borderRadius: BorderRadius.circular(FluxRadius.sm),
+            ),
+            alignment: Alignment.center,
+            child: FluxIcon(
+              icon: icon,
+              size: 17,
+              color: FluxColors.mutedOf(context),
+            ),
+          ),
+          const SizedBox(width: 13),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  description,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: FluxColors.mutedOf(context),
+                      ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Switch.adaptive(
+            value: value,
+            onChanged: onChanged,
+            activeThumbColor:
+                FluxColors.isDark(context) ? Colors.white : Colors.black,
+          ),
+        ],
       ),
     );
   }
