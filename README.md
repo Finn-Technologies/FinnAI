@@ -58,6 +58,7 @@ FinnAI/
 | Document | Purpose |
 |---|---|
 | `docs/AI_SAFETY_TESTING.md` | Red-team safety test matrix |
+| `docs/ARCHITECTURE_STATUS.md` | Implemented vs partial vs planned architecture status |
 | `docs/CHAT_GENERATION_ARCHITECTURE.md` | Generation coordinator & stream lifecycle |
 | `docs/DATA_SAFETY_DRAFT.md` | Google Play Data Safety section questionnaire draft |
 | `docs/ENGINE_API.md` | Engine seam API contract (Track 1 ↔ Track 5) |
@@ -71,6 +72,8 @@ FinnAI/
 | `docs/SECURITY_AND_PRIVACY_ARCHITECTURE.md` | Security & AES-256-GCM encryption design |
 | `docs/TTFT_ARCHITECTURE.md` | Time-to-first-token measurement architecture |
 | `docs/UPLOAD_KEY_RESET.md` | Play upload-key reset handoff runbook |
+
+For the current implementation boundary and migration status, see `docs/ARCHITECTURE_STATUS.md`.
 
 ---
 
