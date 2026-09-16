@@ -201,6 +201,9 @@ class _CreationsPageState extends State<CreationsPage> {
     final text = _promptController.text.trim();
     if (text.isEmpty || _controller.generating) return;
     _promptController.clear();
+    // The brief is in; the next thing the user needs to see is either the kind
+    // question or the creation itself, and the keyboard would cover both.
+    _focusNode.unfocus();
     if (_pendingKind == null) {
       // The brief arrived before the kind; keep it and ask.
       setState(() {
