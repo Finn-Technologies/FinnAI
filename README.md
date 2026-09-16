@@ -1,111 +1,89 @@
-# FinnAI - On-Device AI Assistant for Android and OpenHarmony
+# FinnAI
 
-FinnAI is a private, on-device AI assistant with low-latency offline inference built with Flutter, powered by our custom **FinnAI-Accelerator** native inference runtime and the **LFM2.5-VL 1.6B** model by Liquid AI (GGUF weights downloaded from Hugging Face at runtime).
+**A private, on-device AI assistant for Android and OpenHarmony.**
 
-Package Identifier: `com.abhiflex.finnai`
+FinnAI runs one language model entirely on your device — no server, no account, no cloud
+inference. The Flutter UI sits on top of **FinnAI-Accelerator**, a native llama.cpp runtime, and
+runs **LFM2.5-VL 1.6B (Q4_0)** with its SigLIP2 vision projector. Weights are downloaded once from
+Hugging Face and never leave the device.
 
----
-
-## Key Features
-
-- **⚡ FinnAI-Accelerator**: High-performance C++ and Dart FFI on-device inference runtime running on dedicated worker isolates with cancellable streams. The engine also exposes llama.cpp lookahead sampling (`lookaheadWindow`) for tuning multi-token prediction.
-- **🔍 Hardware-Adaptive Topology**: Detects CPU core clusters and asymmetric architectures (big.LITTLE). Automatically pins decode loops to fast performance cores (e.g. 2 cores on entry chips, 4 on balanced/flagship) to eliminate cross-cluster barrier synchronization stalls.
-- **🛡️ Multi-Tier Device Optimization**: Seamless, crash-free execution from 3GB entry tablets (e.g., Samsung Galaxy Tab A8 / Unisoc T618) to high-end 8GB+ smartphones (Snapdragon 7+ Gen 3 / Dimensity 7025 / Snapdragon 8 series).
-- **📦 Compact KV Cache & TurboQuant Ready**: Supports compact `Q8_0`, `Q4_0`, and `TurboQuant 2-Bit/3-Bit` KV-cache configurations, shrinking KV memory consumption to roughly **32–64 MB** even on long multi-turn chats (see `docs/PERFORMANCE_VALIDATION.md`).
-- **🔒 AES-256-GCM Encrypted Storage**: Conversations are protected using AES-256-GCM authenticated encryption (`package:cryptography`) with master keys secured in Android KeyStore (`FlutterSecureStorage`).
-- **🎨 Creations & Skills**: Generates structured documents, widgets, and app concepts on device. Custom skills and local personalization feed a private system context.
-- **📎 Attachments**: Supports selected image and text/document attachments when the local runtime can process them; unsupported files are rejected.
-- **📊 Time-to-First-Token (TTFT) Telemetry**: Monotonic latency tracking and token generation rate telemetry without leaking prompt contents.
-- **🚨 AI Safety & Honest Reporting**: In-app safety report action opening a transparent, user-reviewable email addressed to `finn_org@proton.me`.
-- **🗑️ Complete Data Sovereignty**: Truthful "Delete All Local Data" action with instant cache and encrypted storage purging.
+- **Package id:** `com.abhiflex.finnai`
+- **Platforms:** Android (primary), OpenHarmony
+- **Model:** LFM2.5-VL 1.6B Q4_0 + `mmproj-LFM2.5-VL-1.6b-F16` vision projector (≈1.55 GB total)
 
 ---
 
-## Repository Structure
+## What it does
+
+| Capability | Where |
+|---|---|
+| Offline chat with streaming replies | `lib/src/features/chat/` |
+| One-time model download with resume + SHA-256 verification | `lib/src/engine/` |
+| Encrypted (AES-256-GCM) conversation history | `lib/src/features/conversations/` |
+| Image understanding via the vision projector | `lib/src/engine/`, `lib/src/features/chat/` |
+| Optional web grounding (explicit, per-query) | `lib/src/features/search/` |
+| Skills, personalization, creations, hands-free voice | `lib/src/features/{skills,you,creations,voice}/` |
+| Share selected text into the app ("Ask Finn AI") | `android/…/MainActivity.kt` + `chat/home_shell.dart` |
+
+Everything user-visible is localized (EN / DE / ES / FR / IT) from `lib/l10n/app_*.arb`.
+
+---
+
+## Quick start
+
+```bash
+flutter pub get
+flutter test                      # 220+ unit, widget and golden tests
+flutter build apk --debug
+adb install -r -t build/app/outputs/flutter-apk/app-debug.apk
+adb shell am start -n com.abhiflex.finnai/.MainActivity
+```
+
+Full toolchain notes (including the OpenHarmony SDK error you may hit) are in
+[docs/guides/BUILD.md](docs/guides/BUILD.md).
+
+> **Using the OpenHarmony Flutter fork?** `flutter analyze` / `flutter test` may abort with
+> *"No Hmos SDK found"*. Add `--no-pub`, or use `dart analyze .`.
+
+---
+
+## Documentation
+
+Start at **[docs/README.md](docs/README.md)**. The most useful pages first:
+
+| Document | What it covers |
+|---|---|
+| [AGENTS.md](AGENTS.md) | Operating contract: hard constraints, commands, common tasks |
+| [docs/architecture/OVERVIEW.md](docs/architecture/OVERVIEW.md) | How the app is layered and how a message flows end to end |
+| [docs/architecture/CODE_MAP.md](docs/architecture/CODE_MAP.md) | "To change *X*, edit *Y*" |
+| [docs/architecture/MODEL_PIPELINE.md](docs/architecture/MODEL_PIPELINE.md) | Download → verify → load → infer, with log tags |
+| [docs/guides/TESTING.md](docs/guides/TESTING.md) | Test layout, golden tests, device testing |
+| [docs/guides/RELEASE.md](docs/guides/RELEASE.md) | Store release checklist |
+| [docs/reference/GLOSSARY.md](docs/reference/GLOSSARY.md) | Domain terms (`KV cache`, `mmproj`, `TTFT`, …) |
+
+Agent skills for common workflows live in [`.agents/skills/`](.agents/skills).
+
+---
+
+## Repository layout
 
 ```text
 FinnAI/
-├── android/                   # Android native project (com.abhiflex.finnai, 16KB ELF aligned)
-├── ohos/                      # OpenHarmony native project
-├── assets/                    # Fonts, icons, and runtime assets
-├── docs/                      # Technical & release documentation (see full list below)
-├── legal/                     # Legal policies
-│   ├── PRIVACY_POLICY.md
-│   └── TERMS_OF_USE.md
-├── lib/                       # Flutter Application Source
-│   ├── src/
-│   │   ├── engine/            # ⚡ FinnEngine compatibility/export layer
-│   │   ├── inference/         # 🧠 Local model runtime, profiling, and routing
-│   │   ├── conversations/     # 🔒 Encrypted local chat persistence
-│   │   ├── home/              # 💬 Chat shell and attachments
-│   │   ├── creations/         # 🎨 Structured local creations
-│   │   ├── skills/            # 🧩 Built-in and custom skills
-│   │   ├── you/               # 👤 Local personalization
-│   │   ├── search/            # 🌐 Best-effort optional web grounding
-│   │   ├── openharmony/       # 🔧 OpenHarmony platform adaptations
-│   │   └── flux_app.dart      # Application bootstrap
-│   └── main.dart
-├── store-listing/             # Play listing copy and store graphics
-├── test/                      # Unit, widget, and architecture test suite
-├── tool/                      # Build & verification scripts
-│   ├── verify_release.sh      # Automated release verification
-│   └── build_play_release.sh  # Production AAB builder
-└── THIRD_PARTY_NOTICES.md     # Open-source license attribution notices
-```
-
-### Documentation Tree (`docs/`)
-
-| Document | Purpose |
-|---|---|
-| `docs/AI_SAFETY_TESTING.md` | Red-team safety test matrix |
-| `docs/CHAT_GENERATION_ARCHITECTURE.md` | Generation coordinator & stream lifecycle |
-| `docs/DATA_SAFETY_DRAFT.md` | Google Play Data Safety section questionnaire draft |
-| `docs/ENGINE_API.md` | Engine seam API contract (Track 1 ↔ Track 5) |
-| `docs/ENGINE_ROADMAP.md` | 12-month engine independence runway (Q1–Q4) |
-| `docs/I18N.md` | Localization infrastructure and ARB workflow |
-| `docs/NATIVE_16KB_VERIFICATION.md` | Source build provenance and 16 KB verification |
-| `docs/PERFORMANCE_VALIDATION.md` | Physical on-device benchmark telemetry |
-| `docs/PLAY_CONSOLE_CHECKLIST.md` | Manual Play Console submission steps |
-| `docs/PLAY_RELEASE_READINESS.md` | Master Play Store release checklist |
-| `docs/REPORTING_BACKEND.md` | Legacy/optional reporting endpoint design |
-| `docs/SECURITY_AND_PRIVACY_ARCHITECTURE.md` | Security & AES-256-GCM encryption design |
-| `docs/TTFT_ARCHITECTURE.md` | Time-to-first-token measurement architecture |
-| `docs/UPLOAD_KEY_RESET.md` | Play upload-key reset handoff runbook |
-
----
-
-## Quick Start & Development
-
-### 1. Install Dependencies
-```bash
-flutter pub get
-```
-
-### 2. Run Static Analysis & Tests
-```bash
-flutter analyze
-flutter test
-```
-
-### 3. Run Automated Release Verification
-```bash
-./tool/verify_release.sh
+├── lib/            Flutter app (see lib/src/{app,features,engine,inference,shared,platform})
+├── test/           Mirrors lib/ (+ goldens/ and flutter_test_config.dart at the root)
+├── android/        Android host project, download service, PROCESS_TEXT integration
+├── ohos/           OpenHarmony host project
+├── third_party/    Vendored llama_cpp_dart FFI bindings (excluded from analysis)
+├── assets/         Fonts, icons, runtime assets
+├── tool/           Build + verification scripts
+└── docs/           architecture/ guides/ reference/ operations/ legal/ design/ store/
 ```
 
 ---
 
-## Building for Android (Google Play Release)
+## Building a release
 
-To build a release Android App Bundle (AAB), configure release signing in `android/key.properties`:
-
-```properties
-storePassword=YOUR_KEYSTORE_PASSWORD
-keyPassword=YOUR_KEY_PASSWORD
-keyAlias=YOUR_KEY_ALIAS
-storeFile=/absolute/path/to/upload-keystore.jks
-```
-
-Build the release bundle with environment defaults:
+Configure signing in `android/key.properties`, then:
 
 ```bash
 export FINN_SUPPORT_URL="https://finn-org.vercel.app/support"
@@ -114,15 +92,13 @@ export FINN_REPORT_EMAIL="finn_org@proton.me"
 export FINN_PRIVACY_POLICY_URL="https://finn-org.vercel.app/privacy"
 export FINN_TERMS_URL="https://finn-org.vercel.app/terms"
 
-./tool/build_play_release.sh
+./tool/verify_release.sh        # signed AAB + 16 KB ELF alignment gate
 ```
-
-FinnAI ships an ARM64 native inference runtime. Release bundles are strictly checked for 16KB ELF page alignment (Android 15+ compatible) and validated against Google Play production gates.
 
 ---
 
-## Building for OpenHarmony
+## License
 
-FinnAI also targets OpenHarmony. See `docs/OHOS_BUILD.md` for the toolchain
-prerequisites, environment setup, and build/run instructions for the `ohos/`
-project.
+FinnAI is proprietary software. Third-party components — including `llama.cpp`, `ggml`,
+`llama_cpp_dart`, and the LFM2.5-VL 1.6B model under the LFM Open License v1.0 — are attributed in
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and in the in-app licence screen.
