@@ -49,6 +49,14 @@ abstract final class FluxColors {
   static const bubbleAssistantLight = Color(0xFFF2F2F7);
   static const bubbleAssistantDark = Color(0xFF1C1C1E);
 
+  // Reveal pills that sit under a reply (sources, browser steps)
+  static const disclosureLight = Color(0xFFEAEAEE);
+  static const disclosureDark = Color(0xFF1E1E22);
+
+  // Rows inside a reveal pill
+  static const disclosureRowLight = Color(0xFFF2F2F7);
+  static const disclosureRowDark = Color(0xFF18181C);
+
   // Dynamic Context Resolvers
   static Color canvasOf(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark ? darkCanvas : canvas;
@@ -67,6 +75,16 @@ abstract final class FluxColors {
 
   static Color cardOf(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark ? darkCard : card;
+
+  static Color disclosureOf(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+          ? disclosureDark
+          : disclosureLight;
+
+  static Color disclosureRowOf(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+          ? disclosureRowDark
+          : disclosureRowLight;
 
   static Color destructiveOf(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark

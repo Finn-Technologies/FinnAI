@@ -680,6 +680,9 @@
   "@chatBrowsingTitle": {
     "description": "Header of the live browser activity panel"
   },
+  "chatSearchingInline": "Buscando en la web…",
+  "chatSearchedInline": "Buscó en la web",
+  "chatShowSearchSteps": "Mostrar pasos de búsqueda",
   "chatBrowsingHide": "Ocultar",
   "@chatBrowsingHide": {
     "description": "Collapse action in the browser activity panel"
@@ -810,7 +813,6 @@
   "@creationsNewCreation": {
     "description": "Button starting a new creation from the gallery"
   },
-  "creationsStopSemantic": "Detener la creación",
   "creationsChooseKindSemantic": "Elegir qué crear",
   "@creationsChooseKindSemantic": {
     "description": "Accessibility label for the composer's choose-type button"
@@ -1001,7 +1003,6 @@
   "creationsEmptyTitle": "Crea algo útil",
   "creationsEmptyFilteredBody": "Prueba otra categoría o crea una nueva.",
   "creationsEmptyBody": "Describe abajo una app, un widget o una presentación. Finn lo convertirá en un plan práctico.",
-  "creationsCreateSemantic": "Crear",
   "creationsDescribeHint": "Describe una creación",
   "creationsCreatingSemantic": "Creando",
   "creationsKindApp": "App",

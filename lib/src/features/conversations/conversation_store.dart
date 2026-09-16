@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'package:finn_ai/src/features/search/search_agent.dart';
 import 'package:finn_ai/src/features/search/web_search_service.dart';
 
 enum ConversationRole { user, assistant }
@@ -35,6 +36,7 @@ class ConversationMessage {
     this.finishReason,
     this.continuationCount = 0,
     this.sources = const [],
+    this.toolActivities = const [],
   });
 
   final String id;
@@ -49,6 +51,10 @@ class ConversationMessage {
   final int continuationCount;
   final List<WebSource> sources;
 
+  /// The browser steps the turn took, in order. Empty for replies that never
+  /// browsed, so the inline search indicator only appears where it is true.
+  final List<ToolActivity> toolActivities;
+
   ConversationMessage copyWith({
     String? text,
     String? imagePath,
@@ -61,6 +67,8 @@ class ConversationMessage {
     int? continuationCount,
     List<WebSource>? sources,
     bool clearSources = false,
+    List<ToolActivity>? toolActivities,
+    bool clearToolActivities = false,
   }) =>
       ConversationMessage(
         id: id,
@@ -75,6 +83,9 @@ class ConversationMessage {
             clearFinishReason ? null : finishReason ?? this.finishReason,
         continuationCount: continuationCount ?? this.continuationCount,
         sources: clearSources ? const [] : sources ?? this.sources,
+        toolActivities: clearToolActivities
+            ? const []
+            : toolActivities ?? this.toolActivities,
       );
 
   Map<String, Object?> toJson() => {
@@ -98,6 +109,15 @@ class ConversationMessage {
                 if (source.imageUrl != null) 'imageUrl': source.imageUrl,
               },
           ],
+        if (toolActivities.isNotEmpty)
+          'toolActivities': [
+            for (final activity in toolActivities)
+              {
+                'kind': activity.kind.name,
+                'label': activity.label,
+                if (activity.detail.isNotEmpty) 'detail': activity.detail,
+              },
+          ],
       };
 
   factory ConversationMessage.fromJson(Map<String, Object?> json) =>
@@ -116,7 +136,31 @@ class ConversationMessage {
         finishReason: json['finishReason'] as String?,
         continuationCount: (json['continuationCount'] as int?) ?? 0,
         sources: _sourcesFromJson(json['sources']),
+        toolActivities: _toolActivitiesFromJson(json['toolActivities']),
       );
+}
+
+List<ToolActivity> _toolActivitiesFromJson(Object? raw) {
+  if (raw is! List) return const [];
+  final activities = <ToolActivity>[];
+  for (final item in raw) {
+    if (item is! Map) continue;
+    final label = item['label'];
+    if (label is! String || label.isEmpty) continue;
+    final kind = ToolActivityKind.values
+        .where((value) => value.name == item['kind'])
+        .firstOrNull;
+    if (kind == null) continue;
+    final detail = item['detail'];
+    activities.add(
+      ToolActivity(
+        kind: kind,
+        label: label,
+        detail: detail is String ? detail : '',
+      ),
+    );
+  }
+  return activities;
 }
 
 List<WebSource> _sourcesFromJson(Object? raw) {
@@ -920,6 +964,7 @@ class ConversationStore extends ChangeNotifier {
     String? finishReason,
     int? continuationCount,
     List<WebSource>? sources,
+    List<ToolActivity>? toolActivities,
     bool persistSoon = false,
     bool notify = true,
   }) {
@@ -943,6 +988,7 @@ class ConversationStore extends ChangeNotifier {
       finishReason: finishReason,
       continuationCount: continuationCount,
       sources: sources,
+      toolActivities: toolActivities,
     );
     _replace(
       conversation.copyWith(updatedAt: DateTime.now(), messages: messages),
@@ -974,6 +1020,7 @@ class ConversationStore extends ChangeNotifier {
       status: ConversationMessageStatus.generating,
       clearFinishReason: true,
       clearSources: true,
+      clearToolActivities: true,
     );
     _replace(
       conversation.copyWith(updatedAt: DateTime.now(), messages: messages),

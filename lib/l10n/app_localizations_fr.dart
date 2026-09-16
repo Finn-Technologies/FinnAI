@@ -557,6 +557,15 @@ class AppLocalizationsFr extends AppLocalizations {
   String get chatBrowsingTitle => 'Navigation sur le web';
 
   @override
+  String get chatSearchingInline => 'Recherche sur le web…';
+
+  @override
+  String get chatSearchedInline => 'Recherche web effectuée';
+
+  @override
+  String get chatShowSearchSteps => 'Afficher les étapes de recherche';
+
+  @override
   String get chatBrowsingHide => 'Masquer';
 
   @override
@@ -622,9 +631,6 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get creationsNewCreation => 'Nouvelle création';
-
-  @override
-  String get creationsStopSemantic => 'Arrêter la création';
 
   @override
   String get creationsChooseKindSemantic => 'Choisir quoi créer';
@@ -979,9 +985,6 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get creationsEmptyBody =>
       'Décrivez ci-dessous une app, un widget ou une présentation. Finn en fera un plan pratique.';
-
-  @override
-  String get creationsCreateSemantic => 'Créer';
 
   @override
   String get creationsDescribeHint => 'Décrivez une création';

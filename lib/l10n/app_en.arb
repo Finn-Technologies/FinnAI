@@ -732,6 +732,18 @@
   "@chatBrowsingTitle": {
     "description": "Header of the live browser activity panel"
   },
+  "chatSearchingInline": "Searching the web…",
+  "@chatSearchingInline": {
+    "description": "Inline indicator shown while a web search is running"
+  },
+  "chatSearchedInline": "Searched the web",
+  "@chatSearchedInline": {
+    "description": "Collapsed indicator attached to a reply that used a web search"
+  },
+  "chatShowSearchSteps": "Show search steps",
+  "@chatShowSearchSteps": {
+    "description": "Accessibility label for expanding the inline search steps"
+  },
   "chatBrowsingHide": "Hide",
   "@chatBrowsingHide": {
     "description": "Collapse action in the browser activity panel"
@@ -828,10 +840,6 @@
   "creationsNewCreation": "New creation",
   "@creationsNewCreation": {
     "description": "Button starting a new creation from the gallery"
-  },
-  "creationsStopSemantic": "Stop creating",
-  "@creationsStopSemantic": {
-    "description": "Accessibility label for the composer's stop button"
   },
   "creationsChooseKindSemantic": "Choose what to create",
   "@creationsChooseKindSemantic": {
@@ -1231,10 +1239,6 @@
   "creationsEmptyBody": "Describe an app, widget or presentation below. Finn will shape it into a practical plan.",
   "@creationsEmptyBody": {
     "description": "Empty state body"
-  },
-  "creationsCreateSemantic": "Create",
-  "@creationsCreateSemantic": {
-    "description": "Accessibility label for the composer's create button"
   },
   "creationsDescribeHint": "Describe a creation",
   "@creationsDescribeHint": {

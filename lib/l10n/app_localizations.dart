@@ -1076,6 +1076,24 @@ abstract class AppLocalizations {
   /// **'Browsing the web'**
   String get chatBrowsingTitle;
 
+  /// Inline indicator shown while a web search is running
+  ///
+  /// In en, this message translates to:
+  /// **'Searching the web…'**
+  String get chatSearchingInline;
+
+  /// Collapsed indicator attached to a reply that used a web search
+  ///
+  /// In en, this message translates to:
+  /// **'Searched the web'**
+  String get chatSearchedInline;
+
+  /// Accessibility label for expanding the inline search steps
+  ///
+  /// In en, this message translates to:
+  /// **'Show search steps'**
+  String get chatShowSearchSteps;
+
   /// Collapse action in the browser activity panel
   ///
   /// In en, this message translates to:
@@ -1183,12 +1201,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'New creation'**
   String get creationsNewCreation;
-
-  /// Accessibility label for the composer's stop button
-  ///
-  /// In en, this message translates to:
-  /// **'Stop creating'**
-  String get creationsStopSemantic;
 
   /// Accessibility label for the composer's choose-type button
   ///
@@ -1807,12 +1819,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Describe an app, widget or presentation below. Finn will shape it into a practical plan.'**
   String get creationsEmptyBody;
-
-  /// Accessibility label for the composer's create button
-  ///
-  /// In en, this message translates to:
-  /// **'Create'**
-  String get creationsCreateSemantic;
 
   /// Composer hint
   ///

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:finn_ai/src/features/conversations/conversation_store.dart';
+import 'package:finn_ai/src/features/search/search_agent.dart';
 import 'package:finn_ai/src/inference/finn_inference.dart';
 import 'package:finn_ai/src/inference/prompt_intent.dart';
 import 'package:finn_ai/src/inference/ttft_metrics.dart';
@@ -26,6 +27,7 @@ class ChatGenerationJob {
     this.finishReason,
     this.errorMessage,
     this.sources = const [],
+    this.toolActivities = const [],
   });
 
   final String generationId;
@@ -41,6 +43,9 @@ class ChatGenerationJob {
   final int continuationCount;
   final int epoch;
   final List<WebSource> sources;
+
+  /// The browser steps this turn took, in order.
+  final List<ToolActivity> toolActivities;
   final String? errorMessage;
 
   bool get busy =>
@@ -56,6 +61,7 @@ class ChatGenerationJob {
     bool? cancellationRequested,
     String? errorMessage,
     List<WebSource>? sources,
+    List<ToolActivity>? toolActivities,
   }) =>
       ChatGenerationJob(
         generationId: generationId,
@@ -72,6 +78,7 @@ class ChatGenerationJob {
         continuationCount: continuationCount,
         epoch: epoch,
         sources: sources ?? this.sources,
+        toolActivities: toolActivities ?? this.toolActivities,
         errorMessage: errorMessage ?? this.errorMessage,
       );
 }
@@ -219,6 +226,30 @@ class ChatGenerationController extends ChangeNotifier {
   ChatGenerationJob? get job => _job;
   ChatGenerationJob? get activeJob => _job?.busy == true ? _job : null;
   bool get busy => activeJob != null;
+
+  /// Browser steps recorded for the running turn, oldest first.
+  ///
+  /// Both search paths feed this: the shell records the policy-driven search it
+  /// runs before generation, and the engine reports each tool call the model
+  /// makes mid-turn. The reply then renders it, live while streaming and
+  /// collapsed once finished, instead of the shell floating a global banner.
+  List<ToolActivity> _toolActivities = const [];
+  List<ToolActivity> get toolActivities => _toolActivities;
+
+  /// Records one browser step for the running turn.
+  void noteToolActivity(ToolActivity activity) {
+    _toolActivities = [..._toolActivities, activity];
+    final current = activeJob;
+    if (current != null) {
+      _job = current.copyWith(toolActivities: _toolActivities);
+    }
+    if (!_disposed) notifyListeners();
+  }
+
+  /// Drops the live step list. The steps survive on the persisted message, so
+  /// this only clears the streaming signal once a turn has ended.
+  void _clearToolActivities() => _toolActivities = const [];
+
   StreamSubscription<String>? _subscription;
   Timer? _persistenceTimer;
   Timer? _notifyTimer;
@@ -518,6 +549,10 @@ class ChatGenerationController extends ChangeNotifier {
       continuationCount: continuationCount,
       epoch: epoch,
       sources: sources,
+      // The policy-driven search runs before the turn starts, so the job must
+      // adopt whatever has already been recorded or those steps would never
+      // reach the finished message.
+      toolActivities: _toolActivities,
     );
     if (!_disposed) notifyListeners();
     _preparingGuard?.cancel();
@@ -721,9 +756,14 @@ class ChatGenerationController extends ChangeNotifier {
       finishReason: terminal.finishReason?.name,
       continuationCount: terminal.continuationCount,
       sources: terminal.sources,
+      // An empty list would erase the steps a continuation inherited; leaving
+      // it null keeps whatever the message already carries.
+      toolActivities:
+          terminal.toolActivities.isEmpty ? null : terminal.toolActivities,
     );
     await conversations.flush();
     _job = terminal;
+    _clearToolActivities();
     if (!_disposed) notifyListeners();
   }
 
@@ -801,9 +841,12 @@ class ChatGenerationController extends ChangeNotifier {
         finishReason: GenerationFinishReason.userCancellation.name,
         continuationCount: latest.continuationCount,
         sources: latest.sources,
+        toolActivities:
+            latest.toolActivities.isEmpty ? null : latest.toolActivities,
       );
     }
     await conversations.flush();
+    _clearToolActivities();
     _job = latest.copyWith(
       state: ChatGenerationState.complete,
       finishReason: GenerationFinishReason.userCancellation,

@@ -13,6 +13,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:finn_ai/src/features/conversations/conversation_store.dart';
 import 'package:finn_ai/src/features/creations/creations_page.dart';
 import 'package:finn_ai/src/features/chat/chat_generation_controller.dart';
+import 'package:finn_ai/src/features/chat/tool_activity_indicator.dart';
 import 'package:finn_ai/src/inference/device_profile.dart';
 import 'package:finn_ai/src/inference/finn_inference.dart';
 import 'package:finn_ai/src/inference/residency_policy.dart';
@@ -111,9 +112,10 @@ class _HomeShellState extends State<HomeShell>
   bool _preparing = false;
   bool _dismissedSearchNotice = false;
 
-  /// Browser tool calls of the running turn, narrated above the composer.
-  final ValueNotifier<List<ToolActivity>> _toolActivities =
-      ValueNotifier<List<ToolActivity>>(const []);
+  /// True when this turn's policy-driven search could not reach the web.
+  /// The engine reports the model-driven equivalent through
+  /// [FinnInference.lastSearchFailed]; the notice is shown for either.
+  bool _upfrontSearchFailed = false;
 
   /// True when the user asked Finn to browse the web for the next turn.
   bool _browseEnabled = false;
@@ -336,7 +338,7 @@ class _HomeShellState extends State<HomeShell>
     // Narrate browsing live: the engine reports each tool call as it happens.
     _inference.onToolActivity = (activity) {
       if (!mounted) return;
-      _toolActivities.value = [..._toolActivities.value, activity];
+      _generation.noteToolActivity(activity);
     };
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(_checkPendingProcessText());
@@ -469,7 +471,6 @@ class _HomeShellState extends State<HomeShell>
     unawaited(_generation.flushActive());
     if (widget.webSearch == null) _webSearch.close();
     _inference.onToolActivity = null;
-    _toolActivities.dispose();
     _composer.dispose();
     _focusNode.dispose();
     super.dispose();
@@ -522,7 +523,7 @@ class _HomeShellState extends State<HomeShell>
   String _generationSignature() {
     final job = _generation.job;
     return '${job?.generationId}|${job?.state.name}|${job?.sources.length}|'
-        '${_generation.busy}';
+        '${_generation.toolActivities.length}|${_generation.busy}';
   }
 
   void _generationChanged() {
@@ -700,9 +701,9 @@ class _HomeShellState extends State<HomeShell>
           _attachedImagePath = null;
           _attachedImageBytes = null;
           _dismissedSearchNotice = false;
+          _upfrontSearchFailed = false;
         });
       }
-      _toolActivities.value = const [];
       final forceBrowse = _browseEnabled;
 
       String upfrontGroundedContext = '';
@@ -710,6 +711,15 @@ class _HomeShellState extends State<HomeShell>
       if (!forceBrowse &&
           _webSearch.policy.shouldSearch(effectivePrompt) &&
           attached == null) {
+        // Recorded before generation so the reply carries the search it came
+        // from: the policy path never reaches the model's tool loop, and
+        // without this the turn would look like it answered from nowhere.
+        _generation.noteToolActivity(
+          ToolActivity(
+            kind: ToolActivityKind.search,
+            label: effectivePrompt,
+          ),
+        );
         try {
           final agent = SearchAgent(searchService: _webSearch);
           final grounded = await agent.searchAndFetch(effectivePrompt).timeout(
@@ -719,6 +729,11 @@ class _HomeShellState extends State<HomeShell>
           if (grounded != null) {
             upfrontGroundedContext = grounded.groundedContext;
             upfrontSources = grounded.search.sources;
+          } else {
+            // The model-driven path marks this in the engine; the policy path
+            // has to mark it here so an unreachable web is reported the same
+            // way whichever path asked for it.
+            _upfrontSearchFailed = true;
           }
         } catch (e) {
           debugPrint('FINN_UPFRONT_SEARCH error: $e');
@@ -1080,92 +1095,21 @@ class _HomeShellState extends State<HomeShell>
                         bottomInset: safeBottom +
                             (constraints.maxHeight < 650 ? 68 : 78),
                         scrollController: _chatScrollController,
-                      ),
-                    ),
-                    // 2. Floating notices (drawn above the list/glass, below
-                    // the header/composer).
-                    if (_inference.lastSearchFailed &&
-                        !_dismissedSearchNotice &&
-                        !_generation.busy)
-                      Positioned(
-                        left: contentLeft,
-                        width: contentWidth,
-                        bottom: safeBottom +
-                            (constraints.maxHeight < 650 ? 74 : 84),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: FluxColors.cardOf(context),
-                            borderRadius:
-                                BorderRadius.circular(FluxRadius.pill),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(
-                                  alpha:
-                                      FluxColors.isDark(context) ? 0.25 : 0.05,
-                                ),
-                                blurRadius: 12,
-                                offset: const Offset(0, 3),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            children: [
-                              FluxIcon(
-                                icon: FluxIcons.cloudOff,
-                                size: 16,
-                                color: FluxColors.mutedOf(context),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  L10n.of(context).chatOfflineNotice,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .labelSmall
-                                      ?.copyWith(
-                                        color: FluxColors.mutedOf(context),
-                                      ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              GestureDetector(
-                                onTap: () => setState(
-                                  () => _dismissedSearchNotice = true,
-                                ),
-                                child: FluxIcon(
-                                  icon: FluxIcons.close,
-                                  size: 14,
-                                  color: FluxColors.mutedOf(context),
-                                ),
-                              ),
-                            ],
-                          ),
+                        // The notice belongs to the turn that failed to reach
+                        // the web, so it renders with that reply instead of
+                        // floating over the whole conversation.
+                        searchFailed: (_inference.lastSearchFailed ||
+                                _upfrontSearchFailed) &&
+                            !_dismissedSearchNotice &&
+                            !_generation.busy,
+                        onDismissSearchNotice: () => setState(
+                          () => _dismissedSearchNotice = true,
                         ),
                       ),
-                    // Watch-it-browse: narrates each browser tool call while
-                    // the answer is still streaming. Positioned must stay the
-                    // Stack's direct child, so only the contents listen.
-                    Positioned(
-                      left: contentLeft,
-                      width: contentWidth,
-                      bottom:
-                          safeBottom + (constraints.maxHeight < 650 ? 74 : 84),
-                      child: ValueListenableBuilder<List<ToolActivity>>(
-                        valueListenable: _toolActivities,
-                        builder: (context, activities, _) => activities.isEmpty
-                            ? const SizedBox.shrink()
-                            : _BrowserActivityPanel(
-                                activities: activities,
-                                busy: _generation.busy,
-                              ),
-                      ),
                     ),
-                    // 4. Header and composer are the topmost layers: crisp
-                    // over the glass and always tappable.
+                    // 4. Header and composer are the topmost layers: crisp over
+                    // the glass and always tappable. Browser steps are not
+                    // floated here — they belong to the reply that made them.
                     Positioned(
                       left: contentLeft,
                       top: 71 * sy,
@@ -1522,6 +1466,8 @@ class _Conversation extends StatefulWidget {
     required this.topInset,
     required this.bottomInset,
     required this.scrollController,
+    this.searchFailed = false,
+    this.onDismissSearchNotice,
   });
   final List<ConversationMessage> messages;
   final String? activeConversationId;
@@ -1548,6 +1494,13 @@ class _Conversation extends StatefulWidget {
   /// Scroll controller owned by the shell so it can observe the scroll
   /// position (to collapse the composer) and jump back to the latest message.
   final ScrollController scrollController;
+
+  /// True when the last turn wanted the web and could not reach it. Rendered
+  /// with the reply that failed rather than as a banner over the app.
+  final bool searchFailed;
+
+  /// Dismisses [searchFailed] for the rest of this turn.
+  final VoidCallback? onDismissSearchNotice;
 
   @override
   State<_Conversation> createState() => _ConversationState();
@@ -1723,6 +1676,12 @@ class _ConversationState extends State<_Conversation> {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  if (widget.searchFailed) ...[
+                    _OfflineSearchNotice(
+                      onDismiss: widget.onDismissSearchNotice,
+                    ),
+                    const SizedBox(height: 10),
+                  ],
                   if (ownsGeneration)
                     _StreamingReply(
                       generation: widget.generation,
@@ -1782,6 +1741,7 @@ class _ConversationState extends State<_Conversation> {
                         modelTier: message.modelTier,
                         status: message.status,
                         sources: message.sources,
+                        toolActivities: message.toolActivities,
                         onSourcesHeightDelta: _compensateSourcesGrowth,
                         showActions: true,
                         onContinue: message.status ==
@@ -2175,13 +2135,14 @@ class _StreamingReplyState extends State<_StreamingReply>
   );
 
   late String _text = widget.generation.activeJob?.responseText ?? widget.text;
+  late int _activityCount = widget.generation.toolActivities.length;
 
   @override
   void initState() {
     super.initState();
     // The pulse is only drawn by the empty-text "Finn is generating" row; once
     // tokens arrive it would tick vsync forever for nothing.
-    if (_text.isEmpty) _pulse.repeat(reverse: true);
+    if (_text.isEmpty && _activityCount == 0) _pulse.repeat(reverse: true);
     widget.generation.addListener(_onGenerationChanged);
   }
 
@@ -2206,9 +2167,13 @@ class _StreamingReplyState extends State<_StreamingReply>
 
   void _syncText() {
     final next = widget.generation.activeJob?.responseText ?? widget.text;
-    if (next == _text) return;
-    setState(() => _text = next);
-    _setPulse(next.isEmpty);
+    final nextActivities = widget.generation.toolActivities.length;
+    if (next == _text && nextActivities == _activityCount) return;
+    setState(() {
+      _text = next;
+      _activityCount = nextActivities;
+    });
+    _setPulse(next.isEmpty && nextActivities == 0);
   }
 
   @override
@@ -2221,8 +2186,21 @@ class _StreamingReplyState extends State<_StreamingReply>
   @override
   Widget build(BuildContext context) {
     final fullText = _text;
+    final activities = widget.generation.toolActivities;
+    // Answer tokens only start once the browsing is over, so the moment text
+    // arrives the steps stop being "in progress" and become the settled record
+    // — the same line the finished reply keeps.
+    final stillBrowsing = fullText.isEmpty;
+    final searchIndicator = ToolActivityIndicator(
+      activities: activities,
+      busy: stillBrowsing,
+    );
 
     if (fullText.isEmpty) {
+      // While a search runs, the search itself is the placeholder: it says
+      // more than "Finn is generating", and it is the same line that stays
+      // under the answer once the turn finishes.
+      if (activities.isNotEmpty) return searchIndicator;
       return Semantics(
         liveRegion: true,
         label: L10n.of(context).chatFinnGenerating,
@@ -2277,6 +2255,13 @@ class _StreamingReplyState extends State<_StreamingReply>
           liveRegion: true,
           child: SafeMarkdownText(text: fullText),
         ),
+        // Below the answer, in the same slot the finished reply uses, so the
+        // pill never jumps position when the turn completes — and it stays on
+        // screen while a long answer streams past it.
+        if (activities.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          searchIndicator,
+        ],
         if (activeSources.isNotEmpty) ...[
           const SizedBox(height: 6),
           _SourceList(
@@ -2333,150 +2318,49 @@ class OtherChatGenerationNotice extends StatelessWidget {
       );
 }
 
-/// Narrates what the agent's browser is doing during a turn.
+/// The turn wanted the web and could not reach it.
 ///
-/// Shows the tool calls in order, newest last, with the most recent one
-/// emphasised while the turn is still running. Collapses to the last few so a
-/// long research pass cannot cover the conversation.
-class _BrowserActivityPanel extends StatefulWidget {
-  const _BrowserActivityPanel({required this.activities, required this.busy});
+/// Sits inline with the reply it belongs to — the same slot the browser steps
+/// use — so a failed fetch reads as part of the answer instead of a banner
+/// floating over the app.
+class _OfflineSearchNotice extends StatelessWidget {
+  const _OfflineSearchNotice({this.onDismiss});
 
-  final List<ToolActivity> activities;
-  final bool busy;
-
-  @override
-  State<_BrowserActivityPanel> createState() => _BrowserActivityPanelState();
-}
-
-class _BrowserActivityPanelState extends State<_BrowserActivityPanel> {
-  bool _expanded = false;
-
-  /// Rows shown while collapsed.
-  static const int _collapsedRows = 1;
-  static const int _maxRows = 6;
-
-  List<List<dynamic>> _iconFor(ToolActivityKind kind) => switch (kind) {
-        ToolActivityKind.search => FluxIcons.internet,
-        ToolActivityKind.open => FluxIcons.note,
-        ToolActivityKind.find => FluxIcons.search,
-      };
-
-  String _labelFor(BuildContext context, ToolActivity activity) =>
-      switch (activity.kind) {
-        ToolActivityKind.search =>
-          L10n.of(context).chatBrowsingSearch(activity.label),
-        ToolActivityKind.open =>
-          L10n.of(context).chatBrowsingOpen(activity.label),
-        ToolActivityKind.find =>
-          L10n.of(context).chatBrowsingFind(activity.label),
-      };
+  final VoidCallback? onDismiss;
 
   @override
-  Widget build(BuildContext context) {
-    final total = widget.activities.length;
-    final showCount = _expanded ? total : total.clamp(0, _collapsedRows);
-    final visible = widget.activities.sublist(total - showCount);
-    final canExpand = total > _collapsedRows;
-
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 9, 12, 9),
-      decoration: BoxDecoration(
-        color: FluxColors.cardOf(context),
-        borderRadius: BorderRadius.circular(FluxRadius.card),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(
-              alpha: FluxColors.isDark(context) ? 0.25 : 0.05,
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.fromLTRB(13, 10, 6, 10),
+        decoration: BoxDecoration(
+          color: FluxColors.cardOf(context).withValues(alpha: .78),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: FluxColors.lineOf(context)),
+        ),
+        child: Row(
+          children: [
+            FluxIcon(
+              icon: FluxIcons.cloudOff,
+              size: 16,
+              color: FluxColors.mutedOf(context),
             ),
-            blurRadius: 12,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              if (widget.busy) ...[
-                SizedBox.square(
-                  dimension: 12,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 1.5,
-                    color: FluxColors.mutedOf(context),
-                  ),
-                ),
-                const SizedBox(width: 8),
-              ],
-              Expanded(
-                child: Text(
-                  L10n.of(context).chatBrowsingTitle,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: FluxColors.mutedOf(context),
-                      ),
-                ),
-              ),
-              if (canExpand)
-                GestureDetector(
-                  onTap: () => setState(() => _expanded = !_expanded),
-                  child: Text(
-                    _expanded
-                        ? L10n.of(context).chatBrowsingHide
-                        : L10n.of(context).chatBrowsingSteps(total),
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: FluxColors.mutedOf(context),
-                          decoration: TextDecoration.underline,
-                        ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          for (final activity in visible.take(_maxRows))
-            Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  FluxIcon(
-                    icon: _iconFor(activity.kind),
-                    size: 14,
-                    color: FluxColors.mutedOf(context),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _labelFor(context, activity),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.labelSmall,
-                        ),
-                        if (activity.detail.isNotEmpty)
-                          Text(
-                            activity.detail,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context)
-                                .textTheme
-                                .labelSmall
-                                ?.copyWith(
-                                  color: FluxColors.mutedOf(context),
-                                ),
-                          ),
-                      ],
+            const SizedBox(width: 9),
+            Expanded(
+              child: Text(
+                L10n.of(context).chatOfflineNotice,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: FluxColors.mutedOf(context),
                     ),
-                  ),
-                ],
               ),
             ),
-        ],
-      ),
-    );
-  }
+            if (onDismiss != null)
+              _ReplyActionButton(
+                icon: FluxIcons.close,
+                tooltip: L10n.of(context).commonDismiss,
+                onTap: onDismiss!,
+              ),
+          ],
+        ),
+      );
 }
 
 class _CompleteReply extends StatelessWidget {
@@ -2489,6 +2373,7 @@ class _CompleteReply extends StatelessWidget {
     this.onContinue,
     this.onRegenerate,
     this.sources = const [],
+    this.toolActivities = const [],
     this.onSourcesHeightDelta,
   });
 
@@ -2500,6 +2385,9 @@ class _CompleteReply extends StatelessWidget {
   final VoidCallback? onContinue;
   final VoidCallback? onRegenerate;
   final List<WebSource> sources;
+
+  /// Browser steps this reply took, kept for the inline search indicator.
+  final List<ToolActivity> toolActivities;
 
   /// Forwards the animated growth of the sources list in pixels so the chat
   /// can keep the answer anchored while the actions below slide down.
@@ -2524,8 +2412,16 @@ class _CompleteReply extends StatelessWidget {
         // The assistant answer sits directly on the canvas — no bubble — and its
         // text is natively selectable.
         SelectionArea(child: SafeMarkdownText(text: text)),
-        // Sources live between the answer and the reply actions: expanding the
-        // list pushes only the actions below it, never the answer above it.
+        // Browser steps and the pages they produced sit between the answer and
+        // the reply actions: expanding either pushes only the actions below,
+        // never the answer above.
+        if (toolActivities.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          ToolActivityIndicator(
+            activities: toolActivities,
+            busy: status == ConversationMessageStatus.generating,
+          ),
+        ],
         if (sources.isNotEmpty) ...[
           const SizedBox(height: 6),
           _SourceList(
@@ -2756,71 +2652,20 @@ class _ArticlePhotoSlideshowState extends State<_ArticlePhotoSlideshow> {
   }
 }
 
-/// Siri-style collapsible sources list shown under a web-grounded answer:
-/// a compact pill showing up to two website icons, a "Sources" label and a
-/// chevron that points right when collapsed and rotates down when expanded to
-/// reveal the tappable list of sources. The list has no card background — it
-/// reads as a plain list, and its growth is reported per frame so the chat
-/// can keep the answer above anchored while only the content below slides.
-class _SourceList extends StatefulWidget {
+/// Collapsible sources list shown under a web-grounded answer: the favicon of
+/// the first page, its host, and a chevron that rotates down to reveal every
+/// source the turn used. It shares [FluxDisclosure] with the browser-steps
+/// indicator so both read as the same affordance. The revealed list has no card
+/// background — it reads as a plain list — and its growth is reported per frame
+/// so the chat can keep the answer above anchored while only the content below
+/// slides.
+class _SourceList extends StatelessWidget {
   const _SourceList({required this.sources, required this.onHeightDelta});
 
   final List<WebSource> sources;
 
   /// Per-frame growth (or shrink) of the expanded list in pixels.
   final ValueChanged<double> onHeightDelta;
-
-  @override
-  State<_SourceList> createState() => _SourceListState();
-}
-
-class _SourceListState extends State<_SourceList>
-    with SingleTickerProviderStateMixin {
-  static const Duration _duration = Duration(milliseconds: 220);
-
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: _duration,
-    reverseDuration: _duration,
-  )..addListener(_onFrame);
-
-  late final CurvedAnimation _factor = CurvedAnimation(
-    parent: _controller,
-    curve: Curves.easeOutCubic,
-  );
-
-  final GlobalKey _contentKey = GlobalKey();
-  double? _fullHeight;
-  double _lastHeight = 0;
-
-  bool get _expanded => _controller.value > 0;
-
-  void _onFrame() {
-    final full = _fullHeight;
-    if (full == null) return;
-    final current = full * _factor.value;
-    final delta = current - _lastHeight;
-    if (delta == 0) return;
-    _lastHeight = current;
-    widget.onHeightDelta(delta);
-    setState(() {});
-  }
-
-  void _toggle() {
-    final size = _contentKey.currentContext?.size;
-    if (size == null) return;
-    _fullHeight = size.height;
-    _lastHeight = size.height * _controller.value;
-    if (MediaQuery.disableAnimationsOf(context)) {
-      setState(() => _controller.value = _expanded ? 0 : 1);
-    } else if (_controller.isAnimating) {
-      _controller.reverse();
-    } else if (_controller.isDismissed) {
-      _controller.forward();
-    } else {
-      _controller.reverse();
-    }
-  }
 
   Future<void> _open(BuildContext context, WebSource source) async {
     final uri = source.url;
@@ -2832,172 +2677,38 @@ class _SourceListState extends State<_SourceList>
     } catch (_) {}
   }
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final muted = FluxColors.mutedOf(context);
-    final isDark = FluxColors.isDark(context);
-    final firstHost = widget.sources.isNotEmpty
-        ? widget.sources.first.url.host.replaceFirst(RegExp(r'^www\.'), '')
-        : L10n.of(context).chatSources;
-    final extraCount = widget.sources.length - 1;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Semantics(
-          button: true,
-          label: _expanded
-              ? L10n.of(context).chatHideSources
-              : L10n.of(context).chatShowSources,
-          child: InkWell(
-            onTap: _toggle,
-            borderRadius: BorderRadius.circular(FluxRadius.pill),
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(10, 5, 8, 5),
-              decoration: BoxDecoration(
-                color:
-                    isDark ? const Color(0xFF1E1E22) : const Color(0xFFEAEAEE),
-                borderRadius: BorderRadius.circular(FluxRadius.pill),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (widget.sources.isNotEmpty)
-                    _SourceFavicon(source: widget.sources.first, size: 16),
-                  const SizedBox(width: 6),
-                  Text(
-                    firstHost,
-                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                          color: FluxColors.inkOf(context),
-                          fontWeight: FontWeight.w500,
-                          fontSize: 12.5,
-                        ),
-                  ),
-                  if (extraCount > 0) ...[
-                    const SizedBox(width: 4),
-                    Text(
-                      '+$extraCount',
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                            color: muted,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 12,
-                          ),
-                    ),
-                  ],
-                  const SizedBox(width: 4),
-                  AnimatedRotation(
-                    turns: _expanded ? 0.25 : 0.0,
-                    duration: MediaQuery.disableAnimationsOf(context)
-                        ? Duration.zero
-                        : const Duration(milliseconds: 180),
-                    curve: Curves.easeOutCubic,
-                    child: FluxIcon(
-                        icon: FluxIcons.arrowRight01, size: 14, color: muted),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        // The list is always laid out (so its full height can be measured)
-        // but clipped to the animated height factor: it grows downward from
-        // the button without a card background. Semantics are excluded while
-        // collapsed so the hidden rows are not announced.
-        ExcludeSemantics(
-          excluding: !_expanded,
-          child: ClipRect(
-            child: Align(
-              heightFactor: _factor.value,
-              alignment: Alignment.topCenter,
-              child: Column(
-                key: _contentKey,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  for (final source in widget.sources)
-                    _SourceRow(
-                      source: source,
-                      onTap: () => _open(context, source),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _SourceRow extends StatelessWidget {
-  const _SourceRow({required this.source, required this.onTap});
-
-  final WebSource source;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = FluxColors.isDark(context);
+  /// The source's excerpt, or empty when the search service only had its
+  /// "no excerpt" placeholder to offer.
+  static String _snippetOf(WebSource source) {
     final snippet = source.snippet.replaceAll(RegExp(r'\s+'), ' ').trim();
+    return snippet == 'No excerpt available.' ? '' : snippet;
+  }
 
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 3),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF18181C) : const Color(0xFFF2F2F7),
-        borderRadius: BorderRadius.circular(FluxRadius.sm),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(FluxRadius.sm),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  _SourceFavicon(source: source, size: 18),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      source.title.isEmpty ? source.url.host : source.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: -0.1,
-                          ),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  FluxIcon(
-                    icon: FluxIcons.arrowRight01,
-                    size: 13,
-                    color: FluxColors.mutedOf(context),
-                  ),
-                ],
-              ),
-              if (snippet.isNotEmpty && snippet != 'No excerpt available.') ...[
-                const SizedBox(height: 4),
-                Text(
-                  snippet,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: FluxColors.mutedOf(context),
-                        fontSize: 12,
-                        height: 1.3,
-                      ),
-                ),
-              ],
-            ],
-          ),
-        ),
+  @override
+  Widget build(BuildContext context) {
+    final firstHost = sources.isNotEmpty
+        ? sources.first.url.host.replaceFirst(RegExp(r'^www\.'), '')
+        : L10n.of(context).chatSources;
+    final extraCount = sources.length - 1;
+
+    return FluxDisclosure(
+      leading: _SourceFavicon(source: sources.first, size: 16),
+      label: firstHost,
+      trailing: extraCount > 0 ? '+$extraCount' : null,
+      expandLabel: L10n.of(context).chatShowSources,
+      collapseLabel: L10n.of(context).chatHideSources,
+      onHeightDelta: onHeightDelta,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final source in sources)
+            FluxDisclosureRow(
+              leading: _SourceFavicon(source: source, size: 18),
+              title: source.title.isEmpty ? source.url.host : source.title,
+              subtitle: _snippetOf(source),
+              onTap: () => _open(context, source),
+            ),
+        ],
       ),
     );
   }
