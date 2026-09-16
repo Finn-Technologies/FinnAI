@@ -16,7 +16,10 @@ dependencies:
   intl: ">=0.19.0 <0.22.0"
   cupertino_icons: ^1.0.9
   crypto: ^3.0.7
+  archive: ^4.0.7
   flutter_svg: ">=2.0.0 <3.0.0"
+  html: ^0.15.6
+  xml: ^6.5.0
   hugeicons: ^1.1.7
   llama_cpp_dart:
     path: third_party/llama_cpp_dart
