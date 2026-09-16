@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'backends/llama_shim.dart';
+import 'package:finn_ai/src/engine/backends/llama_shim.dart';
 
-import 'catalog/model_catalog.dart';
+import 'package:finn_ai/src/engine/catalog/model_catalog.dart';
 
-export 'catalog/model_catalog.dart';
+export 'package:finn_ai/src/engine/catalog/model_catalog.dart';
 
 /// Single conversational turn passed to the on-device inference engine.
 @immutable

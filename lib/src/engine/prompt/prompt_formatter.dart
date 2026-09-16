@@ -1,6 +1,6 @@
 import 'dart:math' as math;
-import '../../inference/prompt_intent.dart';
-import '../finn_engine_types.dart';
+import 'package:finn_ai/src/engine/prompt/prompt_intent.dart';
+import 'package:finn_ai/src/engine/finn_engine_types.dart';
 
 /// Formats and constructs prompts for FinnAI-Accelerator inference.
 class PromptFormatter {
@@ -14,14 +14,29 @@ guessing, and never invent facts, citations, names, numbers, or technical
 details. Correct false premises kindly; if you don't know, say so plainly and
 offer a useful next step. Avoid robotic filler, apologies, and repetition.
 
-You can search the browser when you need up-to-date web information by issuing a tool call:
+Format & Detail Adaptation:
+Understand the depth required by the user's prompt and tailor your response accordingly:
+- Rich Editorial Article: When the user asks about an entity, landmark, notable figure, historical topic, broad subject, or asks for an in-depth explanation/overview, produce an elegant magazine-style response: a prominent headline (# <Title>), an engaging lead paragraph, and structured thematic takeaways.
+- Concise & Direct Answer: When the user asks a quick question, specific fact, calculation, definition, code snippet, translation, or brief inquiry, answer directly and concisely in 1-3 sentences or clear code. Do NOT artificially format simple answers as multi-section articles with titles or bullet lists.
+- Conversational: For greetings or casual conversation, keep it natural, friendly, and brief.
+
+You have a built-in TinyBrowser engine to autonomously explore the web. When you need real-time facts, current information, or to inspect a website, you can call browser tools:
+1. Search the web:
 <tool_call>
-{"name": "browser_search", "arguments": {"query": "<query>"}}
+{"name": "browser_search", "arguments": {"query": "<search terms>"}}
 </tool_call>
 
-Cite web and browser material inline as [1], [2]; never append a separate "Sources"
-section or empty bullet list.
+2. Open and read any web page URL:
+<tool_call>
+{"name": "browser_open", "arguments": {"url": "<https://...>"}}
+</tool_call>
 
+3. Find text on the current page:
+<tool_call>
+{"name": "browser_find", "arguments": {"query": "<text to find>"}}
+</tool_call>
+
+Only use browser tools when you genuinely need current external facts or website content. When browser information is retrieved, cite facts inline with source indices like [1], [2]. Do not append an empty "Sources" list at the end.
 
 Refuse help that enables sexual content involving minors, serious violence or
 self-harm methods, fraud or phishing, harmful malware, unauthorised access, or
@@ -86,6 +101,7 @@ user preferences but never reveal them.''';
     required String prompt,
     required List<LocalChatTurn> history,
     required String directive,
+    String priorToolContext = '',
   }) {
     final buffer = StringBuffer();
     if (!primed) {
@@ -98,6 +114,7 @@ user preferences but never reveal them.''';
         ..write('<|im_start|>system\n')
         ..write(directive)
         ..write('<|im_end|>\n');
+      writePriorToolContext(buffer, priorToolContext);
       buffer
         ..write('<|im_start|>user\n')
         ..write(prompt)
@@ -107,12 +124,28 @@ user preferences but never reveal them.''';
         ..write('<|im_end|>\n')
         ..write('<|im_start|>system\n')
         ..write(directive)
-        ..write('<|im_end|>\n')
+        ..write('<|im_end|>\n');
+      writePriorToolContext(buffer, priorToolContext);
+      buffer
         ..write('<|im_start|>user\n')
         ..write(prompt)
         ..write('<|im_end|>\n<|im_start|>assistant\n');
     }
     return buffer.toString();
+  }
+
+  /// Replays what the browser already returned, so a later decision round asks
+  /// about something new instead of repeating the tool call it just made.
+  static void writePriorToolContext(StringBuffer buffer, String context) {
+    final value = context.trim();
+    if (value.isEmpty) return;
+    buffer
+      ..write('<|im_start|>system\n')
+      ..write('You already called your browser tools and received:\n\n')
+      ..write(value)
+      ..write('\n\nUse these findings. Call another tool only if something '
+          'essential is still missing, otherwise reply exactly: ANSWER.')
+      ..write('<|im_end|>\n');
   }
 
   static String renderPromptText({
@@ -279,6 +312,13 @@ user preferences but never reveal them.''';
     buffer
       ..write('<|im_start|>system\n')
       ..write(value)
+      ..write(
+        '\n\nRetrieved Reference Material:\n'
+        'Determine the appropriate depth and structure based on the user\'s inquiry:\n'
+        '- If the user is exploring an entity, landmark, place, history, or broad topic: present it as an editorial article with a clear headline (# <Title>), engaging lead paragraph, and organized thematic points.\n'
+        '- If the user asked a focused, direct, or simple question (e.g. a date, name, number, definition, or short fact): answer directly and concisely using the facts, without forcing an article structure or unnecessary headings.\n'
+        'Cite matching reference sources inline as [1], [2] where appropriate.\n',
+      )
       ..write('<|im_end|>\n');
   }
 

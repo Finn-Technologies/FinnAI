@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 
 // Engine seam: this file lives inside lib/src/engine, so the FFI sampler type
 // comes from the backends shim (only lib/src/engine/** may reference it).
-import '../backends/llama_shim.dart';
+import 'package:finn_ai/src/engine/backends/llama_shim.dart';
 
 enum PromptIntent {
   greeting,
@@ -482,18 +482,30 @@ class PromptIntentPolicy {
   /// reason whether background browser search is needed.
   static bool needsSearchDecision(PromptAnalysis analysis) => analysis.advanced;
 
-  /// A standard tool contract for the model-driven browser search tool call.
-  static String searchDecisionDirectiveFor(PromptLanguage language) =>
-      '# Tools\n\n'
-      'You have access to an ultra-lightweight background browser tool:\n\n'
-      '<tools>\n'
-      '{"type": "function", "function": {"name": "browser_search", "description": "Search the browser for up-to-date web info, real-time facts, current news, live scores, or external websites.", "parameters": {"type": "object", "properties": {"query": {"type": "string", "description": "The search query"}}, "required": ["query"]}}}\n'
-      '</tools>\n\n'
-      'If the user request requires current, real-time, or external facts from the browser, output a tool call formatted as:\n'
+  /// A standard tool contract for the model-driven TinyBrowser autonomous tool calls.
+  ///
+  /// [requireToolCall] is set when the user explicitly asked Finn to browse: the
+  /// model must then emit a tool call rather than answering from knowledge.
+  static String searchDecisionDirectiveFor(
+    PromptLanguage language, {
+    bool requireToolCall = false,
+  }) =>
+      '# TinyBrowser Tools\n\n'
+      'You have access to a built-in headless browser engine with two tools:\n'
+      '1. Search the web:\n'
       '<tool_call>\n'
-      '{"name": "browser_search", "arguments": {"query": "<search query>"}}\n'
-      '</tool_call>\n'
-      'Otherwise, reply exactly: ANSWER.';
+      '{"name": "browser_search", "arguments": {"query": "<search terms>"}}\n'
+      '</tool_call>\n\n'
+      '2. Open and inspect any website URL directly:\n'
+      '<tool_call>\n'
+      '{"name": "browser_open", "arguments": {"url": "<https://...>"}}\n'
+      '</tool_call>\n\n'
+      '3. Find text on the page you have open:\n'
+      '<tool_call>\n'
+      '{"name": "browser_find", "arguments": {"query": "<text to find>"}}\n'
+      '</tool_call>\n\n'
+      'If the user request requires external facts, current or time-sensitive information (such as latest products, release dates, current news, or live data), or inspecting a website, output a tool call.\n'
+      '${requireToolCall ? 'The user asked you to browse, so you must output one tool call now. Do not reply ANSWER.' : 'Otherwise, reply exactly: ANSWER.'}';
 
   static const IntentSamplerProfile searchDecisionSampler =
       IntentSamplerProfile(
@@ -575,7 +587,10 @@ class PromptIntentPolicy {
       PromptIntent.creative =>
         'Follow the requested genre, voice, constraints, and length while keeping the result coherent and original.',
       PromptIntent.quickQuestion =>
-        'Answer the exact question directly and factually. For a how or why question, explain the mechanism and important conditions. '
+        'Answer the exact question directly and factually. Adapt detail dynamically: '
+            'for broad overviews or historical subjects, provide structured highlights; '
+            'for quick or simple questions, keep the answer concise and direct without unnecessary headings. '
+            'For a how or why question, explain the mechanism and important conditions. '
             'Do not invent relationships, features, names, timings, or implementation details. Correct a false premise plainly. '
             'If a named or niche subject is uncertain, say so and ask for identifying context rather than substituting a similar-sounding subject.',
       PromptIntent.highStakes =>

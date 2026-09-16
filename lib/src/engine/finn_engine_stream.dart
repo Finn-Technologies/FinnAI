@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'finn_engine_types.dart';
+import 'package:finn_ai/src/engine/finn_engine_types.dart';
 
 /// Active generation stream emitted by FinnEngine.
 class FinnEngineStream {

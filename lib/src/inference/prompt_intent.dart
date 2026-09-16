@@ -1,3 +1,3 @@
 library;
 
-export '../engine/prompt/prompt_intent.dart';
+export 'package:finn_ai/src/engine/prompt/prompt_intent.dart';

@@ -1,3 +1,3 @@
 library;
 
-export '../engine/catalog/model_catalog.dart';
+export 'package:finn_ai/src/engine/catalog/model_catalog.dart';

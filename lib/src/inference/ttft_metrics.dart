@@ -1,3 +1,3 @@
 library;
 
-export '../engine/metrics/ttft_metrics.dart';
+export 'package:finn_ai/src/engine/metrics/ttft_metrics.dart';

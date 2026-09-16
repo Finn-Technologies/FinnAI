@@ -1,3 +1,3 @@
 library;
 
-export '../engine/finn_engine.dart';
+export 'package:finn_ai/src/engine/finn_engine.dart';

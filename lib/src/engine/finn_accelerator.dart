@@ -6,20 +6,20 @@ import 'dart:math' as math;
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'backends/llama_shim.dart';
-import 'prompt/prompt_formatter.dart';
+import 'package:finn_ai/src/engine/backends/llama_shim.dart';
+import 'package:finn_ai/src/engine/prompt/prompt_formatter.dart';
 import 'package:path_provider/path_provider.dart';
 
-import 'profiler/device_profile.dart';
-import 'metrics/ttft_metrics.dart';
-import 'policy/residency_policy.dart';
-import 'adaptive/adaptive.dart';
-import 'finn_engine_types.dart';
-import '../inference/prompt_intent.dart';
-import '../search/search_agent.dart';
-import '../search/web_search_service.dart';
+import 'package:finn_ai/src/engine/profiler/device_profile.dart';
+import 'package:finn_ai/src/engine/metrics/ttft_metrics.dart';
+import 'package:finn_ai/src/engine/policy/residency_policy.dart';
+import 'package:finn_ai/src/engine/adaptive/adaptive.dart';
+import 'package:finn_ai/src/engine/finn_engine_types.dart';
+import 'package:finn_ai/src/engine/prompt/prompt_intent.dart';
+import 'package:finn_ai/src/features/search/search_agent.dart';
+import 'package:finn_ai/src/features/search/web_search_service.dart';
 
-export 'finn_engine_types.dart';
+export 'package:finn_ai/src/engine/finn_engine_types.dart';
 
 /// Per-generation RNG used to pick a fresh llama.cpp sampler seed.
 ///
@@ -117,6 +117,22 @@ class FinnAccelerator extends ChangeNotifier {
   /// empty when the answer did not use the web.
   List<WebSource> _lastSources = const [];
   List<WebSource> get lastSources => _lastSources;
+
+  /// Browser tool calls made during the current/last turn, in order.
+  List<ToolActivity> _lastToolActivities = const [];
+  List<ToolActivity> get lastToolActivities => _lastToolActivities;
+
+  /// Notified as each browser tool call happens, so the UI can narrate the
+  /// agent's browsing while the answer is still streaming.
+  void Function(ToolActivity activity)? onToolActivity;
+
+  /// Most browser tool rounds one turn may run. A small model will happily keep
+  /// calling tools, and every round costs a full decision pass.
+  static const int maxToolRounds = 3;
+
+  /// Wall-clock ceiling across all tool rounds of one turn. Research should not
+  /// be able to stall a reply indefinitely on a slow connection.
+  static const Duration maxToolBudget = Duration(seconds: 12);
 
   static const continuationPrompt =
       'Continue exactly where the previous response stopped. Do not repeat '
@@ -486,6 +502,30 @@ class FinnAccelerator extends ChangeNotifier {
         }),
       );
     }
+    await _resumeInterruptedMmproj();
+  }
+
+  /// Resumes an interrupted multimodal-component transfer after an app restart.
+  ///
+  /// The projector is the second and larger artifact (≈854 MB), so a process
+  /// kill during setup most often lands mid-projector. It is not required for
+  /// text chat, so `_runInstall` tolerates its absence — which means without
+  /// this hook the app would start normally, report the model as installed, and
+  /// leave vision permanently unavailable while the `.part` file sat unused.
+  /// Only a partial that already has bytes on disk is resumed, so a fresh
+  /// install never starts a surprise download.
+  Future<void> _resumeInterruptedMmproj() async {
+    if (await isMmprojInstalled()) return;
+    // The projector is only meaningful once the language model is present;
+    // otherwise onboarding drives the whole install.
+    final model = finnModels.single;
+    if (!await _isVerifiedModelFile(model, await _modelFile(model))) return;
+    final target = await _mmprojFile();
+    final partial = File('${target.path}.part');
+    if (!await partial.exists() || await partial.length() <= 0) return;
+    // _preinstallMmproj sizes the aggregate progress and swallows transfer
+    // errors, so resuming here cannot surface as an unhandled async error.
+    unawaited(_preinstallMmproj());
   }
 
   Future<void> _preinstallMmproj() async {
@@ -595,6 +635,47 @@ class FinnAccelerator extends ChangeNotifier {
         );
       }
     }
+  }
+
+  /// Stops an in-flight install before its files are deleted.
+  ///
+  /// Without this, the Android foreground service keeps writing to
+  /// `<target>.part` and can rename it into place *after* the removal, which
+  /// resurrected the supposedly erased model (and projector) during
+  /// "Delete All Local Data" — silently breaking the data-sovereignty promise.
+  /// The in-flight job is awaited so its transfer loop has exited before the
+  /// files are unlinked.
+  Future<void> _cancelActiveInstallForRemoval() async {
+    _cancelDownload = true;
+    try {
+      _downloadClient?.close(force: true);
+      for (final client in _activeDownloadClients.toList()) {
+        try {
+          client.close(force: true);
+        } catch (_) {}
+      }
+      if (Platform.isAndroid) {
+        final model = _workingModel;
+        if (model != null) {
+          await _cancelAndroidDownload((await _modelFile(model)).path);
+        }
+        await _cancelAndroidDownload((await _mmprojFile()).path);
+      }
+    } catch (_) {
+      // Cancellation is best-effort; the delete below still has to run.
+    }
+    final running = _installJob;
+    if (running != null) {
+      try {
+        await running;
+      } catch (_) {
+        // The install already surfaced its own failure through the status
+        // listener; removal must not be blocked by it.
+      }
+    }
+    _workingModel = null;
+    _installJob = null;
+    _cancelDownload = false;
   }
 
   Future<void> _cancelAndroidDownload(String targetPath) async {
@@ -766,6 +847,7 @@ class FinnAccelerator extends ChangeNotifier {
   }
 
   Future<Set<String>> removeAllModels() async {
+    await _cancelActiveInstallForRemoval();
     final failures = <String>{};
     for (final model in finnModels) {
       final res = await remove(model);
@@ -818,21 +900,34 @@ class FinnAccelerator extends ChangeNotifier {
   GenerationReport? _lastGenerationReport;
   GenerationReport? get lastGenerationReport => _lastGenerationReport;
 
+  /// Generates a reply for [prompt].
+  ///
+  /// [samplerProfile] overrides the sampler that would otherwise be derived from
+  /// the prompt's classified intent. Secondary callers such as the creation
+  /// pipeline use it to ask for near-deterministic decoding when the output has
+  /// to parse as JSON; chat passes `null` and is unaffected.
+  ///
+  /// [forceBrowse] runs the browser tool loop even when the prompt would not
+  /// normally qualify, for a turn where the user explicitly asked Finn to look
+  /// something up.
   Stream<String> generateReply(
     String prompt, {
     required String conversationId,
     List<LocalChatTurn> history = const [],
     String systemContext = '',
     String groundedContext = '',
+    List<WebSource> sources = const [],
     PromptAnalysis? promptAnalysis,
     TtftTrace? trace,
     bool enableSearchDecision = true,
+    bool forceBrowse = false,
+    IntentSamplerProfile? samplerProfile,
   }) async* {
     if (_replyInFlight) {
       throw StateError('Finn is already generating a response.');
     }
     _replyInFlight = true;
-    _lastSources = const [];
+    _lastSources = sources;
     _lastSearchFailed = false;
     searchRanForCurrentTurn = false;
     try {
@@ -842,9 +937,12 @@ class FinnAccelerator extends ChangeNotifier {
         history: history,
         systemContext: systemContext,
         groundedContext: groundedContext,
+        sources: sources,
         promptAnalysis: promptAnalysis,
         trace: trace,
         enableSearchDecision: enableSearchDecision,
+        forceBrowse: forceBrowse,
+        samplerProfile: samplerProfile,
       );
     } finally {
       _replyInFlight = false;
@@ -869,9 +967,12 @@ class FinnAccelerator extends ChangeNotifier {
     List<LocalChatTurn> history = const [],
     String systemContext = '',
     String groundedContext = '',
+    List<WebSource> sources = const [],
     PromptAnalysis? promptAnalysis,
     TtftTrace? trace,
     bool enableSearchDecision = true,
+    bool forceBrowse = false,
+    IntentSamplerProfile? samplerProfile,
   }) async* {
     if (_replyInFlight) {
       final turn = replyGate.waitTurn();
@@ -893,6 +994,8 @@ class FinnAccelerator extends ChangeNotifier {
       promptAnalysis: promptAnalysis,
       trace: trace,
       enableSearchDecision: enableSearchDecision,
+      forceBrowse: forceBrowse,
+      samplerProfile: samplerProfile,
     );
   }
 
@@ -964,9 +1067,12 @@ class FinnAccelerator extends ChangeNotifier {
     required List<LocalChatTurn> history,
     required String systemContext,
     String groundedContext = '',
+    List<WebSource> sources = const [],
     PromptAnalysis? promptAnalysis,
     TtftTrace? trace,
     bool enableSearchDecision = true,
+    bool forceBrowse = false,
+    IntentSamplerProfile? samplerProfile,
   }) async* {
     final analysis =
         promptAnalysis ?? const PromptIntentClassifier().classify(prompt);
@@ -990,9 +1096,12 @@ class FinnAccelerator extends ChangeNotifier {
         history: history,
         systemContext: systemContext,
         groundedContext: groundedContext,
+        sources: sources,
         analysis: analysis,
         trace: trace,
         enableSearchDecision: enableSearchDecision,
+        forceBrowse: forceBrowse,
+        samplerProfile: samplerProfile,
       ),
       trace: trace,
     );
@@ -1058,8 +1167,14 @@ class FinnAccelerator extends ChangeNotifier {
   /// Runs the model-driven tool-calling pass. The AI model itself evaluates
   /// whether to call the browser_search tool. When a tool call is emitted,
   /// the browser search is executed and returned with toolCallMade: true.
-  Future<({String groundedContext, List<WebSource> sources, bool toolCallMade})>
-      _runSearchDecision(
+  Future<
+      ({
+        String groundedContext,
+        List<WebSource> sources,
+        bool toolCallMade,
+        ToolActivity? activity,
+        SearchDecision? decision,
+      })> _runSearchDecision(
     EngineSession session,
     String prompt,
     PromptAnalysis analysis,
@@ -1069,16 +1184,21 @@ class FinnAccelerator extends ChangeNotifier {
     required bool basePrefixReady,
     required bool includeTaskInstruction,
     TtftTrace? trace,
+    String priorToolContext = '',
+    bool requireToolCall = false,
   }) async {
     if (analysis.intent == PromptIntent.greeting) {
       return (
         groundedContext: '',
         sources: const <WebSource>[],
         toolCallMade: false,
+        activity: null,
+        decision: null,
       );
     }
     final directive = PromptIntentPolicy.searchDecisionDirectiveFor(
       analysis.language,
+      requireToolCall: requireToolCall,
     );
     final decisionPrompt = _renderDecisionPromptText(
       primed: primed,
@@ -1088,6 +1208,7 @@ class FinnAccelerator extends ChangeNotifier {
       prompt: prompt,
       history: history,
       directive: directive,
+      priorToolContext: priorToolContext,
     );
     _setStatus(
       InferencePhase.generating,
@@ -1127,24 +1248,58 @@ class FinnAccelerator extends ChangeNotifier {
         groundedContext: '',
         sources: const <WebSource>[],
         toolCallMade: false,
-      );
-    }
-    final query = decision.query?.trim();
-    if (query == null || query.isEmpty) {
-      return (
-        groundedContext: '',
-        sources: const <WebSource>[],
-        toolCallMade: false,
+        activity: null,
+        decision: null,
       );
     }
     searchRanForCurrentTurn = true;
-    final grounded = await _searchAndFetch(query);
-    _throwIfGenerationCancelled(generationEpoch);
-    return (
-      groundedContext: grounded.groundedContext,
-      sources: grounded.sources,
-      toolCallMade: true,
+    _setStatus(
+      InferencePhase.generating,
+      decision.kind == SearchDecisionKind.open
+          ? 'Reading page...'
+          : 'Searching browser...',
+      key: FinnStatusKey.searchingBrowser,
     );
+    final toolResult = await _searchAgent.executeToolCall(decision);
+    _throwIfGenerationCancelled(generationEpoch);
+
+    // If browser tool search didn't yield any discovered sources, fall back to searchAndFetch
+    if (toolResult.discoveredSources.isEmpty &&
+        decision.kind == SearchDecisionKind.search &&
+        (decision.query?.isNotEmpty ?? false)) {
+      final fallback = await _searchAndFetch(decision.query!);
+      _throwIfGenerationCancelled(generationEpoch);
+      return (
+        groundedContext: fallback.groundedContext,
+        sources: fallback.sources,
+        toolCallMade: true,
+        activity: toolResult.activity,
+        decision: decision,
+      );
+    }
+
+    return (
+      groundedContext: toolResult.toolResponse,
+      sources: toolResult.discoveredSources,
+      toolCallMade: true,
+      activity: toolResult.activity,
+      decision: decision,
+    );
+  }
+
+  /// Appends [additions] to [existing], dropping duplicate URLs so several
+  /// browsing rounds do not repeat the same source in the citation list.
+  static List<WebSource> _mergeSources(
+    List<WebSource> existing,
+    List<WebSource> additions,
+  ) {
+    if (additions.isEmpty) return existing;
+    final merged = [...existing];
+    final seen = {for (final source in existing) source.url.toString()};
+    for (final source in additions) {
+      if (seen.add(source.url.toString())) merged.add(source);
+    }
+    return merged;
   }
 
   /// Searches the browser and fetches content, returning the grounded result
@@ -1193,10 +1348,13 @@ class FinnAccelerator extends ChangeNotifier {
     required List<LocalChatTurn> history,
     String systemContext = '',
     String groundedContext = '',
+    List<WebSource> sources = const [],
     PromptAnalysis? analysis,
     String? modelPath,
     TtftTrace? trace,
     bool enableSearchDecision = true,
+    bool forceBrowse = false,
+    IntentSamplerProfile? samplerProfile,
   }) {
     late StreamController<String> output;
     var nativeFinished = false;
@@ -1424,32 +1582,81 @@ class FinnAccelerator extends ChangeNotifier {
             ..flashAttention = plan?.flashAttention == true ? 'on' : 'off'
             ..mark(TtftPhase.promptRendered);
 
-          // Model-driven browser search: the AI model itself evaluates whether
-          // to perform a tool call. When the model emits a tool call, we execute
-          // the browser search, feed the tool response back into the session,
-          // and let the model generate the grounded answer.
-          // When an image is attached, skip the search pass to answer immediately from vision.
+          // Model-driven browser browsing: the model decides whether to call a
+          // browser tool, we run it, feed the result back, and let it decide
+          // again. Bounded in both rounds and wall-clock so a research turn
+          // cannot stall a reply. Skipped entirely when an image is attached.
           var effectiveGroundedContext = groundedContext;
-          var effectiveSources = const <WebSource>[];
+          var effectiveSources = sources;
+          final toolActivities = <ToolActivity>[];
+          // A forced browse bypasses the "is this prompt advanced?" gate: the
+          // user explicitly asked for the web this turn.
           final decisionEnabled = enableSearchDecision &&
               !hasAttachedImage &&
-              PromptIntentPolicy.needsSearchDecision(promptAnalysis);
+              effectiveGroundedContext.isEmpty &&
+              (forceBrowse ||
+                  PromptIntentPolicy.needsSearchDecision(promptAnalysis));
           if (decisionEnabled) {
-            final decision = await _runSearchDecision(
-              session,
-              prompt,
-              promptAnalysis,
-              generationEpoch,
-              history: history,
-              primed: entry.primed,
-              basePrefixReady: entry.basePrefixReady,
-              includeTaskInstruction: includeTaskInstruction,
-              trace: trace,
-            );
-            effectiveGroundedContext = decision.groundedContext;
-            effectiveSources = decision.sources;
-            _throwIfGenerationCancelled(generationEpoch);
-            if (decision.toolCallMade) {
+            final seenDecisions = <SearchDecision>{};
+            final toolWatch = Stopwatch()..start();
+            final toolResponses = <String>[];
+            var toolCallMade = false;
+            var budgetExhausted = false;
+
+            while (toolActivities.length < maxToolRounds) {
+              if (toolWatch.elapsed >= maxToolBudget) {
+                budgetExhausted = true;
+                break;
+              }
+              final result = await _runSearchDecision(
+                session,
+                prompt,
+                promptAnalysis,
+                generationEpoch,
+                history: history,
+                primed: entry.primed,
+                basePrefixReady: entry.basePrefixReady,
+                includeTaskInstruction: includeTaskInstruction,
+                trace: trace,
+                // Feed back what the browser already returned so a repeat round
+                // asks something new instead of re-running the same call.
+                priorToolContext: toolResponses.join('\n\n'),
+                // Only the first round is forced; later rounds are the model's
+                // own call.
+                requireToolCall: forceBrowse && !toolCallMade,
+              );
+              _throwIfGenerationCancelled(generationEpoch);
+              if (!result.toolCallMade) break;
+              // A 1.6B model will repeat a call it has already made; treat that
+              // as the end of the research rather than paying for it again.
+              final call = result.decision;
+              if (call != null && !seenDecisions.add(call)) {
+                debugPrint('FINN_TOOL loop stopped: repeated tool call');
+                break;
+              }
+              toolCallMade = true;
+              final activity = result.activity;
+              if (activity != null) {
+                toolActivities.add(activity);
+                onToolActivity?.call(activity);
+              }
+              if (result.groundedContext.isNotEmpty) {
+                toolResponses.add(result.groundedContext);
+              }
+              effectiveGroundedContext = toolResponses.join('\n\n');
+              effectiveSources =
+                  _mergeSources(effectiveSources, result.sources);
+            }
+
+            if (toolActivities.length > 1) {
+              debugPrint(
+                'FINN_TOOL completed ${toolActivities.length} browser round(s)'
+                '${budgetExhausted ? ' (budget reached)' : ''}',
+              );
+            }
+            _lastToolActivities = List.unmodifiable(toolActivities);
+
+            if (toolCallMade) {
               final continuation = StringBuffer()..write('<|im_end|>\n');
               if (!entry.primed && systemContext.trim().isNotEmpty) {
                 PromptFormatter.writePrivateContext(
@@ -1489,6 +1696,8 @@ class FinnAccelerator extends ChangeNotifier {
                 attachedDocContext: attachedDocContext,
               );
             }
+          } else {
+            _lastToolActivities = const [];
           }
           // If multimodal not loaded but user attached image, surface fallback
           if (hasAttachedImage && !runtime.engine.multimodalLoaded) {
@@ -1544,9 +1753,10 @@ class FinnAccelerator extends ChangeNotifier {
             shift: ContextShift(
               nKeep: entry.basePrefixReady ? 321 : 0,
             ),
-            sampler: PromptIntentPolicy.sampler(
-              promptAnalysis.intent,
-            ).params.copyWith(seed: _nextGenerationSeed()),
+            sampler: (samplerProfile ??
+                    PromptIntentPolicy.sampler(promptAnalysis.intent))
+                .params
+                .copyWith(seed: _nextGenerationSeed()),
           )
               .listen(
             (event) {
@@ -1767,7 +1977,14 @@ class FinnAccelerator extends ChangeNotifier {
   /// "Setting up FinnAI for optimal performance…".
   Future<void> optimizeForDevice() async {
     if (_benchmarkRunning || _replyInFlight || _runtimes.isNotEmpty) return;
-    if (!Platform.isAndroid && !Platform.isLinux) return;
+    // Android inference is pinned to the CPU path: AdaptiveInferenceEngine
+    // never restores a cached selection there and accelerateIfAvailable bails
+    // out immediately, so select() discards whatever this benchmark records.
+    // Running it anyway spawned two extra engines and burned up to ~30s of CPU
+    // on every cold start (the selection cache is not restored on Android, so
+    // needsBenchmark() always reported stale) while changing nothing.
+    if (Platform.isAndroid) return;
+    if (!Platform.isLinux) return;
     _benchmarkRunning = true;
     try {
       _setStatus(
@@ -2152,7 +2369,7 @@ class FinnAccelerator extends ChangeNotifier {
           'Downloaded model is not a valid GGUF file',
         );
       }
-      await _verifyArtifactDigest(target, model.sha256Digest);
+      await _verifyPromotedArtifact(target, model.sha256Digest);
       _verifiedModels.add(model.tier);
       _completeInstallArtifact(model.expectedBytes);
       return target;
@@ -2180,6 +2397,28 @@ class FinnAccelerator extends ChangeNotifier {
     }
   }
 
+  /// Verifies an already-promoted [target] and deletes it when the digest does
+  /// not match. Without the delete, a right-sized-but-corrupt artifact would be
+  /// accepted as installed by [_isVerifiedModelFile] (size + GGUF magic only)
+  /// on every later run and could never be re-downloaded, so the app would
+  /// silently keep loading a corrupt model forever.
+  Future<void> _verifyPromotedArtifact(
+    File target,
+    String expectedDigest,
+  ) async {
+    if (expectedDigest.isEmpty) return;
+    try {
+      await _verifyArtifactDigest(target, expectedDigest);
+    } catch (_) {
+      try {
+        if (await target.exists()) await target.delete();
+      } on FileSystemException {
+        // Best effort: still surface the verification failure to the caller.
+      }
+      rethrow;
+    }
+  }
+
   Future<File> _ensureArtifactWithService({
     required String url,
     required File target,
@@ -2201,7 +2440,7 @@ class FinnAccelerator extends ChangeNotifier {
           expectedBytes: expectedBytes,
         )) {
           if (sha256Digest.isNotEmpty) {
-            await _verifyArtifactDigest(target, sha256Digest);
+            await _verifyPromotedArtifact(target, sha256Digest);
           }
           _completeInstallArtifact(expectedBytes);
           return target;
@@ -2340,7 +2579,7 @@ class FinnAccelerator extends ChangeNotifier {
       throw const FormatException('Downloaded file failed verification');
     }
     if (sha256Digest.isNotEmpty) {
-      await _verifyArtifactDigest(target, sha256Digest);
+      await _verifyPromotedArtifact(target, sha256Digest);
     }
     _completeInstallArtifact(expectedBytes);
     return target;
@@ -2374,7 +2613,7 @@ class FinnAccelerator extends ChangeNotifier {
         if (await target.exists()) await target.delete();
         await partial.rename(target.path);
         if (sha256Digest.isNotEmpty) {
-          await _verifyArtifactDigest(target, sha256Digest);
+          await _verifyPromotedArtifact(target, sha256Digest);
         }
         _completeInstallArtifact(expectedBytes);
         return target;
@@ -2442,7 +2681,7 @@ class FinnAccelerator extends ChangeNotifier {
         throw const FormatException('Downloaded file is not a valid GGUF file');
       }
       if (sha256Digest.isNotEmpty) {
-        await _verifyArtifactDigest(target, sha256Digest);
+        await _verifyPromotedArtifact(target, sha256Digest);
       }
       _completeInstallArtifact(expectedBytes);
       return target;
@@ -3487,6 +3726,7 @@ class FinnAccelerator extends ChangeNotifier {
     required String prompt,
     required List<LocalChatTurn> history,
     required String directive,
+    String priorToolContext = '',
   }) {
     return PromptFormatter.renderDecisionPromptText(
       primed: primed,
@@ -3496,6 +3736,7 @@ class FinnAccelerator extends ChangeNotifier {
       prompt: prompt,
       history: history,
       directive: directive,
+      priorToolContext: priorToolContext,
     );
   }
 

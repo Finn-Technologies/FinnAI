@@ -1,3 +1,3 @@
 library;
 
-export '../engine/profiler/device_profile.dart';
+export 'package:finn_ai/src/engine/profiler/device_profile.dart';

@@ -11,13 +11,13 @@
 /// - Engine-owned value types, configs, streams, and the prompt formatter.
 library;
 
-import 'backends/llama_shim.dart';
+import 'package:finn_ai/src/engine/backends/llama_shim.dart';
 
-export 'finn_accelerator.dart';
-export 'finn_engine_config.dart';
-export 'finn_engine_stream.dart';
-export 'finn_engine_types.dart';
-export 'prompt/prompt_formatter.dart';
+export 'package:finn_ai/src/engine/finn_accelerator.dart';
+export 'package:finn_ai/src/engine/finn_engine_config.dart';
+export 'package:finn_ai/src/engine/finn_engine_stream.dart';
+export 'package:finn_ai/src/engine/finn_engine_types.dart';
+export 'package:finn_ai/src/engine/prompt/prompt_formatter.dart';
 
 /// Routes the native llama.cpp runtime's log output to [path].
 ///

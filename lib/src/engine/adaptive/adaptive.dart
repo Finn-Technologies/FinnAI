@@ -4,11 +4,11 @@ import 'dart:io';
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
-import '../backends/llama_shim.dart';
+import 'package:finn_ai/src/engine/backends/llama_shim.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 
-import '../profiler/device_profile.dart';
+import 'package:finn_ai/src/engine/profiler/device_profile.dart';
 
 /// Runtime knobs selected for one device.
 ///

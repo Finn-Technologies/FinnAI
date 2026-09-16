@@ -1,3 +1,3 @@
 library;
 
-export '../engine/policy/residency_policy.dart';
+export 'package:finn_ai/src/engine/policy/residency_policy.dart';

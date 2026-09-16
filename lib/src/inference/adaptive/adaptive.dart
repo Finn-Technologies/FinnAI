@@ -1,3 +1,3 @@
 library;
 
-export '../../engine/adaptive/adaptive.dart';
+export 'package:finn_ai/src/engine/adaptive/adaptive.dart';
