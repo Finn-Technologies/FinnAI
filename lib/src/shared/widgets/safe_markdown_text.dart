@@ -22,6 +22,11 @@ final RegExp _tierMarker = RegExp(
 final RegExp _mdImage = RegExp(r'!\[([^\]]*)\]\(([^)]*)\)');
 final RegExp _mdLink = RegExp(r'\[([^\]]+)\]\(([^)]*)\)');
 final RegExp _htmlTag = RegExp(r'</?[A-Za-z][^>\n]*>');
+
+/// A tag the model started and never closed, such as `</Head` at the end of a
+/// reply. Only letters and digits may follow the `<` so ordinary prose like
+/// "5 < 7 apples" is left alone; a trailing fragment is always meant as markup.
+final RegExp _danglingTag = RegExp(r'</?[A-Za-z][A-Za-z0-9]*$');
 final RegExp _imageLine = RegExp(r'^!\[([^\]]*)\]\((https://[^)]+)\)$');
 final RegExp _quoteLine = RegExp(r'^\s*>\s*(.+)$');
 final RegExp _keyValueLine = RegExp(r'^\s*\*\*([^*\n:]+):\*\*\s+(.+)$');
@@ -59,17 +64,21 @@ class SafeMarkdownText extends StatefulWidget {
         .replaceAll(_thinkingBlock, '')
         .replaceAll(_unterminatedThinking, '')
         .replaceAll(_tierMarker, '');
-    value = value.replaceAllMapped(_mdImage, (match) {
-      final uri = Uri.tryParse(match.group(2) ?? '');
-      return uri?.scheme == 'https' && uri?.host.isNotEmpty == true
-          ? match.group(0)!
-          : (match.group(1) ?? '');
-    }).replaceAllMapped(_mdLink, (match) {
-      final uri = Uri.tryParse(match.group(2) ?? '');
-      return uri?.scheme == 'https' && uri?.host.isNotEmpty == true
-          ? match.group(0)!
-          : match.group(1) ?? '';
-    }).replaceAll(_htmlTag, '');
+    value = value
+        .replaceAllMapped(_mdImage, (match) {
+          final uri = Uri.tryParse(match.group(2) ?? '');
+          return uri?.scheme == 'https' && uri?.host.isNotEmpty == true
+              ? match.group(0)!
+              : (match.group(1) ?? '');
+        })
+        .replaceAllMapped(_mdLink, (match) {
+          final uri = Uri.tryParse(match.group(2) ?? '');
+          return uri?.scheme == 'https' && uri?.host.isNotEmpty == true
+              ? match.group(0)!
+              : match.group(1) ?? '';
+        })
+        .replaceAll(_htmlTag, '')
+        .replaceAll(_danglingTag, '');
     final result = value.trim();
     _sanitizeCacheKey = source;
     _sanitizeCacheValue = result;

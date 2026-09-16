@@ -215,4 +215,22 @@ void main() {
     expect(sanitized, contains('Unsafe'));
     expect(sanitized, isNot(contains('javascript:')));
   });
+
+  test('safe Markdown drops a tag the model never finished', () {
+    // Small models echo prompt markup and then stop mid-tag, which used to
+    // survive as visible "</Head" text under an otherwise clean answer.
+    expect(
+      SafeMarkdownText.sanitize('2026 FIFA World Cup</Head'),
+      '2026 FIFA World Cup',
+    );
+    expect(SafeMarkdownText.sanitize('Titles</h1'), 'Titles');
+    expect(SafeMarkdownText.sanitize('Done</p>'), 'Done');
+  });
+
+  test('safe Markdown leaves ordinary angle brackets alone', () {
+    // Only a tag-shaped trailing fragment is markup; prose comparisons are not.
+    expect(SafeMarkdownText.sanitize('5 < 7 apples'), '5 < 7 apples');
+    expect(SafeMarkdownText.sanitize('a < b and c'), 'a < b and c');
+    expect(SafeMarkdownText.sanitize('Titles</'), 'Titles</');
+  });
 }

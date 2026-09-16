@@ -356,7 +356,7 @@ class SearchAgent {
     final context = StringBuffer('''
 RETRIEVED BROWSER FINDINGS:
 Use these factual findings from your TinyBrowser to craft an authoritative article summary.
-Format your answer starting with a clean title (# <Headline>), an engaging lead paragraph, and crisp bullet points.
+Answer in plain prose: start with a short Markdown title written with a single leading '#', then a lead paragraph, then crisp bullet points. Never emit HTML or XML tags.
 ''');
     for (var index = 0; index < sources.length; index++) {
       final source = sources[index];
