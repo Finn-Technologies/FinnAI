@@ -3,10 +3,10 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:flutter/services.dart';
 
 import 'package:finn_ai/l10n/l10n_helper.dart';
-import 'package:finn_ai/src/features/chat/home_shell.dart' show FinnPageRoute;
+import 'package:finn_ai/src/features/chat/home_shell.dart'
+    show ChatComposer, FinnPageRoute;
 import 'package:finn_ai/src/features/creations/creation_generator.dart';
 import 'package:finn_ai/src/features/creations/creation_model.dart';
 import 'package:finn_ai/src/features/creations/creation_palette.dart';
@@ -1182,7 +1182,7 @@ class _TileGlyph extends StatelessWidget {
   }
 }
 
-class _Composer extends StatefulWidget {
+class _Composer extends StatelessWidget {
   const _Composer({
     required this.controller,
     required this.focusNode,
@@ -1202,137 +1202,21 @@ class _Composer extends StatefulWidget {
   final VoidCallback onChooseKind;
 
   @override
-  State<_Composer> createState() => _ComposerState();
-}
-
-class _ComposerState extends State<_Composer> {
-  late bool _focused;
-
-  @override
-  void initState() {
-    super.initState();
-    _focused = widget.focusNode.hasFocus;
-    widget.controller.addListener(_changed);
-    widget.focusNode.addListener(_changed);
-  }
-
-  void _changed() {
-    if (mounted) setState(() => _focused = widget.focusNode.hasFocus);
-  }
-
-  @override
-  void dispose() {
-    widget.controller.removeListener(_changed);
-    widget.focusNode.removeListener(_changed);
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final canSend = widget.controller.text.trim().isNotEmpty && !widget.busy;
-    return FluxGlass(
-      radius: 999,
-      color: FluxColors.surfaceOf(context),
-      borderColor: FluxColors.inkOf(
-        context,
-      ).withValues(alpha: _focused ? .2 : .07),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 54),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(7, 4, 7, 4),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Semantics(
-                button: true,
-                label: L10n.of(context).creationsChooseKindSemantic,
-                child: SizedBox.square(
-                  dimension: 40,
-                  child: InkWell(
-                    onTap: widget.blocked ? null : widget.onChooseKind,
-                    customBorder: const CircleBorder(),
-                    child: Center(
-                      child: FluxIcon(
-                        icon: FluxIcons.add,
-                        size: 20,
-                        color: widget.blocked
-                            ? FluxColors.mutedOf(context).withValues(alpha: .4)
-                            : FluxColors.mutedOf(context),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 11),
-                  child: TextField(
-                    controller: widget.controller,
-                    focusNode: widget.focusNode,
-                    inputFormatters: [
-                      LengthLimitingTextInputFormatter(4000),
-                    ],
-                    enabled: !widget.blocked,
-                    minLines: 1,
-                    maxLines: 3,
-                    textInputAction: TextInputAction.send,
-                    onSubmitted: (_) => canSend ? widget.onSubmit() : null,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                    decoration: InputDecoration.collapsed(
-                      hintText: L10n.of(context).creationsDescribeHint,
-                      hintStyle: Theme.of(context)
-                          .textTheme
-                          .bodyMedium
-                          ?.copyWith(color: FluxColors.mutedOf(context)),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 4),
-              if (widget.busy)
-                Semantics(
-                  button: true,
-                  label: L10n.of(context).creationsStopSemantic,
-                  child: SizedBox.square(
-                    dimension: 40,
-                    child: InkWell(
-                      onTap: widget.onStop,
-                      customBorder: const CircleBorder(),
-                      child: const Center(
-                        child: FluxIcon(icon: FluxIcons.close, size: 18),
-                      ),
-                    ),
-                  ),
-                )
-              else
-                Semantics(
-                  button: true,
-                  enabled: canSend,
-                  label: L10n.of(context).creationsCreateSemantic,
-                  child: SizedBox.square(
-                    dimension: 40,
-                    child: InkWell(
-                      onTap: canSend ? widget.onSubmit : null,
-                      customBorder: const CircleBorder(),
-                      child: Center(
-                        child: FigmaSvg(
-                          asset: canSend
-                              ? FigmaAssets.activeSend
-                              : FigmaAssets.send,
-                          width: 34,
-                          height: 34,
-                          invertForDark: FluxColors.isDark(context),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => ChatComposer(
+        controller: controller,
+        focusNode: focusNode,
+        blocked: blocked,
+        busy: busy,
+        onSend: onSubmit,
+        onStop: onStop,
+        hintText: L10n.of(context).creationsDescribeHint,
+        // Creations has no attachments, voice or browse mode: leaving those
+        // callbacks null keeps the pill identical to the chat one without the
+        // controls that would do nothing here.
+        onPickAttachment: onChooseKind,
+        pickAttachmentSemanticLabel:
+            L10n.of(context).creationsChooseKindSemantic,
+      );
 }
 
 class _KindPicker extends StatelessWidget {

@@ -3105,11 +3105,21 @@ class ChatComposer extends StatefulWidget {
     this.onMic,
     this.browseEnabled = false,
     this.onToggleBrowse,
+    this.hintText,
+    this.pickAttachmentSemanticLabel,
   });
   final TextEditingController controller;
   final FocusNode focusNode;
   final bool blocked;
   final VoidCallback onSend;
+
+  /// Placeholder for the field. Defaults to the chat prompt so conversations
+  /// keep their own wording while other entry points reuse the same pill.
+  final String? hintText;
+
+  /// Accessibility label for the leading button, which means "attach" in a
+  /// conversation but "pick a kind" where the pill only opens a chooser.
+  final String? pickAttachmentSemanticLabel;
 
   /// True only while a real turn is being prepared. [blocked] is also true
   /// during cold-start store initialization, but the field must not claim
@@ -3270,7 +3280,8 @@ class _ChatComposerState extends State<ChatComposer> {
               children: [
                 Semantics(
                   button: true,
-                  label: L10n.of(context).chatAddAttachmentSemantic,
+                  label: widget.pickAttachmentSemanticLabel ??
+                      L10n.of(context).chatAddAttachmentSemantic,
                   child: SizedBox.square(
                     dimension: 34,
                     child: InkWell(
@@ -3322,9 +3333,10 @@ class _ChatComposerState extends State<ChatComposer> {
                           ),
                       cursorColor: FluxColors.inkOf(context),
                       decoration: InputDecoration.collapsed(
-                        hintText: widget.preparing
-                            ? L10n.of(context).chatFinnTyping
-                            : L10n.of(context).chatAskAnythingHint,
+                        hintText: widget.hintText ??
+                            (widget.preparing
+                                ? L10n.of(context).chatFinnTyping
+                                : L10n.of(context).chatAskAnythingHint),
                         hintStyle: Theme.of(context)
                             .textTheme
                             .bodyMedium

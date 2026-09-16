@@ -178,7 +178,9 @@ void main() {
   Future<void> send(WidgetTester tester, String brief) async {
     await tester.enterText(find.byType(TextField), brief);
     await tester.pump();
-    await tester.tap(find.bySemanticsLabel('Create'));
+    // The composer is the shared chat one, so its action carries the shared
+    // label rather than a Creations-specific one.
+    await tester.tap(find.bySemanticsLabel('Send message'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 60));
   }
@@ -268,7 +270,7 @@ void main() {
       await tester.pump();
 
       expect(find.text('Designing…'), findsOneWidget);
-      expect(find.bySemanticsLabel('Stop creating'), findsOneWidget);
+      expect(find.bySemanticsLabel('Stop generating'), findsOneWidget);
       expect(find.text('Open'), findsNothing);
 
       generator.gate!.complete();

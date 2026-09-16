@@ -370,7 +370,10 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 100));
 
-    expect(find.bySemanticsLabel('Create'), findsOneWidget);
+    // Creations reuses the chat composer verbatim, so the action carries the
+    // same label and behaviour as the one on the home screen.
+    expect(find.bySemanticsLabel('Send message'), findsOneWidget);
+    expect(find.byType(ChatComposer), findsOneWidget);
     await tester.enterText(
       find.byType(TextField).last,
       'A focused water tracker',
@@ -379,7 +382,7 @@ void main() {
     final field = tester.widget<TextField>(find.byType(TextField).last);
     expect(field.textInputAction, TextInputAction.send);
     expect(field.onSubmitted, isNotNull);
-    expect(find.bySemanticsLabel('Create'), findsOneWidget);
+    expect(find.bySemanticsLabel('Send message'), findsOneWidget);
   });
 
   testWidgets('system back closes the sidebar instead of leaving home', (
