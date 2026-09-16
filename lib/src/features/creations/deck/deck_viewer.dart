@@ -35,13 +35,11 @@ class DeckViewer extends StatefulWidget {
 
 class _DeckViewerState extends State<DeckViewer> {
   final _pageController = PageController();
-  final _scrollOffset = ValueNotifier<double>(0);
   int _index = 0;
 
   @override
   void dispose() {
     _pageController.dispose();
-    _scrollOffset.dispose();
     super.dispose();
   }
 
@@ -142,7 +140,7 @@ class _DeckViewerState extends State<DeckViewer> {
                     title: widget.title,
                     onBack: widget.onBack,
                     metrics: metrics,
-                    scrollOffset: _scrollOffset,
+                    scrollOffset: const RestingHeaderOffset(),
                   ),
                 ),
               ],

@@ -47,6 +47,24 @@ class FinnPageHeaderMetrics {
   final double contentTop;
 }
 
+/// A [ValueListenable] that always reports zero.
+///
+/// For headers over content that has no vertical scroll of its own — a paged
+/// deck, for example. Using this instead of a per-page notifier keeps the
+/// header honest: there is nothing to listen to, so nothing claims to be.
+class RestingHeaderOffset implements ValueListenable<double> {
+  const RestingHeaderOffset();
+
+  @override
+  double get value => 0;
+
+  @override
+  void addListener(VoidCallback listener) {}
+
+  @override
+  void removeListener(VoidCallback listener) {}
+}
+
 /// Settings-aligned back control and collapsing page title.
 ///
 /// Place this in a full-size [Stack]. Native views and scrolling content stay
