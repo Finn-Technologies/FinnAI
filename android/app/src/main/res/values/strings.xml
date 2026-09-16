@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Shown in the launcher's widget picker. -->
+    <string name="finn_widget_label">Finn AI</string>
+    <string name="finn_widget_description">A small FinnAI creation on your home screen.</string>
+</resources>

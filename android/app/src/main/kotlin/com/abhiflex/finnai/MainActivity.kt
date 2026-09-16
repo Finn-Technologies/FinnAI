@@ -13,6 +13,39 @@ import io.flutter.embedding.engine.FlutterShellArgs
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
+    private var pendingProcessText: String? = null
+
+    override fun onCreate(savedInstanceState: android.os.Bundle?) {
+        super.onCreate(savedInstanceState)
+        extractProcessText(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        val text = extractProcessText(intent)
+        if (!text.isNullOrBlank()) {
+            flutterEngine?.let { engine ->
+                try {
+                    MethodChannel(engine.dartExecutor.binaryMessenger, "finn_ai/process_text")
+                        .invokeMethod("onProcessText", mapOf("text" to text))
+                } catch (_: Exception) {
+                }
+            }
+        }
+    }
+
+    private fun extractProcessText(intent: Intent?): String? {
+        if (intent?.action == Intent.ACTION_PROCESS_TEXT) {
+            val text = intent.getCharSequenceExtra(Intent.EXTRA_PROCESS_TEXT)?.toString()
+            if (!text.isNullOrBlank()) {
+                pendingProcessText = text
+                return text
+            }
+        }
+        return null
+    }
+
     @Suppress("DEPRECATION")
     override fun getFlutterShellArgs(): FlutterShellArgs {
         val args = super.getFlutterShellArgs()
@@ -192,5 +225,21 @@ class MainActivity : FlutterActivity() {
             }
         }
 
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            "finn_ai/process_text",
+        ).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "getPendingText" -> {
+                    val text = pendingProcessText
+                    pendingProcessText = null
+                    result.success(text)
+                }
+                else -> result.notImplemented()
+            }
+        }
+
+        // Creations: launcher widget pinning and file sharing.
+        FinnHomeScreenBridge.register(flutterEngine, this)
     }
 }

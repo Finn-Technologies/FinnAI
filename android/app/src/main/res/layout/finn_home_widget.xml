@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Widget layout. Rows are declared up front rather than added dynamically: the
+  spec allows at most four, and unused rows are simply hidden, which avoids
+  nested RemoteViews entirely.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/finn_widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/finn_widget_background"
+    android:padding="14dp">
+
+    <View
+        android:id="@+id/finn_widget_accent"
+        android:layout_width="28dp"
+        android:layout_height="4dp"
+        android:layout_marginBottom="10dp"
+        android:background="#7DFFCD" />
+
+    <TextView
+        android:id="@+id/finn_widget_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:textSize="15sp"
+        android:textStyle="bold"
+        android:textColor="#121212"
+        android:text="@string/finn_widget_label" />
+
+    <LinearLayout
+        android:id="@+id/finn_widget_row_1"
+        style="@style/FinnWidgetRow">
+
+        <TextView
+            android:id="@+id/finn_widget_label_1"
+            style="@style/FinnWidgetRowLabel" />
+
+        <TextView
+            android:id="@+id/finn_widget_value_1"
+            style="@style/FinnWidgetRowValue" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/finn_widget_row_2"
+        style="@style/FinnWidgetRow">
+
+        <TextView
+            android:id="@+id/finn_widget_label_2"
+            style="@style/FinnWidgetRowLabel" />
+
+        <TextView
+            android:id="@+id/finn_widget_value_2"
+            style="@style/FinnWidgetRowValue" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/finn_widget_row_3"
+        style="@style/FinnWidgetRow">
+
+        <TextView
+            android:id="@+id/finn_widget_label_3"
+            style="@style/FinnWidgetRowLabel" />
+
+        <TextView
+            android:id="@+id/finn_widget_value_3"
+            style="@style/FinnWidgetRowValue" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/finn_widget_row_4"
+        style="@style/FinnWidgetRow">
+
+        <TextView
+            android:id="@+id/finn_widget_label_4"
+            style="@style/FinnWidgetRowLabel" />
+
+        <TextView
+            android:id="@+id/finn_widget_value_4"
+            style="@style/FinnWidgetRowValue" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/finn_widget_footer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:textSize="11sp"
+        android:textColor="#4A4A48"
+        android:text="@string/finn_widget_label" />
+</LinearLayout>

@@ -34,10 +34,44 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <activity-alias
+            android:name=".AskFinnActivity"
+            android:targetActivity=".MainActivity"
+            android:label="Ask Finn AI"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.PROCESS_TEXT" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity-alias>
         <service
             android:name=".ModelDownloadService"
             android:foregroundServiceType="dataSync"
             android:exported="false" />
+        <!-- Creations on the home screen. The provider is instantiated by the
+             launcher, so it must render with the Flutter engine stopped. -->
+        <receiver
+            android:name=".FinnHomeWidgetProvider"
+            android:exported="false"
+            android:label="@string/finn_widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/finn_home_widget_info" />
+        </receiver>
+        <!-- Grants read access to exported creations when they are shared. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

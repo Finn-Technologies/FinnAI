@@ -22,6 +22,7 @@
 # pinning here.
 -keep class com.abhiflex.finnai.MainActivity { <init>(); }
 -keep class com.abhiflex.finnai.ModelDownloadService { <init>(); }
+-keep class com.abhiflex.finnai.FinnHomeWidgetProvider { <init>(); }
 
 # JNI & Native methods
 -keepclasseswithmembernames,includedescriptorclasses class * {

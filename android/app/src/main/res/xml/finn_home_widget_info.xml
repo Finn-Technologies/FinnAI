@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  FinAI launcher widget. Sized for a four-by-two cell so the title, up to four
+  rows and the footer all fit without the launcher clipping them.
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="250dp"
+    android:minHeight="110dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="2"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen"
+    android:updatePeriodMillis="0"
+    android:initialLayout="@layout/finn_home_widget"
+    android:previewLayout="@layout/finn_home_widget"
+    android:description="@string/finn_widget_description" />

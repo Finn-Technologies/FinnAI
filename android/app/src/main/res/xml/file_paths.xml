@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Paths the app is allowed to hand to the system share sheet. Restricted to the
+  internal files directory, which is where exported creations are written; the
+  creations subtree is exposed so a generated .pptx can be sent to another app.
+-->
+<paths>
+    <files-path
+        name="creations"
+        path="creations/" />
+</paths>
