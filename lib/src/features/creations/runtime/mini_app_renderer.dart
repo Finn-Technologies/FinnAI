@@ -1,0 +1,346 @@
+import 'package:flutter/material.dart';
+
+import 'package:finn_ai/src/features/creations/creation_palette.dart';
+import 'package:finn_ai/src/features/creations/runtime/mini_app_state.dart';
+import 'package:finn_ai/src/features/creations/spec/mini_app_spec.dart';
+import 'package:finn_ai/src/features/creations/spec/safe_expression.dart';
+import 'package:finn_ai/src/shared/theme/flux_theme.dart';
+import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
+
+/// Renders a validated [MiniAppSpec] as real Flutter widgets.
+///
+/// Styling is not taken from the spec at all: colours, radii and text styles
+/// come from the app theme plus the one accent the spec may choose. That is why
+/// generated creations look like they belong to Finn, and why there is no path
+/// by which a spec could inject arbitrary styling.
+class MiniAppRenderer extends StatefulWidget {
+  const MiniAppRenderer({super.key, required this.state});
+
+  final MiniAppState state;
+
+  @override
+  State<MiniAppRenderer> createState() => _MiniAppRendererState();
+}
+
+class _MiniAppRendererState extends State<MiniAppRenderer> {
+  final Map<String, TextEditingController> _controllers = {};
+  int _lastRevision = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _lastRevision = widget.state.revision;
+    widget.state.addListener(_onStateChanged);
+  }
+
+  @override
+  void didUpdateWidget(MiniAppRenderer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.state, widget.state)) {
+      oldWidget.state.removeListener(_onStateChanged);
+      widget.state.addListener(_onStateChanged);
+      _lastRevision = widget.state.revision;
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.state.removeListener(_onStateChanged);
+    for (final controller in _controllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  void _onStateChanged() {
+    if (!mounted) return;
+    final revision = widget.state.revision;
+    if (revision != _lastRevision) {
+      _lastRevision = revision;
+      // A reset rewrote the values underneath the inputs; push them back into
+      // the controllers so the screen reflects the cleared state.
+      for (final entry in _controllers.entries) {
+        final text = SafeExpression.describeValue(
+          widget.state.valueOf(entry.key),
+        );
+        if (entry.value.text != text) entry.value.text = text;
+      }
+    }
+    setState(() {});
+  }
+
+  TextEditingController _controllerFor(String key) => _controllers.putIfAbsent(
+        key,
+        () => TextEditingController(
+          text: SafeExpression.describeValue(widget.state.valueOf(key)),
+        ),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final spec = widget.state.spec;
+    final children = <Widget>[];
+    for (final node in spec.nodes) {
+      children.add(_buildNode(context, node));
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: children,
+    );
+  }
+
+  Widget _buildNode(BuildContext context, MiniAppNode node) {
+    final child = switch (node) {
+      TextNode() => _text(context, node),
+      ButtonNode() => _button(context, node),
+      FieldNode() => _field(context, node),
+      ToggleNode() => _toggle(context, node),
+      SliderNode() => _slider(context, node),
+      ListNode() => _list(context, node),
+      ProgressNode() => _progress(context, node),
+      ChoiceNode() => _choice(context, node),
+      ImageNode() => _image(context, node),
+      ContainerNode() => _container(context, node),
+      SpacerNode() => SizedBox(height: node.size.toDouble()),
+    };
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: child,
+    );
+  }
+
+  Widget _text(BuildContext context, TextNode node) {
+    final text = SafeExpression.interpolate(node.value, widget.state.values);
+    final theme = Theme.of(context).textTheme;
+    final style = switch (node.role) {
+      MiniAppTextRole.title => theme.headlineMedium,
+      MiniAppTextRole.body => theme.bodyLarge,
+      MiniAppTextRole.caption => theme.labelMedium?.copyWith(
+          color: FluxColors.mutedOf(context),
+        ),
+    };
+    return Text(text, style: style);
+  }
+
+  Widget _button(BuildContext context, ButtonNode node) => Align(
+        alignment: Alignment.centerLeft,
+        child: FluxPillButton(
+          label: node.label,
+          onTap: () => widget.state.dispatch(node.action),
+        ),
+      );
+
+  Widget _field(BuildContext context, FieldNode node) => TextField(
+        controller: _controllerFor(node.key),
+        maxLines: 1,
+        textInputAction: TextInputAction.done,
+        onChanged: (text) => widget.state.setValue(node.key, text),
+        style: Theme.of(context).textTheme.bodyLarge,
+        decoration: InputDecoration(
+          hintText: node.hint.isEmpty ? null : node.hint,
+          hintStyle: Theme.of(context)
+              .textTheme
+              .bodyLarge
+              ?.copyWith(color: FluxColors.mutedOf(context)),
+          filled: true,
+          fillColor: FluxColors.surfaceOf(context),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 15,
+            vertical: 13,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(FluxRadius.sm),
+            borderSide: BorderSide.none,
+          ),
+        ),
+      );
+
+  Widget _toggle(BuildContext context, ToggleNode node) {
+    final value = widget.state.valueOf(node.key) == true;
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            node.label,
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
+        ),
+        Switch.adaptive(
+          value: value,
+          onChanged: (next) => widget.state.setValue(node.key, next),
+        ),
+      ],
+    );
+  }
+
+  Widget _slider(BuildContext context, SliderNode node) {
+    final current = _asNumber(widget.state.valueOf(node.key))
+        .clamp(node.min.toDouble(), node.max.toDouble());
+    return Row(
+      children: [
+        Expanded(
+          child: Slider(
+            value: current,
+            min: node.min.toDouble(),
+            max: node.max.toDouble(),
+            divisions: (node.max - node.min).clamp(1, 100),
+            label: current.round().toString(),
+            onChanged: (next) => widget.state.setValue(node.key, next.round()),
+          ),
+        ),
+        SizedBox(
+          width: 34,
+          child: Text(
+            current.round().toString(),
+            textAlign: TextAlign.end,
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Display cap for a bound list, so a runaway append loop cannot build an
+  /// unbounded widget tree.
+  static const int _maxListItems = 50;
+
+  Widget _list(BuildContext context, ListNode node) {
+    final raw = widget.state.valueOf(node.bind);
+    final items = raw is List ? raw : const <Object?>[];
+    if (items.isEmpty) {
+      final empty = node.empty.trim();
+      if (empty.isEmpty) return const SizedBox.shrink();
+      return Text(
+        empty,
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: FluxColors.mutedOf(context),
+            ),
+      );
+    }
+    final shown = items.take(_maxListItems).toList(growable: false);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (final item in shown)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+              decoration: BoxDecoration(
+                color: FluxColors.cardOf(context),
+                borderRadius: BorderRadius.circular(FluxRadius.sm),
+              ),
+              child: Text(
+                SafeExpression.describeValue(item),
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _progress(BuildContext context, ProgressNode node) {
+    final value = _asNumber(widget.state.valueOf(node.bind));
+    final fraction = node.max <= 0 ? 0.0 : (value / node.max).clamp(0.0, 1.0);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(FluxRadius.pill),
+      child: LinearProgressIndicator(
+        value: fraction,
+        minHeight: 9,
+        backgroundColor: FluxColors.surfaceOf(context),
+        valueColor: AlwaysStoppedAnimation<Color>(
+          CreationPalette.pastel(widget.state.spec.accent),
+        ),
+      ),
+    );
+  }
+
+  Widget _choice(BuildContext context, ChoiceNode node) {
+    final selected = widget.state.valueOf(node.key);
+    return Wrap(
+      spacing: 7,
+      runSpacing: 7,
+      children: [
+        for (final option in node.options)
+          Material(
+            color: option == selected
+                ? FluxColors.inkOf(context)
+                : FluxColors.surfaceOf(context),
+            borderRadius: BorderRadius.circular(FluxRadius.pill),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(FluxRadius.pill),
+              onTap: () => widget.state.setValue(node.key, option),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
+                child: Text(
+                  option,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        color: option == selected
+                            ? FluxColors.canvasOf(context)
+                            : FluxColors.inkOf(context),
+                      ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _image(BuildContext context, ImageNode node) {
+    if (node.url.isNotEmpty) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(FluxRadius.md),
+        child: Image.network(
+          node.url,
+          height: 160,
+          fit: BoxFit.cover,
+          errorBuilder: (context, _, __) => Container(
+            height: 120,
+            color: FluxColors.surfaceOf(context),
+            child: const Center(
+              child: FluxIcon(icon: FluxIcons.brokenImage, size: 26),
+            ),
+          ),
+        ),
+      );
+    }
+    if (node.emoji.isNotEmpty) {
+      return Text(node.emoji, style: const TextStyle(fontSize: 42));
+    }
+    return const SizedBox.shrink();
+  }
+
+  Widget _container(BuildContext context, ContainerNode node) {
+    final children = [
+      for (final child in node.children) _buildNode(context, child),
+    ];
+    if (node.axis == MiniAppAxis.horizontal) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          for (final child in children) Flexible(child: child),
+        ],
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: children,
+    );
+  }
+}
+
+double _asNumber(Object? value) => switch (value) {
+      final int number => number.toDouble(),
+      final double number => number,
+      final bool flag => flag ? 1 : 0,
+      final String text => double.tryParse(text.trim()) ?? 0,
+      _ => 0,
+    };
