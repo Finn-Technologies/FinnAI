@@ -445,17 +445,22 @@ class _CreationsPageState extends State<CreationsPage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                L10n.of(context).creationsSubtitle,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodyMedium
-                                    ?.copyWith(
-                                      color: FluxColors.mutedOf(context),
-                                      height: 1.35,
-                                    ),
-                              ),
-                              const SizedBox(height: 18),
+                              // The gallery leads with its filters, matching
+                              // the reference's tighter hierarchy; the sentence
+                              // only appears where it has something to explain.
+                              if (_mode == _Mode.builder) ...[
+                                Text(
+                                  L10n.of(context).creationsSubtitle,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodyMedium
+                                      ?.copyWith(
+                                        color: FluxColors.mutedOf(context),
+                                        height: 1.35,
+                                      ),
+                                ),
+                                const SizedBox(height: 18),
+                              ],
                               if (_mode == _Mode.gallery)
                                 _Filters(
                                   selected: _controller.filter,
@@ -491,7 +496,20 @@ class _CreationsPageState extends State<CreationsPage> {
                           ),
                         ),
                         const SizedBox(height: 14),
-                        Expanded(child: _content()),
+                        // The header collapses against the same scroll the
+                        // content uses, whichever mode is showing.
+                        Expanded(
+                          child: NotificationListener<ScrollNotification>(
+                            onNotification: (notification) {
+                              if (notification.metrics.axis == Axis.vertical) {
+                                _headerOffset.value =
+                                    notification.metrics.pixels;
+                              }
+                              return false;
+                            },
+                            child: _content(),
+                          ),
+                        ),
                         AnimatedPadding(
                           duration: const Duration(milliseconds: 180),
                           curve: Curves.easeOutCubic,
@@ -740,11 +758,14 @@ class _KindQuestion extends StatelessWidget {
         const SizedBox(height: 12),
         for (final kind in CreationKind.values)
           Padding(
-            padding: const EdgeInsets.only(bottom: 8),
+            // No trailing gap: the bubble's own padding closes the stack, so
+            // the last answer sits flush with the others.
+            padding: EdgeInsets.only(
+              bottom: kind == CreationKind.values.last ? 0 : 8,
+            ),
             child: _KindAnswer(
               kind: kind,
               selected: answered == kind,
-              showCheck: answered != null,
               onTap: () => onChooseKind(kind),
             ),
           ),
@@ -757,13 +778,11 @@ class _KindAnswer extends StatelessWidget {
   const _KindAnswer({
     required this.kind,
     required this.selected,
-    required this.showCheck,
     required this.onTap,
   });
 
   final CreationKind kind;
   final bool selected;
-  final bool showCheck;
   final VoidCallback onTap;
 
   @override
@@ -773,12 +792,12 @@ class _KindAnswer extends StatelessWidget {
         label: _kindLabel(context, kind),
         child: Material(
           color: FluxColors.surfaceOf(context),
-          borderRadius: BorderRadius.circular(FluxRadius.pill),
+          borderRadius: BorderRadius.circular(FluxRadius.sm),
           child: InkWell(
             onTap: onTap,
-            borderRadius: BorderRadius.circular(FluxRadius.pill),
+            borderRadius: BorderRadius.circular(FluxRadius.sm),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               child: Row(
                 children: [
                   Expanded(
@@ -788,13 +807,13 @@ class _KindAnswer extends StatelessWidget {
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ),
-                  if (showCheck)
+                  // Only the chosen answer carries a mark: an arrow on every
+                  // option would promise a navigation each one does not do.
+                  if (selected)
                     FluxIcon(
-                      icon: selected ? FluxIcons.check : FluxIcons.arrowRight01,
+                      icon: FluxIcons.check,
                       size: 16,
-                      color: selected
-                          ? FluxColors.inkOf(context)
-                          : FluxColors.mutedOf(context),
+                      color: FluxColors.inkOf(context),
                     ),
                 ],
               ),
@@ -1016,9 +1035,10 @@ class _Gallery extends StatelessWidget {
   final String Function(FinnCreation) badgeLabel;
   final VoidCallback onNew;
 
-  static const double _gap = 16;
-  static const double _stagger = 28;
-  static const EdgeInsets _padding = EdgeInsets.fromLTRB(20, 2, 20, 14);
+  /// Space between the two tile columns. Wide enough that the circles read as
+  /// separate objects rather than a solid block, as in the reference grid.
+  static const double _gap = 40;
+  static const EdgeInsets _padding = EdgeInsets.fromLTRB(20, 6, 20, 14);
 
   @override
   Widget build(BuildContext context) {
@@ -1026,13 +1046,14 @@ class _Gallery extends StatelessWidget {
       builder: (context, constraints) {
         final tileSize =
             (constraints.maxWidth - _padding.horizontal - _gap) / 2;
+        // The right column rides lower so the grid staggers like the design.
+        final stagger = tileSize * 0.42;
         final left = <FinnCreation>[];
         final right = <FinnCreation>[];
         for (var index = 0; index < creations.length; index++) {
           (index.isEven ? left : right).add(creations[index]);
         }
-        Widget column(List<FinnCreation> items, {required double top}) =>
-            Column(
+        Widget column(List<FinnCreation> items) => Column(
               children: [
                 for (final creation in items)
                   Padding(
@@ -1056,12 +1077,12 @@ class _Gallery extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(child: column(left, top: 0)),
+                  Expanded(child: column(left)),
                   const SizedBox(width: _gap),
                   Expanded(
                     child: Padding(
-                      padding: const EdgeInsets.only(top: _stagger),
-                      child: column(right, top: _stagger),
+                      padding: EdgeInsets.only(top: stagger),
+                      child: column(right),
                     ),
                   ),
                 ],
@@ -1466,7 +1487,7 @@ class _DocumentSheet extends StatelessWidget {
                   child: Text(
                     L10n.of(context).commonDelete,
                     style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                          color: const Color(0xFFD34B4B),
+                          color: FluxColors.destructiveOf(context),
                         ),
                   ),
                 ),
@@ -1555,15 +1576,15 @@ class _Filters extends StatelessWidget {
   Widget build(BuildContext context) {
     final values = <CreationKind?>[null, ...CreationKind.values];
     return SizedBox(
-      height: 48,
+      height: 36,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: values.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 7),
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
           final value = values[index];
           final active = selected == value;
-          final radius = BorderRadius.circular(99);
+          final radius = BorderRadius.circular(FluxRadius.pill);
           return Semantics(
             button: true,
             selected: active,
@@ -1581,7 +1602,7 @@ class _Filters extends StatelessWidget {
                 onTap: () => onSelected(value),
                 borderRadius: radius,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  padding: const EdgeInsets.symmetric(horizontal: 15),
                   child: Center(
                     child: Text(
                       value == null
@@ -1591,6 +1612,8 @@ class _Filters extends StatelessWidget {
                             color: active
                                 ? FluxColors.canvasOf(context)
                                 : FluxColors.inkOf(context),
+                            fontWeight:
+                                active ? FontWeight.w500 : FontWeight.w400,
                           ),
                     ),
                   ),
@@ -1661,15 +1684,15 @@ class _ErrorNotice extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.fromLTRB(14, 11, 8, 11),
         decoration: BoxDecoration(
-          color: const Color(0xFFD34B4B).withValues(alpha: .09),
+          color: FluxColors.destructiveOf(context).withValues(alpha: .09),
           borderRadius: BorderRadius.circular(FluxRadius.sm),
         ),
         child: Row(
           children: [
-            const FluxIcon(
+            FluxIcon(
               icon: FluxIcons.sad,
               size: 18,
-              color: Color(0xFFD34B4B),
+              color: FluxColors.destructiveOf(context),
             ),
             const SizedBox(width: 10),
             Expanded(

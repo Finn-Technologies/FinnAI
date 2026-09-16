@@ -396,5 +396,33 @@ void main() {
       expect(find.text('Flappy Bird'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
+
+    testWidgets('tiles stagger into two columns with a clear gutter', (
+      tester,
+    ) async {
+      await store.save([
+        _creation(id: 'a', title: 'Flappy Bird', artifact: _appArtifact),
+        _creation(
+          id: 'b',
+          title: 'BT Audio Receiver',
+          artifact: _widgetArtifact,
+          day: 2,
+        ),
+      ]);
+      await pumpPage(tester, generator: FakeGenerator(artifact: _appArtifact));
+
+      final labels = [
+        tester.getCenter(find.text('Flappy Bird')),
+        tester.getCenter(find.text('BT Audio Receiver')),
+      ]..sort((a, b) => a.dx.compareTo(b.dx));
+      final left = labels.first;
+      final right = labels.last;
+
+      // Side by side, in separate columns rather than stacked.
+      expect(right.dx, greaterThan(left.dx + 40));
+      // The right column rides lower, as in the reference grid.
+      expect(right.dy, greaterThan(left.dy + 20));
+      expect(tester.takeException(), isNull);
+    });
   });
 }

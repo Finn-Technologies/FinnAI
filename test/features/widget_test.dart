@@ -441,10 +441,9 @@ void main() {
     await tester.pump(const Duration(milliseconds: 450));
     await tester.pump();
     expect(find.byType(CreationsPage), findsOneWidget);
-    expect(
-      find.text('Describe what you want. Finn builds it on device.'),
-      findsOneWidget,
-    );
+    // The gallery leads with its filters rather than a sentence, so assert on
+    // the page's own chrome instead of prose that depends on the store state.
+    expect(find.text('Creations'), findsWidgets);
     expect(tester.takeException(), isNull);
     await returnHome();
 
