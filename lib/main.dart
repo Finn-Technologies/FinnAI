@@ -6,14 +6,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 
-import 'src/flux_app.dart';
-import 'src/inference/device_profile.dart';
-import 'src/inference/finn_inference.dart';
-import 'src/inference/evaluation.dart';
-import 'src/inference/prompt_intent.dart';
-import 'src/inference/ttft_metrics.dart';
-import 'src/legal/licenses.dart';
-import 'src/openharmony/openharmony_path_provider.dart';
+import 'package:finn_ai/src/app/bootstrap.dart';
+import 'package:finn_ai/src/inference/device_profile.dart';
+import 'package:finn_ai/src/inference/finn_inference.dart';
+import 'package:finn_ai/src/engine/eval/evaluation.dart';
+import 'package:finn_ai/src/inference/prompt_intent.dart';
+import 'package:finn_ai/src/inference/ttft_metrics.dart';
+import 'package:finn_ai/src/shared/config/licenses.dart';
+import 'package:finn_ai/src/platform/openharmony_path_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
