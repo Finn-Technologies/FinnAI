@@ -233,6 +233,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chatFinishingTask => 'Finn AI is finishing another local task.';
 
   @override
+  String get chatAttachmentPickFailed =>
+      'Couldn\'t open the picker. Please try again.';
+
+  @override
   String get chatCouldNotPrepare =>
       'Could not prepare chat. Check the model and storage, then try again.';
 
@@ -540,11 +544,46 @@ class AppLocalizationsEn extends AppLocalizations {
   String get skillsInstructionLabel => 'Instruction';
 
   @override
+  String get chatBrowseTooltip => 'Browse the web for this message';
+
+  @override
+  String get chatBrowseOnSemantic => 'Web browsing on';
+
+  @override
+  String get chatBrowseOffSemantic => 'Web browsing off';
+
+  @override
+  String get chatBrowsingTitle => 'Browsing the web';
+
+  @override
+  String get chatBrowsingHide => 'Hide';
+
+  @override
+  String chatBrowsingSteps(int count) {
+    return '$count steps';
+  }
+
+  @override
+  String chatBrowsingSearch(String query) {
+    return 'Searched the web for “$query”';
+  }
+
+  @override
+  String chatBrowsingOpen(String title) {
+    return 'Read “$title”';
+  }
+
+  @override
+  String chatBrowsingFind(String query) {
+    return 'Looked for “$query” on the page';
+  }
+
+  @override
   String get creationsTitle => 'Creations';
 
   @override
   String get creationsSubtitle =>
-      'Turn an idea into a structured plan, entirely on device.';
+      'Describe what you want. Finn builds it on device.';
 
   @override
   String get creationsWhatAreWeMaking => 'What are we making?';
@@ -556,7 +595,147 @@ class AppLocalizationsEn extends AppLocalizations {
   String get creationsFinnAdapts => 'Finn adapts the structure to the format.';
 
   @override
-  String get creationsComposerHint => 'Describe what you want to make…';
+  String get creationsAskKind =>
+      'Is your new Creation an app, a widget or a presentation?';
+
+  @override
+  String creationsDescribeKind(String kind) {
+    return 'Tell me what your $kind should do.';
+  }
+
+  @override
+  String get creationsStageDesigning => 'Designing…';
+
+  @override
+  String get creationsStageWriting => 'Writing…';
+
+  @override
+  String get creationsStageValidating => 'Checking the result…';
+
+  @override
+  String get creationsStageRepairing => 'Fixing a detail…';
+
+  @override
+  String get creationsFallbackNote =>
+      'Finn couldn\'t finish that design, so here is a working starter you can build on.';
+
+  @override
+  String get creationsNewCreation => 'New creation';
+
+  @override
+  String get creationsStopSemantic => 'Stop creating';
+
+  @override
+  String get creationsChooseKindSemantic => 'Choose what to create';
+
+  @override
+  String get creationsFailed =>
+      'Finn could not finish that creation. Please try again.';
+
+  @override
+  String get creationsHomeScreenUnsupported =>
+      'Home screen widgets aren\'t available on this device.';
+
+  @override
+  String get creationsHomeScreenAdded => 'Added to your home screen.';
+
+  @override
+  String get creationsHomeScreenFailed =>
+      'That couldn\'t be added to your home screen.';
+
+  @override
+  String creationsExportedTo(String fileName) {
+    return 'Saved $fileName';
+  }
+
+  @override
+  String get creationsExportDeck => 'Export as PowerPoint';
+
+  @override
+  String get creationsAddToHomeScreen => 'Add to home screen';
+
+  @override
+  String get creationsWidgetPreview =>
+      'This is how it will look on your home screen.';
+
+  @override
+  String get creationsKindApp => 'App';
+
+  @override
+  String get creationsKindWidget => 'Widget';
+
+  @override
+  String get creationsKindPresentation => 'Presentation';
+
+  @override
+  String get creationsFilterApps => 'Apps';
+
+  @override
+  String get creationsFilterWidgets => 'Widgets';
+
+  @override
+  String get creationsFilterPresentations => 'Presentations';
+
+  @override
+  String get skillsSaveFailed => 'That skill could not be saved.';
+
+  @override
+  String get skillsBuiltForFinn => 'Built for Finn';
+
+  @override
+  String get skillsBuiltForFinnSubtitle =>
+      'Enable only what you need for each kind of work.';
+
+  @override
+  String get skillsYourSkills => 'Your skills';
+
+  @override
+  String get skillsYourSkillsSubtitle =>
+      'Create reusable instructions for your own workflows.';
+
+  @override
+  String get skillsNoneActive => 'No skills active';
+
+  @override
+  String skillsActiveCount(int count) {
+    return '$count active';
+  }
+
+  @override
+  String get creationsExportedShared => 'Presentation ready to share.';
+
+  @override
+  String get creationsExportFailed =>
+      'That presentation couldn\'t be exported.';
+
+  @override
+  String get creationsResetApp => 'Reset';
+
+  @override
+  String get creationsPreviousSlide => 'Previous slide';
+
+  @override
+  String get creationsNextSlide => 'Next slide';
+
+  @override
+  String creationsSlideOf(int index, int count) {
+    return 'Slide $index of $count';
+  }
+
+  @override
+  String creationsElementCount(int count) {
+    return '$count elements';
+  }
+
+  @override
+  String creationsRowCount(int count) {
+    return '$count rows';
+  }
+
+  @override
+  String creationsSlideCount(int count) {
+    return '$count slides';
+  }
 
   @override
   String get creationsStopTitle => 'Stop this creation?';
@@ -578,18 +757,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get creationsGenerating => 'Generating…';
-
-  @override
-  String get creationsDiscarded => 'Creation discarded';
-
-  @override
-  String get creationsKindStory => 'Story';
-
-  @override
-  String get creationsKindPlan => 'Plan';
-
-  @override
-  String get creationsKindEmail => 'Email';
 
   @override
   String get reportTitle => 'Report AI Response';
@@ -807,47 +974,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Describe an app, widget or presentation below. Finn will shape it into a practical plan.';
 
   @override
-  String get creationsDescribeHint => 'Describe a creation';
-
-  @override
   String get creationsCreateSemantic => 'Create';
 
   @override
-  String get creationsCreatingSemantic => 'Creating';
-
-  @override
-  String get creationsKindApp => 'App';
-
-  @override
-  String get creationsKindWidget => 'Widget';
-
-  @override
-  String get creationsKindPresentation => 'Presentation';
-
-  @override
-  String get skillsSaveFailed => 'That skill could not be saved.';
-
-  @override
-  String get skillsBuiltForFinn => 'Built for Finn';
-
-  @override
-  String get skillsBuiltForFinnSubtitle =>
-      'Enable only what you need for each kind of work.';
-
-  @override
-  String get skillsYourSkills => 'Your skills';
-
-  @override
-  String get skillsYourSkillsSubtitle =>
-      'Create reusable instructions for your own workflows.';
-
-  @override
-  String get skillsNoneActive => 'No skills active';
-
-  @override
-  String skillsActiveCount(int count) {
-    return '$count active';
-  }
+  String get creationsDescribeHint => 'Describe a creation';
 
   @override
   String get skillsActionsTooltip => 'Skill actions';

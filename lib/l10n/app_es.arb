@@ -310,6 +310,10 @@
   "@chatFinishingTask": {
     "description": "Busy snackbar"
   },
+  "chatAttachmentPickFailed": "No se pudo abrir el selector. Inténtalo de nuevo.",
+  "@chatAttachmentPickFailed": {
+    "description": "Aviso de error al abrir el selector de adjuntos"
+  },
   "chatCouldNotPrepare": "Could not prepare chat. Check the model and storage, then try again.",
   "@chatCouldNotPrepare": {
     "description": "Prepare error"
@@ -660,11 +664,67 @@
   "@skillsInstructionLabel": {
     "description": "Instruction label"
   },
+  "chatBrowseTooltip": "Buscar en la web para este mensaje",
+  "@chatBrowseTooltip": {
+    "description": "Tooltip on the browse toggle in the composer"
+  },
+  "chatBrowseOnSemantic": "Búsqueda web activada",
+  "@chatBrowseOnSemantic": {
+    "description": "Accessibility label when browsing is enabled"
+  },
+  "chatBrowseOffSemantic": "Búsqueda web desactivada",
+  "@chatBrowseOffSemantic": {
+    "description": "Accessibility label when browsing is disabled"
+  },
+  "chatBrowsingTitle": "Explorando la web",
+  "@chatBrowsingTitle": {
+    "description": "Header of the live browser activity panel"
+  },
+  "chatBrowsingHide": "Ocultar",
+  "@chatBrowsingHide": {
+    "description": "Collapse action in the browser activity panel"
+  },
+  "chatBrowsingSteps": "{count} pasos",
+  "@chatBrowsingSteps": {
+    "description": "Expand action showing how many browser steps ran",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "chatBrowsingSearch": "Buscó en la web «{query}»",
+  "@chatBrowsingSearch": {
+    "description": "A completed web search tool call",
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "chatBrowsingOpen": "Leyó «{title}»",
+  "@chatBrowsingOpen": {
+    "description": "A completed page-open tool call",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "chatBrowsingFind": "Buscó «{query}» en la página",
+  "@chatBrowsingFind": {
+    "description": "A completed find-on-page tool call",
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
   "creationsTitle": "Creations",
   "@creationsTitle": {
     "description": "Creations title"
   },
-  "creationsSubtitle": "Turn an idea into a structured plan, entirely on device.",
+  "creationsSubtitle": "Describe lo que quieres. Finn lo crea en el dispositivo.",
   "@creationsSubtitle": {
     "description": "Creations subtitle"
   },
@@ -713,21 +773,122 @@
   "@creationsGenerating": {
     "description": "Generating"
   },
-  "creationsDiscarded": "Creation discarded",
-  "@creationsDiscarded": {
-    "description": "Discarded"
+  "creationsAskKind": "¿Tu nueva creación es una app, un widget o una presentación?",
+  "@creationsAskKind": {
+    "description": "Builder question asking which kind of creation to make"
   },
-  "creationsKindStory": "Story",
-  "@creationsKindStory": {
-    "description": "Story"
+  "creationsDescribeKind": "Dime qué debe hacer tu {kind}.",
+  "@creationsDescribeKind": {
+    "description": "Builder prompt once a kind is chosen",
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      }
+    }
   },
-  "creationsKindPlan": "Plan",
-  "@creationsKindPlan": {
-    "description": "Plan"
+  "creationsStageDesigning": "Diseñando…",
+  "@creationsStageDesigning": {
+    "description": "Creation progress: designing"
   },
-  "creationsKindEmail": "Email",
-  "@creationsKindEmail": {
-    "description": "Email"
+  "creationsStageWriting": "Escribiendo…",
+  "@creationsStageWriting": {
+    "description": "Creation progress: writing the spec"
+  },
+  "creationsStageValidating": "Comprobando el resultado…",
+  "@creationsStageValidating": {
+    "description": "Creation progress: validating"
+  },
+  "creationsStageRepairing": "Corrigiendo un detalle…",
+  "@creationsStageRepairing": {
+    "description": "Creation progress: repair round"
+  },
+  "creationsFallbackNote": "Finn no pudo terminar el diseño, así que aquí tienes una plantilla funcional sobre la que construir.",
+  "@creationsFallbackNote": {
+    "description": "Shown when a deterministic starter creation was substituted"
+  },
+  "creationsNewCreation": "Nueva creación",
+  "@creationsNewCreation": {
+    "description": "Button starting a new creation from the gallery"
+  },
+  "creationsStopSemantic": "Detener la creación",
+  "creationsChooseKindSemantic": "Elegir qué crear",
+  "@creationsChooseKindSemantic": {
+    "description": "Accessibility label for the composer's choose-type button"
+  },
+  "creationsFailed": "Finn no pudo terminar esa creación. Inténtalo de nuevo.",
+  "creationsHomeScreenUnsupported": "Los widgets de pantalla de inicio no están disponibles en este dispositivo.",
+  "creationsHomeScreenAdded": "Añadido a tu pantalla de inicio.",
+  "creationsHomeScreenFailed": "No se pudo añadir a tu pantalla de inicio.",
+  "creationsExportedTo": "{fileName} guardado",
+  "@creationsExportedTo": {
+    "description": "Confirmation naming the exported file",
+    "placeholders": {
+      "fileName": {
+        "type": "String"
+      }
+    }
+  },
+  "creationsExportDeck": "Exportar como PowerPoint",
+  "creationsAddToHomeScreen": "Añadir a la pantalla de inicio",
+  "creationsWidgetPreview": "Así se verá en tu pantalla de inicio.",
+  "creationsExportedShared": "Presentación lista para compartir.",
+  "@creationsExportedShared": {
+    "description": "Confirmation when the export was handed to the share sheet"
+  },
+  "creationsExportFailed": "No se pudo exportar esa presentación.",
+  "@creationsExportFailed": {
+    "description": "Shown when writing the pptx failed"
+  },
+  "creationsResetApp": "Restablecer",
+  "@creationsResetApp": {
+    "description": "Action clearing a mini app's state"
+  },
+  "creationsPreviousSlide": "Diapositiva anterior",
+  "@creationsPreviousSlide": {
+    "description": "Deck viewer previous control"
+  },
+  "creationsNextSlide": "Diapositiva siguiente",
+  "@creationsNextSlide": {
+    "description": "Deck viewer next control"
+  },
+  "creationsSlideOf": "Diapositiva {index} de {count}",
+  "@creationsSlideOf": {
+    "description": "Deck viewer position",
+    "placeholders": {
+      "index": {
+        "type": "int"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "creationsElementCount": "{count} elementos",
+  "@creationsElementCount": {
+    "description": "Descriptor for a mini app",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "creationsRowCount": "{count} filas",
+  "@creationsRowCount": {
+    "description": "Descriptor for a home screen widget",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "creationsSlideCount": "{count} diapositivas",
+  "@creationsSlideCount": {
+    "description": "Descriptor for a presentation",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   },
   "reportTitle": "Report AI Response",
   "@reportTitle": {
@@ -840,11 +1001,23 @@
   "creationsEmptyTitle": "Crea algo útil",
   "creationsEmptyFilteredBody": "Prueba otra categoría o crea una nueva.",
   "creationsEmptyBody": "Describe abajo una app, un widget o una presentación. Finn lo convertirá en un plan práctico.",
-  "creationsDescribeHint": "Describe una creación",
   "creationsCreateSemantic": "Crear",
+  "creationsDescribeHint": "Describe una creación",
   "creationsCreatingSemantic": "Creando",
   "creationsKindApp": "App",
   "creationsKindWidget": "Widget",
+  "creationsFilterApps": "Apps",
+  "@creationsFilterApps": {
+    "description": "Plural filter chip: apps"
+  },
+  "creationsFilterWidgets": "Widgets",
+  "@creationsFilterWidgets": {
+    "description": "Plural filter chip: widgets"
+  },
+  "creationsFilterPresentations": "Presentaciones",
+  "@creationsFilterPresentations": {
+    "description": "Plural filter chip: presentations"
+  },
   "creationsKindPresentation": "Presentación",
   "skillsSaveFailed": "No se pudo guardar esa Skill.",
   "skillsBuiltForFinn": "Diseñado para Finn",

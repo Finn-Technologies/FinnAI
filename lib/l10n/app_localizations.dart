@@ -518,6 +518,12 @@ abstract class AppLocalizations {
   /// **'Finn AI is finishing another local task.'**
   String get chatFinishingTask;
 
+  /// Attachment picker failure snackbar
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open the picker. Please try again.'**
+  String get chatAttachmentPickFailed;
+
   /// Prepare error
   ///
   /// In en, this message translates to:
@@ -1046,6 +1052,60 @@ abstract class AppLocalizations {
   /// **'Instruction'**
   String get skillsInstructionLabel;
 
+  /// Tooltip on the browse toggle in the composer
+  ///
+  /// In en, this message translates to:
+  /// **'Browse the web for this message'**
+  String get chatBrowseTooltip;
+
+  /// Accessibility label when browsing is enabled
+  ///
+  /// In en, this message translates to:
+  /// **'Web browsing on'**
+  String get chatBrowseOnSemantic;
+
+  /// Accessibility label when browsing is disabled
+  ///
+  /// In en, this message translates to:
+  /// **'Web browsing off'**
+  String get chatBrowseOffSemantic;
+
+  /// Header of the live browser activity panel
+  ///
+  /// In en, this message translates to:
+  /// **'Browsing the web'**
+  String get chatBrowsingTitle;
+
+  /// Collapse action in the browser activity panel
+  ///
+  /// In en, this message translates to:
+  /// **'Hide'**
+  String get chatBrowsingHide;
+
+  /// Expand action showing how many browser steps ran
+  ///
+  /// In en, this message translates to:
+  /// **'{count} steps'**
+  String chatBrowsingSteps(int count);
+
+  /// A completed web search tool call
+  ///
+  /// In en, this message translates to:
+  /// **'Searched the web for “{query}”'**
+  String chatBrowsingSearch(String query);
+
+  /// A completed page-open tool call
+  ///
+  /// In en, this message translates to:
+  /// **'Read “{title}”'**
+  String chatBrowsingOpen(String title);
+
+  /// A completed find-on-page tool call
+  ///
+  /// In en, this message translates to:
+  /// **'Looked for “{query}” on the page'**
+  String chatBrowsingFind(String query);
+
   /// Creations title
   ///
   /// In en, this message translates to:
@@ -1055,7 +1115,7 @@ abstract class AppLocalizations {
   /// Creations subtitle
   ///
   /// In en, this message translates to:
-  /// **'Turn an idea into a structured plan, entirely on device.'**
+  /// **'Describe what you want. Finn builds it on device.'**
   String get creationsSubtitle;
 
   /// What making
@@ -1076,11 +1136,245 @@ abstract class AppLocalizations {
   /// **'Finn adapts the structure to the format.'**
   String get creationsFinnAdapts;
 
-  /// Composer hint
+  /// Builder question asking which kind of creation to make
   ///
   /// In en, this message translates to:
-  /// **'Describe what you want to make…'**
-  String get creationsComposerHint;
+  /// **'Is your new Creation an app, a widget or a presentation?'**
+  String get creationsAskKind;
+
+  /// Builder prompt once a kind is chosen
+  ///
+  /// In en, this message translates to:
+  /// **'Tell me what your {kind} should do.'**
+  String creationsDescribeKind(String kind);
+
+  /// Creation progress: designing
+  ///
+  /// In en, this message translates to:
+  /// **'Designing…'**
+  String get creationsStageDesigning;
+
+  /// Creation progress: writing the spec
+  ///
+  /// In en, this message translates to:
+  /// **'Writing…'**
+  String get creationsStageWriting;
+
+  /// Creation progress: validating
+  ///
+  /// In en, this message translates to:
+  /// **'Checking the result…'**
+  String get creationsStageValidating;
+
+  /// Creation progress: repair round
+  ///
+  /// In en, this message translates to:
+  /// **'Fixing a detail…'**
+  String get creationsStageRepairing;
+
+  /// Shown when a deterministic starter creation was substituted
+  ///
+  /// In en, this message translates to:
+  /// **'Finn couldn\'t finish that design, so here is a working starter you can build on.'**
+  String get creationsFallbackNote;
+
+  /// Button starting a new creation from the gallery
+  ///
+  /// In en, this message translates to:
+  /// **'New creation'**
+  String get creationsNewCreation;
+
+  /// Accessibility label for the composer's stop button
+  ///
+  /// In en, this message translates to:
+  /// **'Stop creating'**
+  String get creationsStopSemantic;
+
+  /// Accessibility label for the composer's choose-type button
+  ///
+  /// In en, this message translates to:
+  /// **'Choose what to create'**
+  String get creationsChooseKindSemantic;
+
+  /// No description provided for @creationsFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Finn could not finish that creation. Please try again.'**
+  String get creationsFailed;
+
+  /// No description provided for @creationsHomeScreenUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Home screen widgets aren\'t available on this device.'**
+  String get creationsHomeScreenUnsupported;
+
+  /// No description provided for @creationsHomeScreenAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'Added to your home screen.'**
+  String get creationsHomeScreenAdded;
+
+  /// No description provided for @creationsHomeScreenFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'That couldn\'t be added to your home screen.'**
+  String get creationsHomeScreenFailed;
+
+  /// Confirmation naming the exported file
+  ///
+  /// In en, this message translates to:
+  /// **'Saved {fileName}'**
+  String creationsExportedTo(String fileName);
+
+  /// No description provided for @creationsExportDeck.
+  ///
+  /// In en, this message translates to:
+  /// **'Export as PowerPoint'**
+  String get creationsExportDeck;
+
+  /// No description provided for @creationsAddToHomeScreen.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to home screen'**
+  String get creationsAddToHomeScreen;
+
+  /// No description provided for @creationsWidgetPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'This is how it will look on your home screen.'**
+  String get creationsWidgetPreview;
+
+  /// No description provided for @creationsKindApp.
+  ///
+  /// In en, this message translates to:
+  /// **'App'**
+  String get creationsKindApp;
+
+  /// No description provided for @creationsKindWidget.
+  ///
+  /// In en, this message translates to:
+  /// **'Widget'**
+  String get creationsKindWidget;
+
+  /// No description provided for @creationsKindPresentation.
+  ///
+  /// In en, this message translates to:
+  /// **'Presentation'**
+  String get creationsKindPresentation;
+
+  /// No description provided for @creationsFilterApps.
+  ///
+  /// In en, this message translates to:
+  /// **'Apps'**
+  String get creationsFilterApps;
+
+  /// No description provided for @creationsFilterWidgets.
+  ///
+  /// In en, this message translates to:
+  /// **'Widgets'**
+  String get creationsFilterWidgets;
+
+  /// No description provided for @creationsFilterPresentations.
+  ///
+  /// In en, this message translates to:
+  /// **'Presentations'**
+  String get creationsFilterPresentations;
+
+  /// No description provided for @skillsSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'That skill could not be saved.'**
+  String get skillsSaveFailed;
+
+  /// No description provided for @skillsBuiltForFinn.
+  ///
+  /// In en, this message translates to:
+  /// **'Built for Finn'**
+  String get skillsBuiltForFinn;
+
+  /// No description provided for @skillsBuiltForFinnSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable only what you need for each kind of work.'**
+  String get skillsBuiltForFinnSubtitle;
+
+  /// No description provided for @skillsYourSkills.
+  ///
+  /// In en, this message translates to:
+  /// **'Your skills'**
+  String get skillsYourSkills;
+
+  /// No description provided for @skillsYourSkillsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Create reusable instructions for your own workflows.'**
+  String get skillsYourSkillsSubtitle;
+
+  /// No description provided for @skillsNoneActive.
+  ///
+  /// In en, this message translates to:
+  /// **'No skills active'**
+  String get skillsNoneActive;
+
+  /// Summary active count
+  ///
+  /// In en, this message translates to:
+  /// **'{count} active'**
+  String skillsActiveCount(int count);
+
+  /// Confirmation when the export was handed to the share sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Presentation ready to share.'**
+  String get creationsExportedShared;
+
+  /// Shown when writing the pptx failed
+  ///
+  /// In en, this message translates to:
+  /// **'That presentation couldn\'t be exported.'**
+  String get creationsExportFailed;
+
+  /// Action clearing a mini app's state
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get creationsResetApp;
+
+  /// Deck viewer previous control
+  ///
+  /// In en, this message translates to:
+  /// **'Previous slide'**
+  String get creationsPreviousSlide;
+
+  /// Deck viewer next control
+  ///
+  /// In en, this message translates to:
+  /// **'Next slide'**
+  String get creationsNextSlide;
+
+  /// Deck viewer position
+  ///
+  /// In en, this message translates to:
+  /// **'Slide {index} of {count}'**
+  String creationsSlideOf(int index, int count);
+
+  /// Descriptor for a mini app
+  ///
+  /// In en, this message translates to:
+  /// **'{count} elements'**
+  String creationsElementCount(int count);
+
+  /// Descriptor for a home screen widget
+  ///
+  /// In en, this message translates to:
+  /// **'{count} rows'**
+  String creationsRowCount(int count);
+
+  /// Descriptor for a presentation
+  ///
+  /// In en, this message translates to:
+  /// **'{count} slides'**
+  String creationsSlideCount(int count);
 
   /// Stop title
   ///
@@ -1117,30 +1411,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Generating…'**
   String get creationsGenerating;
-
-  /// Discarded
-  ///
-  /// In en, this message translates to:
-  /// **'Creation discarded'**
-  String get creationsDiscarded;
-
-  /// Story
-  ///
-  /// In en, this message translates to:
-  /// **'Story'**
-  String get creationsKindStory;
-
-  /// Plan
-  ///
-  /// In en, this message translates to:
-  /// **'Plan'**
-  String get creationsKindPlan;
-
-  /// Email
-  ///
-  /// In en, this message translates to:
-  /// **'Email'**
-  String get creationsKindEmail;
 
   /// Report title
   ///
@@ -1538,83 +1808,17 @@ abstract class AppLocalizations {
   /// **'Describe an app, widget or presentation below. Finn will shape it into a practical plan.'**
   String get creationsEmptyBody;
 
-  /// Composer hint
-  ///
-  /// In en, this message translates to:
-  /// **'Describe a creation'**
-  String get creationsDescribeHint;
-
-  /// Send button semantics
+  /// Accessibility label for the composer's create button
   ///
   /// In en, this message translates to:
   /// **'Create'**
   String get creationsCreateSemantic;
 
-  /// Quiet loader semantics
+  /// Composer hint
   ///
   /// In en, this message translates to:
-  /// **'Creating'**
-  String get creationsCreatingSemantic;
-
-  /// Creation kind
-  ///
-  /// In en, this message translates to:
-  /// **'App'**
-  String get creationsKindApp;
-
-  /// Creation kind
-  ///
-  /// In en, this message translates to:
-  /// **'Widget'**
-  String get creationsKindWidget;
-
-  /// Creation kind
-  ///
-  /// In en, this message translates to:
-  /// **'Presentation'**
-  String get creationsKindPresentation;
-
-  /// Save failure snackbar
-  ///
-  /// In en, this message translates to:
-  /// **'That skill could not be saved.'**
-  String get skillsSaveFailed;
-
-  /// Built-in skills section
-  ///
-  /// In en, this message translates to:
-  /// **'Built for Finn'**
-  String get skillsBuiltForFinn;
-
-  /// Built-in skills subtitle
-  ///
-  /// In en, this message translates to:
-  /// **'Enable only what you need for each kind of work.'**
-  String get skillsBuiltForFinnSubtitle;
-
-  /// Custom skills section
-  ///
-  /// In en, this message translates to:
-  /// **'Your skills'**
-  String get skillsYourSkills;
-
-  /// Custom skills subtitle
-  ///
-  /// In en, this message translates to:
-  /// **'Create reusable instructions for your own workflows.'**
-  String get skillsYourSkillsSubtitle;
-
-  /// Summary when nothing is enabled
-  ///
-  /// In en, this message translates to:
-  /// **'No skills active'**
-  String get skillsNoneActive;
-
-  /// Summary active count
-  ///
-  /// In en, this message translates to:
-  /// **'{count} active'**
-  String skillsActiveCount(int count);
+  /// **'Describe a creation'**
+  String get creationsDescribeHint;
 
   /// Skill card menu tooltip
   ///

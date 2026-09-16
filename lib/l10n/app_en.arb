@@ -310,6 +310,10 @@
   "@chatFinishingTask": {
     "description": "Busy snackbar"
   },
+  "chatAttachmentPickFailed": "Couldn't open the picker. Please try again.",
+  "@chatAttachmentPickFailed": {
+    "description": "Attachment picker failure snackbar"
+  },
   "chatCouldNotPrepare": "Could not prepare chat. Check the model and storage, then try again.",
   "@chatCouldNotPrepare": {
     "description": "Prepare error"
@@ -712,11 +716,67 @@
   "@skillsInstructionLabel": {
     "description": "Instruction label"
   },
+  "chatBrowseTooltip": "Browse the web for this message",
+  "@chatBrowseTooltip": {
+    "description": "Tooltip on the browse toggle in the composer"
+  },
+  "chatBrowseOnSemantic": "Web browsing on",
+  "@chatBrowseOnSemantic": {
+    "description": "Accessibility label when browsing is enabled"
+  },
+  "chatBrowseOffSemantic": "Web browsing off",
+  "@chatBrowseOffSemantic": {
+    "description": "Accessibility label when browsing is disabled"
+  },
+  "chatBrowsingTitle": "Browsing the web",
+  "@chatBrowsingTitle": {
+    "description": "Header of the live browser activity panel"
+  },
+  "chatBrowsingHide": "Hide",
+  "@chatBrowsingHide": {
+    "description": "Collapse action in the browser activity panel"
+  },
+  "chatBrowsingSteps": "{count} steps",
+  "@chatBrowsingSteps": {
+    "description": "Expand action showing how many browser steps ran",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "chatBrowsingSearch": "Searched the web for “{query}”",
+  "@chatBrowsingSearch": {
+    "description": "A completed web search tool call",
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "chatBrowsingOpen": "Read “{title}”",
+  "@chatBrowsingOpen": {
+    "description": "A completed page-open tool call",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "chatBrowsingFind": "Looked for “{query}” on the page",
+  "@chatBrowsingFind": {
+    "description": "A completed find-on-page tool call",
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
   "creationsTitle": "Creations",
   "@creationsTitle": {
     "description": "Creations title"
   },
-  "creationsSubtitle": "Turn an idea into a structured plan, entirely on device.",
+  "creationsSubtitle": "Describe what you want. Finn builds it on device.",
   "@creationsSubtitle": {
     "description": "Creations subtitle"
   },
@@ -732,9 +792,147 @@
   "@creationsFinnAdapts": {
     "description": "Finn adapts"
   },
-  "creationsComposerHint": "Describe what you want to make…",
-  "@creationsComposerHint": {
-    "description": "Composer hint"
+  "creationsAskKind": "Is your new Creation an app, a widget or a presentation?",
+  "@creationsAskKind": {
+    "description": "Builder question asking which kind of creation to make"
+  },
+  "creationsDescribeKind": "Tell me what your {kind} should do.",
+  "@creationsDescribeKind": {
+    "description": "Builder prompt once a kind is chosen",
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      }
+    }
+  },
+  "creationsStageDesigning": "Designing…",
+  "@creationsStageDesigning": {
+    "description": "Creation progress: designing"
+  },
+  "creationsStageWriting": "Writing…",
+  "@creationsStageWriting": {
+    "description": "Creation progress: writing the spec"
+  },
+  "creationsStageValidating": "Checking the result…",
+  "@creationsStageValidating": {
+    "description": "Creation progress: validating"
+  },
+  "creationsStageRepairing": "Fixing a detail…",
+  "@creationsStageRepairing": {
+    "description": "Creation progress: repair round"
+  },
+  "creationsFallbackNote": "Finn couldn't finish that design, so here is a working starter you can build on.",
+  "@creationsFallbackNote": {
+    "description": "Shown when a deterministic starter creation was substituted"
+  },
+  "creationsNewCreation": "New creation",
+  "@creationsNewCreation": {
+    "description": "Button starting a new creation from the gallery"
+  },
+  "creationsStopSemantic": "Stop creating",
+  "@creationsStopSemantic": {
+    "description": "Accessibility label for the composer's stop button"
+  },
+  "creationsChooseKindSemantic": "Choose what to create",
+  "@creationsChooseKindSemantic": {
+    "description": "Accessibility label for the composer's choose-type button"
+  },
+
+  "creationsFailed": "Finn could not finish that creation. Please try again.",
+  "creationsHomeScreenUnsupported": "Home screen widgets aren't available on this device.",
+  "creationsHomeScreenAdded": "Added to your home screen.",
+  "creationsHomeScreenFailed": "That couldn't be added to your home screen.",
+  "creationsExportedTo": "Saved {fileName}",
+  "@creationsExportedTo": {
+    "description": "Confirmation naming the exported file",
+    "placeholders": {
+      "fileName": {
+        "type": "String"
+      }
+    }
+  },
+  "creationsExportDeck": "Export as PowerPoint",
+  "creationsAddToHomeScreen": "Add to home screen",
+  "creationsWidgetPreview": "This is how it will look on your home screen.",
+  "creationsKindApp": "App",
+  "creationsKindWidget": "Widget",
+  "creationsKindPresentation": "Presentation",
+  "creationsFilterApps": "Apps",
+  "creationsFilterWidgets": "Widgets",
+  "creationsFilterPresentations": "Presentations",
+  "skillsSaveFailed": "That skill could not be saved.",
+  "skillsBuiltForFinn": "Built for Finn",
+  "skillsBuiltForFinnSubtitle": "Enable only what you need for each kind of work.",
+  "skillsYourSkills": "Your skills",
+  "skillsYourSkillsSubtitle": "Create reusable instructions for your own workflows.",
+  "skillsNoneActive": "No skills active",
+  "skillsActiveCount": "{count} active",
+  "@skillsActiveCount": {
+    "description": "Summary active count",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "creationsExportedShared": "Presentation ready to share.",
+  "@creationsExportedShared": {
+    "description": "Confirmation when the export was handed to the share sheet"
+  },
+  "creationsExportFailed": "That presentation couldn't be exported.",
+  "@creationsExportFailed": {
+    "description": "Shown when writing the pptx failed"
+  },
+  "creationsResetApp": "Reset",
+  "@creationsResetApp": {
+    "description": "Action clearing a mini app's state"
+  },
+  "creationsPreviousSlide": "Previous slide",
+  "@creationsPreviousSlide": {
+    "description": "Deck viewer previous control"
+  },
+  "creationsNextSlide": "Next slide",
+  "@creationsNextSlide": {
+    "description": "Deck viewer next control"
+  },
+  "creationsSlideOf": "Slide {index} of {count}",
+  "@creationsSlideOf": {
+    "description": "Deck viewer position",
+    "placeholders": {
+      "index": {
+        "type": "int"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "creationsElementCount": "{count} elements",
+  "@creationsElementCount": {
+    "description": "Descriptor for a mini app",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "creationsRowCount": "{count} rows",
+  "@creationsRowCount": {
+    "description": "Descriptor for a home screen widget",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "creationsSlideCount": "{count} slides",
+  "@creationsSlideCount": {
+    "description": "Descriptor for a presentation",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   },
   "creationsStopTitle": "Stop this creation?",
   "@creationsStopTitle": {
@@ -764,22 +962,6 @@
   "creationsGenerating": "Generating…",
   "@creationsGenerating": {
     "description": "Generating"
-  },
-  "creationsDiscarded": "Creation discarded",
-  "@creationsDiscarded": {
-    "description": "Discarded"
-  },
-  "creationsKindStory": "Story",
-  "@creationsKindStory": {
-    "description": "Story"
-  },
-  "creationsKindPlan": "Plan",
-  "@creationsKindPlan": {
-    "description": "Plan"
-  },
-  "creationsKindEmail": "Email",
-  "@creationsKindEmail": {
-    "description": "Email"
   },
   "reportTitle": "Report AI Response",
   "@reportTitle": {
@@ -1050,63 +1232,15 @@
   "@creationsEmptyBody": {
     "description": "Empty state body"
   },
+  "creationsCreateSemantic": "Create",
+  "@creationsCreateSemantic": {
+    "description": "Accessibility label for the composer's create button"
+  },
   "creationsDescribeHint": "Describe a creation",
   "@creationsDescribeHint": {
     "description": "Composer hint"
   },
-  "creationsCreateSemantic": "Create",
-  "@creationsCreateSemantic": {
-    "description": "Send button semantics"
-  },
-  "creationsCreatingSemantic": "Creating",
-  "@creationsCreatingSemantic": {
-    "description": "Quiet loader semantics"
-  },
-  "creationsKindApp": "App",
-  "@creationsKindApp": {
-    "description": "Creation kind"
-  },
-  "creationsKindWidget": "Widget",
-  "@creationsKindWidget": {
-    "description": "Creation kind"
-  },
-  "creationsKindPresentation": "Presentation",
-  "@creationsKindPresentation": {
-    "description": "Creation kind"
-  },
-  "skillsSaveFailed": "That skill could not be saved.",
-  "@skillsSaveFailed": {
-    "description": "Save failure snackbar"
-  },
-  "skillsBuiltForFinn": "Built for Finn",
-  "@skillsBuiltForFinn": {
-    "description": "Built-in skills section"
-  },
-  "skillsBuiltForFinnSubtitle": "Enable only what you need for each kind of work.",
-  "@skillsBuiltForFinnSubtitle": {
-    "description": "Built-in skills subtitle"
-  },
-  "skillsYourSkills": "Your skills",
-  "@skillsYourSkills": {
-    "description": "Custom skills section"
-  },
-  "skillsYourSkillsSubtitle": "Create reusable instructions for your own workflows.",
-  "@skillsYourSkillsSubtitle": {
-    "description": "Custom skills subtitle"
-  },
-  "skillsNoneActive": "No skills active",
-  "@skillsNoneActive": {
-    "description": "Summary when nothing is enabled"
-  },
-  "skillsActiveCount": "{count} active",
-  "@skillsActiveCount": {
-    "description": "Summary active count",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
+
   "skillsActionsTooltip": "Skill actions",
   "@skillsActionsTooltip": {
     "description": "Skill card menu tooltip"

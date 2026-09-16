@@ -310,6 +310,10 @@
   "@chatFinishingTask": {
     "description": "Busy snackbar"
   },
+  "chatAttachmentPickFailed": "Impossible d'ouvrir le sélecteur. Veuillez réessayer.",
+  "@chatAttachmentPickFailed": {
+    "description": "Message d'erreur d'ouverture du sélecteur de pièces jointes"
+  },
   "chatCouldNotPrepare": "Could not prepare chat. Check the model and storage, then try again.",
   "@chatCouldNotPrepare": {
     "description": "Prepare error"
@@ -660,11 +664,67 @@
   "@skillsInstructionLabel": {
     "description": "Instruction label"
   },
+  "chatBrowseTooltip": "Rechercher sur le web pour ce message",
+  "@chatBrowseTooltip": {
+    "description": "Tooltip on the browse toggle in the composer"
+  },
+  "chatBrowseOnSemantic": "Recherche web activée",
+  "@chatBrowseOnSemantic": {
+    "description": "Accessibility label when browsing is enabled"
+  },
+  "chatBrowseOffSemantic": "Recherche web désactivée",
+  "@chatBrowseOffSemantic": {
+    "description": "Accessibility label when browsing is disabled"
+  },
+  "chatBrowsingTitle": "Navigation sur le web",
+  "@chatBrowsingTitle": {
+    "description": "Header of the live browser activity panel"
+  },
+  "chatBrowsingHide": "Masquer",
+  "@chatBrowsingHide": {
+    "description": "Collapse action in the browser activity panel"
+  },
+  "chatBrowsingSteps": "{count} étapes",
+  "@chatBrowsingSteps": {
+    "description": "Expand action showing how many browser steps ran",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "chatBrowsingSearch": "Recherche web : « {query} »",
+  "@chatBrowsingSearch": {
+    "description": "A completed web search tool call",
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "chatBrowsingOpen": "Lecture de « {title} »",
+  "@chatBrowsingOpen": {
+    "description": "A completed page-open tool call",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "chatBrowsingFind": "Recherche de « {query} » sur la page",
+  "@chatBrowsingFind": {
+    "description": "A completed find-on-page tool call",
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
   "creationsTitle": "Creations",
   "@creationsTitle": {
     "description": "Creations title"
   },
-  "creationsSubtitle": "Turn an idea into a structured plan, entirely on device.",
+  "creationsSubtitle": "Décrivez ce que vous voulez. Finn le crée sur l’appareil.",
   "@creationsSubtitle": {
     "description": "Creations subtitle"
   },
@@ -713,21 +773,122 @@
   "@creationsGenerating": {
     "description": "Generating"
   },
-  "creationsDiscarded": "Creation discarded",
-  "@creationsDiscarded": {
-    "description": "Discarded"
+  "creationsAskKind": "Votre nouvelle création est-elle une app, un widget ou une présentation ?",
+  "@creationsAskKind": {
+    "description": "Builder question asking which kind of creation to make"
   },
-  "creationsKindStory": "Story",
-  "@creationsKindStory": {
-    "description": "Story"
+  "creationsDescribeKind": "Dites-moi ce que votre {kind} doit faire.",
+  "@creationsDescribeKind": {
+    "description": "Builder prompt once a kind is chosen",
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      }
+    }
   },
-  "creationsKindPlan": "Plan",
-  "@creationsKindPlan": {
-    "description": "Plan"
+  "creationsStageDesigning": "Conception…",
+  "@creationsStageDesigning": {
+    "description": "Creation progress: designing"
   },
-  "creationsKindEmail": "Email",
-  "@creationsKindEmail": {
-    "description": "Email"
+  "creationsStageWriting": "Rédaction…",
+  "@creationsStageWriting": {
+    "description": "Creation progress: writing the spec"
+  },
+  "creationsStageValidating": "Vérification du résultat…",
+  "@creationsStageValidating": {
+    "description": "Creation progress: validating"
+  },
+  "creationsStageRepairing": "Correction d’un détail…",
+  "@creationsStageRepairing": {
+    "description": "Creation progress: repair round"
+  },
+  "creationsFallbackNote": "Finn n’a pas pu terminer la conception ; voici un modèle fonctionnel sur lequel vous pouvez vous appuyer.",
+  "@creationsFallbackNote": {
+    "description": "Shown when a deterministic starter creation was substituted"
+  },
+  "creationsNewCreation": "Nouvelle création",
+  "@creationsNewCreation": {
+    "description": "Button starting a new creation from the gallery"
+  },
+  "creationsStopSemantic": "Arrêter la création",
+  "creationsChooseKindSemantic": "Choisir quoi créer",
+  "@creationsChooseKindSemantic": {
+    "description": "Accessibility label for the composer's choose-type button"
+  },
+  "creationsFailed": "Finn n’a pas pu terminer cette création. Veuillez réessayer.",
+  "creationsHomeScreenUnsupported": "Les widgets d’écran d’accueil ne sont pas disponibles sur cet appareil.",
+  "creationsHomeScreenAdded": "Ajouté à votre écran d’accueil.",
+  "creationsHomeScreenFailed": "Impossible de l’ajouter à votre écran d’accueil.",
+  "creationsExportedTo": "{fileName} enregistré",
+  "@creationsExportedTo": {
+    "description": "Confirmation naming the exported file",
+    "placeholders": {
+      "fileName": {
+        "type": "String"
+      }
+    }
+  },
+  "creationsExportDeck": "Exporter en PowerPoint",
+  "creationsAddToHomeScreen": "Ajouter à l’écran d’accueil",
+  "creationsWidgetPreview": "Voici à quoi cela ressemblera sur votre écran d’accueil.",
+  "creationsExportedShared": "Présentation prête à être partagée.",
+  "@creationsExportedShared": {
+    "description": "Confirmation when the export was handed to the share sheet"
+  },
+  "creationsExportFailed": "Cette présentation n’a pas pu être exportée.",
+  "@creationsExportFailed": {
+    "description": "Shown when writing the pptx failed"
+  },
+  "creationsResetApp": "Réinitialiser",
+  "@creationsResetApp": {
+    "description": "Action clearing a mini app's state"
+  },
+  "creationsPreviousSlide": "Diapositive précédente",
+  "@creationsPreviousSlide": {
+    "description": "Deck viewer previous control"
+  },
+  "creationsNextSlide": "Diapositive suivante",
+  "@creationsNextSlide": {
+    "description": "Deck viewer next control"
+  },
+  "creationsSlideOf": "Diapositive {index} sur {count}",
+  "@creationsSlideOf": {
+    "description": "Deck viewer position",
+    "placeholders": {
+      "index": {
+        "type": "int"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "creationsElementCount": "{count} éléments",
+  "@creationsElementCount": {
+    "description": "Descriptor for a mini app",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "creationsRowCount": "{count} lignes",
+  "@creationsRowCount": {
+    "description": "Descriptor for a home screen widget",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "creationsSlideCount": "{count} diapositives",
+  "@creationsSlideCount": {
+    "description": "Descriptor for a presentation",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   },
   "reportTitle": "Report AI Response",
   "@reportTitle": {
@@ -840,11 +1001,23 @@
   "creationsEmptyTitle": "Créez quelque chose d'utile",
   "creationsEmptyFilteredBody": "Essayez une autre catégorie ou créez-en une nouvelle.",
   "creationsEmptyBody": "Décrivez ci-dessous une app, un widget ou une présentation. Finn en fera un plan pratique.",
-  "creationsDescribeHint": "Décrivez une création",
   "creationsCreateSemantic": "Créer",
+  "creationsDescribeHint": "Décrivez une création",
   "creationsCreatingSemantic": "Création",
   "creationsKindApp": "App",
   "creationsKindWidget": "Widget",
+  "creationsFilterApps": "Apps",
+  "@creationsFilterApps": {
+    "description": "Plural filter chip: apps"
+  },
+  "creationsFilterWidgets": "Widgets",
+  "@creationsFilterWidgets": {
+    "description": "Plural filter chip: widgets"
+  },
+  "creationsFilterPresentations": "Présentations",
+  "@creationsFilterPresentations": {
+    "description": "Plural filter chip: presentations"
+  },
   "creationsKindPresentation": "Présentation",
   "skillsSaveFailed": "Impossible d'enregistrer ce Skill.",
   "skillsBuiltForFinn": "Conçu pour Finn",

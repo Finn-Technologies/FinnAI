@@ -310,6 +310,10 @@
   "@chatFinishingTask": {
     "description": "Busy snackbar"
   },
+  "chatAttachmentPickFailed": "Auswahl konnte nicht geöffnet werden. Bitte erneut versuchen.",
+  "@chatAttachmentPickFailed": {
+    "description": "Fehlermeldung bei fehlgeschlagener Anhangsauswahl"
+  },
   "chatCouldNotPrepare": "Could not prepare chat. Check the model and storage, then try again.",
   "@chatCouldNotPrepare": {
     "description": "Prepare error"
@@ -660,11 +664,67 @@
   "@skillsInstructionLabel": {
     "description": "Instruction label"
   },
+  "chatBrowseTooltip": "Für diese Nachricht im Web suchen",
+  "@chatBrowseTooltip": {
+    "description": "Tooltip on the browse toggle in the composer"
+  },
+  "chatBrowseOnSemantic": "Websuche aktiv",
+  "@chatBrowseOnSemantic": {
+    "description": "Accessibility label when browsing is enabled"
+  },
+  "chatBrowseOffSemantic": "Websuche aus",
+  "@chatBrowseOffSemantic": {
+    "description": "Accessibility label when browsing is disabled"
+  },
+  "chatBrowsingTitle": "Web wird durchsucht",
+  "@chatBrowsingTitle": {
+    "description": "Header of the live browser activity panel"
+  },
+  "chatBrowsingHide": "Ausblenden",
+  "@chatBrowsingHide": {
+    "description": "Collapse action in the browser activity panel"
+  },
+  "chatBrowsingSteps": "{count} Schritte",
+  "@chatBrowsingSteps": {
+    "description": "Expand action showing how many browser steps ran",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "chatBrowsingSearch": "Im Web gesucht nach „{query}“",
+  "@chatBrowsingSearch": {
+    "description": "A completed web search tool call",
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "chatBrowsingOpen": "„{title}“ gelesen",
+  "@chatBrowsingOpen": {
+    "description": "A completed page-open tool call",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "chatBrowsingFind": "Auf der Seite nach „{query}“ gesucht",
+  "@chatBrowsingFind": {
+    "description": "A completed find-on-page tool call",
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
   "creationsTitle": "Creations",
   "@creationsTitle": {
     "description": "Creations title"
   },
-  "creationsSubtitle": "Turn an idea into a structured plan, entirely on device.",
+  "creationsSubtitle": "Beschreibe, was du willst. Finn baut es auf dem Gerät.",
   "@creationsSubtitle": {
     "description": "Creations subtitle"
   },
@@ -713,21 +773,122 @@
   "@creationsGenerating": {
     "description": "Generating"
   },
-  "creationsDiscarded": "Creation discarded",
-  "@creationsDiscarded": {
-    "description": "Discarded"
+  "creationsAskKind": "Ist deine neue Kreation eine App, ein Widget oder eine Präsentation?",
+  "@creationsAskKind": {
+    "description": "Builder question asking which kind of creation to make"
   },
-  "creationsKindStory": "Story",
-  "@creationsKindStory": {
-    "description": "Story"
+  "creationsDescribeKind": "Beschreibe, was deine {kind} tun soll.",
+  "@creationsDescribeKind": {
+    "description": "Builder prompt once a kind is chosen",
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      }
+    }
   },
-  "creationsKindPlan": "Plan",
-  "@creationsKindPlan": {
-    "description": "Plan"
+  "creationsStageDesigning": "Wird entworfen…",
+  "@creationsStageDesigning": {
+    "description": "Creation progress: designing"
   },
-  "creationsKindEmail": "Email",
-  "@creationsKindEmail": {
-    "description": "Email"
+  "creationsStageWriting": "Wird geschrieben…",
+  "@creationsStageWriting": {
+    "description": "Creation progress: writing the spec"
+  },
+  "creationsStageValidating": "Ergebnis wird geprüft…",
+  "@creationsStageValidating": {
+    "description": "Creation progress: validating"
+  },
+  "creationsStageRepairing": "Detail wird korrigiert…",
+  "@creationsStageRepairing": {
+    "description": "Creation progress: repair round"
+  },
+  "creationsFallbackNote": "Finn konnte das Design nicht fertigstellen – hier ist eine funktionierende Vorlage, auf der du aufbauen kannst.",
+  "@creationsFallbackNote": {
+    "description": "Shown when a deterministic starter creation was substituted"
+  },
+  "creationsNewCreation": "Neue Kreation",
+  "@creationsNewCreation": {
+    "description": "Button starting a new creation from the gallery"
+  },
+  "creationsStopSemantic": "Erstellen beenden",
+  "creationsChooseKindSemantic": "Auswählen, was erstellt werden soll",
+  "@creationsChooseKindSemantic": {
+    "description": "Accessibility label for the composer's choose-type button"
+  },
+  "creationsFailed": "Finn konnte diese Kreation nicht fertigstellen. Bitte versuche es erneut.",
+  "creationsHomeScreenUnsupported": "Widgets für den Startbildschirm sind auf diesem Gerät nicht verfügbar.",
+  "creationsHomeScreenAdded": "Zum Startbildschirm hinzugefügt.",
+  "creationsHomeScreenFailed": "Das konnte nicht zum Startbildschirm hinzugefügt werden.",
+  "creationsExportedTo": "{fileName} gespeichert",
+  "@creationsExportedTo": {
+    "description": "Confirmation naming the exported file",
+    "placeholders": {
+      "fileName": {
+        "type": "String"
+      }
+    }
+  },
+  "creationsExportDeck": "Als PowerPoint exportieren",
+  "creationsAddToHomeScreen": "Zum Startbildschirm hinzufügen",
+  "creationsWidgetPreview": "So sieht es auf deinem Startbildschirm aus.",
+  "creationsExportedShared": "Präsentation ist bereit zum Teilen.",
+  "@creationsExportedShared": {
+    "description": "Confirmation when the export was handed to the share sheet"
+  },
+  "creationsExportFailed": "Diese Präsentation konnte nicht exportiert werden.",
+  "@creationsExportFailed": {
+    "description": "Shown when writing the pptx failed"
+  },
+  "creationsResetApp": "Zurücksetzen",
+  "@creationsResetApp": {
+    "description": "Action clearing a mini app's state"
+  },
+  "creationsPreviousSlide": "Vorherige Folie",
+  "@creationsPreviousSlide": {
+    "description": "Deck viewer previous control"
+  },
+  "creationsNextSlide": "Nächste Folie",
+  "@creationsNextSlide": {
+    "description": "Deck viewer next control"
+  },
+  "creationsSlideOf": "Folie {index} von {count}",
+  "@creationsSlideOf": {
+    "description": "Deck viewer position",
+    "placeholders": {
+      "index": {
+        "type": "int"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "creationsElementCount": "{count} Elemente",
+  "@creationsElementCount": {
+    "description": "Descriptor for a mini app",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "creationsRowCount": "{count} Zeilen",
+  "@creationsRowCount": {
+    "description": "Descriptor for a home screen widget",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "creationsSlideCount": "{count} Folien",
+  "@creationsSlideCount": {
+    "description": "Descriptor for a presentation",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   },
   "reportTitle": "Report AI Response",
   "@reportTitle": {
@@ -840,11 +1001,23 @@
   "creationsEmptyTitle": "Etwas Nützliches erstellen",
   "creationsEmptyFilteredBody": "Versuche eine andere Kategorie oder erstelle eine neue.",
   "creationsEmptyBody": "Beschreibe unten eine App, ein Widget oder eine Präsentation. Finn formt daraus einen praktischen Plan.",
-  "creationsDescribeHint": "Beschreibe eine Kreation",
   "creationsCreateSemantic": "Erstellen",
+  "creationsDescribeHint": "Beschreibe eine Kreation",
   "creationsCreatingSemantic": "Wird erstellt",
   "creationsKindApp": "App",
   "creationsKindWidget": "Widget",
+  "creationsFilterApps": "Apps",
+  "@creationsFilterApps": {
+    "description": "Plural filter chip: apps"
+  },
+  "creationsFilterWidgets": "Widgets",
+  "@creationsFilterWidgets": {
+    "description": "Plural filter chip: widgets"
+  },
+  "creationsFilterPresentations": "Präsentationen",
+  "@creationsFilterPresentations": {
+    "description": "Plural filter chip: presentations"
+  },
   "creationsKindPresentation": "Präsentation",
   "skillsSaveFailed": "Dieser Skill konnte nicht gespeichert werden.",
   "skillsBuiltForFinn": "Für Finn gebaut",

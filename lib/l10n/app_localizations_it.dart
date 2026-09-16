@@ -234,6 +234,10 @@ class AppLocalizationsIt extends AppLocalizations {
   String get chatFinishingTask => 'Finn AI is finishing another local task.';
 
   @override
+  String get chatAttachmentPickFailed =>
+      'Impossibile aprire il selettore. Riprova.';
+
+  @override
   String get chatCouldNotPrepare =>
       'Could not prepare chat. Check the model and storage, then try again.';
 
@@ -541,11 +545,46 @@ class AppLocalizationsIt extends AppLocalizations {
   String get skillsInstructionLabel => 'Instruction';
 
   @override
+  String get chatBrowseTooltip => 'Cerca sul web per questo messaggio';
+
+  @override
+  String get chatBrowseOnSemantic => 'Ricerca web attiva';
+
+  @override
+  String get chatBrowseOffSemantic => 'Ricerca web disattivata';
+
+  @override
+  String get chatBrowsingTitle => 'Navigazione sul web';
+
+  @override
+  String get chatBrowsingHide => 'Nascondi';
+
+  @override
+  String chatBrowsingSteps(int count) {
+    return '$count passaggi';
+  }
+
+  @override
+  String chatBrowsingSearch(String query) {
+    return 'Cercato sul web “$query”';
+  }
+
+  @override
+  String chatBrowsingOpen(String title) {
+    return 'Letto “$title”';
+  }
+
+  @override
+  String chatBrowsingFind(String query) {
+    return 'Cercato “$query” nella pagina';
+  }
+
+  @override
   String get creationsTitle => 'Creations';
 
   @override
   String get creationsSubtitle =>
-      'Turn an idea into a structured plan, entirely on device.';
+      'Descrivi ciò che vuoi. Finn lo crea sul dispositivo.';
 
   @override
   String get creationsWhatAreWeMaking => 'What are we making?';
@@ -557,7 +596,147 @@ class AppLocalizationsIt extends AppLocalizations {
   String get creationsFinnAdapts => 'Finn adapts the structure to the format.';
 
   @override
-  String get creationsComposerHint => 'Describe what you want to make…';
+  String get creationsAskKind =>
+      'La tua nuova creazione è un’app, un widget o una presentazione?';
+
+  @override
+  String creationsDescribeKind(String kind) {
+    return 'Dimmi cosa deve fare la tua $kind.';
+  }
+
+  @override
+  String get creationsStageDesigning => 'Progettazione…';
+
+  @override
+  String get creationsStageWriting => 'Scrittura…';
+
+  @override
+  String get creationsStageValidating => 'Verifica del risultato…';
+
+  @override
+  String get creationsStageRepairing => 'Correzione di un dettaglio…';
+
+  @override
+  String get creationsFallbackNote =>
+      'Finn non è riuscito a completare il progetto, quindi ecco un modello funzionante su cui costruire.';
+
+  @override
+  String get creationsNewCreation => 'Nuova creazione';
+
+  @override
+  String get creationsStopSemantic => 'Interrompi la creazione';
+
+  @override
+  String get creationsChooseKindSemantic => 'Scegli cosa creare';
+
+  @override
+  String get creationsFailed =>
+      'Finn non è riuscito a completare quella creazione. Riprova.';
+
+  @override
+  String get creationsHomeScreenUnsupported =>
+      'I widget della schermata Home non sono disponibili su questo dispositivo.';
+
+  @override
+  String get creationsHomeScreenAdded => 'Aggiunto alla schermata Home.';
+
+  @override
+  String get creationsHomeScreenFailed =>
+      'Non è stato possibile aggiungerlo alla schermata Home.';
+
+  @override
+  String creationsExportedTo(String fileName) {
+    return '$fileName salvato';
+  }
+
+  @override
+  String get creationsExportDeck => 'Esporta come PowerPoint';
+
+  @override
+  String get creationsAddToHomeScreen => 'Aggiungi alla schermata Home';
+
+  @override
+  String get creationsWidgetPreview =>
+      'Ecco come apparirà sulla schermata Home.';
+
+  @override
+  String get creationsKindApp => 'App';
+
+  @override
+  String get creationsKindWidget => 'Widget';
+
+  @override
+  String get creationsKindPresentation => 'Presentazione';
+
+  @override
+  String get creationsFilterApps => 'App';
+
+  @override
+  String get creationsFilterWidgets => 'Widget';
+
+  @override
+  String get creationsFilterPresentations => 'Presentazioni';
+
+  @override
+  String get skillsSaveFailed => 'Impossibile salvare questa Skill.';
+
+  @override
+  String get skillsBuiltForFinn => 'Creato per Finn';
+
+  @override
+  String get skillsBuiltForFinnSubtitle =>
+      'Attiva solo ciò che ti serve per ogni tipo di lavoro.';
+
+  @override
+  String get skillsYourSkills => 'Le tue Skill';
+
+  @override
+  String get skillsYourSkillsSubtitle =>
+      'Crea istruzioni riutilizzabili per i tuoi flussi di lavoro.';
+
+  @override
+  String get skillsNoneActive => 'Nessuna Skill attiva';
+
+  @override
+  String skillsActiveCount(int count) {
+    return '$count attive';
+  }
+
+  @override
+  String get creationsExportedShared => 'Presentazione pronta da condividere.';
+
+  @override
+  String get creationsExportFailed =>
+      'Non è stato possibile esportare quella presentazione.';
+
+  @override
+  String get creationsResetApp => 'Reimposta';
+
+  @override
+  String get creationsPreviousSlide => 'Diapositiva precedente';
+
+  @override
+  String get creationsNextSlide => 'Diapositiva successiva';
+
+  @override
+  String creationsSlideOf(int index, int count) {
+    return 'Diapositiva $index di $count';
+  }
+
+  @override
+  String creationsElementCount(int count) {
+    return '$count elementi';
+  }
+
+  @override
+  String creationsRowCount(int count) {
+    return '$count righe';
+  }
+
+  @override
+  String creationsSlideCount(int count) {
+    return '$count diapositive';
+  }
 
   @override
   String get creationsStopTitle => 'Stop this creation?';
@@ -579,18 +758,6 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get creationsGenerating => 'Generating…';
-
-  @override
-  String get creationsDiscarded => 'Creation discarded';
-
-  @override
-  String get creationsKindStory => 'Story';
-
-  @override
-  String get creationsKindPlan => 'Plan';
-
-  @override
-  String get creationsKindEmail => 'Email';
 
   @override
   String get reportTitle => 'Report AI Response';
@@ -813,47 +980,10 @@ class AppLocalizationsIt extends AppLocalizations {
       'Descrivi qui sotto un\'app, un widget o una presentazione. Finn la trasformerà in un piano pratico.';
 
   @override
-  String get creationsDescribeHint => 'Descrivi una creazione';
-
-  @override
   String get creationsCreateSemantic => 'Crea';
 
   @override
-  String get creationsCreatingSemantic => 'Creazione';
-
-  @override
-  String get creationsKindApp => 'App';
-
-  @override
-  String get creationsKindWidget => 'Widget';
-
-  @override
-  String get creationsKindPresentation => 'Presentazione';
-
-  @override
-  String get skillsSaveFailed => 'Impossibile salvare questa Skill.';
-
-  @override
-  String get skillsBuiltForFinn => 'Creato per Finn';
-
-  @override
-  String get skillsBuiltForFinnSubtitle =>
-      'Attiva solo ciò che ti serve per ogni tipo di lavoro.';
-
-  @override
-  String get skillsYourSkills => 'Le tue Skill';
-
-  @override
-  String get skillsYourSkillsSubtitle =>
-      'Crea istruzioni riutilizzabili per i tuoi flussi di lavoro.';
-
-  @override
-  String get skillsNoneActive => 'Nessuna Skill attiva';
-
-  @override
-  String skillsActiveCount(int count) {
-    return '$count attive';
-  }
+  String get creationsDescribeHint => 'Descrivi una creazione';
 
   @override
   String get skillsActionsTooltip => 'Azioni della Skill';

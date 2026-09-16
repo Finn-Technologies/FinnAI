@@ -1,7 +1,7 @@
 import 'package:flutter/widgets.dart';
-import '../src/engine/finn_engine_types.dart';
-import 'app_localizations.dart';
-import 'app_localizations_en.dart';
+import 'package:finn_ai/src/engine/finn_engine_types.dart';
+import 'package:finn_ai/l10n/app_localizations.dart';
+import 'package:finn_ai/l10n/app_localizations_en.dart';
 
 /// Never-null l10n accessor — falls back to English when no delegate
 /// is present (e.g. tests pumping a widget without MaterialApp delegates).
