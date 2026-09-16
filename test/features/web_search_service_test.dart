@@ -1,5 +1,5 @@
-import 'package:finn_ai/src/search/search_agent.dart';
-import 'package:finn_ai/src/search/web_search_service.dart';
+import 'package:finn_ai/src/features/search/search_agent.dart';
+import 'package:finn_ai/src/features/search/web_search_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -63,6 +63,12 @@ void main() {
     expect(policy.shouldSearch('¿Cómo estás?'), isFalse);
     expect(policy.shouldSearch('Comment ça va ?'), isFalse);
     expect(policy.shouldSearch('Wie geht es dir?'), isFalse);
+    expect(policy.shouldSearch('What is 2 + 2?'), isFalse);
+    expect(
+        policy.shouldSearch(
+            'How to write a function in python to reverse a string?'),
+        isFalse);
+    expect(policy.shouldSearch('Can you write a poem about the sea?'), isFalse);
   });
 
   test('decision parser accepts varied tool-call formats and fails safe', () {

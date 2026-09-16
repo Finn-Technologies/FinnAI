@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:finn_ai/src/inference/model_catalog.dart';
-import 'package:finn_ai/src/widgets/safe_markdown_text.dart';
+import 'package:finn_ai/src/shared/widgets/safe_markdown_text.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

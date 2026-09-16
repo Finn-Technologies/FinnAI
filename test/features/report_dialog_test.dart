@@ -1,7 +1,7 @@
 import 'dart:convert';
 
-import 'package:finn_ai/src/reporting/report_dialog.dart';
-import 'package:finn_ai/src/reporting/report_service.dart';
+import 'package:finn_ai/src/features/reporting/report_dialog.dart';
+import 'package:finn_ai/src/features/reporting/report_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';

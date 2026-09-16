@@ -1,4 +1,4 @@
-import 'package:finn_ai/src/inference/evaluation.dart';
+import 'package:finn_ai/src/engine/eval/evaluation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

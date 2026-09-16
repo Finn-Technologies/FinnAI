@@ -11,7 +11,7 @@
 //      value set at generation time, not the currently selected model.
 import 'dart:io';
 
-import 'package:finn_ai/src/conversations/conversation_store.dart';
+import 'package:finn_ai/src/features/conversations/conversation_store.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 

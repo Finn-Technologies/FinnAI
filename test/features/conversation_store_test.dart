@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:cryptography/cryptography.dart';
-import 'package:finn_ai/src/conversations/conversation_store.dart';
+import 'package:finn_ai/src/features/conversations/conversation_store.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -46,7 +46,9 @@ void main() {
 
   tearDown(() async {
     if (await tempDir.exists()) {
-      await tempDir.delete(recursive: true);
+      try {
+        await tempDir.delete(recursive: true);
+      } catch (_) {}
     }
   });
 

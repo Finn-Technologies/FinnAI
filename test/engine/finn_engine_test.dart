@@ -13,7 +13,7 @@ void main() {
       final engine = FinnAccelerator.instance;
       expect(engine, isNotNull);
       expect(engine.selected, isNotNull);
-      expect(engine.selected.name, contains('LFM2.5-VL'));
+      expect(engine.selected.name, contains('LFM2.5-VL 1.6B'));
     });
 
     test('FinnEngineConfig supports TurboQuant and compact KV types', () {
@@ -66,7 +66,7 @@ void main() {
 
         expect(identical(accelerator, engine), isTrue);
         expect(identical(engine, inference), isTrue);
-        expect(accelerator.selected.name, contains('LFM2.5-VL'));
+        expect(accelerator.selected.name, contains('LFM2.5-VL 1.6B'));
       },
     );
 

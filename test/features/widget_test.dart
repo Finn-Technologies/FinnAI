@@ -1,14 +1,14 @@
-import 'package:finn_ai/src/conversations/conversation_store.dart';
-import 'package:finn_ai/src/creations/creations_page.dart';
-import 'package:finn_ai/src/flux_app.dart';
-import 'package:finn_ai/src/home/home_shell.dart';
-import 'package:finn_ai/src/search/web_search_service.dart';
-import 'package:finn_ai/src/settings/settings_page.dart';
-import 'package:finn_ai/src/skills/skills_page.dart';
-import 'package:finn_ai/src/theme/flux_theme.dart';
-import 'package:finn_ai/src/you/you_page.dart';
-import 'package:finn_ai/src/widgets/safe_markdown_text.dart';
-import 'package:finn_ai/src/widgets/flux_controls.dart';
+import 'package:finn_ai/src/features/conversations/conversation_store.dart';
+import 'package:finn_ai/src/features/creations/creations_page.dart';
+import 'package:finn_ai/src/app/bootstrap.dart';
+import 'package:finn_ai/src/features/chat/home_shell.dart';
+import 'package:finn_ai/src/features/search/web_search_service.dart';
+import 'package:finn_ai/src/features/settings/settings_page.dart';
+import 'package:finn_ai/src/features/skills/skills_page.dart';
+import 'package:finn_ai/src/shared/theme/flux_theme.dart';
+import 'package:finn_ai/src/features/you/you_page.dart';
+import 'package:finn_ai/src/shared/widgets/safe_markdown_text.dart';
+import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -263,7 +263,7 @@ void main() {
         .position
         .pixels;
 
-    await tester.tap(find.text('Sources'));
+    await tester.tap(find.text('one.example.com'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 250));
     await tester.pump(const Duration(milliseconds: 100));
@@ -439,7 +439,7 @@ void main() {
     await tester.pump();
     expect(find.byType(CreationsPage), findsOneWidget);
     expect(
-      find.text('Turn an idea into a structured plan, entirely on device.'),
+      find.text('Describe what you want. Finn builds it on device.'),
       findsOneWidget,
     );
     expect(tester.takeException(), isNull);

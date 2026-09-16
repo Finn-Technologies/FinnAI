@@ -1,12 +1,12 @@
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:finn_ai/src/app_state_store.dart';
-import 'package:finn_ai/src/conversations/conversation_store.dart';
-import 'package:finn_ai/src/creations/creation_model.dart';
-import 'package:finn_ai/src/creations/creation_store.dart';
-import 'package:finn_ai/src/skills/skills_store.dart';
-import 'package:finn_ai/src/you/you_profile_store.dart';
+import 'package:finn_ai/src/app/app_state_store.dart';
+import 'package:finn_ai/src/features/conversations/conversation_store.dart';
+import 'package:finn_ai/src/features/creations/creation_model.dart';
+import 'package:finn_ai/src/features/creations/creation_store.dart';
+import 'package:finn_ai/src/features/skills/skills_store.dart';
+import 'package:finn_ai/src/features/you/you_profile_store.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class FailingKeyStorage implements SecureKeyStorage {
@@ -121,11 +121,13 @@ void main() {
         await creationStore.save([
           FinnCreation(
             id: 'private-creation',
-            kind: CreationKind.app,
             prompt: 'Build my private app',
             title: 'Private app',
             summary: 'Local-only data',
-            sections: const [],
+            artifact: const LegacyDocumentArtifact(
+              summary: 'Local-only data',
+              sections: <CreationSection>[],
+            ),
             createdAt: DateTime(2026, 7, 27),
           ),
         ]);

@@ -1,4 +1,4 @@
-import 'package:finn_ai/src/voice/voice_chat_controller.dart';
+import 'package:finn_ai/src/features/voice/voice_chat_controller.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:speech_to_text/speech_recognition_error.dart';

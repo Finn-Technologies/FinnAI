@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:finn_ai/src/widgets/flux_context_menu.dart';
-import 'package:finn_ai/src/widgets/flux_controls.dart';
+import 'package:finn_ai/src/shared/widgets/flux_context_menu.dart';
+import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
 
 void main() {
   testWidgets('FluxSpringPressable responds to tap and long-press',

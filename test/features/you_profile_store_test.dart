@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:finn_ai/src/you/you_profile_store.dart';
+import 'package:finn_ai/src/features/you/you_profile_store.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

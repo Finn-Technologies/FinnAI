@@ -1,13 +1,13 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:finn_ai/src/conversations/conversation_store.dart';
-import 'package:finn_ai/src/generation/chat_generation_controller.dart';
-import 'package:finn_ai/src/home/home_shell.dart';
+import 'package:finn_ai/src/features/conversations/conversation_store.dart';
+import 'package:finn_ai/src/features/chat/chat_generation_controller.dart';
+import 'package:finn_ai/src/features/chat/home_shell.dart';
 import 'package:finn_ai/src/inference/finn_inference.dart';
 import 'package:finn_ai/src/inference/prompt_intent.dart';
 import 'package:finn_ai/src/inference/ttft_metrics.dart';
-import 'package:finn_ai/src/theme/flux_theme.dart';
+import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';

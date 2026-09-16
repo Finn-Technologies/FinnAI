@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:finn_ai/src/widgets/flux_controls.dart';
+import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

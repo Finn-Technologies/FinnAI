@@ -1,6 +1,6 @@
-import 'package:finn_ai/src/conversations/conversation_store.dart';
-import 'package:finn_ai/src/home/home_shell.dart';
-import 'package:finn_ai/src/theme/flux_theme.dart';
+import 'package:finn_ai/src/features/conversations/conversation_store.dart';
+import 'package:finn_ai/src/features/chat/home_shell.dart';
+import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

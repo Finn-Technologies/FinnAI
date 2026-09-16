@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:finn_ai/src/skills/skills_store.dart';
+import 'package:finn_ai/src/features/skills/skills_store.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

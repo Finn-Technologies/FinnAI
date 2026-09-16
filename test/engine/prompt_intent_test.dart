@@ -2,7 +2,7 @@ import 'dart:typed_data';
 
 import 'package:finn_ai/src/inference/prompt_intent.dart';
 import 'package:finn_ai/src/inference/finn_inference.dart';
-import 'package:finn_ai/src/widgets/safe_markdown_text.dart';
+import 'package:finn_ai/src/shared/widgets/safe_markdown_text.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:llama_cpp_dart/llama_cpp_dart.dart';
 

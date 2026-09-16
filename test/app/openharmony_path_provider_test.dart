@@ -1,4 +1,4 @@
-import 'package:finn_ai/src/openharmony/openharmony_path_provider.dart';
+import 'package:finn_ai/src/platform/openharmony_path_provider.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
