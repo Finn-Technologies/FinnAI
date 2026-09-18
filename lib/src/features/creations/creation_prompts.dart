@@ -43,7 +43,7 @@ abstract final class CreationPrompts {
 
   static String get _appInstruction => '''
 JSON shape:
-{"title":"short name","summary":"one sentence","accent":"$_accents","nodes":[ … ]}
+{"title":"short name","summary":"one sentence","accent":"mint","nodes":[ … ]}
 
 Each node needs a "type". The only allowed nodes are:
 {"type":"text","value":"Taps: {count}","style":"title"}   // {key} shows a stored value
@@ -67,6 +67,14 @@ Actions are exactly one of:
 
 Rules:
 - At most ${SpecLimits.maxNodes} nodes and at most ${SpecLimits.maxNodeDepth} levels of nesting.
+- "title" is at most ${SpecLimits.maxTitleChars} characters. "summary" is at most ${SpecLimits.maxSummaryChars}.
+- "accent" is exactly one of these words, on its own: ${SpecLimits.accentNames}.
+- Key names are lower-case letters, digits and underscores only, and start with a letter.
+- Every label, hint, caption or "empty" text is at most ${SpecLimits.maxLabelChars} characters.
+- Only "text" values and image URLs may be longer, up to ${SpecLimits.maxTextChars} characters.
+- A "choice" has between 2 and ${SpecLimits.maxChoices} options.
+- A "slider" needs max greater than min. A "progress" needs max greater than 0. A "spacer" size is 0 to 200.
+- An "image" needs either an "emoji" or an "https" url.
 - Expressions use only + - * / % ( ) and whole numbers. No words, no functions.
 - Every {key} you display must also be set by a field, toggle, slider, choice or action.
 - These node types are the complete set. Do not invent others.
@@ -79,11 +87,12 @@ A widget sits on the phone's home screen. It cannot be interactive, so it shows
 information only and opens the app when tapped.
 
 JSON shape:
-{"title":"short name","summary":"one sentence","accent":"$_accents","rows":[{"label":"Glasses","value":"3"}],"footer":"Tap to open"}
+{"title":"short name","summary":"one sentence","accent":"sky","rows":[{"label":"Glasses","value":"3"}],"footer":"Tap to open"}
 
 Rules:
 - At most ${SpecLimits.maxWidgetRows} rows.
 - Keep labels to a few words and each value at most ${SpecLimits.maxWidgetValueChars} characters.
+- "accent" is exactly one of these words, on its own: ${SpecLimits.accentNames}.
 - No buttons and no actions. The whole widget opens the app when tapped.
 
 Example:
@@ -101,6 +110,4 @@ Rules:
 
 Example:
 {"title":"Quarterly Review","summary":"A short review deck.","slides":[{"title":"Quarterly Review","bullets":["Revenue and churn","What changed"],"notes":"Welcome everyone."},{"title":"What Changed","bullets":["Revenue up 12%","Churn down to 3%"],"notes":"Lead with growth."}]}''';
-
-  static const String _accents = 'mint|blue|lime|amber|rose|violet|sky';
 }

@@ -50,6 +50,15 @@ abstract interface class CancelableCreationGenerator {
   Future<void> cancel();
 }
 
+/// Raised when the user cancels a creation mid-flight.
+///
+/// Distinct from a failure: the controller turns this into a quiet "stopped"
+/// turn rather than an error, and the attempt loop stops instead of starting
+/// the repair round the user just cancelled.
+class CreationCancelled implements Exception {
+  const CreationCancelled();
+}
+
 /// Produces the raw model text for one creation request.
 ///
 /// Injected so the parse → validate → repair → fallback pipeline can be tested
@@ -71,8 +80,7 @@ class FinnCreationGenerator
     CreationCompletion? complete,
     this.maxRepairRounds = 1,
   })  : _inference = inference ?? FinnInference.instance,
-        _complete =
-            complete ?? _engineCompletion(inference ?? FinnInference.instance);
+        _overrideCompletion = complete;
 
   /// Near-deterministic decoding: the output has to parse as JSON, so there is
   /// nothing to gain from creative sampling and a lot to lose.
@@ -86,10 +94,19 @@ class FinnCreationGenerator
   );
 
   final FinnInference _inference;
-  final CreationCompletion _complete;
+  final CreationCompletion? _overrideCompletion;
 
   /// How many times a rejected spec is re-prompted before falling back.
   final int maxRepairRounds;
+
+  /// Set by [cancel] and read inside the attempt loop, so a cancel stops the
+  /// job instead of letting it spend a second full generation on a repair.
+  bool _cancelled = false;
+
+  /// Stable for one job, so a repair attempt reuses the KV of the attempt it is
+  /// repairing. A per-attempt id forced a cold prefill and evicted the user's
+  /// chat session, because the session cache holds exactly one entry.
+  String _conversationId = 'creation';
 
   @override
   Future<CreationOutcome> generate({
@@ -97,8 +114,13 @@ class FinnCreationGenerator
     required CreationKind kind,
     required void Function(CreationStage stage) onStage,
   }) async {
+    _cancelled = false;
+    _conversationId =
+        'creation-${DateTime.now().microsecondsSinceEpoch.toRadixString(36)}';
+
     var issues = const <SpecIssue>[];
     for (var attempt = 0; attempt <= maxRepairRounds; attempt++) {
+      if (_cancelled) throw const CreationCancelled();
       onStage(attempt == 0 ? CreationStage.designing : CreationStage.repairing);
       final request = CreationPrompts.build(
         kind: kind,
@@ -106,8 +128,10 @@ class FinnCreationGenerator
         repairIssues:
             attempt == 0 ? null : SpecValidator.describeIssues(issues),
       );
+      if (_cancelled) throw const CreationCancelled();
       onStage(CreationStage.writing);
       final raw = await _complete(request);
+      if (_cancelled) throw const CreationCancelled();
       final evaluated = _evaluate(raw, kind, prompt, onStage);
       final outcome = evaluated.outcome;
       if (outcome != null) return outcome;
@@ -126,7 +150,31 @@ class FinnCreationGenerator
   }
 
   @override
-  Future<void> cancel() => _inference.stopGeneration();
+  Future<void> cancel() async {
+    _cancelled = true;
+    await _inference.stopGeneration();
+  }
+
+  Future<String> _complete(String request) =>
+      _overrideCompletion?.call(request) ?? _engineComplete(request);
+
+  Future<String> _engineComplete(String request) async {
+    final output = StringBuffer();
+    await for (final token in _inference.generateReplyQueued(
+      request,
+      // A dedicated conversation id keeps the creation prompt out of the user's
+      // chat session. Queued rather than direct so a creation started while a
+      // chat answer is streaming waits for the engine instead of failing.
+      conversationId: _conversationId,
+      // The shared system prompt advertises browser tools; a creation turn must
+      // never spend its budget on a search decision pass.
+      enableSearchDecision: false,
+      samplerProfile: sampler,
+    )) {
+      output.write(token);
+    }
+    return output.toString();
+  }
 
   ({CreationOutcome? outcome, List<SpecIssue> issues}) _evaluate(
     String raw,
@@ -176,27 +224,6 @@ class FinnCreationGenerator
     }
   }
 }
-
-/// The production completion: a queued, non-search engine generation.
-CreationCompletion _engineCompletion(FinnInference inference) =>
-    (request) async {
-      final output = StringBuffer();
-      await for (final token in inference.generateReplyQueued(
-        request,
-        // A dedicated conversation id keeps the creation prompt out of the user's
-        // chat session. Queued rather than direct so a creation started while a
-        // chat answer is streaming waits for the engine instead of failing.
-        conversationId:
-            'creation-${DateTime.now().microsecondsSinceEpoch.toRadixString(36)}',
-        // The shared system prompt advertises browser tools; a creation turn must
-        // never spend its budget on a search decision pass.
-        enableSearchDecision: false,
-        samplerProfile: FinnCreationGenerator.sampler,
-      )) {
-        output.write(token);
-      }
-      return output.toString();
-    };
 
 String _titleFrom(Map<String, Object?> json, String prompt) {
   final raw = json['title'];

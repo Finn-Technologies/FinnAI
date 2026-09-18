@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import 'package:finn_ai/l10n/l10n_helper.dart';
@@ -130,8 +132,12 @@ class _DeckViewerState extends State<DeckViewer> {
                         onNext:
                             _index == slides.length - 1 ? null : () => _go(1),
                       ),
+                      // The export FAB floats over the bottom-right corner, so
+                      // the footer reserves its height when it is present.
                       SizedBox(
-                          height: MediaQuery.paddingOf(context).bottom + 18),
+                        height: MediaQuery.paddingOf(context).bottom +
+                            (widget.onExport == null ? 18 : 64),
+                      ),
                     ],
                   ),
                 ),
@@ -270,11 +276,17 @@ class _DeckFooter extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Row(
         children: [
-          FluxIconButton(
-            icon: FluxIcons.arrowRight01,
-            tooltip: L10n.of(context).creationsPreviousSlide,
-            onTap: onPrevious,
-            dark: true,
+          // The only arrow glyph available points right, so the "previous"
+          // control mirrors it: a right-pointing arrow for stepping back read
+          // as "next".
+          Transform.rotate(
+            angle: math.pi,
+            child: FluxIconButton(
+              icon: FluxIcons.arrowRight01,
+              tooltip: L10n.of(context).creationsPreviousSlide,
+              onTap: onPrevious,
+              dark: true,
+            ),
           ),
           Expanded(
             child: Semantics(

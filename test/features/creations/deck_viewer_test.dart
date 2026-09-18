@@ -49,4 +49,47 @@ void main() {
     expect(find.text('Keep this brief.'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('previous-slide control is mirrored and clears the export FAB', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: FluxTheme.light,
+        home: DeckViewer(
+          title: deck.title,
+          deck: deck,
+          onBack: () {},
+          onExport: () {},
+        ),
+      ),
+    );
+    await tester.pump();
+
+    // A right-pointing arrow on "previous" read as "next": it must be rotated.
+    final transforms = tester.widgetList<Transform>(
+      find.ancestor(
+        of: find.byTooltip('Previous slide'),
+        matching: find.byType(Transform),
+      ),
+    );
+    expect(
+      transforms.any((t) => (t.transform.entry(0, 0) + 1).abs() < 0.001),
+      isTrue,
+      reason: 'the previous-slide glyph should be rotated 180°',
+    );
+
+    // The export FAB floats over the bottom-right corner where the footer's
+    // next control lives, so the two must not overlap.
+    expect(find.byType(FloatingActionButton), findsOneWidget);
+    final fab = tester.getRect(find.byType(FloatingActionButton));
+    final next = tester.getRect(find.byTooltip('Next slide'));
+    expect(fab.overlaps(next), isFalse);
+    expect(tester.takeException(), isNull);
+  });
 }

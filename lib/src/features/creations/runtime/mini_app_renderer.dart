@@ -24,12 +24,10 @@ class MiniAppRenderer extends StatefulWidget {
 
 class _MiniAppRendererState extends State<MiniAppRenderer> {
   final Map<String, TextEditingController> _controllers = {};
-  int _lastRevision = 0;
 
   @override
   void initState() {
     super.initState();
-    _lastRevision = widget.state.revision;
     widget.state.addListener(_onStateChanged);
   }
 
@@ -39,7 +37,6 @@ class _MiniAppRendererState extends State<MiniAppRenderer> {
     if (!identical(oldWidget.state, widget.state)) {
       oldWidget.state.removeListener(_onStateChanged);
       widget.state.addListener(_onStateChanged);
-      _lastRevision = widget.state.revision;
     }
   }
 
@@ -54,17 +51,16 @@ class _MiniAppRendererState extends State<MiniAppRenderer> {
 
   void _onStateChanged() {
     if (!mounted) return;
-    final revision = widget.state.revision;
-    if (revision != _lastRevision) {
-      _lastRevision = revision;
-      // A reset rewrote the values underneath the inputs; push them back into
-      // the controllers so the screen reflects the cleared state.
-      for (final entry in _controllers.entries) {
-        final text = SafeExpression.describeValue(
-          widget.state.valueOf(entry.key),
-        );
-        if (entry.value.text != text) entry.value.text = text;
-      }
+    // A reset rewrites the values underneath the inputs, and a direct action
+    // (increment, append, set) can change a field-bound key just as well. Push
+    // any value that no longer matches back into its controller, so a field
+    // never shows text the state has moved on from. A field's own keystrokes
+    // already match, so this is a no-op while the user is typing.
+    for (final entry in _controllers.entries) {
+      final text = SafeExpression.describeValue(
+        widget.state.valueOf(entry.key),
+      );
+      if (entry.value.text != text) entry.value.text = text;
     }
     setState(() {});
   }

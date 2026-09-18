@@ -7,9 +7,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:finn_ai/src/features/creations/creation_fallbacks.dart';
 import 'package:finn_ai/src/features/creations/creation_generator.dart';
 import 'package:finn_ai/src/features/creations/creation_model.dart';
+import 'package:finn_ai/src/features/creations/creation_prompts.dart';
 import 'package:finn_ai/src/features/creations/creation_store.dart';
 import 'package:finn_ai/src/features/creations/creations_controller.dart';
+import 'package:finn_ai/src/features/creations/json_salvage.dart';
 import 'package:finn_ai/src/features/creations/spec/mini_app_spec.dart';
+import 'package:finn_ai/src/features/creations/spec/spec_limits.dart';
 
 /// Records the stages a generation reported, so the progress bubble is covered.
 class FakeCreationGenerator implements CreationGenerator {
@@ -344,7 +347,8 @@ void main() {
       expect(result, isNull);
       expect(controller.creations, isEmpty);
       expect(controller.generating, isFalse);
-      expect(controller.error, contains('could not finish'));
+      expect(controller.failure, CreationFailure.create);
+      expect(controller.wasCancelled, isFalse);
     });
 
     test('an empty brief is ignored', () async {
@@ -376,6 +380,71 @@ void main() {
 
       expect(result, isNull);
       expect(controller.creations, hasLength(1));
+    });
+  });
+
+  group('generation prompts state every limit the validator enforces', () {
+    // A rule the model was never told is a rule it can only fail by accident,
+    // which is what pushed valid-looking specs into the repair round.
+    String appPrompt() =>
+        CreationPrompts.build(kind: CreationKind.app, brief: 'a counter');
+
+    test('the app prompt names the per-string caps', () {
+      final prompt = appPrompt();
+      expect(prompt, contains('${SpecLimits.maxTitleChars}'));
+      expect(prompt, contains('${SpecLimits.maxSummaryChars}'));
+      expect(prompt, contains('${SpecLimits.maxLabelChars}'));
+      expect(prompt, contains('${SpecLimits.maxTextChars}'));
+    });
+
+    test('the app prompt names the structural caps', () {
+      final prompt = appPrompt();
+      expect(prompt, contains('${SpecLimits.maxNodes}'));
+      expect(prompt, contains('${SpecLimits.maxNodeDepth}'));
+      expect(prompt, contains('${SpecLimits.maxChoices}'));
+    });
+
+    test('every accent is named, and none as a pipe-joined value', () {
+      final prompt = appPrompt();
+      for (final accent in SpecLimits.accentNames.split(', ')) {
+        expect(prompt, contains(accent), reason: accent);
+      }
+      // The shape must show one concrete accent: a joined list inside the JSON
+      // is copied verbatim as the value by small models.
+      expect(prompt, isNot(contains('mint|blue')));
+    });
+
+    test('the widget prompt states its own limits', () {
+      final prompt = CreationPrompts.build(
+        kind: CreationKind.widget,
+        brief: 'water tracker',
+      );
+      expect(prompt, contains('${SpecLimits.maxWidgetRows}'));
+      expect(prompt, contains('${SpecLimits.maxWidgetValueChars}'));
+      expect(prompt, isNot(contains('sky|')));
+    });
+  });
+
+  group('json salvage prefers a spec-shaped object', () {
+    test('skips a leading stray object for the real spec', () {
+      final decoded = extractJsonObject(
+        '{"note":"thinking"}\n'
+        '{"title":"Counter","nodes":[{"type":"text","value":"hi"}]}',
+      );
+      expect(decoded?['title'], 'Counter');
+    });
+
+    test('still accepts an object that is merely first', () {
+      expect(extractJsonObject('{"title":"Bare"}')?['title'], 'Bare');
+    });
+
+    test('a tool call is never mistaken for a spec', () {
+      expect(
+        extractJsonObject(
+          '<tool_call>{"name":"browser_search","arguments":{}}</tool_call>',
+        ),
+        isNull,
+      );
     });
   });
 }

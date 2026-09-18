@@ -425,4 +425,48 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   });
+
+  group('tap targets', () {
+    testWidgets('the tile badge keeps a 48dp hit area around its 30dp circle',
+        (tester) async {
+      await store.save([
+        _creation(id: 'a', title: 'Flappy Bird', artifact: _appArtifact),
+      ]);
+      await pumpPage(tester, generator: FakeGenerator(artifact: _appArtifact));
+
+      final badge = find.bySemanticsLabel('Add to home screen');
+      expect(badge, findsOneWidget);
+      final size = tester.getSize(badge);
+      expect(size.width, greaterThanOrEqualTo(48));
+      expect(size.height, greaterThanOrEqualTo(48));
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('gallery filter chips are at least 48dp tall', (tester) async {
+      await store.save([
+        _creation(id: 'a', title: 'Flappy Bird', artifact: _appArtifact),
+      ]);
+      await pumpPage(tester, generator: FakeGenerator(artifact: _appArtifact));
+
+      final chip = find.ancestor(
+        of: find.text('All'),
+        matching: find.byType(InkWell),
+      );
+      expect(chip, findsOneWidget);
+      expect(tester.getSize(chip).height, greaterThanOrEqualTo(48));
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('the kind answers are at least 48dp tall', (tester) async {
+      await pumpPage(tester, generator: FakeGenerator(artifact: _appArtifact));
+
+      final answer = find.ancestor(
+        of: find.text('Widget'),
+        matching: find.byType(InkWell),
+      );
+      expect(answer, findsOneWidget);
+      expect(tester.getSize(answer).height, greaterThanOrEqualTo(48));
+      expect(tester.takeException(), isNull);
+    });
+  });
 }

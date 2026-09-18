@@ -55,9 +55,18 @@ class CreationsController extends ChangeNotifier {
   CreationKind? get activeKind => _activeKind;
 
   bool _cancelRequested = false;
+
+  /// True once a job has been stopped by the user rather than by a failure.
+  bool _cancelled = false;
   bool _disposed = false;
-  String? _error;
-  String? get error => _error;
+
+  /// Why the last operation failed, as a code the page localizes.
+  ///
+  /// The controller holds no user-facing sentence: a hardcoded English string
+  /// would override the page's `L10n` lookup and leak English into the other
+  /// four locales.
+  CreationFailure? _failure;
+  CreationFailure? get failure => _failure;
 
   /// Notifies unless the controller has been disposed.
   ///
@@ -76,12 +85,12 @@ class CreationsController extends ChangeNotifier {
 
   Future<void> load() async {
     _loading = true;
-    _error = null;
+    _failure = null;
     _notify();
     try {
       _creations = await _store.load();
     } on Object {
-      _error = 'Creations could not be loaded.';
+      _failure = CreationFailure.load;
     } finally {
       _loading = false;
       _notify();
@@ -99,7 +108,8 @@ class CreationsController extends ChangeNotifier {
     if (cleanPrompt.isEmpty || _loading || _generating) return null;
     _generating = true;
     _cancelRequested = false;
-    _error = null;
+    _cancelled = false;
+    _failure = null;
     _activePrompt = cleanPrompt;
     _activeKind = kind;
     _stage = CreationStage.designing;
@@ -110,7 +120,10 @@ class CreationsController extends ChangeNotifier {
         kind: kind,
         onStage: _reportStage,
       );
-      if (_cancelRequested) return null;
+      if (_cancelRequested) {
+        _cancelled = true;
+        return null;
+      }
       final now = _clock();
       final creation = FinnCreation(
         id: '${now.microsecondsSinceEpoch}-${kind.name}',
@@ -132,10 +145,14 @@ class CreationsController extends ChangeNotifier {
         creation: creation,
         usedFallback: outcome.usedFallback,
       );
-    } on Object {
-      if (!_cancelRequested) {
-        _error = 'Finn could not finish that creation. Please try again.';
-      }
+    } on CreationCancelled {
+      _cancelled = true;
+      return null;
+    } on Object catch (error) {
+      // The reason is logged rather than shown: the page renders a localized
+      // sentence, and an engine exception's English text would override it.
+      debugPrint('FINN_CREATION failed: $error');
+      _failure = CreationFailure.create;
       return null;
     } finally {
       _generating = false;
@@ -161,6 +178,12 @@ class CreationsController extends ChangeNotifier {
     }
   }
 
+  /// True when the last job ended because the user stopped it.
+  ///
+  /// The page reads this to write a quiet "stopped" turn, so a deliberate stop
+  /// is never reported back as a failure.
+  bool get wasCancelled => _cancelled;
+
   Future<void> delete(FinnCreation creation) async {
     final previous = _creations;
     _creations = _creations
@@ -171,14 +194,17 @@ class CreationsController extends ChangeNotifier {
       await _store.save(_creations);
     } on Object {
       _creations = previous;
-      _error = 'That creation could not be deleted.';
+      _failure = CreationFailure.delete;
       _notify();
     }
   }
 
-  void clearError() {
-    if (_error == null) return;
-    _error = null;
+  void clearFailure() {
+    if (_failure == null) return;
+    _failure = null;
     _notify();
   }
 }
+
+/// Why an operation failed, resolved to a sentence by the page.
+enum CreationFailure { load, create, delete }

@@ -69,6 +69,10 @@ class _ErrorTurn extends _Turn {
   final String message;
 }
 
+class _StoppedTurn extends _Turn {
+  const _StoppedTurn();
+}
+
 class CreationsPage extends StatefulWidget {
   const CreationsPage({super.key, this.controller});
 
@@ -266,8 +270,12 @@ class _CreationsPageState extends State<CreationsPage> {
       _pendingKind = null;
       _pendingPrompt = null;
       if (result == null) {
+        // A stopped job is a deliberate user action, not a failure, so it gets
+        // its own quiet turn rather than an error.
         _turns.add(
-          _ErrorTurn(_controller.error ?? L10n.of(context).creationsFailed),
+          _controller.wasCancelled
+              ? const _StoppedTurn()
+              : _ErrorTurn(L10n.of(context).creationsFailed),
         );
       } else {
         _turns.add(
@@ -484,14 +492,17 @@ class _CreationsPageState extends State<CreationsPage> {
                               AnimatedSize(
                                 duration: const Duration(milliseconds: 180),
                                 curve: Curves.easeOutCubic,
-                                child: _controller.error == null ||
+                                child: _controller.failure == null ||
                                         _mode == _Mode.builder
                                     ? const SizedBox(width: double.infinity)
                                     : Padding(
                                         padding: const EdgeInsets.only(top: 12),
                                         child: _ErrorNotice(
-                                          message: _controller.error!,
-                                          onDismiss: _controller.clearError,
+                                          message: _failureMessage(
+                                            context,
+                                            _controller.failure!,
+                                          ),
+                                          onDismiss: _controller.clearFailure,
                                         ),
                                       ),
                               ),
@@ -662,6 +673,15 @@ class _Transcript extends StatelessWidget {
                   message: message,
                   onDismiss: null,
                 ),
+              _StoppedTurn() => _AssistantBubble(
+                  child: Text(
+                    L10n.of(context).creationsStopped,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: FluxColors.mutedOf(context),
+                          fontStyle: FontStyle.italic,
+                        ),
+                  ),
+                ),
               _ArtifactTurn(:final creation, :final usedFallback) =>
                 _ArtifactCard(
                   creation: creation,
@@ -799,7 +819,10 @@ class _KindAnswer extends StatelessWidget {
           child: InkWell(
             onTap: onTap,
             borderRadius: BorderRadius.circular(FluxRadius.sm),
-            child: Padding(
+            child: Container(
+              // The answer rows are the primary builder control, so they keep
+              // the 48dp minimum even though the label alone is shorter.
+              constraints: const BoxConstraints(minHeight: 48),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               child: Row(
                 children: [
@@ -1142,26 +1165,35 @@ class _CreationTile extends StatelessWidget {
                 ),
               ),
               Positioned(
-                right: -2,
-                bottom: 2,
+                // The 48dp hit box is centred on the 30dp badge, so the
+                // visible circle stays put while the tap target meets the 48dp
+                // minimum. The offsets are the original ones shifted by the
+                // extra half-box (9dp) in each direction.
+                right: -11,
+                bottom: -7,
                 child: Semantics(
                   button: true,
                   label: badgeLabel,
-                  child: Material(
-                    color: FluxColors.cardOf(context),
-                    shape: const CircleBorder(),
-                    child: InkWell(
-                      onTap: onBadgeTap,
-                      customBorder: const CircleBorder(),
-                      child: SizedBox.square(
-                        dimension: 30,
-                        child: Center(
-                          child: FluxIcon(
-                            icon: creation.kind == CreationKind.presentation
-                                ? FluxIcons.download
-                                : FluxIcons.add,
-                            size: 15,
-                            color: CreationPalette.onPastel,
+                  child: SizedBox.square(
+                    dimension: 48,
+                    child: Center(
+                      child: Material(
+                        color: FluxColors.cardOf(context),
+                        shape: const CircleBorder(),
+                        child: InkWell(
+                          onTap: onBadgeTap,
+                          customBorder: const CircleBorder(),
+                          child: SizedBox.square(
+                            dimension: 30,
+                            child: Center(
+                              child: FluxIcon(
+                                icon: creation.kind == CreationKind.presentation
+                                    ? FluxIcons.download
+                                    : FluxIcons.add,
+                                size: 15,
+                                color: CreationPalette.onPastel,
+                              ),
+                            ),
                           ),
                         ),
                       ),
@@ -1579,7 +1611,8 @@ class _Filters extends StatelessWidget {
   Widget build(BuildContext context) {
     final values = <CreationKind?>[null, ...CreationKind.values];
     return SizedBox(
-      height: 36,
+      // 48dp keeps every filter chip at the minimum tap target.
+      height: 48,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: values.length,
@@ -1757,6 +1790,16 @@ String? _emojiFor(FinnCreation creation) {
     }
   }
   return null;
+}
+
+/// Resolves a controller failure code to the sentence the user reads.
+String _failureMessage(BuildContext context, CreationFailure failure) {
+  final l10n = L10n.of(context);
+  return switch (failure) {
+    CreationFailure.load => l10n.creationsLoadFailed,
+    CreationFailure.create => l10n.creationsFailed,
+    CreationFailure.delete => l10n.creationsDeleteFailed,
+  };
 }
 
 /// A one-line, localized description of what the creation contains.

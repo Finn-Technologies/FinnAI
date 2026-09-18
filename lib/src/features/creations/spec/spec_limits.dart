@@ -2,7 +2,10 @@
 ///
 /// The prompt builder tells the model these limits and the validator enforces
 /// exactly the same numbers, so a spec that satisfies the instructions can
-/// never be rejected for a limit it was not told about.
+/// never be rejected for a limit it was not told about. **Every limit added
+/// here must also be stated in `creation_prompts.dart`** — `creation_prompts`
+/// tests assert that, because a rule the model was never given is a rule it can
+/// only fail by accident.
 abstract final class SpecLimits {
   /// Most nodes allowed in one mini app, counted across all containers.
   static const int maxNodes = 40;
@@ -39,4 +42,18 @@ abstract final class SpecLimits {
 
   /// Longest allowed summary shown on a creation tile.
   static const int maxSummaryChars = 160;
+
+  /// Longest allowed expression source, in characters.
+  static const int maxExpressionChars = 120;
+
+  /// Largest allowed value on a `spacer` node.
+  static const int maxSpacerSize = 200;
+
+  /// Accent choices, spelled as the model must emit them.
+  ///
+  /// The prompt shows one concrete value and lists these in prose. Printing the
+  /// joined list inside the JSON shape made small models copy the whole pipe
+  /// string as the value, which the parser then rejected.
+  static const String accentNames =
+      'mint, blue, lime, amber, rose, violet, sky';
 }

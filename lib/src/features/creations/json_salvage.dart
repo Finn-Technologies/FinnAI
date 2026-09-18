@@ -8,19 +8,35 @@ library;
 
 import 'dart:convert';
 
-/// Returns the first plausible JSON object in [raw], or `null`.
+/// Returns the most plausible spec object in [raw], or `null`.
 ///
 /// Browser tool calls are skipped: the shared system prompt advertises them, so
 /// a creation turn can emit `<tool_call>{"name":…}</tool_call>` before the real
 /// answer, and that object must not be mistaken for a spec.
+///
+/// A spec-shaped object is preferred over merely the first decodable one,
+/// because the prompt carries a worked example and a small model sometimes
+/// emits a stray object before its answer. Ranking by shape rather than
+/// position means an incidental object no longer wins by arriving first.
 Map<String, Object?>? extractJsonObject(String raw) {
   final cleaned = stripReasoning(raw);
+  Map<String, Object?>? firstDecodable;
   for (final candidate in _candidateObjects(cleaned)) {
     final decoded = _tryDecode(candidate) ?? _salvage(candidate);
-    if (decoded != null && !_looksLikeToolCall(decoded)) return decoded;
+    if (decoded == null || _looksLikeToolCall(decoded)) continue;
+    if (_looksLikeSpec(decoded)) return decoded;
+    firstDecodable ??= decoded;
   }
-  return null;
+  return firstDecodable;
 }
+
+/// Whether [json] carries the shape every creation kind shares: a title plus
+/// one of the three bodies.
+bool _looksLikeSpec(Map<String, Object?> json) =>
+    json['title'] is String &&
+    (json.containsKey('nodes') ||
+        json.containsKey('rows') ||
+        json.containsKey('slides'));
 
 /// Removes reasoning traces and Markdown fences.
 String stripReasoning(String raw) => raw
