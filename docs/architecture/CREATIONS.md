@@ -95,7 +95,7 @@ intent — no arbitrary widgets, and no generated code. So the widget spec is de
 ```
 Dart                                        Kotlin
 ────                                        ──────
-HomeScreenService.writeWidgetSpec()   ──▶   <filesDir>/creations/home_widgets/<creationId>.json
+HomeScreenService.writeWidgetSpec()   ──▶   <documents>/creations/home_widgets/<creationId>.json
 HomeScreenService.addWidgetToHomeScreen()
   ├── stagePendingWidget(specPath)    ──▶   SharedPreferences: pending spec path
   └── requestPinWidget()              ──▶   AppWidgetManager.requestPinAppWidget
@@ -103,6 +103,11 @@ HomeScreenService.addWidgetToHomeScreen()
                                               └── claims the pending spec for the new id
                                                   FinnHomeWidgetRenderer → RemoteViews
 ```
+
+`<documents>` is `getApplicationDocumentsDirectory()`, **not** `filesDir` — the absolute path is
+written by Dart and handed to native, so the two sides agree by construction. Native never
+reconstructs the path itself: if the `SharedPreferences` mapping is lost, the widget renders its
+placeholder rather than guessing.
 
 Key points:
 

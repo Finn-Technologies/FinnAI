@@ -14,10 +14,10 @@ This document demarcates automated repository preparation from manual actions re
 - [x] **Release Signing Setup**: Enforced `android/key.properties` or environment variables for release builds with Gradle validation.
 - [x] **Encrypted Local Storage**: Implemented authenticated AES-256-GCM storage (`conversations.v2.enc`) with secure key storage, atomic legacy migration, and data purge action.
 - [x] **AI Safety & Reporting**: Added the in-app Report dialog and red-team safety evaluation. Reports are prepared as user-reviewable emails addressed to `finn_org@proton.me`.
-- [x] **Production Features**: The obsolete microphone and Models navigation are removed; Creations, You, and Skills are implemented, persisted locally, and covered by widget/store tests.
+- [x] **Production Features**: The app ships voice input, which uses the microphone and declares `RECORD_AUDIO`; the Models navigation is removed. Creations, You, and Skills are implemented, persisted locally, and covered by widget/store tests.
 - [x] **Legal & Attribution**: Published `PRIVACY_POLICY.md`, `TERMS_OF_USE.md`, `THIRD_PARTY_NOTICES.md`, dynamic versioning, and open-source licence viewer.
 - [x] **CI & Release Verification**: Added `.github/workflows/ci.yml`, `tool/verify_release.sh`, and fail-closed `tool/build_play_release.sh`.
-- [x] **Store Copy & Assets**: Added reviewed English listing copy and graphics assets under `store-listing/`.
+- [x] **Store Copy & Assets**: Added reviewed English listing copy and graphics assets under `docs/store/`.
 - [x] **Public Website**: Privacy, terms, and support
   rules are deployed on `https://finn-org.vercel.app` from the separate
   `Finn-Technologies/landing-page` repository.
@@ -30,13 +30,13 @@ Follow these steps in the [Google Play Console](https://play.google.com/console)
 
 ### 1. App Setup & Listing
 - [ ] **App Name**: Use `Finn AI: Local AI Assistant`.
-- [ ] **Descriptions**: Copy the reviewed text from `store-listing/en-US/listing.md`.
+- [ ] **Descriptions**: Copy the reviewed text from `docs/store/en-US/listing.md`.
 - [ ] **App Category**: Productivity.
 - [ ] **Graphics Assets**:
-  - [x] App Icon: `store-listing/icon-512.png`.
-  - [x] Feature Graphic: `store-listing/feature-graphic-1024x500.png`.
+  - [x] App Icon: `docs/store/icon-512.png`.
+  - [x] Feature Graphic: `docs/store/feature-graphic-1024x500.png`.
   - [x] Phone Screenshots: three verified 1080 × 1920 images under
-    `store-listing/`.
+    `docs/store/`.
 - [ ] **Developer Website**: Enter `https://finn-org.vercel.app`.
 - [x] **Support Contact**: Use `finn_org@proton.me`.
 
@@ -45,7 +45,7 @@ Follow these steps in the [Google Play Console](https://play.google.com/console)
   `https://finn-org.vercel.app/privacy`.
 - [x] **Terms Hosting**: Public URL verified at
   `https://finn-org.vercel.app/terms`.
-- [ ] **Data Safety Questionnaire**: Fill out using `docs/DATA_SAFETY_DRAFT.md`.
+- [ ] **Data Safety Questionnaire**: Fill out using `docs/operations/DATA_SAFETY_DRAFT.md`.
 - [ ] **Advertising ID Declaration**: Declare that the app does **NOT** use Advertising ID.
 - [ ] **Ads Declaration**: Select **No, my app does not contain ads**.
 - [ ] **Target Audience and Content**: Select the actual intended age groups.
@@ -79,7 +79,7 @@ Follow these steps in the [Google Play Console](https://play.google.com/console)
   configured, its certificate (`build/upload-key-cert.pem`, SHA1
   `DF:D5:96:…:7B:A3`) was submitted to Google Play for the reset, and we are
   waiting for Play's confirmation before building/uploading. Follow
-  `docs/UPLOAD_KEY_RESET.md` for the remaining steps (verify fingerprint,
+  `docs/operations/UPLOAD_KEY_RESET.md` for the remaining steps (verify fingerprint,
   bump versionCode, build AAB, upload).
 - [ ] Confirm all four default `finn-org.vercel.app` routes are live; override
   them only for a deliberate alternate environment.

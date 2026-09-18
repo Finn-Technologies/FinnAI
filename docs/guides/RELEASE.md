@@ -49,7 +49,7 @@ The repository checks are necessary but cannot replace physical-device and Play 
      Play Console support-email field.
 
 5. **Account-Gated Testing**:
-   - Store graphics are no longer a blocker: `store-listing/` contains the
+   - Store graphics are no longer a blocker: `docs/store/` contains the
      512 × 512 app icon, the 1024 × 500 feature graphic, and three phone
      screenshots (1080 × 1920).
    - New personal Play accounts created after November 13, 2023 must complete a

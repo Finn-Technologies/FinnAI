@@ -10,6 +10,7 @@ FinnAI is designed as an on-device AI assistant. AI-generated responses are proc
 - **No Remote AI Servers**: Your conversations are not sent to FinnAI or third-party AI cloud inference providers.
 - **Encrypted Local Storage**: Your saved conversation history is stored strictly on your local device with authenticated AES-256-GCM encryption. Encryption keys are managed using OS-enforced secure key storage (`FlutterSecureStorage`).
 - **Other Local Features**: Creations, profile preferences, custom instructions, and Skills are stored in the app's private local storage. They are used only to provide the features you select and are not sent to an AI cloud service.
+- **Voice Input**: Voice input uses your device microphone (the app requests the Android `RECORD_AUDIO` permission). Recognition runs on your device whenever your platform provides offline speech recognition; only when it does not, the captured audio is passed to your device's platform speech-recognition service to produce a transcript. The transcript is then processed by the on-device model like any typed message. FinnAI does not record or store your audio and does not send it to FinnAI's servers.
 
 ## Automatic Web Search
 
@@ -23,8 +24,13 @@ Wikipedia (`en.wikipedia.org`). Conversation history, saved profile data,
 custom instructions, and Skills are not included. Search requests expose the
 query and ordinary network metadata such as the device IP address to those
 search providers. Retrieved excerpts are processed by the on-device model, and
-FinnAI shows the source links used. If search is unavailable, FinnAI falls
-back to a local answer.
+FinnAI shows the source links used. When you open one of those source links to
+read the page, FinnAI fetches that page from the third-party site that hosts it
+over HTTPS; that request exposes the page URL and ordinary network metadata such
+as the device IP address to that host. Only the search query and these page
+requests are sent for search; conversation history, saved profile data, custom
+instructions, and Skills are not included. If search is unavailable, FinnAI
+falls back to a local answer.
 
 ## 2. Network Usage & Third-Party Services
 FinnAI uses network access exclusively for the following specific purposes:

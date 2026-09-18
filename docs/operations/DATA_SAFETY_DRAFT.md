@@ -46,6 +46,38 @@ Use these answers when completing the **Data Safety** questionnaire in Google Pl
 - **Collected**: No.
 - **Shared**: No.
 
+### G. Audio
+- **Data Type**: Voice or sound recordings, used only for voice input (Android `RECORD_AUDIO`).
+- **Collected**: No.
+- **Shared**: No.
+- **Required or Optional**: Optional.
+- **Purposes**: App Functionality.
+- Voice input audio is captured from the device microphone to produce a
+  transcript and is not recorded, stored, collected, or shared by the developer.
+  Transcription is performed by the device's platform speech-recognition
+  service; the resulting transcript is processed on device like typed input.
+
+### H. Notifications and Foreground Service (Model Download)
+- **Collected**: No.
+- **Shared**: No.
+- FinnAI declares `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_DATA_SYNC`, and
+  `POST_NOTIFICATIONS`. A model download runs in a foreground `dataSync` service
+  and posts a local progress notification; the notification reports download
+  progress only, carries no user data, and nothing is collected or shared.
+
+### I. Automatic Web Search (Search Query and Page Requests)
+- **Data Type**: Search query and retrieved-page requests. No user data type is
+  collected or stored by the developer.
+- **Collected**: No by the developer. When a turn uses automatic web search, the
+  latest request is sent over HTTPS to DuckDuckGo (`api.duckduckgo.com` and
+  `html.duckduckgo.com`) and Wikipedia (`en.wikipedia.org`) for transient
+  processing.
+- **Shared**: Reconcile in the Play Console questionnaire before submission
+  (see §4). The query is sent to third-party search providers, and opening a
+  retrieved source fetches that page from its own third-party HTTPS host, which
+  sees the page URL and ordinary network metadata.
+- **Purposes**: App Functionality.
+
 ---
 
 ## 3. Privacy Policy URL
@@ -62,6 +94,7 @@ https://finn-org.vercel.app/privacy
   when the user explicitly submits them.
 - Conversation history remains on-device. Automatic web search sends only the
   latest request to the configured search provider for transient processing;
-  reconcile this feature with the Play Console's current collection guidance
-  before submission.
+  opening a retrieved source additionally fetches that third-party page from its
+  own host over HTTPS. Reconcile these features with the Play Console's current
+  collection guidance before submission.
 - Reconcile the target-audience answers with the child-directed request tags before publishing.
