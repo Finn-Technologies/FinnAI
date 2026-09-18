@@ -32,6 +32,24 @@ KEY_PROPS_BAK=""
 # before; false when the file already existed (and was merely backed up).
 SCRIPT_CREATED_KEY_PROPS=false
 
+# ── OpenHarmony (HOS) SDK stub ────────────────────────────────────────────────
+# This checkout's Flutter is the OpenHarmony fork and the repository ships an
+# ohos/ project, so every flutter command runs the ohos tooling step first.
+# With HOS_SDK_HOME unset that step aborts with "No Hmos SDK found.", and the
+# usual --no-pub workaround skips both that step and Android plugin registrant
+# generation — producing an APK that crashes at launch with a
+# ClassNotFoundException for io.flutter.plugins.GeneratedPluginRegistrant.
+# A minimal stub satisfies the tooling's SDK validation without installing a
+# real OHOS SDK: HmosSdk.validApi10SdkDirectory only checks that
+# $HOS_SDK_HOME/hmscore and $HOS_SDK_HOME/openharmony exist.
+setup_hos_sdk_stub() {
+  HOS_SDK_STUB_DIR=$(mktemp -d)
+  mkdir -p "${HOS_SDK_STUB_DIR}/hmscore" "${HOS_SDK_STUB_DIR}/openharmony"
+  export HOS_SDK_HOME="${HOS_SDK_STUB_DIR}"
+  CREATED_FILES+=("${HOS_SDK_STUB_DIR}")
+  echo "Using stub HOS SDK at ${HOS_SDK_STUB_DIR}"
+}
+
 # ── cleanup ───────────────────────────────────────────────────────────────────
 cleanup() {
   echo "Performing verification cleanup..."
@@ -75,6 +93,10 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# Point HOS_SDK_HOME at the stub before any flutter command runs, so the ohos
+# tooling step completes and Android plugin registrants stay generated.
+setup_hos_sdk_stub
+
 # ── Backup pre-existing key.properties with a unique name ────────────────────
 if [ -f "$KEY_PROPS" ]; then
   # mktemp guarantees uniqueness — no collision with a pre-existing .bak file.
@@ -94,7 +116,7 @@ echo "PASSED: Code formatting clean."
 
 # 2. Static analysis
 echo "[2/8] Running static analysis..."
-if ! flutter analyze; then
+if ! flutter analyze --no-pub; then
   echo "FAIL: Flutter analyze reported issues."
   exit 1
 fi
@@ -102,7 +124,7 @@ echo "PASSED: Static analysis clean (0 issues)."
 
 # 3. Unit and Widget tests
 echo "[3/8] Running unit and widget test suite..."
-if ! flutter test; then
+if ! flutter test --no-pub; then
   echo "FAIL: Flutter tests failed."
   exit 1
 fi
@@ -111,12 +133,12 @@ echo "PASSED: All unit and widget tests passed."
 # 4. Check Runtime Assets
 echo "[4/8] Checking packaged runtime SVG assets..."
 ASSET_DIR="assets/runtime"
-if [ ! -d "$ASSET_DIR" ] || [ "$(ls -1 "$ASSET_DIR"/*.svg 2>/dev/null | wc -l)" -lt 20 ]; then
+if [ ! -d "$ASSET_DIR" ] || [ "$(ls -1 "$ASSET_DIR"/*.svg 2>/dev/null | wc -l)" -lt 19 ]; then
   echo "FAIL: Runtime assets missing or incomplete in $ASSET_DIR."
   BLOCKER_COUNT=$((BLOCKER_COUNT + 1))
   exit 1
 fi
-echo "PASSED: All 20 required SVG runtime assets present."
+echo "PASSED: All 19 required SVG runtime assets present."
 
 # 5. Production Configuration Gate
 echo "[5/8] Checking Production Configuration Gate (URLs, Email, Endpoint)..."

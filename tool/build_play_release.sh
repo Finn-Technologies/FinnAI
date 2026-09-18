@@ -3,6 +3,40 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+# Files/directories created by this script and removed during cleanup.
+# Bash 3.2 treats an empty array expansion as unbound under `set -u`,
+# so a harmless sentinel keeps early-failure cleanup reliable on macOS.
+CREATED_FILES=("")
+
+cleanup() {
+  for file in "${CREATED_FILES[@]}"; do
+    if [ -n "$file" ] && [ -e "$file" ]; then
+      rm -rf "$file"
+    fi
+  done
+}
+trap cleanup EXIT
+
+# ── OpenHarmony (HOS) SDK stub ────────────────────────────────────────────────
+# This checkout's Flutter is the OpenHarmony fork and the repository ships an
+# ohos/ project, so every flutter command runs the ohos tooling step first.
+# With HOS_SDK_HOME unset that step aborts with "No Hmos SDK found.", and the
+# usual --no-pub workaround skips both that step and Android plugin registrant
+# generation — producing an AAB that crashes at launch with a
+# ClassNotFoundException for io.flutter.plugins.GeneratedPluginRegistrant.
+# A minimal stub satisfies the tooling's SDK validation without installing a
+# real OHOS SDK: HmosSdk.validApi10SdkDirectory only checks that
+# $HOS_SDK_HOME/hmscore and $HOS_SDK_HOME/openharmony exist.
+setup_hos_sdk_stub() {
+  HOS_SDK_STUB_DIR=$(mktemp -d)
+  mkdir -p "${HOS_SDK_STUB_DIR}/hmscore" "${HOS_SDK_STUB_DIR}/openharmony"
+  export HOS_SDK_HOME="${HOS_SDK_STUB_DIR}"
+  CREATED_FILES+=("${HOS_SDK_STUB_DIR}")
+  echo "Using stub HOS SDK at ${HOS_SDK_STUB_DIR}"
+}
+
+setup_hos_sdk_stub
+
 fail() {
   echo "ERROR: $*" >&2
   exit 1
