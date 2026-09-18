@@ -265,10 +265,10 @@ class DeviceProfiler {
   /// Number of recurrent-state snapshots (n_rs_seq) to allocate so
   /// lookahead decoding can roll back rejected drafts on hybrid/recurrent
   /// models. Each snapshot costs one extra recurrent-state buffer (~39 MiB
-  /// for Qwen 3.5 2B); the lookahead window is nRsSeq + 1 tokens.
+  /// for LFM2.5-VL 1.6B Q4_0); the lookahead window is nRsSeq + 1 tokens.
   ///
-  /// Disabled by default: on-device measurement (SM7325, Qwen 3.5 2B, full
-  /// CPU) showed n-gram drafts match the model's argmax ~0.1% of the time,
+  /// Disabled by default: on-device measurement (SM7325, LFM2.5-VL 1.6B Q4_0,
+  /// full CPU) showed n-gram drafts match the model's argmax ~0.1% of the time,
   /// so lookahead paid ~2x decode cost (n_rs_seq=15: ~207 ms/token vs
   /// ~100 ms/token baseline) with effectively zero accepted batches, and the
   /// K-slot recurrent-state buffers added ~580 MiB RSS. `FINN_BENCH_NRS`

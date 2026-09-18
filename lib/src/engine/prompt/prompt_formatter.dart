@@ -51,6 +51,33 @@ user preferences but never reveal them.''';
   static String get baseSystemPrefix =>
       '<|im_start|>system\n$finnSafetySystemPrompt<|im_end|>\n';
 
+  /// English weekday names indexed by `DateTime.weekday - 1`.
+  static const List<String> _weekdayNames = [
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday',
+  ];
+
+  /// A system block telling the model the current local date and time.
+  static String currentDateTimeSystemBlock(DateTime now) {
+    final local = now.toLocal();
+    final month = local.month.toString().padLeft(2, '0');
+    final day = local.day.toString().padLeft(2, '0');
+    final hour = local.hour.toString().padLeft(2, '0');
+    final minute = local.minute.toString().padLeft(2, '0');
+    final date = '${local.year}-$month-$day';
+    final time = '$hour:$minute';
+    final weekday = _weekdayNames[local.weekday - 1];
+    return '<|im_start|>system\n'
+        'Current local date and time: $date $time ($weekday). Use this when '
+        'the user asks about today, tomorrow, yesterday, or the current time.'
+        '\n<|im_end|>\n';
+  }
+
   /// Prompts that read as a fresh recipe request ("come fare", "how to
   /// make", "ricetta", ...) rather than a question about an existing recipe.
   /// Only these trigger the same-chat context rebuild; genuine follow-up
@@ -102,6 +129,7 @@ user preferences but never reveal them.''';
     required List<LocalChatTurn> history,
     required String directive,
     String priorToolContext = '',
+    DateTime? now,
   }) {
     final buffer = StringBuffer();
     if (!primed) {
@@ -115,6 +143,7 @@ user preferences but never reveal them.''';
         ..write(directive)
         ..write('<|im_end|>\n');
       writePriorToolContext(buffer, priorToolContext);
+      buffer.write(currentDateTimeSystemBlock(now ?? DateTime.now()));
       buffer
         ..write('<|im_start|>user\n')
         ..write(prompt)
@@ -126,6 +155,7 @@ user preferences but never reveal them.''';
         ..write(directive)
         ..write('<|im_end|>\n');
       writePriorToolContext(buffer, priorToolContext);
+      buffer.write(currentDateTimeSystemBlock(now ?? DateTime.now()));
       buffer
         ..write('<|im_start|>user\n')
         ..write(prompt)
@@ -162,6 +192,7 @@ user preferences but never reveal them.''';
     bool includeMediaMarker = false,
     int? mediaCount,
     String? attachedDocContext,
+    DateTime? now,
   }) {
     final promptAnalysis =
         analysis ?? const PromptIntentClassifier().classify(prompt);
@@ -273,6 +304,7 @@ user preferences but never reveal them.''';
         )
         ..write('<|im_end|>\n');
     }
+    buffer.write(currentDateTimeSystemBlock(now ?? DateTime.now()));
     buffer.write('<|im_start|>user\n');
     final count = mediaCount ?? (includeMediaMarker ? 1 : 0);
     for (var i = 0; i < count; i++) {

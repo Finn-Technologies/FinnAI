@@ -173,7 +173,7 @@ void main() {
       primed: true,
       includeTaskInstruction: false,
     );
-    expect(prompt, isNot(contains('<|im_start|>system')));
+    expect(prompt, isNot(contains('You are Finn AI, a warm, sharp')));
     expect(prompt, contains('<|im_start|>user'));
     expect(prompt, contains('<|im_start|>assistant'));
   });
