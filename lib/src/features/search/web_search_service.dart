@@ -4,11 +4,6 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
-typedef BrowserSource = WebSource;
-typedef BrowserSearchResult = WebSearchResult;
-typedef BrowserSearchPolicy = WebSearchPolicy;
-typedef BrowserSearchService = WebSearchService;
-
 @immutable
 class WebSource {
   const WebSource({
@@ -274,8 +269,11 @@ class WebSearchService {
   final Uri? endpoint;
 
   /// Fast in-memory LRU cache for recent searches (max 30 entries, 15m TTL).
-  static final Map<String, ({WebSearchResult result, DateTime timestamp})>
-      _cache = {};
+  ///
+  /// Per instance, not static: two services can be configured with different
+  /// endpoints, and a shared cache would serve one instance's results — for the
+  /// wrong source — to the other.
+  final Map<String, ({WebSearchResult result, DateTime timestamp})> _cache = {};
   static const int _maxCacheSize = 30;
   static const Duration _cacheTtl = Duration(minutes: 15);
 

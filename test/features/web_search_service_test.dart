@@ -311,4 +311,29 @@ void main() {
     );
     expect(victim, isNotNull);
   });
+
+  test('cached results do not leak between differently configured services',
+      () async {
+    WebSearchService serviceFor(String host) => WebSearchService(
+          client: MockClient(
+            (request) async => http.Response(
+              '<div class="result">'
+              '<a class="result__a" href="https://$host.example/x">'
+              'From $host</a>'
+              '<a class="result__snippet">snippet $host</a>'
+              '</div>',
+              200,
+            ),
+          ),
+          endpoint: Uri.parse('https://$host.local/search'),
+        );
+
+    // A shared cache would serve the first service's hit to the second even
+    // though the two point at different search backends.
+    final first = await serviceFor('first').search('shared query');
+    final second = await serviceFor('second').search('shared query');
+
+    expect(first!.sources.single.title, 'From first');
+    expect(second!.sources.single.title, 'From second');
+  });
 }
