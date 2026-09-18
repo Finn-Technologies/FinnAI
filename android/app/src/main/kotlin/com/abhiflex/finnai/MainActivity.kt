@@ -241,5 +241,8 @@ class MainActivity : FlutterActivity() {
 
         // Creations: launcher widget pinning and file sharing.
         FinnHomeScreenBridge.register(flutterEngine, this)
+
+        // Device actions: alarms, timers, media transport, settings screens.
+        FinnDeviceActionsBridge.register(flutterEngine, this)
     }
 }

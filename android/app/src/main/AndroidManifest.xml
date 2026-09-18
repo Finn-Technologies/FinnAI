@@ -4,6 +4,11 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- AlarmClock.ACTION_SET_ALARM and ACTION_SET_TIMER are guarded by
+         DeskClock's own signature of this permission; without the declaration
+         the platform refuses the intent at start with a SecurityException.
+         Normal protection level, so it is granted at install with no prompt. -->
+    <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
     <application
         android:label="Finn AI"
         android:name="${applicationName}"
@@ -89,6 +94,10 @@
     <queries>
         <package android:name="com.google.android.googlequicksearchbox" />
         <package android:name="com.google.android.tts" />
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
         <intent>
             <action android:name="android.speech.RecognitionService" />
         </intent>

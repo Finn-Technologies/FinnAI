@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'package:finn_ai/src/features/actions/device_action.dart';
 import 'package:finn_ai/src/features/search/search_agent.dart';
 import 'package:finn_ai/src/features/search/web_search_service.dart';
 
@@ -37,6 +38,7 @@ class ConversationMessage {
     this.continuationCount = 0,
     this.sources = const [],
     this.toolActivities = const [],
+    this.pendingAction,
   });
 
   final String id;
@@ -55,6 +57,10 @@ class ConversationMessage {
   /// browsed, so the inline search indicator only appears where it is true.
   final List<ToolActivity> toolActivities;
 
+  /// A device action this reply is waiting for the user to approve. Cleared
+  /// once it runs or is dismissed, so a stored reply never offers a stale card.
+  final DeviceActionInvocation? pendingAction;
+
   ConversationMessage copyWith({
     String? text,
     String? imagePath,
@@ -69,6 +75,8 @@ class ConversationMessage {
     bool clearSources = false,
     List<ToolActivity>? toolActivities,
     bool clearToolActivities = false,
+    DeviceActionInvocation? pendingAction,
+    bool clearPendingAction = false,
   }) =>
       ConversationMessage(
         id: id,
@@ -86,6 +94,8 @@ class ConversationMessage {
         toolActivities: clearToolActivities
             ? const []
             : toolActivities ?? this.toolActivities,
+        pendingAction:
+            clearPendingAction ? null : pendingAction ?? this.pendingAction,
       );
 
   Map<String, Object?> toJson() => {
@@ -118,6 +128,7 @@ class ConversationMessage {
                 if (activity.detail.isNotEmpty) 'detail': activity.detail,
               },
           ],
+        if (pendingAction != null) 'pendingAction': pendingAction!.toJson(),
       };
 
   factory ConversationMessage.fromJson(Map<String, Object?> json) =>
@@ -137,6 +148,7 @@ class ConversationMessage {
         continuationCount: (json['continuationCount'] as int?) ?? 0,
         sources: _sourcesFromJson(json['sources']),
         toolActivities: _toolActivitiesFromJson(json['toolActivities']),
+        pendingAction: DeviceActionInvocation.fromJson(json['pendingAction']),
       );
 }
 
@@ -965,6 +977,8 @@ class ConversationStore extends ChangeNotifier {
     int? continuationCount,
     List<WebSource>? sources,
     List<ToolActivity>? toolActivities,
+    DeviceActionInvocation? pendingAction,
+    bool clearPendingAction = false,
     bool persistSoon = false,
     bool notify = true,
   }) {
@@ -989,6 +1003,8 @@ class ConversationStore extends ChangeNotifier {
       continuationCount: continuationCount,
       sources: sources,
       toolActivities: toolActivities,
+      pendingAction: pendingAction,
+      clearPendingAction: clearPendingAction,
     );
     _replace(
       conversation.copyWith(updatedAt: DateTime.now(), messages: messages),
