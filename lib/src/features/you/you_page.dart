@@ -227,12 +227,13 @@ class _YouPageState extends State<YouPage> {
                                           if (_store.storageError != null) ...[
                                             const SizedBox(height: 10),
                                             Text(
-                                              _store.storageError!,
+                                              L10n.of(context).youSaveFailed,
                                               style: Theme.of(context)
                                                   .textTheme
                                                   .labelMedium
                                                   ?.copyWith(
-                                                    color: Colors.redAccent,
+                                                    color: FluxColors
+                                                        .destructiveOf(context),
                                                   ),
                                             ),
                                           ],
