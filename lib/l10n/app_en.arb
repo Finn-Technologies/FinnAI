@@ -845,7 +845,6 @@
   "@creationsChooseKindSemantic": {
     "description": "Accessibility label for the composer's choose-type button"
   },
-
   "creationsFailed": "Finn could not finish that creation. Please try again.",
   "creationsHomeScreenUnsupported": "Home screen widgets aren't available on this device.",
   "creationsHomeScreenAdded": "Added to your home screen.",
@@ -1244,7 +1243,6 @@
   "@creationsDescribeHint": {
     "description": "Composer hint"
   },
-
   "skillsActionsTooltip": "Skill actions",
   "@skillsActionsTooltip": {
     "description": "Skill card menu tooltip"
@@ -1472,5 +1470,361 @@
   "statusLoadingModel": "Loading the AI model",
   "@statusLoadingModel": {
     "description": "Engine status"
+  },
+  "deviceActionsTitle": "Actions",
+  "@deviceActionsTitle": {
+    "description": "Page title for the device actions screen"
+  },
+  "deviceActionsIntro": "Ask Finn to do something on your phone — set an alarm, start a timer, or open a setting.",
+  "@deviceActionsIntro": {
+    "description": "One-line explanation of what the Actions page does"
+  },
+  "deviceActionsExamples": "Try one of these",
+  "@deviceActionsExamples": {
+    "description": "Heading above the example request chips"
+  },
+  "deviceActionsHint": "What should Finn do?",
+  "@deviceActionsHint": {
+    "description": "Placeholder inside the action request field"
+  },
+  "deviceActionsRun": "Continue",
+  "@deviceActionsRun": {
+    "description": "Button that submits an action request"
+  },
+  "deviceActionsResolving": "Working out what to do…",
+  "@deviceActionsResolving": {
+    "description": "Shown while the request is being resolved"
+  },
+  "deviceActionsUnresolved": "I couldn't turn that into an action. Try naming the setting or app directly.",
+  "@deviceActionsUnresolved": {
+    "description": "Shown when a request could not be turned into an action"
+  },
+  "deviceActionsConfirm": "Do it",
+  "@deviceActionsConfirm": {
+    "description": "Button that runs the resolved action"
+  },
+  "deviceActionsCancel": "Cancel",
+  "@deviceActionsCancel": {
+    "description": "Button that dismisses the pending action"
+  },
+  "deviceActionsAgain": "Do something else",
+  "@deviceActionsAgain": {
+    "description": "Button that clears the result and starts over"
+  },
+  "deviceActionsOpenNotice": "Android doesn't let apps change wireless settings on their own, so Finn opens the right screen and you flip the switch.",
+  "@deviceActionsOpenNotice": {
+    "description": "Explains that some settings cannot be toggled by an app"
+  },
+  "deviceActionsResultOpened": "Opened {detail}",
+  "@deviceActionsResultOpened": {
+    "description": "Result line after opening a screen",
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "deviceActionsResultPerformed": "Done — {detail}",
+  "@deviceActionsResultPerformed": {
+    "description": "Result line after a completed action",
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "deviceActionsResultUnavailable": "Your device can't do that",
+  "@deviceActionsResultUnavailable": {
+    "description": "Result when the device cannot perform the action"
+  },
+  "deviceActionsResultFailed": "That didn't work",
+  "@deviceActionsResultFailed": {
+    "description": "Result when the action failed"
+  },
+  "deviceActionsResultFailedDetail": "That didn't work — {error}",
+  "@deviceActionsResultFailedDetail": {
+    "description": "Result when the action failed, with the reason",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "deviceActionsExampleAlarm": "Set an alarm for 7am",
+  "@deviceActionsExampleAlarm": {
+    "description": "Example request chip"
+  },
+  "deviceActionsExampleTimer": "Start a 10 minute timer",
+  "@deviceActionsExampleTimer": {
+    "description": "Example request chip"
+  },
+  "deviceActionsExampleWifi": "Open Wi-Fi settings",
+  "@deviceActionsExampleWifi": {
+    "description": "Example request chip"
+  },
+  "deviceActionsExampleFlashlight": "Turn on the flashlight",
+  "@deviceActionsExampleFlashlight": {
+    "description": "Example request chip"
+  },
+  "deviceActionsExampleBluetooth": "Open Bluetooth settings",
+  "@deviceActionsExampleBluetooth": {
+    "description": "Example request chip"
+  },
+  "deviceActionSetAlarm": "Set an alarm for {time}",
+  "@deviceActionSetAlarm": {
+    "description": "Confirmation line for setting an alarm",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "deviceActionSetTimer": "Start a {duration} timer",
+  "@deviceActionSetTimer": {
+    "description": "Confirmation line for starting a timer",
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "deviceActionShowAlarms": "Open the alarm clock",
+  "@deviceActionShowAlarms": {
+    "description": "Confirmation line for opening the alarm clock"
+  },
+  "deviceActionTorchOn": "Turn the flashlight on",
+  "@deviceActionTorchOn": {
+    "description": "Confirmation line for turning the flashlight on"
+  },
+  "deviceActionTorchOff": "Turn the flashlight off",
+  "@deviceActionTorchOff": {
+    "description": "Confirmation line for turning the flashlight off"
+  },
+  "deviceActionMedia": "Music player: {action}",
+  "@deviceActionMedia": {
+    "description": "Confirmation line for a media transport command",
+    "placeholders": {
+      "action": {
+        "type": "String"
+      }
+    }
+  },
+  "deviceActionVolume": "Volume {direction}",
+  "@deviceActionVolume": {
+    "description": "Confirmation line for a volume change",
+    "placeholders": {
+      "direction": {
+        "type": "String"
+      }
+    }
+  },
+  "deviceActionOpenSettings": "Open {screen} settings",
+  "@deviceActionOpenSettings": {
+    "description": "Confirmation line for opening a settings screen",
+    "placeholders": {
+      "screen": {
+        "type": "String"
+      }
+    }
+  },
+  "deviceActionOpenApp": "Open {name}",
+  "@deviceActionOpenApp": {
+    "description": "Confirmation line for launching an app",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "deviceActionDial": "Open the dialer with {number}",
+  "@deviceActionDial": {
+    "description": "Confirmation line for opening the dialer",
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "deviceActionComposeSms": "Open a new text message",
+  "@deviceActionComposeSms": {
+    "description": "Confirmation line for drafting a text message"
+  },
+  "deviceActionComposeEmail": "Open a new email",
+  "@deviceActionComposeEmail": {
+    "description": "Confirmation line for drafting an email"
+  },
+  "deviceActionTakePhoto": "Open the camera",
+  "@deviceActionTakePhoto": {
+    "description": "Confirmation line for opening the camera"
+  },
+  "deviceActionOpenUrl": "Open {url}",
+  "@deviceActionOpenUrl": {
+    "description": "Confirmation line for opening a web address",
+    "placeholders": {
+      "url": {
+        "type": "String"
+      }
+    }
+  },
+  "deviceActionNavigate": "Get directions to {query}",
+  "@deviceActionNavigate": {
+    "description": "Confirmation line for opening directions",
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "deviceActionShare": "Share text through another app",
+  "@deviceActionShare": {
+    "description": "Confirmation line for sharing text"
+  },
+  "deviceActionMediaPlay": "play",
+  "@deviceActionMediaPlay": {
+    "description": "Media transport label"
+  },
+  "deviceActionMediaPause": "pause",
+  "@deviceActionMediaPause": {
+    "description": "Media transport label"
+  },
+  "deviceActionMediaNext": "skip to the next track",
+  "@deviceActionMediaNext": {
+    "description": "Media transport label"
+  },
+  "deviceActionMediaPrevious": "go back a track",
+  "@deviceActionMediaPrevious": {
+    "description": "Media transport label"
+  },
+  "deviceActionVolumeUp": "up",
+  "@deviceActionVolumeUp": {
+    "description": "Volume direction label"
+  },
+  "deviceActionVolumeDown": "down",
+  "@deviceActionVolumeDown": {
+    "description": "Volume direction label"
+  },
+  "deviceActionVolumeMute": "off",
+  "@deviceActionVolumeMute": {
+    "description": "Volume direction label"
+  },
+  "deviceScreenWifi": "Wi-Fi",
+  "@deviceScreenWifi": {
+    "description": "Settings screen name"
+  },
+  "deviceScreenBluetooth": "Bluetooth",
+  "@deviceScreenBluetooth": {
+    "description": "Settings screen name"
+  },
+  "deviceScreenAirplane": "Airplane mode",
+  "@deviceScreenAirplane": {
+    "description": "Settings screen name"
+  },
+  "deviceScreenHotspot": "Hotspot",
+  "@deviceScreenHotspot": {
+    "description": "Settings screen name"
+  },
+  "deviceScreenMobileData": "Mobile data",
+  "@deviceScreenMobileData": {
+    "description": "Settings screen name"
+  },
+  "deviceScreenBatterySaver": "Battery saver",
+  "@deviceScreenBatterySaver": {
+    "description": "Settings screen name"
+  },
+  "deviceScreenBatteryUsage": "Battery usage",
+  "@deviceScreenBatteryUsage": {
+    "description": "Settings screen name"
+  },
+  "deviceScreenDnd": "Do Not Disturb",
+  "@deviceScreenDnd": {
+    "description": "Settings screen name"
+  },
+  "deviceScreenDisplay": "Display",
+  "@deviceScreenDisplay": {
+    "description": "Settings screen name"
+  },
+  "deviceScreenSound": "Sound",
+  "@deviceScreenSound": {
+    "description": "Settings screen name"
+  },
+  "deviceScreenLocation": "Location",
+  "@deviceScreenLocation": {
+    "description": "Settings screen name"
+  },
+  "deviceScreenStorage": "Storage",
+  "@deviceScreenStorage": {
+    "description": "Settings screen name"
+  },
+  "deviceScreenDateTime": "Date and time",
+  "@deviceScreenDateTime": {
+    "description": "Settings screen name"
+  },
+  "deviceScreenKeyboard": "Keyboard",
+  "@deviceScreenKeyboard": {
+    "description": "Settings screen name"
+  },
+  "deviceScreenLanguage": "Language",
+  "@deviceScreenLanguage": {
+    "description": "Settings screen name"
+  },
+  "deviceScreenAccessibility": "Accessibility",
+  "@deviceScreenAccessibility": {
+    "description": "Settings screen name"
+  },
+  "deviceScreenApplications": "Apps",
+  "@deviceScreenApplications": {
+    "description": "Settings screen name"
+  },
+  "deviceScreenNfc": "NFC",
+  "@deviceScreenNfc": {
+    "description": "Settings screen name"
+  },
+  "deviceScreenCast": "Cast",
+  "@deviceScreenCast": {
+    "description": "Settings screen name"
+  },
+  "deviceScreenVpn": "VPN",
+  "@deviceScreenVpn": {
+    "description": "Settings screen name"
+  },
+  "deviceScreenDeveloper": "Developer options",
+  "@deviceScreenDeveloper": {
+    "description": "Settings screen name"
+  },
+  "deviceScreenHome": "Home screen",
+  "@deviceScreenHome": {
+    "description": "Settings screen name"
+  },
+  "deviceActionsResultDone": "Done",
+  "@deviceActionsResultDone": {
+    "description": "Result line when the action completed and has nothing more to name"
+  },
+  "settingsActionsSection": "Actions on your device",
+  "@settingsActionsSection": {
+    "description": "Settings section holding device actions"
+  },
+  "settingsActionsRow": "Actions",
+  "@settingsActionsRow": {
+    "description": "Settings row that opens the device actions screen"
+  },
+  "deviceScreenSystem": "Settings",
+  "@deviceScreenSystem": {
+    "description": "Settings screen name"
+  },
+  "deviceActionsDismissed": "Cancelled",
+  "@deviceActionsDismissed": {
+    "description": "Left in the conversation when a proposed action is dismissed"
+  },
+  "creationsStopped": "Stopped.",
+  "@creationsStopped": {
+    "description": "Left in the transcript when the user stops a generation"
+  },
+  "creationsLoadFailed": "Finn couldn't open your saved creations. Please try again.",
+  "@creationsLoadFailed": {
+    "description": "Shown when saved creations could not be read from disk"
+  },
+  "creationsDeleteFailed": "That creation couldn't be deleted. Please try again.",
+  "@creationsDeleteFailed": {
+    "description": "Shown when deleting a creation could not be saved"
   }
 }

@@ -71,7 +71,7 @@ class _FinnBootstrapState extends State<FinnBootstrap> {
           // to the model-download screen and hiding the root cause.
           if (snapshot.hasError) {
             return MaterialApp(
-              title: 'FinnAI',
+              onGenerateTitle: (context) => L10n.of(context).appBrandFinnAI,
               debugShowCheckedModeBanner: false,
               theme: FluxTheme.light,
               darkTheme: FluxTheme.dark,
@@ -97,7 +97,7 @@ class _FinnBootstrapState extends State<FinnBootstrap> {
             );
           }
           return MaterialApp(
-            title: 'FinnAI',
+            onGenerateTitle: (context) => L10n.of(context).appBrandFinnAI,
             debugShowCheckedModeBanner: false,
             theme: FluxTheme.light,
             darkTheme: FluxTheme.dark,
@@ -163,7 +163,7 @@ class FluxApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'FinnAI',
+      onGenerateTitle: (context) => L10n.of(context).appBrandFinnAI,
       debugShowCheckedModeBanner: false,
       theme: FluxTheme.light,
       darkTheme: FluxTheme.dark,

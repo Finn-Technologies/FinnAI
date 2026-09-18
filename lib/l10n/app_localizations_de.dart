@@ -9,61 +9,61 @@ class AppLocalizationsDe extends AppLocalizations {
   AppLocalizationsDe([String locale = 'de']) : super(locale);
 
   @override
-  String get commonCancel => 'Cancel';
+  String get commonCancel => 'Abbrechen';
 
   @override
-  String get commonDelete => 'Delete';
+  String get commonDelete => 'Löschen';
 
   @override
-  String get commonSave => 'Save';
+  String get commonSave => 'Speichern';
 
   @override
-  String get commonEdit => 'Edit';
+  String get commonEdit => 'Bearbeiten';
 
   @override
-  String get commonBack => 'Back';
+  String get commonBack => 'Zurück';
 
   @override
-  String get commonNext => 'Next';
+  String get commonNext => 'Weiter';
 
   @override
-  String get commonRetry => 'Retry';
+  String get commonRetry => 'Erneut versuchen';
 
   @override
-  String get commonContinue => 'Continue';
+  String get commonContinue => 'Weiter';
 
   @override
-  String get commonCopiedToClipboard => 'Copied to clipboard';
+  String get commonCopiedToClipboard => 'In die Zwischenablage kopiert';
 
   @override
-  String get commonOpen => 'Open';
+  String get commonOpen => 'Öffnen';
 
   @override
-  String get commonStop => 'Stop';
+  String get commonStop => 'Stoppen';
 
   @override
-  String get commonDownload => 'Download';
+  String get commonDownload => 'Herunterladen';
 
   @override
-  String get commonResend => 'Resend';
+  String get commonResend => 'Erneut senden';
 
   @override
-  String get commonSaveSkill => 'Save skill';
+  String get commonSaveSkill => 'Skill speichern';
 
   @override
-  String get commonKeepCreating => 'Keep creating';
+  String get commonKeepCreating => 'Weiter erstellen';
 
   @override
-  String get commonNotNow => 'Not now';
+  String get commonNotNow => 'Nicht jetzt';
 
   @override
-  String get commonPurge => 'Purge';
+  String get commonPurge => 'Leeren';
 
   @override
-  String get commonClearAll => 'Clear All';
+  String get commonClearAll => 'Alle löschen';
 
   @override
-  String get commonDeleteEverything => 'Delete Everything';
+  String get commonDeleteEverything => 'Alles löschen';
 
   @override
   String get appTitle => 'Finn AI';
@@ -72,39 +72,41 @@ class AppLocalizationsDe extends AppLocalizations {
   String get appBrandFinnAI => 'FinnAI';
 
   @override
-  String get unsupportedTitle => 'Finn AI cannot run on this device';
+  String get unsupportedTitle =>
+      'Finn AI kann auf diesem Gerät nicht ausgeführt werden';
 
   @override
   String get unsupportedBody =>
-      'Finn AI requires at least 3 GB of RAM and a 64-bit ARM processor to run local models reliably. No model has been downloaded.';
+      'Finn AI benötigt mindestens 3 GB RAM und einen 64-Bit-ARM-Prozessor, um lokale Modelle zuverlässig auszuführen. Es wurde kein Modell heruntergeladen.';
 
   @override
-  String get onboardingWelcome => 'Welcome to Finn AI!';
+  String get onboardingWelcome => 'Willkommen bei Finn AI!';
 
   @override
-  String get onboardingSwipeToStart => 'Swipe to start';
+  String get onboardingSwipeToStart => 'Zum Starten wischen';
 
   @override
-  String get onboardingPrivacyTitle => 'Finn AI is Privacy-First';
+  String get onboardingPrivacyTitle => 'Finn AI schützt deine Privatsphäre';
 
   @override
   String get onboardingPrivacyBody =>
-      'Finn AI is designed to respect your privacy.\n\nAI processing and conversation history stay on this device. When a request needs fresh information, Finn AI may send only that request as a web search query and will show the sources it used. Your history and personal profile are never included.\n\nFinn AI is proprietary software and is not open source.';
+      'Finn AI wurde entwickelt, um deine Privatsphäre zu respektieren.\n\nDie KI-Verarbeitung und der Gesprächsverlauf bleiben auf diesem Gerät. Wenn eine Anfrage aktuelle Informationen benötigt, sendet Finn AI möglicherweise nur diese Anfrage als Websuchanfrage und zeigt die verwendeten Quellen an. Dein Verlauf und dein persönliches Profil werden niemals einbezogen.\n\nFinn AI ist proprietäre Software und nicht quelloffen.';
 
   @override
-  String get onboardingPrecautionsTitle => 'Before starting, read precautions';
+  String get onboardingPrecautionsTitle =>
+      'Vor dem Start bitte die Hinweise lesen';
 
   @override
-  String get onboardingPrecautionOne => 'On-device AI prompt processing';
+  String get onboardingPrecautionOne => 'KI-Prompt-Verarbeitung auf dem Gerät';
 
   @override
-  String get onboardingPrecautionTwo => 'Offline chat after model download';
+  String get onboardingPrecautionTwo => 'Offline-Chat nach dem Modell-Download';
 
   @override
-  String get onboardingPrecautionThree => 'Encrypted conversation storage';
+  String get onboardingPrecautionThree => 'Verschlüsselte Gesprächsspeicherung';
 
   @override
-  String get onboardingPrecautionFour => 'Designed for battery efficiency';
+  String get onboardingPrecautionFour => 'Auf Akkueffizienz ausgelegt';
 
   @override
   String get onboardingInstallTitleInstalling =>
@@ -119,15 +121,15 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get onboardingInstallReadyForChat =>
-      'Ready for private text chat on this device';
+      'Bereit für privaten Textchat auf diesem Gerät';
 
   @override
   String onboardingInstallModelWithComponent(String modelName, String size) {
-    return '$modelName + multimodal component · $size';
+    return '$modelName + multimodale Komponente · $size';
   }
 
   @override
-  String get onboardingInstallModelReady => 'Model ready';
+  String get onboardingInstallModelReady => 'Modell bereit';
 
   @override
   String onboardingInstallProgressStatus(String status, String percent) {
@@ -136,102 +138,105 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String onboardingInstallBytesOf(String received, String total) {
-    return '$received of $total';
+    return '$received von $total';
   }
 
   @override
   String onboardingInstallBytesLeft(String remaining) {
-    return '$remaining left';
+    return '$remaining übrig';
   }
 
   @override
-  String get onboardingInstallRetry => 'Retry';
+  String get onboardingInstallRetry => 'Erneut versuchen';
 
   @override
-  String get onboardingInstallRetryLabel => 'Retry model download';
+  String get onboardingInstallRetryLabel => 'Modell-Download wiederholen';
 
   @override
-  String get onboardingInstallVerificationFailed => 'Model verification failed';
+  String get onboardingInstallVerificationFailed =>
+      'Modellüberprüfung fehlgeschlagen';
 
   @override
-  String get onboardingUpgradeTitle => 'FinnAI Software Upgrade';
+  String get onboardingUpgradeTitle => 'FinnAI-Software-Upgrade';
 
   @override
   String get onboardingUpgradeBody =>
-      'Finn AI now runs a newer on-device model. Download it to continue chatting privately.';
+      'Finn AI verwendet jetzt ein neueres Modell auf dem Gerät. Lade es herunter, um weiter privat zu chatten.';
 
   @override
-  String get onboardingReadyTitle => 'Finn AI is ready!';
+  String get onboardingReadyTitle => 'Finn AI ist bereit!';
 
   @override
-  String get onboardingReadySubtitle => 'You\'re all set. Finn AI is ready.';
+  String get onboardingReadySubtitle =>
+      'Du bist startklar. Finn AI ist bereit.';
 
   @override
-  String get onboardingYouLabel => 'You';
+  String get onboardingYouLabel => 'Du';
 
   @override
-  String get chatNewChat => 'New chat';
+  String get chatNewChat => 'Neuer Chat';
 
   @override
-  String get chatHistory => 'Chat History';
+  String get chatHistory => 'Chatverlauf';
 
   @override
-  String get chatNoHistory => 'No history';
+  String get chatNoHistory => 'Kein Verlauf';
 
   @override
-  String get chatFinnGenerating => 'Finn is generating…';
+  String get chatFinnGenerating => 'Finn generiert…';
 
   @override
-  String get chatFinnTyping => 'Finn is typing…';
+  String get chatFinnTyping => 'Finn tippt…';
 
   @override
   String get chatAskAnything =>
       'Frag mich alles — ich laufe komplett auf diesem Gerät, deine\nUnterhaltungen verlassen niemals dein Telefon.';
 
   @override
-  String get chatTryAsking => 'Try asking';
+  String get chatTryAsking => 'Probier mal';
 
   @override
-  String get chatMessageHint => 'Message Finn…';
+  String get chatMessageHint => 'Nachricht an Finn…';
 
   @override
-  String get chatSend => 'Send';
+  String get chatSend => 'Senden';
 
   @override
-  String get chatStopGeneration => 'Stop';
+  String get chatStopGeneration => 'Stoppen';
 
   @override
-  String get chatCopy => 'Copy';
+  String get chatCopy => 'Kopieren';
 
   @override
-  String get chatEditMessage => 'Edit message';
+  String get chatEditMessage => 'Nachricht bearbeiten';
 
   @override
-  String get chatRenameTitle => 'Rename chat';
+  String get chatRenameTitle => 'Chat umbenennen';
 
   @override
-  String get chatRenameHint => 'Chat title';
+  String get chatRenameHint => 'Chat-Titel';
 
   @override
-  String get chatDeleteTitle => 'Delete chat?';
+  String get chatDeleteTitle => 'Chat löschen?';
 
   @override
   String chatDeleteBody(String title) {
-    return '“$title” will be removed. This cannot be undone.';
+    return '„$title“ wird entfernt. Das kann nicht rückgängig gemacht werden.';
   }
 
   @override
-  String get chatContinue => 'Continue';
+  String get chatContinue => 'Weiter';
 
   @override
-  String get chatSources => 'Sources';
+  String get chatSources => 'Quellen';
 
   @override
   String get chatOfflineNotice =>
-      'Offline — answer may be less accurate. Connect for cited sources.';
+      'Offline — die Antwort ist möglicherweise weniger genau. Stelle eine Verbindung her, um Quellen zu erhalten.';
 
   @override
-  String get chatFinishingTask => 'Finn AI is finishing another local task.';
+  String get chatFinishingTask =>
+      'Finn AI schließt gerade eine andere lokale Aufgabe ab.';
 
   @override
   String get chatAttachmentPickFailed =>
@@ -239,16 +244,16 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get chatCouldNotPrepare =>
-      'Could not prepare chat. Check the model and storage, then try again.';
+      'Chat konnte nicht vorbereitet werden. Prüfe Modell und Speicher und versuche es erneut.';
 
   @override
   String chatGeneratingIn(String title) {
-    return 'Generating in $title';
+    return 'Wird in $title generiert';
   }
 
   @override
   String get chatDownloadModelTitle =>
-      'Download the AI model for offline chat?';
+      'Das KI-Modell für den Offline-Chat herunterladen?';
 
   @override
   String chatDownloadModelBody(String size) {
@@ -262,287 +267,291 @@ class AppLocalizationsDe extends AppLocalizations {
   String get chatFinnAI => 'Finn AI';
 
   @override
-  String get settingsTitle => 'Settings';
+  String get settingsTitle => 'Einstellungen';
 
   @override
-  String get settingsAiModel => 'AI MODEL';
+  String get settingsAiModel => 'KI-MODELL';
 
   @override
-  String get settingsStorageData => 'STORAGE & DATA';
+  String get settingsStorageData => 'SPEICHER & DATEN';
 
   @override
-  String get settingsPrivacyLegal => 'PRIVACY & LEGAL';
+  String get settingsPrivacyLegal => 'DATENSCHUTZ & RECHT';
 
   @override
-  String get settingsAbout => 'ABOUT';
+  String get settingsAbout => 'ÜBER';
 
   @override
   String settingsSavedConversations(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count chats (Encrypted)',
-      one: '1 chat (Encrypted)',
+      other: '$count Chats (verschlüsselt)',
+      one: '1 Chat (verschlüsselt)',
     );
     return '$_temp0';
   }
 
   @override
-  String get settingsReleasingMemory => 'Releasing Memory…';
+  String get settingsReleasingMemory => 'Speicher wird freigegeben…';
 
   @override
-  String get settingsPurgeMemory => 'Purge AI Memory';
+  String get settingsPurgeMemory => 'KI-Speicher leeren';
 
   @override
-  String get settingsPurgeMemoryTitle => 'Purge AI Memory?';
+  String get settingsPurgeMemoryTitle => 'KI-Speicher leeren?';
 
   @override
   String get settingsPurgeMemoryBody =>
-      'This will unload the AI model from RAM. It will be reloaded automatically on the next message.';
+      'Dadurch wird das KI-Modell aus dem RAM entladen. Es wird bei der nächsten Nachricht automatisch neu geladen.';
 
   @override
-  String get settingsPurgeMemoryReleased => 'AI model memory released.';
+  String get settingsPurgeMemoryReleased => 'KI-Modellspeicher freigegeben.';
 
   @override
-  String get settingsClearHistory => 'Clear All Chat History';
+  String get settingsClearHistory => 'Gesamten Chatverlauf löschen';
 
   @override
-  String get settingsClearHistoryTitle => 'Clear All Conversations?';
+  String get settingsClearHistoryTitle => 'Alle Gespräche löschen?';
 
   @override
   String get settingsClearHistoryBody =>
-      'This will permanently delete all chat history. This action cannot be undone.';
+      'Dadurch wird der gesamte Chatverlauf dauerhaft gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.';
 
   @override
-  String get settingsClearHistorySuccess => 'All conversations cleared.';
+  String get settingsClearHistorySuccess => 'Alle Gespräche gelöscht.';
 
   @override
   String get settingsClearHistoryFailure =>
-      'Could not clear conversations. Check storage and try again.';
+      'Gespräche konnten nicht gelöscht werden. Prüfe den Speicher und versuche es erneut.';
 
   @override
-  String get settingsDeleteAllData => 'Delete All Local Data';
+  String get settingsDeleteAllData => 'Alle lokalen Daten löschen';
 
   @override
-  String get settingsDeleteAllDataTitle => 'Delete All Local Data?';
+  String get settingsDeleteAllDataTitle => 'Alle lokalen Daten löschen?';
 
   @override
   String get settingsDeleteAllDataBody =>
       'Dies löscht endgültig verschlüsselte Unterhaltungen und Schlüssel, heruntergeladene KI-Modelle, Kreationen, Profileinstellungen, Skills und den Onboarding-Zustand. FinnAI kehrt zu einem sauberen Erststart zurück.';
 
   @override
-  String get settingsDeleteAllDataDeleting => 'Deleting All Local Data…';
+  String get settingsDeleteAllDataDeleting =>
+      'Alle lokalen Daten werden gelöscht…';
 
   @override
   String get settingsDeleteAllDataSuccess =>
-      'All local data deleted. Returning to onboarding.';
+      'Alle lokalen Daten gelöscht. Zurück zur Einführung.';
 
   @override
   String settingsDeleteAllDataPartialFailure(String items) {
-    return 'Partial deletion failure: Failed to delete $items.';
+    return 'Teilweiser Löschfehler: $items konnte nicht gelöscht werden.';
   }
 
   @override
-  String get settingsPrivacyPolicy => 'Privacy Policy';
+  String get settingsPrivacyPolicy => 'Datenschutzerklärung';
 
   @override
   String get settingsPrivacyPolicyUnconfigured =>
-      'Privacy Policy URL is unconfigured (set FINN_PRIVACY_POLICY_URL).';
+      'URL der Datenschutzerklärung ist nicht konfiguriert (setze FINN_PRIVACY_POLICY_URL).';
 
   @override
   String settingsPrivacyPolicyLaunchFailed(String url) {
-    return 'Could not launch $url';
+    return '$url konnte nicht geöffnet werden';
   }
 
   @override
-  String get settingsTermsOfUse => 'Terms of Use';
+  String get settingsTermsOfUse => 'Nutzungsbedingungen';
 
   @override
   String get settingsTermsUnconfigured =>
-      'Terms of Use URL is unconfigured (set FINN_TERMS_URL).';
+      'URL der Nutzungsbedingungen ist nicht konfiguriert (setze FINN_TERMS_URL).';
 
   @override
   String settingsTermsLaunchFailed(String url) {
-    return 'Could not launch $url';
+    return '$url konnte nicht geöffnet werden';
   }
 
   @override
-  String get settingsSupportContact => 'Support Contact';
+  String get settingsSupportContact => 'Support-Kontakt';
 
   @override
-  String get settingsSupportUnavailable => 'Support contact is unavailable.';
+  String get settingsSupportUnavailable =>
+      'Support-Kontakt ist nicht verfügbar.';
 
   @override
   String settingsSupportEmailLabel(String email) {
-    return 'Support email: $email';
+    return 'Support-E-Mail: $email';
   }
 
   @override
   String settingsSupportLaunchFailed(String url) {
-    return 'Could not launch $url';
+    return '$url konnte nicht geöffnet werden';
   }
 
   @override
-  String get settingsOpenSourceLicenses => 'Open-Source Licences';
+  String get settingsOpenSourceLicenses => 'Open-Source-Lizenzen';
 
   @override
-  String get settingsAppVersion => 'App Version';
+  String get settingsAppVersion => 'App-Version';
 
   @override
-  String get settingsInferenceEngine => 'Inference Engine';
+  String get settingsInferenceEngine => 'Inferenz-Engine';
 
   @override
   String get settingsInferenceEngineValue => 'llama.cpp · GGUF';
 
   @override
-  String get settingsPrivacyMode => 'Privacy Mode';
+  String get settingsPrivacyMode => 'Datenschutzmodus';
 
   @override
-  String get settingsPrivacyModeValue => 'Encrypted On-Device';
+  String get settingsPrivacyModeValue => 'Verschlüsselt auf dem Gerät';
 
   @override
-  String get settingsModelArchitecture => 'Model Architecture';
+  String get settingsModelArchitecture => 'Modellarchitektur';
 
   @override
   String get settingsModelArchitectureValue => 'LFM2.5-VL 1.6B (Liquid)';
 
   @override
-  String get settingsLanguage => 'Language';
+  String get settingsLanguage => 'Sprache';
 
   @override
-  String get settingsSpokenResponses => 'Spoken responses';
+  String get settingsSpokenResponses => 'Gesprochene Antworten';
 
   @override
   String get settingsSpokenResponsesBody =>
-      'Finn reads replies aloud in voice mode. Your voice transcript is processed by your device\'s speech recognition, which may need internet.';
+      'Finn liest Antworten im Sprachmodus vor. Dein Sprachtranskript wird von der Spracherkennung deines Geräts verarbeitet, die Internet benötigen kann.';
 
   @override
-  String get voiceMicSemantic => 'Talk to Finn';
+  String get voiceMicSemantic => 'Sprich mit Finn';
 
   @override
-  String get voiceListening => 'Listening…';
+  String get voiceListening => 'Hört zu…';
 
   @override
-  String get voiceTapToSpeak => 'Tap the mic and speak';
+  String get voiceTapToSpeak => 'Tippe auf das Mikrofon und sprich';
 
   @override
-  String get voiceHeardYou => 'Heard you';
+  String get voiceHeardYou => 'Verstanden';
 
   @override
-  String get voiceDidNotCatch => 'Didn\'t catch that — try again';
+  String get voiceDidNotCatch =>
+      'Das habe ich nicht verstanden — versuch es noch einmal';
 
   @override
-  String get voiceThinking => 'Finn is thinking…';
+  String get voiceThinking => 'Finn denkt nach…';
 
   @override
-  String get voiceSpeaking => 'Finn is speaking — tap to interrupt';
+  String get voiceSpeaking => 'Finn spricht — zum Unterbrechen tippen';
 
   @override
   String get voiceMicDenied =>
-      'Microphone access is off. Enable it in system Settings to use voice mode.';
+      'Mikrofonzugriff ist deaktiviert. Aktiviere ihn in den Systemeinstellungen, um den Sprachmodus zu nutzen.';
 
   @override
   String get voiceUnavailable =>
-      'Speech recognition isn\'t available right now. Type your message instead.';
+      'Spracherkennung ist derzeit nicht verfügbar. Gib deine Nachricht stattdessen ein.';
 
   @override
-  String get voiceStopSemantic => 'Stop';
+  String get voiceStopSemantic => 'Stoppen';
 
   @override
-  String get voiceCloseSemantic => 'Close voice mode';
+  String get voiceCloseSemantic => 'Sprachmodus schließen';
 
   @override
-  String get youTitle => 'You';
+  String get youTitle => 'Du';
 
   @override
-  String get youIntroTitle => 'Make Finn feel like yours';
+  String get youIntroTitle => 'Mach Finn zu deinem';
 
   @override
   String get youIntroBody =>
-      'Your preferences stay on this device and shape future replies.';
+      'Deine Einstellungen bleiben auf diesem Gerät und prägen künftige Antworten.';
 
   @override
-  String get youAboutYou => 'About you';
+  String get youAboutYou => 'Über dich';
 
   @override
   String get youNameLabel => 'Name';
 
   @override
-  String get youNameHint => 'What should Finn call you?';
+  String get youNameHint => 'Wie soll Finn dich nennen?';
 
   @override
-  String get youAboutLabel => 'About you';
+  String get youAboutLabel => 'Über dich';
 
   @override
-  String get youAboutHint => 'Interests, work, or context Finn should remember';
+  String get youAboutHint =>
+      'Interessen, Arbeit oder Kontext, an den Finn sich erinnern soll';
 
   @override
-  String get youInstructionsLabel => 'Custom instructions';
+  String get youInstructionsLabel => 'Benutzerdefinierte Anweisungen';
 
   @override
   String get youInstructionsHint =>
-      'How should Finn respond? Tone, length, style…';
+      'Wie soll Finn antworten? Ton, Länge, Stil…';
 
   @override
-  String get youResponseStyle => 'Response style';
+  String get youResponseStyle => 'Antwortstil';
 
   @override
-  String get youResponseStyleBalanced => 'Balanced';
+  String get youResponseStyleBalanced => 'Ausgewogen';
 
   @override
-  String get youResponseStyleConcise => 'Concise';
+  String get youResponseStyleConcise => 'Knapp';
 
   @override
-  String get youResponseStyleDetailed => 'Detailed';
+  String get youResponseStyleDetailed => 'Ausführlich';
 
   @override
-  String get youResponseStyleCreative => 'Creative';
+  String get youResponseStyleCreative => 'Kreativ';
 
   @override
-  String get youSave => 'Save';
+  String get youSave => 'Speichern';
 
   @override
-  String get youSaved => 'Personalization saved locally.';
+  String get youSaved => 'Personalisierung lokal gespeichert.';
 
   @override
-  String get youSaveFailed => 'Could not save changes.';
+  String get youSaveFailed => 'Änderungen konnten nicht gespeichert werden.';
 
   @override
   String get skillsTitle => 'Skills';
 
   @override
   String skillsSubtitle(int count) {
-    return '$count available · skills guide relevant replies';
+    return '$count verfügbar · Skills steuern relevante Antworten';
   }
 
   @override
-  String get skillsNewSkill => 'New skill';
+  String get skillsNewSkill => 'Neuer Skill';
 
   @override
   String get skillsNoSkills =>
-      'No custom skills yet. Create one for a workflow you repeat.';
+      'Noch keine eigenen Skills. Erstelle einen für einen wiederkehrenden Ablauf.';
 
   @override
   String get skillsInstructionHint =>
-      'Write a reusable instruction Finn should apply when relevant.';
+      'Schreibe eine wiederverwendbare Anweisung, die Finn bei Bedarf anwendet.';
 
   @override
-  String get skillsDeleteTitle => 'Delete this skill?';
+  String get skillsDeleteTitle => 'Diesen Skill löschen?';
 
   @override
   String skillsDeleteBody(String name) {
-    return '“$name” will be removed from this device.';
+    return '„$name“ wird von diesem Gerät entfernt.';
   }
 
   @override
   String get skillsLimitReached =>
-      'Skill limit reached (4). Delete one to add another.';
+      'Skill-Limit erreicht (4). Lösche einen, um einen weiteren hinzuzufügen.';
 
   @override
-  String get skillsNameLabel => 'Skill name';
+  String get skillsNameLabel => 'Skill-Name';
 
   @override
-  String get skillsInstructionLabel => 'Instruction';
+  String get skillsInstructionLabel => 'Anweisung';
 
   @override
   String get chatBrowseTooltip => 'Für diese Nachricht im Web suchen';
@@ -589,20 +598,20 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get creationsTitle => 'Creations';
+  String get creationsTitle => 'Kreationen';
 
   @override
   String get creationsSubtitle =>
       'Beschreibe, was du willst. Finn baut es auf dem Gerät.';
 
   @override
-  String get creationsWhatAreWeMaking => 'What are we making?';
+  String get creationsWhatAreWeMaking => 'Was erstellen wir?';
 
   @override
-  String get creationsOriginalBrief => 'Original brief';
+  String get creationsOriginalBrief => 'Ursprüngliche Beschreibung';
 
   @override
-  String get creationsFinnAdapts => 'Finn adapts the structure to the format.';
+  String get creationsFinnAdapts => 'Finn passt die Struktur an das Format an.';
 
   @override
   String get creationsAskKind =>
@@ -747,74 +756,74 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get creationsStopTitle => 'Stop this creation?';
+  String get creationsStopTitle => 'Diese Kreation stoppen?';
 
   @override
   String get creationsStopBody =>
-      'The unfinished result will be discarded. Your prompt will stay here.';
+      'Das unfertige Ergebnis wird verworfen. Dein Prompt bleibt hier erhalten.';
 
   @override
-  String get creationsDeleteTitle => 'Delete this creation?';
+  String get creationsDeleteTitle => 'Diese Kreation löschen?';
 
   @override
   String creationsDeleteBody(String title) {
-    return '“$title” will be removed from this device.';
+    return '„$title“ wird von diesem Gerät entfernt.';
   }
 
   @override
-  String get creationsOpening => 'Opening creations';
+  String get creationsOpening => 'Kreationen werden geöffnet';
 
   @override
-  String get creationsGenerating => 'Generating…';
+  String get creationsGenerating => 'Wird generiert…';
 
   @override
-  String get reportTitle => 'Report AI Response';
+  String get reportTitle => 'KI-Antwort melden';
 
   @override
   String get reportSubtitle =>
-      'Help us maintain safe and accurate AI responses. Reports are reviewed to improve FinnAI safeguards.';
+      'Hilf uns, sichere und korrekte KI-Antworten zu gewährleisten. Meldungen werden geprüft, um die Schutzmechanismen von FinnAI zu verbessern.';
 
   @override
-  String get reportReasonLabel => 'Reason for report';
+  String get reportReasonLabel => 'Grund der Meldung';
 
   @override
-  String get reportIncludePrompt => 'Include my prompt in this report';
+  String get reportIncludePrompt => 'Meinen Prompt in diese Meldung aufnehmen';
 
   @override
-  String get reportResponsePreview => 'Reported response preview';
+  String get reportResponsePreview => 'Vorschau der gemeldeten Antwort';
 
   @override
   String get reportContinueHint =>
-      'Continue opens a complete report addressed to finn_org@proton.me. Nothing is sent until you review and send it in your email app.';
+      'Weiter öffnet einen vollständigen Bericht an finn_org@proton.me. Es wird nichts gesendet, bis du ihn in deiner E-Mail-App prüfst und absendest.';
 
   @override
-  String get reportContinueToEmail => 'Continue to Email';
+  String get reportContinueToEmail => 'Weiter zur E-Mail';
 
   @override
   String get reportReviewInEmail =>
-      'Review the report in your email app, then send it.';
+      'Prüfe den Bericht in deiner E-Mail-App und sende ihn ab.';
 
   @override
   String get reportNotConfigured =>
-      'The report email address is not configured.';
+      'Die E-Mail-Adresse für Meldungen ist nicht konfiguriert.';
 
   @override
-  String get reportCategoryHarmful => 'Harmful or unsafe';
+  String get reportCategoryHarmful => 'Schädlich oder unsicher';
 
   @override
-  String get reportCategoryIncorrect => 'Incorrect or misleading';
+  String get reportCategoryIncorrect => 'Falsch oder irreführend';
 
   @override
-  String get reportCategoryBiased => 'Biased or unfair';
+  String get reportCategoryBiased => 'Voreingenommen oder unfair';
 
   @override
-  String get reportCategoryOther => 'Other';
+  String get reportCategoryOther => 'Sonstiges';
 
   @override
-  String get snackModelMemoryReleased => 'AI model memory released.';
+  String get snackModelMemoryReleased => 'KI-Modellspeicher freigegeben.';
 
   @override
-  String get settingsSavedConversationsLabel => 'Saved Conversations';
+  String get settingsSavedConversationsLabel => 'Gespeicherte Chats';
 
   @override
   String get commonClose => 'Schließen';
@@ -1161,4 +1170,255 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get statusLoadingModel => 'KI-Modell wird geladen';
+
+  @override
+  String get deviceActionsTitle => 'Aktionen';
+
+  @override
+  String get deviceActionsIntro =>
+      'Bitte Finn, etwas auf deinem Telefon zu erledigen — einen Wecker stellen, einen Timer starten oder eine Einstellung öffnen.';
+
+  @override
+  String get deviceActionsExamples => 'Probiere eine davon';
+
+  @override
+  String get deviceActionsHint => 'Was soll Finn tun?';
+
+  @override
+  String get deviceActionsRun => 'Weiter';
+
+  @override
+  String get deviceActionsResolving => 'Finn überlegt…';
+
+  @override
+  String get deviceActionsUnresolved =>
+      'Daraus konnte ich keine Aktion machen. Nenne die Einstellung oder App direkt.';
+
+  @override
+  String get deviceActionsConfirm => 'Ausführen';
+
+  @override
+  String get deviceActionsCancel => 'Abbrechen';
+
+  @override
+  String get deviceActionsAgain => 'Etwas anderes tun';
+
+  @override
+  String get deviceActionsOpenNotice =>
+      'Android erlaubt Apps nicht, Funk-Einstellungen selbst zu ändern. Finn öffnet den richtigen Bildschirm, du schaltest um.';
+
+  @override
+  String deviceActionsResultOpened(String detail) {
+    return '$detail geöffnet';
+  }
+
+  @override
+  String deviceActionsResultPerformed(String detail) {
+    return 'Erledigt — $detail';
+  }
+
+  @override
+  String get deviceActionsResultUnavailable => 'Dein Gerät kann das nicht';
+
+  @override
+  String get deviceActionsResultFailed => 'Das hat nicht funktioniert';
+
+  @override
+  String deviceActionsResultFailedDetail(String error) {
+    return 'Das hat nicht funktioniert — $error';
+  }
+
+  @override
+  String get deviceActionsExampleAlarm => 'Wecker für 7 Uhr stellen';
+
+  @override
+  String get deviceActionsExampleTimer => '10-Minuten-Timer starten';
+
+  @override
+  String get deviceActionsExampleWifi => 'WLAN-Einstellungen öffnen';
+
+  @override
+  String get deviceActionsExampleFlashlight => 'Taschenlampe einschalten';
+
+  @override
+  String get deviceActionsExampleBluetooth => 'Bluetooth-Einstellungen öffnen';
+
+  @override
+  String deviceActionSetAlarm(String time) {
+    return 'Wecker auf $time stellen';
+  }
+
+  @override
+  String deviceActionSetTimer(String duration) {
+    return 'Timer auf $duration stellen';
+  }
+
+  @override
+  String get deviceActionShowAlarms => 'Wecker öffnen';
+
+  @override
+  String get deviceActionTorchOn => 'Taschenlampe einschalten';
+
+  @override
+  String get deviceActionTorchOff => 'Taschenlampe ausschalten';
+
+  @override
+  String deviceActionMedia(String action) {
+    return 'Musikwiedergabe: $action';
+  }
+
+  @override
+  String deviceActionVolume(String direction) {
+    return 'Lautstärke $direction';
+  }
+
+  @override
+  String deviceActionOpenSettings(String screen) {
+    return '$screen-Einstellungen öffnen';
+  }
+
+  @override
+  String deviceActionOpenApp(String name) {
+    return '$name öffnen';
+  }
+
+  @override
+  String deviceActionDial(String number) {
+    return 'Wählhilfe mit $number öffnen';
+  }
+
+  @override
+  String get deviceActionComposeSms => 'Neue SMS verfassen';
+
+  @override
+  String get deviceActionComposeEmail => 'Neue E-Mail verfassen';
+
+  @override
+  String get deviceActionTakePhoto => 'Kamera öffnen';
+
+  @override
+  String deviceActionOpenUrl(String url) {
+    return '$url öffnen';
+  }
+
+  @override
+  String deviceActionNavigate(String query) {
+    return 'Route nach $query';
+  }
+
+  @override
+  String get deviceActionShare => 'Text über eine andere App teilen';
+
+  @override
+  String get deviceActionMediaPlay => 'wiedergeben';
+
+  @override
+  String get deviceActionMediaPause => 'pausieren';
+
+  @override
+  String get deviceActionMediaNext => 'nächster Titel';
+
+  @override
+  String get deviceActionMediaPrevious => 'vorheriger Titel';
+
+  @override
+  String get deviceActionVolumeUp => 'lauter';
+
+  @override
+  String get deviceActionVolumeDown => 'leiser';
+
+  @override
+  String get deviceActionVolumeMute => 'aus';
+
+  @override
+  String get deviceScreenWifi => 'WLAN';
+
+  @override
+  String get deviceScreenBluetooth => 'Bluetooth';
+
+  @override
+  String get deviceScreenAirplane => 'Flugmodus';
+
+  @override
+  String get deviceScreenHotspot => 'Hotspot';
+
+  @override
+  String get deviceScreenMobileData => 'Mobile Daten';
+
+  @override
+  String get deviceScreenBatterySaver => 'Energiesparen';
+
+  @override
+  String get deviceScreenBatteryUsage => 'Akkuverbrauch';
+
+  @override
+  String get deviceScreenDnd => 'Nicht stören';
+
+  @override
+  String get deviceScreenDisplay => 'Display';
+
+  @override
+  String get deviceScreenSound => 'Ton';
+
+  @override
+  String get deviceScreenLocation => 'Standort';
+
+  @override
+  String get deviceScreenStorage => 'Speicher';
+
+  @override
+  String get deviceScreenDateTime => 'Datum und Uhrzeit';
+
+  @override
+  String get deviceScreenKeyboard => 'Tastatur';
+
+  @override
+  String get deviceScreenLanguage => 'Sprache';
+
+  @override
+  String get deviceScreenAccessibility => 'Bedienungshilfen';
+
+  @override
+  String get deviceScreenApplications => 'Apps';
+
+  @override
+  String get deviceScreenNfc => 'NFC';
+
+  @override
+  String get deviceScreenCast => 'Übertragen';
+
+  @override
+  String get deviceScreenVpn => 'VPN';
+
+  @override
+  String get deviceScreenDeveloper => 'Entwickleroptionen';
+
+  @override
+  String get deviceScreenHome => 'Startbildschirm';
+
+  @override
+  String get deviceActionsResultDone => 'Erledigt';
+
+  @override
+  String get settingsActionsSection => 'Aktionen auf deinem Gerät';
+
+  @override
+  String get settingsActionsRow => 'Aktionen';
+
+  @override
+  String get deviceScreenSystem => 'Einstellungen';
+
+  @override
+  String get deviceActionsDismissed => 'Abgebrochen';
+
+  @override
+  String get creationsStopped => 'Gestoppt.';
+
+  @override
+  String get creationsLoadFailed =>
+      'Finn konnte deine gespeicherten Kreationen nicht öffnen. Bitte versuche es erneut.';
+
+  @override
+  String get creationsDeleteFailed =>
+      'Diese Kreation konnte nicht gelöscht werden. Bitte versuche es erneut.';
 }

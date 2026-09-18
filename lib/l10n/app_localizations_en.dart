@@ -1151,4 +1151,255 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get statusLoadingModel => 'Loading the AI model';
+
+  @override
+  String get deviceActionsTitle => 'Actions';
+
+  @override
+  String get deviceActionsIntro =>
+      'Ask Finn to do something on your phone — set an alarm, start a timer, or open a setting.';
+
+  @override
+  String get deviceActionsExamples => 'Try one of these';
+
+  @override
+  String get deviceActionsHint => 'What should Finn do?';
+
+  @override
+  String get deviceActionsRun => 'Continue';
+
+  @override
+  String get deviceActionsResolving => 'Working out what to do…';
+
+  @override
+  String get deviceActionsUnresolved =>
+      'I couldn\'t turn that into an action. Try naming the setting or app directly.';
+
+  @override
+  String get deviceActionsConfirm => 'Do it';
+
+  @override
+  String get deviceActionsCancel => 'Cancel';
+
+  @override
+  String get deviceActionsAgain => 'Do something else';
+
+  @override
+  String get deviceActionsOpenNotice =>
+      'Android doesn\'t let apps change wireless settings on their own, so Finn opens the right screen and you flip the switch.';
+
+  @override
+  String deviceActionsResultOpened(String detail) {
+    return 'Opened $detail';
+  }
+
+  @override
+  String deviceActionsResultPerformed(String detail) {
+    return 'Done — $detail';
+  }
+
+  @override
+  String get deviceActionsResultUnavailable => 'Your device can\'t do that';
+
+  @override
+  String get deviceActionsResultFailed => 'That didn\'t work';
+
+  @override
+  String deviceActionsResultFailedDetail(String error) {
+    return 'That didn\'t work — $error';
+  }
+
+  @override
+  String get deviceActionsExampleAlarm => 'Set an alarm for 7am';
+
+  @override
+  String get deviceActionsExampleTimer => 'Start a 10 minute timer';
+
+  @override
+  String get deviceActionsExampleWifi => 'Open Wi-Fi settings';
+
+  @override
+  String get deviceActionsExampleFlashlight => 'Turn on the flashlight';
+
+  @override
+  String get deviceActionsExampleBluetooth => 'Open Bluetooth settings';
+
+  @override
+  String deviceActionSetAlarm(String time) {
+    return 'Set an alarm for $time';
+  }
+
+  @override
+  String deviceActionSetTimer(String duration) {
+    return 'Start a $duration timer';
+  }
+
+  @override
+  String get deviceActionShowAlarms => 'Open the alarm clock';
+
+  @override
+  String get deviceActionTorchOn => 'Turn the flashlight on';
+
+  @override
+  String get deviceActionTorchOff => 'Turn the flashlight off';
+
+  @override
+  String deviceActionMedia(String action) {
+    return 'Music player: $action';
+  }
+
+  @override
+  String deviceActionVolume(String direction) {
+    return 'Volume $direction';
+  }
+
+  @override
+  String deviceActionOpenSettings(String screen) {
+    return 'Open $screen settings';
+  }
+
+  @override
+  String deviceActionOpenApp(String name) {
+    return 'Open $name';
+  }
+
+  @override
+  String deviceActionDial(String number) {
+    return 'Open the dialer with $number';
+  }
+
+  @override
+  String get deviceActionComposeSms => 'Open a new text message';
+
+  @override
+  String get deviceActionComposeEmail => 'Open a new email';
+
+  @override
+  String get deviceActionTakePhoto => 'Open the camera';
+
+  @override
+  String deviceActionOpenUrl(String url) {
+    return 'Open $url';
+  }
+
+  @override
+  String deviceActionNavigate(String query) {
+    return 'Get directions to $query';
+  }
+
+  @override
+  String get deviceActionShare => 'Share text through another app';
+
+  @override
+  String get deviceActionMediaPlay => 'play';
+
+  @override
+  String get deviceActionMediaPause => 'pause';
+
+  @override
+  String get deviceActionMediaNext => 'skip to the next track';
+
+  @override
+  String get deviceActionMediaPrevious => 'go back a track';
+
+  @override
+  String get deviceActionVolumeUp => 'up';
+
+  @override
+  String get deviceActionVolumeDown => 'down';
+
+  @override
+  String get deviceActionVolumeMute => 'off';
+
+  @override
+  String get deviceScreenWifi => 'Wi-Fi';
+
+  @override
+  String get deviceScreenBluetooth => 'Bluetooth';
+
+  @override
+  String get deviceScreenAirplane => 'Airplane mode';
+
+  @override
+  String get deviceScreenHotspot => 'Hotspot';
+
+  @override
+  String get deviceScreenMobileData => 'Mobile data';
+
+  @override
+  String get deviceScreenBatterySaver => 'Battery saver';
+
+  @override
+  String get deviceScreenBatteryUsage => 'Battery usage';
+
+  @override
+  String get deviceScreenDnd => 'Do Not Disturb';
+
+  @override
+  String get deviceScreenDisplay => 'Display';
+
+  @override
+  String get deviceScreenSound => 'Sound';
+
+  @override
+  String get deviceScreenLocation => 'Location';
+
+  @override
+  String get deviceScreenStorage => 'Storage';
+
+  @override
+  String get deviceScreenDateTime => 'Date and time';
+
+  @override
+  String get deviceScreenKeyboard => 'Keyboard';
+
+  @override
+  String get deviceScreenLanguage => 'Language';
+
+  @override
+  String get deviceScreenAccessibility => 'Accessibility';
+
+  @override
+  String get deviceScreenApplications => 'Apps';
+
+  @override
+  String get deviceScreenNfc => 'NFC';
+
+  @override
+  String get deviceScreenCast => 'Cast';
+
+  @override
+  String get deviceScreenVpn => 'VPN';
+
+  @override
+  String get deviceScreenDeveloper => 'Developer options';
+
+  @override
+  String get deviceScreenHome => 'Home screen';
+
+  @override
+  String get deviceActionsResultDone => 'Done';
+
+  @override
+  String get settingsActionsSection => 'Actions on your device';
+
+  @override
+  String get settingsActionsRow => 'Actions';
+
+  @override
+  String get deviceScreenSystem => 'Settings';
+
+  @override
+  String get deviceActionsDismissed => 'Cancelled';
+
+  @override
+  String get creationsStopped => 'Stopped.';
+
+  @override
+  String get creationsLoadFailed =>
+      'Finn couldn\'t open your saved creations. Please try again.';
+
+  @override
+  String get creationsDeleteFailed =>
+      'That creation couldn\'t be deleted. Please try again.';
 }

@@ -2137,6 +2137,450 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Loading the AI model'**
   String get statusLoadingModel;
+
+  /// Page title for the device actions screen
+  ///
+  /// In en, this message translates to:
+  /// **'Actions'**
+  String get deviceActionsTitle;
+
+  /// One-line explanation of what the Actions page does
+  ///
+  /// In en, this message translates to:
+  /// **'Ask Finn to do something on your phone — set an alarm, start a timer, or open a setting.'**
+  String get deviceActionsIntro;
+
+  /// Heading above the example request chips
+  ///
+  /// In en, this message translates to:
+  /// **'Try one of these'**
+  String get deviceActionsExamples;
+
+  /// Placeholder inside the action request field
+  ///
+  /// In en, this message translates to:
+  /// **'What should Finn do?'**
+  String get deviceActionsHint;
+
+  /// Button that submits an action request
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get deviceActionsRun;
+
+  /// Shown while the request is being resolved
+  ///
+  /// In en, this message translates to:
+  /// **'Working out what to do…'**
+  String get deviceActionsResolving;
+
+  /// Shown when a request could not be turned into an action
+  ///
+  /// In en, this message translates to:
+  /// **'I couldn\'t turn that into an action. Try naming the setting or app directly.'**
+  String get deviceActionsUnresolved;
+
+  /// Button that runs the resolved action
+  ///
+  /// In en, this message translates to:
+  /// **'Do it'**
+  String get deviceActionsConfirm;
+
+  /// Button that dismisses the pending action
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get deviceActionsCancel;
+
+  /// Button that clears the result and starts over
+  ///
+  /// In en, this message translates to:
+  /// **'Do something else'**
+  String get deviceActionsAgain;
+
+  /// Explains that some settings cannot be toggled by an app
+  ///
+  /// In en, this message translates to:
+  /// **'Android doesn\'t let apps change wireless settings on their own, so Finn opens the right screen and you flip the switch.'**
+  String get deviceActionsOpenNotice;
+
+  /// Result line after opening a screen
+  ///
+  /// In en, this message translates to:
+  /// **'Opened {detail}'**
+  String deviceActionsResultOpened(String detail);
+
+  /// Result line after a completed action
+  ///
+  /// In en, this message translates to:
+  /// **'Done — {detail}'**
+  String deviceActionsResultPerformed(String detail);
+
+  /// Result when the device cannot perform the action
+  ///
+  /// In en, this message translates to:
+  /// **'Your device can\'t do that'**
+  String get deviceActionsResultUnavailable;
+
+  /// Result when the action failed
+  ///
+  /// In en, this message translates to:
+  /// **'That didn\'t work'**
+  String get deviceActionsResultFailed;
+
+  /// Result when the action failed, with the reason
+  ///
+  /// In en, this message translates to:
+  /// **'That didn\'t work — {error}'**
+  String deviceActionsResultFailedDetail(String error);
+
+  /// Example request chip
+  ///
+  /// In en, this message translates to:
+  /// **'Set an alarm for 7am'**
+  String get deviceActionsExampleAlarm;
+
+  /// Example request chip
+  ///
+  /// In en, this message translates to:
+  /// **'Start a 10 minute timer'**
+  String get deviceActionsExampleTimer;
+
+  /// Example request chip
+  ///
+  /// In en, this message translates to:
+  /// **'Open Wi-Fi settings'**
+  String get deviceActionsExampleWifi;
+
+  /// Example request chip
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on the flashlight'**
+  String get deviceActionsExampleFlashlight;
+
+  /// Example request chip
+  ///
+  /// In en, this message translates to:
+  /// **'Open Bluetooth settings'**
+  String get deviceActionsExampleBluetooth;
+
+  /// Confirmation line for setting an alarm
+  ///
+  /// In en, this message translates to:
+  /// **'Set an alarm for {time}'**
+  String deviceActionSetAlarm(String time);
+
+  /// Confirmation line for starting a timer
+  ///
+  /// In en, this message translates to:
+  /// **'Start a {duration} timer'**
+  String deviceActionSetTimer(String duration);
+
+  /// Confirmation line for opening the alarm clock
+  ///
+  /// In en, this message translates to:
+  /// **'Open the alarm clock'**
+  String get deviceActionShowAlarms;
+
+  /// Confirmation line for turning the flashlight on
+  ///
+  /// In en, this message translates to:
+  /// **'Turn the flashlight on'**
+  String get deviceActionTorchOn;
+
+  /// Confirmation line for turning the flashlight off
+  ///
+  /// In en, this message translates to:
+  /// **'Turn the flashlight off'**
+  String get deviceActionTorchOff;
+
+  /// Confirmation line for a media transport command
+  ///
+  /// In en, this message translates to:
+  /// **'Music player: {action}'**
+  String deviceActionMedia(String action);
+
+  /// Confirmation line for a volume change
+  ///
+  /// In en, this message translates to:
+  /// **'Volume {direction}'**
+  String deviceActionVolume(String direction);
+
+  /// Confirmation line for opening a settings screen
+  ///
+  /// In en, this message translates to:
+  /// **'Open {screen} settings'**
+  String deviceActionOpenSettings(String screen);
+
+  /// Confirmation line for launching an app
+  ///
+  /// In en, this message translates to:
+  /// **'Open {name}'**
+  String deviceActionOpenApp(String name);
+
+  /// Confirmation line for opening the dialer
+  ///
+  /// In en, this message translates to:
+  /// **'Open the dialer with {number}'**
+  String deviceActionDial(String number);
+
+  /// Confirmation line for drafting a text message
+  ///
+  /// In en, this message translates to:
+  /// **'Open a new text message'**
+  String get deviceActionComposeSms;
+
+  /// Confirmation line for drafting an email
+  ///
+  /// In en, this message translates to:
+  /// **'Open a new email'**
+  String get deviceActionComposeEmail;
+
+  /// Confirmation line for opening the camera
+  ///
+  /// In en, this message translates to:
+  /// **'Open the camera'**
+  String get deviceActionTakePhoto;
+
+  /// Confirmation line for opening a web address
+  ///
+  /// In en, this message translates to:
+  /// **'Open {url}'**
+  String deviceActionOpenUrl(String url);
+
+  /// Confirmation line for opening directions
+  ///
+  /// In en, this message translates to:
+  /// **'Get directions to {query}'**
+  String deviceActionNavigate(String query);
+
+  /// Confirmation line for sharing text
+  ///
+  /// In en, this message translates to:
+  /// **'Share text through another app'**
+  String get deviceActionShare;
+
+  /// Media transport label
+  ///
+  /// In en, this message translates to:
+  /// **'play'**
+  String get deviceActionMediaPlay;
+
+  /// Media transport label
+  ///
+  /// In en, this message translates to:
+  /// **'pause'**
+  String get deviceActionMediaPause;
+
+  /// Media transport label
+  ///
+  /// In en, this message translates to:
+  /// **'skip to the next track'**
+  String get deviceActionMediaNext;
+
+  /// Media transport label
+  ///
+  /// In en, this message translates to:
+  /// **'go back a track'**
+  String get deviceActionMediaPrevious;
+
+  /// Volume direction label
+  ///
+  /// In en, this message translates to:
+  /// **'up'**
+  String get deviceActionVolumeUp;
+
+  /// Volume direction label
+  ///
+  /// In en, this message translates to:
+  /// **'down'**
+  String get deviceActionVolumeDown;
+
+  /// Volume direction label
+  ///
+  /// In en, this message translates to:
+  /// **'off'**
+  String get deviceActionVolumeMute;
+
+  /// Settings screen name
+  ///
+  /// In en, this message translates to:
+  /// **'Wi-Fi'**
+  String get deviceScreenWifi;
+
+  /// Settings screen name
+  ///
+  /// In en, this message translates to:
+  /// **'Bluetooth'**
+  String get deviceScreenBluetooth;
+
+  /// Settings screen name
+  ///
+  /// In en, this message translates to:
+  /// **'Airplane mode'**
+  String get deviceScreenAirplane;
+
+  /// Settings screen name
+  ///
+  /// In en, this message translates to:
+  /// **'Hotspot'**
+  String get deviceScreenHotspot;
+
+  /// Settings screen name
+  ///
+  /// In en, this message translates to:
+  /// **'Mobile data'**
+  String get deviceScreenMobileData;
+
+  /// Settings screen name
+  ///
+  /// In en, this message translates to:
+  /// **'Battery saver'**
+  String get deviceScreenBatterySaver;
+
+  /// Settings screen name
+  ///
+  /// In en, this message translates to:
+  /// **'Battery usage'**
+  String get deviceScreenBatteryUsage;
+
+  /// Settings screen name
+  ///
+  /// In en, this message translates to:
+  /// **'Do Not Disturb'**
+  String get deviceScreenDnd;
+
+  /// Settings screen name
+  ///
+  /// In en, this message translates to:
+  /// **'Display'**
+  String get deviceScreenDisplay;
+
+  /// Settings screen name
+  ///
+  /// In en, this message translates to:
+  /// **'Sound'**
+  String get deviceScreenSound;
+
+  /// Settings screen name
+  ///
+  /// In en, this message translates to:
+  /// **'Location'**
+  String get deviceScreenLocation;
+
+  /// Settings screen name
+  ///
+  /// In en, this message translates to:
+  /// **'Storage'**
+  String get deviceScreenStorage;
+
+  /// Settings screen name
+  ///
+  /// In en, this message translates to:
+  /// **'Date and time'**
+  String get deviceScreenDateTime;
+
+  /// Settings screen name
+  ///
+  /// In en, this message translates to:
+  /// **'Keyboard'**
+  String get deviceScreenKeyboard;
+
+  /// Settings screen name
+  ///
+  /// In en, this message translates to:
+  /// **'Language'**
+  String get deviceScreenLanguage;
+
+  /// Settings screen name
+  ///
+  /// In en, this message translates to:
+  /// **'Accessibility'**
+  String get deviceScreenAccessibility;
+
+  /// Settings screen name
+  ///
+  /// In en, this message translates to:
+  /// **'Apps'**
+  String get deviceScreenApplications;
+
+  /// Settings screen name
+  ///
+  /// In en, this message translates to:
+  /// **'NFC'**
+  String get deviceScreenNfc;
+
+  /// Settings screen name
+  ///
+  /// In en, this message translates to:
+  /// **'Cast'**
+  String get deviceScreenCast;
+
+  /// Settings screen name
+  ///
+  /// In en, this message translates to:
+  /// **'VPN'**
+  String get deviceScreenVpn;
+
+  /// Settings screen name
+  ///
+  /// In en, this message translates to:
+  /// **'Developer options'**
+  String get deviceScreenDeveloper;
+
+  /// Settings screen name
+  ///
+  /// In en, this message translates to:
+  /// **'Home screen'**
+  String get deviceScreenHome;
+
+  /// Result line when the action completed and has nothing more to name
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get deviceActionsResultDone;
+
+  /// Settings section holding device actions
+  ///
+  /// In en, this message translates to:
+  /// **'Actions on your device'**
+  String get settingsActionsSection;
+
+  /// Settings row that opens the device actions screen
+  ///
+  /// In en, this message translates to:
+  /// **'Actions'**
+  String get settingsActionsRow;
+
+  /// Settings screen name
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get deviceScreenSystem;
+
+  /// Left in the conversation when a proposed action is dismissed
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled'**
+  String get deviceActionsDismissed;
+
+  /// Left in the transcript when the user stops a generation
+  ///
+  /// In en, this message translates to:
+  /// **'Stopped.'**
+  String get creationsStopped;
+
+  /// Shown when saved creations could not be read from disk
+  ///
+  /// In en, this message translates to:
+  /// **'Finn couldn\'t open your saved creations. Please try again.'**
+  String get creationsLoadFailed;
+
+  /// Shown when deleting a creation could not be saved
+  ///
+  /// In en, this message translates to:
+  /// **'That creation couldn\'t be deleted. Please try again.'**
+  String get creationsDeleteFailed;
 }
 
 class _AppLocalizationsDelegate

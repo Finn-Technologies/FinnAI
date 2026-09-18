@@ -1,0 +1,129 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:flutter_test/flutter_test.dart';
+
+/// Locales shipped by the app, with English as the template.
+const List<String> _locales = ['en', 'de', 'es', 'fr', 'it'];
+const String _arbDir = 'lib/l10n';
+
+Map<String, Object?> _readArb(String locale) {
+  final file = File('$_arbDir/app_$locale.arb');
+  expect(file.existsSync(), isTrue, reason: '${file.path} should exist');
+  final decoded = jsonDecode(file.readAsStringSync());
+  return (decoded as Map).cast<String, Object?>();
+}
+
+/// Localizable entries only: `@@locale` and `@key` metadata are not strings.
+Set<String> _keys(Map<String, Object?> arb) =>
+    arb.keys.where((key) => !key.startsWith('@')).toSet();
+
+/// Every `{token}` in [value], including those nested inside ICU plural and
+/// select branches. `@key` metadata lives outside this map, so `placeholders`
+/// blocks are never visited.
+Set<String> _tokens(Object? value) {
+  if (value is String) {
+    return RegExp(r'\{(\w+)').allMatches(value).map((m) => m[1]!).toSet();
+  }
+  if (value is Map) {
+    return value.values.expand(_tokens).toSet();
+  }
+  return const <String>{};
+}
+
+/// Strings that are legitimately identical to English: product and model
+/// names, technology terms, format-only templates, and words that are spelled
+/// the same in the target language (e.g. French "Instructions").
+const Map<String, String> _identicalAllowlist = {
+  'appBrandFinnAI': 'product name',
+  'appTitle': 'product name',
+  'chatFinnAI': 'product name',
+  'settingsInferenceEngineValue': 'engine name',
+  'settingsModelArchitectureValue': 'model name',
+  'deviceScreenBluetooth': 'technology name',
+  'deviceScreenNfc': 'technology name',
+  'deviceScreenVpn': 'technology name',
+  'deviceScreenWifi': 'technology name',
+  'deviceScreenHotspot': 'loanword (de/it)',
+  'deviceScreenDisplay': 'loanword (de)',
+  'deviceScreenApplications': 'loanword (de)',
+  'deviceActionVolume': 'cognate (fr/it)',
+  'deviceActionsTitle': 'cognate (fr)',
+  'settingsActionsRow': 'cognate (fr)',
+  'attachmentPhotos': 'cognate (fr)',
+  'chatSources': 'cognate (fr)',
+  'skillsEditorInstructions': 'cognate (fr)',
+  'skillsEditorName': 'cognate (de)',
+  'skillsInstructionLabel': 'cognate (fr)',
+  'youNameLabel': 'cognate (de)',
+  'skillsTitle': 'feature name loanword',
+  'creationsKindApp': 'loanword',
+  'creationsKindWidget': 'loanword',
+  'creationsFilterApps': 'loanword',
+  'creationsFilterWidgets': 'loanword',
+  'onboardingInstallProgressStatus': 'placeholder-only template',
+};
+
+void main() {
+  late Map<String, Map<String, Object?>> arbs;
+
+  setUpAll(() {
+    arbs = {for (final locale in _locales) locale: _readArb(locale)};
+  });
+
+  test('each ARB declares its own locale', () {
+    for (final locale in _locales) {
+      expect(arbs[locale]!['@@locale'], locale);
+    }
+  });
+
+  test('all five locales expose the same key set as the English template', () {
+    final template = _keys(arbs['en']!);
+    expect(template, isNotEmpty);
+    for (final locale in _locales.where((l) => l != 'en')) {
+      final keys = _keys(arbs[locale]!);
+      expect(
+        keys.difference(template),
+        isEmpty,
+        reason: '$locale has keys the template lacks',
+      );
+      expect(
+        template.difference(keys),
+        isEmpty,
+        reason: '$locale is missing template keys',
+      );
+    }
+  });
+
+  test('every locale keeps the same ICU placeholders as the template', () {
+    final template = arbs['en']!;
+    for (final locale in _locales.where((l) => l != 'en')) {
+      final arb = arbs[locale]!;
+      for (final key in _keys(template)) {
+        expect(
+          _tokens(arb[key]),
+          _tokens(template[key]),
+          reason: '$locale.$key placeholder tokens diverge from en',
+        );
+      }
+    }
+  });
+
+  test('no locale still holds English copy outside the allowlist', () {
+    final template = arbs['en']!;
+    for (final locale in _locales.where((l) => l != 'en')) {
+      final arb = arbs[locale]!;
+      final leftovers = <String>[
+        for (final key in _keys(template))
+          if (arb[key] == template[key] &&
+              !_identicalAllowlist.containsKey(key))
+            key,
+      ];
+      expect(
+        leftovers,
+        isEmpty,
+        reason: '$locale still holds the English string for $leftovers',
+      );
+    }
+  });
+}

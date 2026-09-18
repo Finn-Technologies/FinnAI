@@ -1,78 +1,78 @@
 {
   "@@locale": "fr",
-  "commonCancel": "Cancel",
+  "commonCancel": "Annuler",
   "@commonCancel": {
     "description": "Cancel button"
   },
-  "commonDelete": "Delete",
+  "commonDelete": "Supprimer",
   "@commonDelete": {
     "description": "Delete button"
   },
-  "commonSave": "Save",
+  "commonSave": "Enregistrer",
   "@commonSave": {
     "description": "Save button"
   },
-  "commonEdit": "Edit",
+  "commonEdit": "Modifier",
   "@commonEdit": {
     "description": "Edit action"
   },
-  "commonBack": "Back",
+  "commonBack": "Retour",
   "@commonBack": {
     "description": "Back navigation"
   },
-  "commonNext": "Next",
+  "commonNext": "Suivant",
   "@commonNext": {
     "description": "Next button"
   },
-  "commonRetry": "Retry",
+  "commonRetry": "Réessayer",
   "@commonRetry": {
     "description": "Retry action"
   },
-  "commonContinue": "Continue",
+  "commonContinue": "Continuer",
   "@commonContinue": {
     "description": "Continue action"
   },
-  "commonCopiedToClipboard": "Copied to clipboard",
+  "commonCopiedToClipboard": "Copié dans le presse-papiers",
   "@commonCopiedToClipboard": {
     "description": "Clipboard confirmation"
   },
-  "commonOpen": "Open",
+  "commonOpen": "Ouvrir",
   "@commonOpen": {
     "description": "Open action"
   },
-  "commonStop": "Stop",
+  "commonStop": "Arrêter",
   "@commonStop": {
     "description": "Stop action"
   },
-  "commonDownload": "Download",
+  "commonDownload": "Télécharger",
   "@commonDownload": {
     "description": "Download action"
   },
-  "commonResend": "Resend",
+  "commonResend": "Renvoyer",
   "@commonResend": {
     "description": "Resend action"
   },
-  "commonSaveSkill": "Save skill",
+  "commonSaveSkill": "Enregistrer la compétence",
   "@commonSaveSkill": {
     "description": "Save skill button"
   },
-  "commonKeepCreating": "Keep creating",
+  "commonKeepCreating": "Continuer à créer",
   "@commonKeepCreating": {
     "description": "Keep creating action"
   },
-  "commonNotNow": "Not now",
+  "commonNotNow": "Pas maintenant",
   "@commonNotNow": {
     "description": "Not now action"
   },
-  "commonPurge": "Purge",
+  "commonPurge": "Purger",
   "@commonPurge": {
     "description": "Purge action"
   },
-  "commonClearAll": "Clear All",
+  "commonClearAll": "Tout effacer",
   "@commonClearAll": {
     "description": "Clear all action"
   },
-  "commonDeleteEverything": "Delete Everything",
+  "commonDeleteEverything": "Tout supprimer",
   "@commonDeleteEverything": {
     "description": "Delete everything action"
   },
@@ -84,47 +84,47 @@
   "@appBrandFinnAI": {
     "description": "Product name"
   },
-  "unsupportedTitle": "Finn AI cannot run on this device",
+  "unsupportedTitle": "Finn AI ne peut pas s'exécuter sur cet appareil",
   "@unsupportedTitle": {
     "description": "Unsupported device title"
   },
-  "unsupportedBody": "Finn AI requires at least 3 GB of RAM and a 64-bit ARM processor to run local models reliably. No model has been downloaded.",
+  "unsupportedBody": "Finn AI nécessite au moins 3 Go de RAM et un processeur ARM 64 bits pour exécuter des modèles locaux de manière fiable. Aucun modèle n'a été téléchargé.",
   "@unsupportedBody": {
     "description": "Unsupported device body"
   },
-  "onboardingWelcome": "Welcome to Finn AI!",
+  "onboardingWelcome": "Bienvenue dans Finn AI !",
   "@onboardingWelcome": {
     "description": "Welcome heading"
   },
-  "onboardingSwipeToStart": "Swipe to start",
+  "onboardingSwipeToStart": "Balayez pour commencer",
   "@onboardingSwipeToStart": {
     "description": "Swipe to start hint"
   },
-  "onboardingPrivacyTitle": "Finn AI is Privacy-First",
+  "onboardingPrivacyTitle": "Finn AI respecte d'abord votre vie privée",
   "@onboardingPrivacyTitle": {
     "description": "Privacy page title"
   },
-  "onboardingPrivacyBody": "Finn AI is designed to respect your privacy.\n\nAI processing and conversation history stay on this device. When a request needs fresh information, Finn AI may send only that request as a web search query and will show the sources it used. Your history and personal profile are never included.\n\nFinn AI is proprietary software and is not open source.",
+  "onboardingPrivacyBody": "Finn AI est conçu pour respecter votre vie privée.\n\nLe traitement par l'IA et l'historique des conversations restent sur cet appareil. Lorsqu'une demande nécessite des informations récentes, Finn AI peut envoyer uniquement cette demande comme requête de recherche web et affichera les sources utilisées. Votre historique et votre profil personnel ne sont jamais inclus.\n\nFinn AI est un logiciel propriétaire et n'est pas open source.",
   "@onboardingPrivacyBody": {
     "description": "Privacy page body"
   },
-  "onboardingPrecautionsTitle": "Before starting, read precautions",
+  "onboardingPrecautionsTitle": "Avant de commencer, lisez les précautions",
   "@onboardingPrecautionsTitle": {
     "description": "Precautions title"
   },
-  "onboardingPrecautionOne": "On-device AI prompt processing",
+  "onboardingPrecautionOne": "Traitement des prompts d'IA sur l'appareil",
   "@onboardingPrecautionOne": {
     "description": "Precaution 1"
   },
-  "onboardingPrecautionTwo": "Offline chat after model download",
+  "onboardingPrecautionTwo": "Chat hors ligne après le téléchargement du modèle",
   "@onboardingPrecautionTwo": {
     "description": "Precaution 2"
   },
-  "onboardingPrecautionThree": "Encrypted conversation storage",
+  "onboardingPrecautionThree": "Stockage chiffré des conversations",
   "@onboardingPrecautionThree": {
     "description": "Precaution 3"
   },
-  "onboardingPrecautionFour": "Designed for battery efficiency",
+  "onboardingPrecautionFour": "Conçu pour économiser la batterie",
   "@onboardingPrecautionFour": {
     "description": "Precaution 4"
   },
@@ -140,11 +140,11 @@
   "@onboardingInstallPreparing": {
     "description": "Preparing message"
   },
-  "onboardingInstallReadyForChat": "Ready for private text chat on this device",
+  "onboardingInstallReadyForChat": "Prêt pour le chat textuel privé sur cet appareil",
   "@onboardingInstallReadyForChat": {
     "description": "Ready subtitle"
   },
-  "onboardingInstallModelWithComponent": "{modelName} + multimodal component · {size}",
+  "onboardingInstallModelWithComponent": "{modelName} + composant multimodal · {size}",
   "@onboardingInstallModelWithComponent": {
     "description": "Model + component · size",
     "placeholders": {
@@ -156,11 +156,11 @@
       }
     }
   },
-  "onboardingInstallModelReady": "Model ready",
+  "onboardingInstallModelReady": "Modèle prêt",
   "@onboardingInstallModelReady": {
     "description": "Model ready label"
   },
-  "onboardingInstallProgressStatus": "{status} · {percent}%",
+  "onboardingInstallProgressStatus": "{status} · {percent} %",
   "@onboardingInstallProgressStatus": {
     "description": "Progress status",
     "placeholders": {
@@ -172,7 +172,7 @@
       }
     }
   },
-  "onboardingInstallBytesOf": "{received} of {total}",
+  "onboardingInstallBytesOf": "{received} sur {total}",
   "@onboardingInstallBytesOf": {
     "description": "Bytes progress",
     "placeholders": {
@@ -184,7 +184,7 @@
       }
     }
   },
-  "onboardingInstallBytesLeft": "{remaining} left",
+  "onboardingInstallBytesLeft": "{remaining} restants",
   "@onboardingInstallBytesLeft": {
     "description": "Bytes remaining",
     "placeholders": {
@@ -193,55 +193,55 @@
       }
     }
   },
-  "onboardingInstallRetry": "Retry",
+  "onboardingInstallRetry": "Réessayer",
   "@onboardingInstallRetry": {
     "description": "Retry download"
   },
-  "onboardingInstallRetryLabel": "Retry model download",
+  "onboardingInstallRetryLabel": "Relancer le téléchargement du modèle",
   "@onboardingInstallRetryLabel": {
     "description": "Retry semantic label"
   },
-  "onboardingInstallVerificationFailed": "Model verification failed",
+  "onboardingInstallVerificationFailed": "Échec de la vérification du modèle",
   "@onboardingInstallVerificationFailed": {
     "description": "Verification error"
   },
-  "onboardingUpgradeTitle": "FinnAI Software Upgrade",
+  "onboardingUpgradeTitle": "Mise à niveau logicielle FinnAI",
   "@onboardingUpgradeTitle": {
     "description": "Upgrade title"
   },
-  "onboardingUpgradeBody": "Finn AI now runs a newer on-device model. Download it to continue chatting privately.",
+  "onboardingUpgradeBody": "Finn AI exécute désormais un modèle plus récent sur l'appareil. Téléchargez-le pour continuer à discuter en privé.",
   "@onboardingUpgradeBody": {
     "description": "Upgrade body"
   },
-  "onboardingReadyTitle": "Finn AI is ready!",
+  "onboardingReadyTitle": "Finn AI est prêt !",
   "@onboardingReadyTitle": {
     "description": "Ready title"
   },
-  "onboardingReadySubtitle": "You're all set. Finn AI is ready.",
+  "onboardingReadySubtitle": "Tout est prêt. Finn AI est prêt.",
   "@onboardingReadySubtitle": {
     "description": "Ready subtitle"
   },
-  "onboardingYouLabel": "You",
+  "onboardingYouLabel": "Vous",
   "@onboardingYouLabel": {
     "description": "You label on final page"
   },
-  "chatNewChat": "New chat",
+  "chatNewChat": "Nouveau chat",
   "@chatNewChat": {
     "description": "New chat button"
   },
-  "chatHistory": "Chat History",
+  "chatHistory": "Historique des chats",
   "@chatHistory": {
     "description": "Chat history header"
   },
-  "chatNoHistory": "No history",
+  "chatNoHistory": "Aucun historique",
   "@chatNoHistory": {
     "description": "Empty history"
   },
-  "chatFinnGenerating": "Finn is generating…",
+  "chatFinnGenerating": "Finn génère…",
   "@chatFinnGenerating": {
     "description": "Generating indicator"
   },
-  "chatFinnTyping": "Finn is typing…",
+  "chatFinnTyping": "Finn écrit…",
   "@chatFinnTyping": {
     "description": "Typing indicator"
   },
@@ -249,43 +249,43 @@
   "@chatAskAnything": {
     "description": "Welcome ask anything"
   },
-  "chatTryAsking": "Try asking",
+  "chatTryAsking": "Essayez de demander",
   "@chatTryAsking": {
     "description": "Try asking heading"
   },
-  "chatMessageHint": "Message Finn…",
+  "chatMessageHint": "Message à Finn…",
   "@chatMessageHint": {
     "description": "Composer hint"
   },
-  "chatSend": "Send",
+  "chatSend": "Envoyer",
   "@chatSend": {
     "description": "Send button"
   },
-  "chatStopGeneration": "Stop",
+  "chatStopGeneration": "Arrêter",
   "@chatStopGeneration": {
     "description": "Stop generation"
   },
-  "chatCopy": "Copy",
+  "chatCopy": "Copier",
   "@chatCopy": {
     "description": "Copy action"
   },
-  "chatEditMessage": "Edit message",
+  "chatEditMessage": "Modifier le message",
   "@chatEditMessage": {
     "description": "Edit message"
   },
-  "chatRenameTitle": "Rename chat",
+  "chatRenameTitle": "Renommer le chat",
   "@chatRenameTitle": {
     "description": "Rename dialog title"
   },
-  "chatRenameHint": "Chat title",
+  "chatRenameHint": "Titre du chat",
   "@chatRenameHint": {
     "description": "Rename hint"
   },
-  "chatDeleteTitle": "Delete chat?",
+  "chatDeleteTitle": "Supprimer le chat ?",
   "@chatDeleteTitle": {
     "description": "Delete chat title"
   },
-  "chatDeleteBody": "“{title}” will be removed. This cannot be undone.",
+  "chatDeleteBody": "« {title} » sera supprimé. Cette action est irréversible.",
   "@chatDeleteBody": {
     "description": "Delete chat body",
     "placeholders": {
@@ -294,7 +294,7 @@
       }
     }
   },
-  "chatContinue": "Continue",
+  "chatContinue": "Continuer",
   "@chatContinue": {
     "description": "Continue generation"
   },
@@ -302,11 +302,11 @@
   "@chatSources": {
     "description": "Sources heading"
   },
-  "chatOfflineNotice": "Offline — answer may be less accurate. Connect for cited sources.",
+  "chatOfflineNotice": "Hors ligne — la réponse peut être moins précise. Connectez-vous pour obtenir des sources citées.",
   "@chatOfflineNotice": {
     "description": "Offline notice"
   },
-  "chatFinishingTask": "Finn AI is finishing another local task.",
+  "chatFinishingTask": "Finn AI termine une autre tâche locale.",
   "@chatFinishingTask": {
     "description": "Busy snackbar"
   },
@@ -314,11 +314,11 @@
   "@chatAttachmentPickFailed": {
     "description": "Message d'erreur d'ouverture du sélecteur de pièces jointes"
   },
-  "chatCouldNotPrepare": "Could not prepare chat. Check the model and storage, then try again.",
+  "chatCouldNotPrepare": "Impossible de préparer le chat. Vérifiez le modèle et le stockage, puis réessayez.",
   "@chatCouldNotPrepare": {
     "description": "Prepare error"
   },
-  "chatGeneratingIn": "Generating in {title}",
+  "chatGeneratingIn": "Génération dans {title}",
   "@chatGeneratingIn": {
     "description": "Generating in creation",
     "placeholders": {
@@ -327,7 +327,7 @@
       }
     }
   },
-  "chatDownloadModelTitle": "Download the AI model for offline chat?",
+  "chatDownloadModelTitle": "Télécharger le modèle d'IA pour discuter hors ligne ?",
   "@chatDownloadModelTitle": {
     "description": "Download prompt title"
   },
@@ -348,27 +348,27 @@
   "@chatFinnAI": {
     "description": "Finn AI label"
   },
-  "settingsTitle": "Settings",
+  "settingsTitle": "Réglages",
   "@settingsTitle": {
     "description": "Settings title"
   },
-  "settingsAiModel": "AI MODEL",
+  "settingsAiModel": "MODÈLE IA",
   "@settingsAiModel": {
     "description": "AI model section"
   },
-  "settingsStorageData": "STORAGE & DATA",
+  "settingsStorageData": "STOCKAGE ET DONNÉES",
   "@settingsStorageData": {
     "description": "Storage section"
   },
-  "settingsPrivacyLegal": "PRIVACY & LEGAL",
+  "settingsPrivacyLegal": "CONFIDENTIALITÉ ET MENTIONS LÉGALES",
   "@settingsPrivacyLegal": {
     "description": "Privacy section"
   },
-  "settingsAbout": "ABOUT",
+  "settingsAbout": "À PROPOS",
   "@settingsAbout": {
     "description": "About section"
   },
-  "settingsSavedConversations": "{count, plural, =1{1 chat (Encrypted)} other{{count} chats (Encrypted)}}",
+  "settingsSavedConversations": "{count, plural, =1{1 chat (chiffré)} other{{count} chats (chiffrés)}}",
   "@settingsSavedConversations": {
     "description": "Saved conversations count",
     "placeholders": {
@@ -377,51 +377,51 @@
       }
     }
   },
-  "settingsReleasingMemory": "Releasing Memory…",
+  "settingsReleasingMemory": "Libération de la mémoire…",
   "@settingsReleasingMemory": {
     "description": "Releasing memory"
   },
-  "settingsPurgeMemory": "Purge AI Memory",
+  "settingsPurgeMemory": "Purger la mémoire de l'IA",
   "@settingsPurgeMemory": {
     "description": "Purge memory row"
   },
-  "settingsPurgeMemoryTitle": "Purge AI Memory?",
+  "settingsPurgeMemoryTitle": "Purger la mémoire de l'IA ?",
   "@settingsPurgeMemoryTitle": {
     "description": "Purge dialog title"
   },
-  "settingsPurgeMemoryBody": "This will unload the AI model from RAM. It will be reloaded automatically on the next message.",
+  "settingsPurgeMemoryBody": "Cela déchargera le modèle d'IA de la RAM. Il sera rechargé automatiquement au prochain message.",
   "@settingsPurgeMemoryBody": {
     "description": "Purge body"
   },
-  "settingsPurgeMemoryReleased": "AI model memory released.",
+  "settingsPurgeMemoryReleased": "Mémoire du modèle d'IA libérée.",
   "@settingsPurgeMemoryReleased": {
     "description": "Purge success"
   },
-  "settingsClearHistory": "Clear All Chat History",
+  "settingsClearHistory": "Effacer tout l'historique des chats",
   "@settingsClearHistory": {
     "description": "Clear history row"
   },
-  "settingsClearHistoryTitle": "Clear All Conversations?",
+  "settingsClearHistoryTitle": "Effacer toutes les conversations ?",
   "@settingsClearHistoryTitle": {
     "description": "Clear title"
   },
-  "settingsClearHistoryBody": "This will permanently delete all chat history. This action cannot be undone.",
+  "settingsClearHistoryBody": "Cela supprimera définitivement tout l'historique des chats. Cette action est irréversible.",
   "@settingsClearHistoryBody": {
     "description": "Clear body"
   },
-  "settingsClearHistorySuccess": "All conversations cleared.",
+  "settingsClearHistorySuccess": "Toutes les conversations ont été effacées.",
   "@settingsClearHistorySuccess": {
     "description": "Clear success"
   },
-  "settingsClearHistoryFailure": "Could not clear conversations. Check storage and try again.",
+  "settingsClearHistoryFailure": "Impossible d'effacer les conversations. Vérifiez le stockage et réessayez.",
   "@settingsClearHistoryFailure": {
     "description": "Clear failure"
   },
-  "settingsDeleteAllData": "Delete All Local Data",
+  "settingsDeleteAllData": "Supprimer toutes les données locales",
   "@settingsDeleteAllData": {
     "description": "Delete all row"
   },
-  "settingsDeleteAllDataTitle": "Delete All Local Data?",
+  "settingsDeleteAllDataTitle": "Supprimer toutes les données locales ?",
   "@settingsDeleteAllDataTitle": {
     "description": "Delete all title"
   },
@@ -429,15 +429,15 @@
   "@settingsDeleteAllDataBody": {
     "description": "Delete all body"
   },
-  "settingsDeleteAllDataDeleting": "Deleting All Local Data…",
+  "settingsDeleteAllDataDeleting": "Suppression de toutes les données locales…",
   "@settingsDeleteAllDataDeleting": {
     "description": "Deleting progress"
   },
-  "settingsDeleteAllDataSuccess": "All local data deleted. Returning to onboarding.",
+  "settingsDeleteAllDataSuccess": "Toutes les données locales ont été supprimées. Retour à l'introduction.",
   "@settingsDeleteAllDataSuccess": {
     "description": "Delete success"
   },
-  "settingsDeleteAllDataPartialFailure": "Partial deletion failure: Failed to delete {items}.",
+  "settingsDeleteAllDataPartialFailure": "Échec partiel de la suppression : impossible de supprimer {items}.",
   "@settingsDeleteAllDataPartialFailure": {
     "description": "Partial failure",
     "placeholders": {
@@ -446,15 +446,15 @@
       }
     }
   },
-  "settingsPrivacyPolicy": "Privacy Policy",
+  "settingsPrivacyPolicy": "Politique de confidentialité",
   "@settingsPrivacyPolicy": {
     "description": "Privacy policy row"
   },
-  "settingsPrivacyPolicyUnconfigured": "Privacy Policy URL is unconfigured (set FINN_PRIVACY_POLICY_URL).",
+  "settingsPrivacyPolicyUnconfigured": "L'URL de la politique de confidentialité n'est pas configurée (définissez FINN_PRIVACY_POLICY_URL).",
   "@settingsPrivacyPolicyUnconfigured": {
     "description": "Unconfigured"
   },
-  "settingsPrivacyPolicyLaunchFailed": "Could not launch {url}",
+  "settingsPrivacyPolicyLaunchFailed": "Impossible d'ouvrir {url}",
   "@settingsPrivacyPolicyLaunchFailed": {
     "description": "Launch failed",
     "placeholders": {
@@ -463,15 +463,15 @@
       }
     }
   },
-  "settingsTermsOfUse": "Terms of Use",
+  "settingsTermsOfUse": "Conditions d'utilisation",
   "@settingsTermsOfUse": {
     "description": "Terms row"
   },
-  "settingsTermsUnconfigured": "Terms of Use URL is unconfigured (set FINN_TERMS_URL).",
+  "settingsTermsUnconfigured": "L'URL des conditions d'utilisation n'est pas configurée (définissez FINN_TERMS_URL).",
   "@settingsTermsUnconfigured": {
     "description": "Terms unconfigured"
   },
-  "settingsTermsLaunchFailed": "Could not launch {url}",
+  "settingsTermsLaunchFailed": "Impossible d'ouvrir {url}",
   "@settingsTermsLaunchFailed": {
     "description": "Terms launch failed",
     "placeholders": {
@@ -480,15 +480,15 @@
       }
     }
   },
-  "settingsSupportContact": "Support Contact",
+  "settingsSupportContact": "Contact du support",
   "@settingsSupportContact": {
     "description": "Support row"
   },
-  "settingsSupportUnavailable": "Support contact is unavailable.",
+  "settingsSupportUnavailable": "Le contact du support n'est pas disponible.",
   "@settingsSupportUnavailable": {
     "description": "Support unavailable"
   },
-  "settingsSupportEmailLabel": "Support email: {email}",
+  "settingsSupportEmailLabel": "E-mail du support : {email}",
   "@settingsSupportEmailLabel": {
     "description": "Support email",
     "placeholders": {
@@ -497,7 +497,7 @@
       }
     }
   },
-  "settingsSupportLaunchFailed": "Could not launch {url}",
+  "settingsSupportLaunchFailed": "Impossible d'ouvrir {url}",
   "@settingsSupportLaunchFailed": {
     "description": "Support launch",
     "placeholders": {
@@ -506,15 +506,15 @@
       }
     }
   },
-  "settingsOpenSourceLicenses": "Open-Source Licences",
+  "settingsOpenSourceLicenses": "Licences open source",
   "@settingsOpenSourceLicenses": {
     "description": "Licenses row"
   },
-  "settingsAppVersion": "App Version",
+  "settingsAppVersion": "Version de l'application",
   "@settingsAppVersion": {
     "description": "App version row"
   },
-  "settingsInferenceEngine": "Inference Engine",
+  "settingsInferenceEngine": "Moteur d'inférence",
   "@settingsInferenceEngine": {
     "description": "Engine row"
   },
@@ -522,15 +522,15 @@
   "@settingsInferenceEngineValue": {
     "description": "Engine value"
   },
-  "settingsPrivacyMode": "Privacy Mode",
+  "settingsPrivacyMode": "Mode de confidentialité",
   "@settingsPrivacyMode": {
     "description": "Privacy mode row"
   },
-  "settingsPrivacyModeValue": "Encrypted On-Device",
+  "settingsPrivacyModeValue": "Chiffré sur l'appareil",
   "@settingsPrivacyModeValue": {
     "description": "Privacy mode value"
   },
-  "settingsModelArchitecture": "Model Architecture",
+  "settingsModelArchitecture": "Architecture du modèle",
   "@settingsModelArchitecture": {
     "description": "Model arch row"
   },
@@ -538,79 +538,131 @@
   "@settingsModelArchitectureValue": {
     "description": "Model arch value"
   },
-  "settingsLanguage": "Language",
+  "settingsLanguage": "Langue",
+  "settingsSpokenResponses": "Réponses vocales",
+  "@settingsSpokenResponses": {
+    "description": "Spoken responses toggle label"
+  },
+  "settingsSpokenResponsesBody": "Finn lit les réponses à voix haute en mode vocal. La transcription de votre voix est traitée par la reconnaissance vocale de votre appareil, qui peut avoir besoin d'internet.",
+  "@settingsSpokenResponsesBody": {
+    "description": "Spoken responses toggle description"
+  },
+  "voiceMicSemantic": "Parler à Finn",
+  "@voiceMicSemantic": {
+    "description": "Mic button semantics"
+  },
+  "voiceListening": "Écoute…",
+  "@voiceListening": {
+    "description": "Voice sheet listening state"
+  },
+  "voiceTapToSpeak": "Touchez le micro et parlez",
+  "@voiceTapToSpeak": {
+    "description": "Voice sheet idle prompt"
+  },
+  "voiceHeardYou": "Je vous ai entendu",
+  "@voiceHeardYou": {
+    "description": "Voice sheet transcript received"
+  },
+  "voiceDidNotCatch": "Je n'ai pas compris — réessayez",
+  "@voiceDidNotCatch": {
+    "description": "Voice sheet empty result message"
+  },
+  "voiceThinking": "Finn réfléchit…",
+  "@voiceThinking": {
+    "description": "Voice sheet thinking state"
+  },
+  "voiceSpeaking": "Finn parle — touchez pour interrompre",
+  "@voiceSpeaking": {
+    "description": "Voice sheet speaking state"
+  },
+  "voiceMicDenied": "L'accès au microphone est désactivé. Activez-le dans les réglages système pour utiliser le mode vocal.",
+  "@voiceMicDenied": {
+    "description": "Voice mic denied message"
+  },
+  "voiceUnavailable": "La reconnaissance vocale n'est pas disponible pour le moment. Saisissez votre message à la place.",
+  "@voiceUnavailable": {
+    "description": "Voice STT unavailable message"
+  },
+  "voiceStopSemantic": "Arrêter",
+  "@voiceStopSemantic": {
+    "description": "Voice stop button semantics"
+  },
+  "voiceCloseSemantic": "Fermer le mode vocal",
+  "@voiceCloseSemantic": {
+    "description": "Voice close button semantics"
+  },
   "@settingsLanguage": {
     "description": "Language row"
   },
-  "youTitle": "You",
+  "youTitle": "Vous",
   "@youTitle": {
     "description": "You page title"
   },
-  "youIntroTitle": "Make Finn feel like yours",
+  "youIntroTitle": "Faites de Finn le vôtre",
   "@youIntroTitle": {
     "description": "You intro title"
   },
-  "youIntroBody": "Your preferences stay on this device and shape future replies.",
+  "youIntroBody": "Vos préférences restent sur cet appareil et façonnent les réponses futures.",
   "@youIntroBody": {
     "description": "You intro body"
   },
-  "youAboutYou": "About you",
+  "youAboutYou": "À propos de vous",
   "@youAboutYou": {
     "description": "About you section"
   },
-  "youNameLabel": "Name",
+  "youNameLabel": "Nom",
   "@youNameLabel": {
     "description": "Name label"
   },
-  "youNameHint": "What should Finn call you?",
+  "youNameHint": "Comment Finn doit-il vous appeler ?",
   "@youNameHint": {
     "description": "Name hint"
   },
-  "youAboutLabel": "About you",
+  "youAboutLabel": "À propos de vous",
   "@youAboutLabel": {
     "description": "About label"
   },
-  "youAboutHint": "Interests, work, or context Finn should remember",
+  "youAboutHint": "Centres d'intérêt, travail ou contexte que Finn doit retenir",
   "@youAboutHint": {
     "description": "About hint"
   },
-  "youInstructionsLabel": "Custom instructions",
+  "youInstructionsLabel": "Instructions personnalisées",
   "@youInstructionsLabel": {
     "description": "Instructions label"
   },
-  "youInstructionsHint": "How should Finn respond? Tone, length, style…",
+  "youInstructionsHint": "Comment Finn doit-il répondre ? Ton, longueur, style…",
   "@youInstructionsHint": {
     "description": "Instructions hint"
   },
-  "youResponseStyle": "Response style",
+  "youResponseStyle": "Style de réponse",
   "@youResponseStyle": {
     "description": "Response style"
   },
-  "youResponseStyleBalanced": "Balanced",
+  "youResponseStyleBalanced": "Équilibré",
   "@youResponseStyleBalanced": {
     "description": "Balanced"
   },
-  "youResponseStyleConcise": "Concise",
+  "youResponseStyleConcise": "Concis",
   "@youResponseStyleConcise": {
     "description": "Concise"
   },
-  "youResponseStyleDetailed": "Detailed",
+  "youResponseStyleDetailed": "Détaillé",
   "@youResponseStyleDetailed": {
     "description": "Detailed"
   },
-  "youResponseStyleCreative": "Creative",
+  "youResponseStyleCreative": "Créatif",
   "@youResponseStyleCreative": {
     "description": "Creative"
   },
-  "youSave": "Save",
+  "youSave": "Enregistrer",
   "@youSave": {
     "description": "Save"
   },
-  "youSaved": "Personalization saved locally.",
+  "youSaved": "Personnalisation enregistrée localement.",
   "@youSaved": {
     "description": "Saved"
   },
-  "youSaveFailed": "Could not save changes.",
+  "youSaveFailed": "Impossible d'enregistrer les modifications.",
   "@youSaveFailed": {
     "description": "Save failed"
   },
@@ -618,7 +670,7 @@
   "@skillsTitle": {
     "description": "Skills title"
   },
-  "skillsSubtitle": "{count} available · skills guide relevant replies",
+  "skillsSubtitle": "{count} disponibles · les Skills guident des réponses pertinentes",
   "@skillsSubtitle": {
     "description": "Skills subtitle",
     "placeholders": {
@@ -627,23 +679,23 @@
       }
     }
   },
-  "skillsNewSkill": "New skill",
+  "skillsNewSkill": "Nouvelle skill",
   "@skillsNewSkill": {
     "description": "New skill"
   },
-  "skillsNoSkills": "No custom skills yet. Create one for a workflow you repeat.",
+  "skillsNoSkills": "Aucune skill personnalisée pour l'instant. Créez-en une pour un flux de travail répétitif.",
   "@skillsNoSkills": {
     "description": "Empty skills"
   },
-  "skillsInstructionHint": "Write a reusable instruction Finn should apply when relevant.",
+  "skillsInstructionHint": "Écrivez une instruction réutilisable que Finn doit appliquer si nécessaire.",
   "@skillsInstructionHint": {
     "description": "Instruction hint"
   },
-  "skillsDeleteTitle": "Delete this skill?",
+  "skillsDeleteTitle": "Supprimer cette skill ?",
   "@skillsDeleteTitle": {
     "description": "Delete skill title"
   },
-  "skillsDeleteBody": "“{name}” will be removed from this device.",
+  "skillsDeleteBody": "« {name} » sera supprimé de cet appareil.",
   "@skillsDeleteBody": {
     "description": "Delete body",
     "placeholders": {
@@ -652,11 +704,11 @@
       }
     }
   },
-  "skillsLimitReached": "Skill limit reached (4). Delete one to add another.",
+  "skillsLimitReached": "Limite de skills atteinte (4). Supprimez-en une pour en ajouter une autre.",
   "@skillsLimitReached": {
     "description": "Limit"
   },
-  "skillsNameLabel": "Skill name",
+  "skillsNameLabel": "Nom de la skill",
   "@skillsNameLabel": {
     "description": "Name label"
   },
@@ -723,7 +775,7 @@
       }
     }
   },
-  "creationsTitle": "Creations",
+  "creationsTitle": "Créations",
   "@creationsTitle": {
     "description": "Creations title"
   },
@@ -731,35 +783,31 @@
   "@creationsSubtitle": {
     "description": "Creations subtitle"
   },
-  "creationsWhatAreWeMaking": "What are we making?",
+  "creationsWhatAreWeMaking": "Que créons-nous ?",
   "@creationsWhatAreWeMaking": {
     "description": "What making"
   },
-  "creationsOriginalBrief": "Original brief",
+  "creationsOriginalBrief": "Brief initial",
   "@creationsOriginalBrief": {
     "description": "Original brief"
   },
-  "creationsFinnAdapts": "Finn adapts the structure to the format.",
+  "creationsFinnAdapts": "Finn adapte la structure au format.",
   "@creationsFinnAdapts": {
     "description": "Finn adapts"
   },
-  "creationsComposerHint": "Describe what you want to make…",
-  "@creationsComposerHint": {
-    "description": "Composer hint"
-  },
-  "creationsStopTitle": "Stop this creation?",
+  "creationsStopTitle": "Arrêter cette création ?",
   "@creationsStopTitle": {
     "description": "Stop title"
   },
-  "creationsStopBody": "The unfinished result will be discarded. Your prompt will stay here.",
+  "creationsStopBody": "Le résultat inachevé sera abandonné. Votre prompt restera ici.",
   "@creationsStopBody": {
     "description": "Stop body"
   },
-  "creationsDeleteTitle": "Delete this creation?",
+  "creationsDeleteTitle": "Supprimer cette création ?",
   "@creationsDeleteTitle": {
     "description": "Delete title"
   },
-  "creationsDeleteBody": "“{title}” will be removed from this device.",
+  "creationsDeleteBody": "« {title} » sera supprimé de cet appareil.",
   "@creationsDeleteBody": {
     "description": "Delete body",
     "placeholders": {
@@ -768,11 +816,11 @@
       }
     }
   },
-  "creationsOpening": "Opening creations",
+  "creationsOpening": "Ouverture des créations",
   "@creationsOpening": {
     "description": "Opening"
   },
-  "creationsGenerating": "Generating…",
+  "creationsGenerating": "Génération…",
   "@creationsGenerating": {
     "description": "Generating"
   },
@@ -892,63 +940,63 @@
       }
     }
   },
-  "reportTitle": "Report AI Response",
+  "reportTitle": "Signaler la réponse de l'IA",
   "@reportTitle": {
     "description": "Report title"
   },
-  "reportSubtitle": "Help us maintain safe and accurate AI responses. Reports are reviewed to improve FinnAI safeguards.",
+  "reportSubtitle": "Aidez-nous à maintenir des réponses d'IA sûres et exactes. Les signalements sont examinés pour améliorer les garde-fous de FinnAI.",
   "@reportSubtitle": {
     "description": "Report subtitle"
   },
-  "reportReasonLabel": "Reason for report",
+  "reportReasonLabel": "Motif du signalement",
   "@reportReasonLabel": {
     "description": "Reason label"
   },
-  "reportIncludePrompt": "Include my prompt in this report",
+  "reportIncludePrompt": "Inclure mon prompt dans ce signalement",
   "@reportIncludePrompt": {
     "description": "Include prompt"
   },
-  "reportResponsePreview": "Reported response preview",
+  "reportResponsePreview": "Aperçu de la réponse signalée",
   "@reportResponsePreview": {
     "description": "Preview"
   },
-  "reportContinueHint": "Continue opens a complete report addressed to finn_org@proton.me. Nothing is sent until you review and send it in your email app.",
+  "reportContinueHint": "Continuer ouvre un signalement complet adressé à finn_org@proton.me. Rien n'est envoyé tant que vous ne l'avez pas vérifié et envoyé depuis votre application de messagerie.",
   "@reportContinueHint": {
     "description": "Continue hint"
   },
-  "reportContinueToEmail": "Continue to Email",
+  "reportContinueToEmail": "Continuer vers l'e-mail",
   "@reportContinueToEmail": {
     "description": "Continue to email"
   },
-  "reportReviewInEmail": "Review the report in your email app, then send it.",
+  "reportReviewInEmail": "Vérifiez le signalement dans votre application de messagerie, puis envoyez-le.",
   "@reportReviewInEmail": {
     "description": "Review"
   },
-  "reportNotConfigured": "The report email address is not configured.",
+  "reportNotConfigured": "L'adresse e-mail de signalement n'est pas configurée.",
   "@reportNotConfigured": {
     "description": "Not configured"
   },
-  "reportCategoryHarmful": "Harmful or unsafe",
+  "reportCategoryHarmful": "Nuisible ou dangereux",
   "@reportCategoryHarmful": {
     "description": "Harmful"
   },
-  "reportCategoryIncorrect": "Incorrect or misleading",
+  "reportCategoryIncorrect": "Incorrect ou trompeur",
   "@reportCategoryIncorrect": {
     "description": "Incorrect"
   },
-  "reportCategoryBiased": "Biased or unfair",
+  "reportCategoryBiased": "Partial ou injuste",
   "@reportCategoryBiased": {
     "description": "Biased"
   },
-  "reportCategoryOther": "Other",
+  "reportCategoryOther": "Autre",
   "@reportCategoryOther": {
     "description": "Other"
   },
-  "snackModelMemoryReleased": "AI model memory released.",
+  "snackModelMemoryReleased": "Mémoire du modèle d'IA libérée.",
   "@snackModelMemoryReleased": {
     "description": "Snack"
   },
-  "settingsSavedConversationsLabel": "Saved Conversations",
+  "settingsSavedConversationsLabel": "Conversations enregistrées",
   "@settingsSavedConversationsLabel": {
     "description": "Saved conversations row label"
   },
@@ -1004,7 +1052,6 @@
   "creationsEmptyFilteredBody": "Essayez une autre catégorie ou créez-en une nouvelle.",
   "creationsEmptyBody": "Décrivez ci-dessous une app, un widget ou une présentation. Finn en fera un plan pratique.",
   "creationsDescribeHint": "Décrivez une création",
-  "creationsCreatingSemantic": "Création",
   "creationsKindApp": "App",
   "creationsKindWidget": "Widget",
   "creationsFilterApps": "Apps",
@@ -1078,5 +1125,361 @@
   "statusDownloadingModel": "Téléchargement du modèle d'IA",
   "statusDownloadingArtifact": "Téléchargement de {artifact}",
   "statusVerifyingArtifact": "Vérification de {artifact}",
-  "statusLoadingModel": "Chargement du modèle d'IA"
+  "statusLoadingModel": "Chargement du modèle d'IA",
+  "deviceActionsTitle": "Actions",
+  "@deviceActionsTitle": {
+    "description": "Page title for the device actions screen"
+  },
+  "deviceActionsIntro": "Demande à Finn d'agir sur ton téléphone : régler une alarme, lancer un minuteur ou ouvrir un réglage.",
+  "@deviceActionsIntro": {
+    "description": "One-line explanation of what the Actions page does"
+  },
+  "deviceActionsExamples": "Essaie l'une de ces actions",
+  "@deviceActionsExamples": {
+    "description": "Heading above the example request chips"
+  },
+  "deviceActionsHint": "Que doit faire Finn ?",
+  "@deviceActionsHint": {
+    "description": "Placeholder inside the action request field"
+  },
+  "deviceActionsRun": "Continuer",
+  "@deviceActionsRun": {
+    "description": "Button that submits an action request"
+  },
+  "deviceActionsResolving": "Je réfléchis…",
+  "@deviceActionsResolving": {
+    "description": "Shown while the request is being resolved"
+  },
+  "deviceActionsUnresolved": "Je n'ai pas pu en faire une action. Nomme le réglage ou l'app directement.",
+  "@deviceActionsUnresolved": {
+    "description": "Shown when a request could not be turned into an action"
+  },
+  "deviceActionsConfirm": "Exécuter",
+  "@deviceActionsConfirm": {
+    "description": "Button that runs the resolved action"
+  },
+  "deviceActionsCancel": "Annuler",
+  "@deviceActionsCancel": {
+    "description": "Button that dismisses the pending action"
+  },
+  "deviceActionsAgain": "Faire autre chose",
+  "@deviceActionsAgain": {
+    "description": "Button that clears the result and starts over"
+  },
+  "deviceActionsOpenNotice": "Android n'autorise pas les apps à modifier seules les réglages sans fil : Finn ouvre le bon écran et tu bascules l'interrupteur.",
+  "@deviceActionsOpenNotice": {
+    "description": "Explains that some settings cannot be toggled by an app"
+  },
+  "deviceActionsResultOpened": "{detail} ouvert",
+  "@deviceActionsResultOpened": {
+    "description": "Result line after opening a screen",
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "deviceActionsResultPerformed": "C'est fait — {detail}",
+  "@deviceActionsResultPerformed": {
+    "description": "Result line after a completed action",
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "deviceActionsResultUnavailable": "Ton appareil ne peut pas faire ça",
+  "@deviceActionsResultUnavailable": {
+    "description": "Result when the device cannot perform the action"
+  },
+  "deviceActionsResultFailed": "Ça n'a pas fonctionné",
+  "@deviceActionsResultFailed": {
+    "description": "Result when the action failed"
+  },
+  "deviceActionsResultFailedDetail": "Ça n'a pas fonctionné — {error}",
+  "@deviceActionsResultFailedDetail": {
+    "description": "Result when the action failed, with the reason",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "deviceActionsExampleAlarm": "Régler une alarme à 7 h",
+  "@deviceActionsExampleAlarm": {
+    "description": "Example request chip"
+  },
+  "deviceActionsExampleTimer": "Lancer un minuteur de 10 minutes",
+  "@deviceActionsExampleTimer": {
+    "description": "Example request chip"
+  },
+  "deviceActionsExampleWifi": "Ouvrir les réglages Wi-Fi",
+  "@deviceActionsExampleWifi": {
+    "description": "Example request chip"
+  },
+  "deviceActionsExampleFlashlight": "Allumer la lampe torche",
+  "@deviceActionsExampleFlashlight": {
+    "description": "Example request chip"
+  },
+  "deviceActionsExampleBluetooth": "Ouvrir les réglages Bluetooth",
+  "@deviceActionsExampleBluetooth": {
+    "description": "Example request chip"
+  },
+  "deviceActionSetAlarm": "Régler une alarme à {time}",
+  "@deviceActionSetAlarm": {
+    "description": "Confirmation line for setting an alarm",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "deviceActionSetTimer": "Lancer un minuteur de {duration}",
+  "@deviceActionSetTimer": {
+    "description": "Confirmation line for starting a timer",
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "deviceActionShowAlarms": "Ouvrir le réveil",
+  "@deviceActionShowAlarms": {
+    "description": "Confirmation line for opening the alarm clock"
+  },
+  "deviceActionTorchOn": "Allumer la lampe torche",
+  "@deviceActionTorchOn": {
+    "description": "Confirmation line for turning the flashlight on"
+  },
+  "deviceActionTorchOff": "Éteindre la lampe torche",
+  "@deviceActionTorchOff": {
+    "description": "Confirmation line for turning the flashlight off"
+  },
+  "deviceActionMedia": "Lecture : {action}",
+  "@deviceActionMedia": {
+    "description": "Confirmation line for a media transport command",
+    "placeholders": {
+      "action": {
+        "type": "String"
+      }
+    }
+  },
+  "deviceActionVolume": "Volume {direction}",
+  "@deviceActionVolume": {
+    "description": "Confirmation line for a volume change",
+    "placeholders": {
+      "direction": {
+        "type": "String"
+      }
+    }
+  },
+  "deviceActionOpenSettings": "Ouvrir les réglages {screen}",
+  "@deviceActionOpenSettings": {
+    "description": "Confirmation line for opening a settings screen",
+    "placeholders": {
+      "screen": {
+        "type": "String"
+      }
+    }
+  },
+  "deviceActionOpenApp": "Ouvrir {name}",
+  "@deviceActionOpenApp": {
+    "description": "Confirmation line for launching an app",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "deviceActionDial": "Ouvrir le clavier avec {number}",
+  "@deviceActionDial": {
+    "description": "Confirmation line for opening the dialer",
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "deviceActionComposeSms": "Écrire un nouveau SMS",
+  "@deviceActionComposeSms": {
+    "description": "Confirmation line for drafting a text message"
+  },
+  "deviceActionComposeEmail": "Écrire un nouvel e-mail",
+  "@deviceActionComposeEmail": {
+    "description": "Confirmation line for drafting an email"
+  },
+  "deviceActionTakePhoto": "Ouvrir l'appareil photo",
+  "@deviceActionTakePhoto": {
+    "description": "Confirmation line for opening the camera"
+  },
+  "deviceActionOpenUrl": "Ouvrir {url}",
+  "@deviceActionOpenUrl": {
+    "description": "Confirmation line for opening a web address",
+    "placeholders": {
+      "url": {
+        "type": "String"
+      }
+    }
+  },
+  "deviceActionNavigate": "Itinéraire vers {query}",
+  "@deviceActionNavigate": {
+    "description": "Confirmation line for opening directions",
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "deviceActionShare": "Partager du texte avec une autre app",
+  "@deviceActionShare": {
+    "description": "Confirmation line for sharing text"
+  },
+  "deviceActionMediaPlay": "lire",
+  "@deviceActionMediaPlay": {
+    "description": "Media transport label"
+  },
+  "deviceActionMediaPause": "mettre en pause",
+  "@deviceActionMediaPause": {
+    "description": "Media transport label"
+  },
+  "deviceActionMediaNext": "piste suivante",
+  "@deviceActionMediaNext": {
+    "description": "Media transport label"
+  },
+  "deviceActionMediaPrevious": "piste précédente",
+  "@deviceActionMediaPrevious": {
+    "description": "Media transport label"
+  },
+  "deviceActionVolumeUp": "monter",
+  "@deviceActionVolumeUp": {
+    "description": "Volume direction label"
+  },
+  "deviceActionVolumeDown": "baisser",
+  "@deviceActionVolumeDown": {
+    "description": "Volume direction label"
+  },
+  "deviceActionVolumeMute": "couper",
+  "@deviceActionVolumeMute": {
+    "description": "Volume direction label"
+  },
+  "deviceScreenWifi": "Wi-Fi",
+  "@deviceScreenWifi": {
+    "description": "Settings screen name"
+  },
+  "deviceScreenBluetooth": "Bluetooth",
+  "@deviceScreenBluetooth": {
+    "description": "Settings screen name"
+  },
+  "deviceScreenAirplane": "Mode avion",
+  "@deviceScreenAirplane": {
+    "description": "Settings screen name"
+  },
+  "deviceScreenHotspot": "Partage de connexion",
+  "@deviceScreenHotspot": {
+    "description": "Settings screen name"
+  },
+  "deviceScreenMobileData": "Données mobiles",
+  "@deviceScreenMobileData": {
+    "description": "Settings screen name"
+  },
+  "deviceScreenBatterySaver": "Économiseur de batterie",
+  "@deviceScreenBatterySaver": {
+    "description": "Settings screen name"
+  },
+  "deviceScreenBatteryUsage": "Consommation de la batterie",
+  "@deviceScreenBatteryUsage": {
+    "description": "Settings screen name"
+  },
+  "deviceScreenDnd": "Ne pas déranger",
+  "@deviceScreenDnd": {
+    "description": "Settings screen name"
+  },
+  "deviceScreenDisplay": "Affichage",
+  "@deviceScreenDisplay": {
+    "description": "Settings screen name"
+  },
+  "deviceScreenSound": "Son",
+  "@deviceScreenSound": {
+    "description": "Settings screen name"
+  },
+  "deviceScreenLocation": "Localisation",
+  "@deviceScreenLocation": {
+    "description": "Settings screen name"
+  },
+  "deviceScreenStorage": "Stockage",
+  "@deviceScreenStorage": {
+    "description": "Settings screen name"
+  },
+  "deviceScreenDateTime": "Date et heure",
+  "@deviceScreenDateTime": {
+    "description": "Settings screen name"
+  },
+  "deviceScreenKeyboard": "Clavier",
+  "@deviceScreenKeyboard": {
+    "description": "Settings screen name"
+  },
+  "deviceScreenLanguage": "Langue",
+  "@deviceScreenLanguage": {
+    "description": "Settings screen name"
+  },
+  "deviceScreenAccessibility": "Accessibilité",
+  "@deviceScreenAccessibility": {
+    "description": "Settings screen name"
+  },
+  "deviceScreenApplications": "Applications",
+  "@deviceScreenApplications": {
+    "description": "Settings screen name"
+  },
+  "deviceScreenNfc": "NFC",
+  "@deviceScreenNfc": {
+    "description": "Settings screen name"
+  },
+  "deviceScreenCast": "Diffuser",
+  "@deviceScreenCast": {
+    "description": "Settings screen name"
+  },
+  "deviceScreenVpn": "VPN",
+  "@deviceScreenVpn": {
+    "description": "Settings screen name"
+  },
+  "deviceScreenDeveloper": "Options pour les développeurs",
+  "@deviceScreenDeveloper": {
+    "description": "Settings screen name"
+  },
+  "deviceScreenHome": "Écran d'accueil",
+  "@deviceScreenHome": {
+    "description": "Settings screen name"
+  },
+  "deviceActionsResultDone": "C'est fait",
+  "@deviceActionsResultDone": {
+    "description": "Result line when the action completed and has nothing more to name"
+  },
+  "settingsActionsSection": "Actions sur ton appareil",
+  "@settingsActionsSection": {
+    "description": "Settings section holding device actions"
+  },
+  "settingsActionsRow": "Actions",
+  "@settingsActionsRow": {
+    "description": "Settings row that opens the device actions screen"
+  },
+  "deviceScreenSystem": "Réglages",
+  "@deviceScreenSystem": {
+    "description": "Settings screen name"
+  },
+  "deviceActionsDismissed": "Annulé",
+  "@deviceActionsDismissed": {
+    "description": "Left in the conversation when a proposed action is dismissed"
+  },
+  "creationsStopped": "Arrêté.",
+  "@creationsStopped": {
+    "description": "Left in the transcript when the user stops a generation"
+  },
+  "creationsLoadFailed": "Finn n'a pas pu ouvrir tes créations enregistrées. Réessaie.",
+  "@creationsLoadFailed": {
+    "description": "Shown when saved creations could not be read from disk"
+  },
+  "creationsDeleteFailed": "Cette création n'a pas pu être supprimée. Réessaie.",
+  "@creationsDeleteFailed": {
+    "description": "Shown when deleting a creation could not be saved"
+  }
 }
