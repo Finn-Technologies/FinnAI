@@ -78,7 +78,23 @@ void main() {
       isFalse,
     );
     expect(store.enabledSkills, hasLength(4));
-    expect(store.storageError, contains('four'));
+    // The store reports a code, not a user-facing sentence, so the page can
+    // localize it.
+    expect(store.failure, SkillsFailure.limit);
+  });
+
+  test('a failed write is reported as a save failure', () async {
+    // A file where the store expects its directory makes the write fail.
+    final blocker = File('${directory.path}/blocker');
+    await blocker.writeAsString('not a directory');
+    final store = SkillsStore(
+      directoryProvider: () async => Directory(blocker.path),
+    );
+    await store.initialize();
+    expect(store.failure, isNull);
+
+    expect(await store.setEnabled('builtin-coding', true), isFalse);
+    expect(store.failure, SkillsFailure.save);
   });
 
   test('deleteStorage resets skills and removes persisted state', () async {

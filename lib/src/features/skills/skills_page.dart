@@ -65,7 +65,10 @@ class _SkillsPageState extends State<SkillsPage> {
         ..showSnackBar(
           SnackBar(
             content: Text(
-              _store.storageError ?? L10n.of(context).skillsSaveFailed,
+              _skillFailureMessage(
+                context,
+                _store.failure ?? SkillsFailure.save,
+              ),
             ),
             behavior: SnackBarBehavior.floating,
           ),
@@ -210,14 +213,21 @@ class _SkillsPageState extends State<SkillsPage> {
                                         ),
                                       ),
                                     ),
-                                  if (_store.storageError != null) ...[
+                                  if (_store.failure != null) ...[
                                     const SizedBox(height: 8),
                                     Text(
-                                      _store.storageError!,
+                                      _skillFailureMessage(
+                                        context,
+                                        _store.failure!,
+                                      ),
                                       style: Theme.of(context)
                                           .textTheme
                                           .labelMedium
-                                          ?.copyWith(color: Colors.redAccent),
+                                          ?.copyWith(
+                                            color: FluxColors.destructiveOf(
+                                              context,
+                                            ),
+                                          ),
                                     ),
                                   ],
                                 ],
@@ -479,6 +489,19 @@ class _SkillCard extends StatelessWidget {
         'Planning' => FluxIcons.task,
         _ => FluxIcons.magic,
       };
+}
+
+/// Resolves a store failure code to the sentence the user reads.
+///
+/// The store reports a code rather than a message so this lookup can pick the
+/// active locale; reading and writing share the "could not be saved" sentence
+/// because there is no separate localized key for a read failure.
+String _skillFailureMessage(BuildContext context, SkillsFailure failure) {
+  final l10n = L10n.of(context);
+  return switch (failure) {
+    SkillsFailure.limit => l10n.skillsLimitReached,
+    SkillsFailure.load || SkillsFailure.save => l10n.skillsSaveFailed,
+  };
 }
 
 /// Localized label for a skill category. Unknown categories (e.g. user-entered

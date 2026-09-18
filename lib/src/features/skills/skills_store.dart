@@ -6,6 +6,22 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
+/// Why a skill operation failed, resolved to a sentence by the page.
+///
+/// The store holds a code rather than a message: a hardcoded English sentence
+/// here would override the page's `L10n` lookup and leak English into the other
+/// locales.
+enum SkillsFailure {
+  /// The persisted skills could not be read; built-ins are shown instead.
+  load,
+
+  /// A change could not be written.
+  save,
+
+  /// The four-active-skills cap was reached.
+  limit,
+}
+
 @immutable
 class FinnSkill {
   const FinnSkill({
@@ -116,14 +132,14 @@ class SkillsStore extends ChangeNotifier {
   bool _saving = false;
   Future<void> _writeQueue = Future<void>.value();
   int _pendingWrites = 0;
-  String? _storageError;
+  SkillsFailure? _failure;
 
   List<FinnSkill> get skills => List.unmodifiable(_skills);
   List<FinnSkill> get enabledSkills =>
       List.unmodifiable(_skills.where((skill) => skill.enabled));
   bool get initialized => _initialized;
   bool get saving => _saving;
-  String? get storageError => _storageError;
+  SkillsFailure? get failure => _failure;
 
   Future<void> initialize() async {
     if (_initialized) return;
@@ -162,9 +178,10 @@ class SkillsStore extends ChangeNotifier {
           ...stored.where((skill) => !skill.builtIn),
         ];
       }
-      _storageError = null;
+      _failure = null;
     } catch (error) {
-      _storageError = 'Could not read skills: $error';
+      debugPrint('FINN_SKILLS read failed: $error');
+      _failure = SkillsFailure.load;
       _skills = List.of(finnBuiltInSkills);
     } finally {
       _initialized = true;
@@ -176,7 +193,7 @@ class SkillsStore extends ChangeNotifier {
     final index = _skills.indexWhere((skill) => skill.id == id);
     if (index < 0) return false;
     if (enabled && !_skills[index].enabled && enabledSkills.length >= 4) {
-      _storageError = 'Up to four skills can be active at once.';
+      _failure = SkillsFailure.limit;
       notifyListeners();
       return false;
     }
@@ -202,7 +219,7 @@ class SkillsStore extends ChangeNotifier {
         : _skills.indexWhere((skill) => skill.id == id && !skill.builtIn);
     final wasEnabled = existingIndex >= 0 && _skills[existingIndex].enabled;
     if (enabled && !wasEnabled && enabledSkills.length >= 4) {
-      _storageError = 'Up to four skills can be active at once.';
+      _failure = SkillsFailure.limit;
       notifyListeners();
       return false;
     }
@@ -241,7 +258,7 @@ class SkillsStore extends ChangeNotifier {
     await _writeQueue;
     final failures = <String>[];
     _skills = List.of(finnBuiltInSkills);
-    _storageError = null;
+    _failure = null;
     try {
       final file = await _file();
       final temporary = File('${file.path}.tmp');
@@ -329,7 +346,7 @@ class SkillsStore extends ChangeNotifier {
     final result = Completer<bool>();
     _pendingWrites++;
     _saving = true;
-    _storageError = null;
+    _failure = null;
     notifyListeners();
     _writeQueue = _writeQueue.then((_) async {
       try {
@@ -340,7 +357,8 @@ class SkillsStore extends ChangeNotifier {
         await temporary.rename(file.path);
         result.complete(true);
       } catch (error) {
-        _storageError = 'Could not save skills: $error';
+        debugPrint('FINN_SKILLS save failed: $error');
+        _failure = SkillsFailure.save;
         result.complete(false);
       } finally {
         _pendingWrites--;
