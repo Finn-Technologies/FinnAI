@@ -518,7 +518,8 @@ class _AutomaticModelPageState extends State<_AutomaticModelPage> {
         }
         final model = models[index];
         debugPrint(
-            'FINN_INSTALLING_MODEL: ${model.name} (${model.downloadUrl})');
+          'FINN_INSTALLING_MODEL: ${model.name} (${model.downloadUrl})',
+        );
         // Calling install even for an existing language model also completes
         // the post-model mmproj download after an upgrade or interrupted
         // first run.
@@ -615,10 +616,13 @@ class _AutomaticInstallPanel extends StatelessWidget {
     final transferMeta = [
       if (downloading)
         L10n.of(context).onboardingInstallBytesOf(
-            _formatBytes(receivedBytes), _formatBytes(totalBytes)),
+          _formatBytes(receivedBytes),
+          _formatBytes(totalBytes),
+        ),
       if (downloading && remainingBytes > 0)
-        L10n.of(context)
-            .onboardingInstallBytesLeft(_formatBytes(remainingBytes)),
+        L10n.of(
+          context,
+        ).onboardingInstallBytesLeft(_formatBytes(remainingBytes)),
       if (downloading && inference.downloadSpeedLabel != null)
         inference.downloadSpeedLabel!,
       if (downloading && inference.downloadEtaLabel != null)
@@ -629,7 +633,7 @@ class _AutomaticInstallPanel extends StatelessWidget {
     // background is dropped in dark mode to avoid a nested dark slab. The
     // content scrolls vertically on very short screens instead of overflowing.
     return FluxGlass(
-      radius: 24,
+      radius: FluxRadius.sheet,
       color: isDark ? Colors.transparent : null,
       borderColor: isDark ? Colors.transparent : null,
       child: SingleChildScrollView(
@@ -656,7 +660,9 @@ class _AutomaticInstallPanel extends StatelessWidget {
                 ready
                     ? L10n.of(context).onboardingInstallReadyForChat
                     : L10n.of(context).onboardingInstallModelWithComponent(
-                        model.name, _formatBytes(totalBytes)),
+                        model.name,
+                        _formatBytes(totalBytes),
+                      ),
                 maxLines: 2,
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
@@ -673,7 +679,7 @@ class _AutomaticInstallPanel extends StatelessWidget {
                         key: const ValueKey('error'),
                         children: [
                           Text(
-                            error!,
+                            localizedEngineStatus(context, statusKey, status),
                             maxLines: 2,
                             textAlign: TextAlign.center,
                             style: Theme.of(context)
@@ -687,23 +693,33 @@ class _AutomaticInstallPanel extends StatelessWidget {
                             label: L10n.of(context).onboardingInstallRetryLabel,
                             child: Material(
                               color: FluxColors.surfaceOf(context),
-                              borderRadius: BorderRadius.circular(99),
+                              borderRadius: BorderRadius.circular(
+                                FluxRadius.pill,
+                              ),
                               child: InkWell(
                                 onTap: onRetry,
-                                borderRadius: BorderRadius.circular(99),
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 9,
+                                borderRadius: BorderRadius.circular(
+                                  FluxRadius.pill,
+                                ),
+                                child: ConstrainedBox(
+                                  constraints: const BoxConstraints(
+                                    minHeight: 48,
                                   ),
-                                  child: Text(
-                                    L10n.of(context).commonRetry,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelMedium
-                                        ?.copyWith(
-                                          color: FluxColors.inkOf(context),
-                                        ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 20,
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        L10n.of(context).commonRetry,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .labelMedium
+                                            ?.copyWith(
+                                              color: FluxColors.inkOf(context),
+                                            ),
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -719,7 +735,10 @@ class _AutomaticInstallPanel extends StatelessWidget {
                                 ? L10n.of(context)
                                     .onboardingInstallProgressStatus(
                                     localizedEngineStatus(
-                                        context, statusKey, status),
+                                      context,
+                                      statusKey,
+                                      status,
+                                    ),
                                     (effectiveProgress * 100)
                                         .round()
                                         .toString(),
@@ -738,7 +757,7 @@ class _AutomaticInstallPanel extends StatelessWidget {
               if (!ready && started) ...[
                 const SizedBox(height: 12),
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(99),
+                  borderRadius: BorderRadius.circular(FluxRadius.pill),
                   child: LinearProgressIndicator(
                     value: effectiveProgress,
                     minHeight: 4,
@@ -800,7 +819,7 @@ class _Precautions extends StatelessWidget {
               width: cardWidth,
               height: 104,
               child: FluxGlass(
-                radius: 10,
+                radius: FluxRadius.sm,
                 color: FluxColors.surfaceOf(context).withValues(alpha: .82),
                 child: Stack(
                   children: [
@@ -911,7 +930,15 @@ class _SoftwareUpgradeScreenState extends State<SoftwareUpgradeScreen> {
         }
       }
       // Measure the best CPU/GPU/NPU backend now that the new model is ready.
-      await _inference.optimizeForDevice();
+      // Bounded like the onboarding path so a slow benchmark cannot keep the
+      // upgrade screen stuck before the user can chat.
+      try {
+        await _inference.optimizeForDevice().timeout(
+              const Duration(seconds: 35),
+            );
+      } catch (e) {
+        debugPrint('FINN_OPTIMIZE timed out or failed: $e');
+      }
       if (!mounted) return;
       setState(() {
         _progress = 1;
