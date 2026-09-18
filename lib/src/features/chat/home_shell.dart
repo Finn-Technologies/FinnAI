@@ -11,6 +11,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:finn_ai/src/features/conversations/conversation_store.dart';
+import 'package:finn_ai/src/features/conversations/conversation_timestamp.dart';
 import 'package:finn_ai/src/features/creations/creations_page.dart';
 import 'package:finn_ai/src/features/chat/chat_generation_controller.dart';
 import 'package:finn_ai/src/features/chat/tool_activity_indicator.dart';
@@ -20,6 +21,10 @@ import 'package:finn_ai/src/inference/residency_policy.dart';
 import 'package:finn_ai/src/features/reporting/report_dialog.dart';
 import 'package:finn_ai/src/features/search/search_agent.dart';
 import 'package:finn_ai/src/features/search/web_search_service.dart';
+import 'package:finn_ai/src/features/actions/chat_device_actions.dart';
+import 'package:finn_ai/src/features/actions/device_action.dart';
+import 'package:finn_ai/src/features/actions/device_action_descriptions.dart';
+import 'package:finn_ai/src/features/actions/device_actions_page.dart';
 import 'package:finn_ai/src/features/settings/settings_page.dart';
 import 'package:finn_ai/src/features/skills/skills_page.dart';
 import 'package:finn_ai/src/features/skills/skills_store.dart';
@@ -68,6 +73,7 @@ class HomeShell extends StatefulWidget {
   const HomeShell({
     super.key,
     this.generationController,
+    this.deviceActions,
     this.conversationStore,
     this.inference,
     this.initializeServices = true,
@@ -76,6 +82,7 @@ class HomeShell extends StatefulWidget {
   });
 
   final ChatGenerationController? generationController;
+  final ChatDeviceActions? deviceActions;
   final ConversationStore? conversationStore;
   final FinnInference? inference;
   @visibleForTesting
@@ -99,13 +106,16 @@ class _HomeShellState extends State<HomeShell>
   late final _generation =
       widget.generationController ?? ChatGenerationController.instance;
   late final _webSearch = widget.webSearch ?? WebSearchService();
+  late final _deviceActions = widget.deviceActions ?? const ChatDeviceActions();
   late final _voice = widget.voiceController ?? VoiceChatController.instance;
   String? _voiceReplyGenerationId;
   Timer? _memoryReleaseTimer;
-  static const MethodChannel _memoryPressureChannel =
-      MethodChannel('finn_ai/memory.pressure');
-  static const MethodChannel _processTextChannel =
-      MethodChannel('finn_ai/process_text');
+  static const MethodChannel _memoryPressureChannel = MethodChannel(
+    'finn_ai/memory.pressure',
+  );
+  static const MethodChannel _processTextChannel = MethodChannel(
+    'finn_ai/process_text',
+  );
   Timer? _prewarmTimer;
   bool _sidebar = false;
   bool _sidebarEverOpened = false;
@@ -355,8 +365,9 @@ class _HomeShellState extends State<HomeShell>
 
   Future<void> _checkPendingProcessText() async {
     try {
-      final text =
-          await _processTextChannel.invokeMethod<String>('getPendingText');
+      final text = await _processTextChannel.invokeMethod<String>(
+        'getPendingText',
+      );
       if (text != null && text.trim().isNotEmpty) {
         _handleIncomingProcessText(text.trim());
       }
@@ -464,6 +475,7 @@ class _HomeShellState extends State<HomeShell>
     _chatScrollController.dispose();
     _chatScrolledAway.dispose();
     _memoryPressureChannel.setMethodCallHandler(null);
+    _processTextChannel.setMethodCallHandler(null);
     WidgetsBinding.instance.removeObserver(this);
     _memoryReleaseTimer?.cancel();
     _prewarmTimer?.cancel();
@@ -559,15 +571,89 @@ class _HomeShellState extends State<HomeShell>
             ..clearSnackBars()
             ..showSnackBar(
               SnackBar(
-                content: Text(
-                  L10n.of(context).chatImageAnalysisUnavailable,
-                ),
+                content: Text(L10n.of(context).chatImageAnalysisUnavailable),
                 behavior: SnackBarBehavior.floating,
               ),
             );
         }
       } catch (_) {}
     });
+  }
+
+  /// Runs a recognised device command and writes the turn it produces.
+  ///
+  /// Navigation runs immediately; anything that changes device state is written
+  /// as a proposal and waits for the user to tap.
+  Future<void> _handleDeviceAction(
+    DeviceActionInvocation invocation,
+    String prompt,
+  ) async {
+    final conversation = _conversations.active ?? _conversations.startNew();
+    final assistant = _conversations.beginExchangeInConversation(
+      conversation.id,
+      prompt,
+    );
+    final description = DeviceActionDescriptions.describe(context, invocation);
+
+    if (!ChatDeviceActions.runsWithoutAsking(invocation)) {
+      _composer.clear();
+      _conversations.updateMessageInConversation(
+        conversation.id,
+        assistant.id,
+        description,
+        pendingAction: invocation,
+        status: ConversationMessageStatus.complete,
+        persistSoon: true,
+      );
+      return;
+    }
+
+    _composer.clear();
+    _conversations.updateMessageInConversation(
+      conversation.id,
+      assistant.id,
+      description,
+      status: ConversationMessageStatus.complete,
+    );
+    final result = await _deviceActions.run(invocation);
+    if (!mounted) return;
+    _conversations.updateMessageInConversation(
+      conversation.id,
+      assistant.id,
+      DeviceActionDescriptions.resultLine(context, result),
+      clearPendingAction: true,
+      status: ConversationMessageStatus.complete,
+      persistSoon: true,
+    );
+  }
+
+  Future<void> _runPendingAction(ConversationMessage message) async {
+    final invocation = message.pendingAction;
+    final conversation = _conversations.active;
+    if (invocation == null || conversation == null) return;
+    final result = await _deviceActions.run(invocation);
+    if (!mounted) return;
+    _conversations.updateMessageInConversation(
+      conversation.id,
+      message.id,
+      DeviceActionDescriptions.resultLine(context, result),
+      clearPendingAction: true,
+      status: ConversationMessageStatus.complete,
+      persistSoon: true,
+    );
+  }
+
+  void _dismissPendingAction(ConversationMessage message) {
+    final conversation = _conversations.active;
+    if (conversation == null) return;
+    _conversations.updateMessageInConversation(
+      conversation.id,
+      message.id,
+      L10n.of(context).deviceActionsDismissed,
+      clearPendingAction: true,
+      status: ConversationMessageStatus.complete,
+      persistSoon: true,
+    );
   }
 
   Future<void> _send() async {
@@ -617,6 +703,19 @@ class _HomeShellState extends State<HomeShell>
         YouProfileStore.instance.promptContext,
         SkillsStore.instance.promptContextFor(value),
       ].where((item) => item.trim().isNotEmpty).join('\n\n');
+
+      // A device command is answered from the catalog, not the model: it is
+      // instant, it works before the model is installed, and it cannot be
+      // talked into a different action.
+      if (attached == null) {
+        final deviceAction = await _deviceActions.resolve(value);
+        if (deviceAction != null) {
+          if (!mounted) return;
+          await _handleDeviceAction(deviceAction, value);
+          return;
+        }
+      }
+
       final missing = <FinnModelSpec>[];
       for (final model in _inference.requiredModels) {
         if (!await _inference.isInstalled(model)) missing.add(model);
@@ -643,9 +742,7 @@ class _HomeShellState extends State<HomeShell>
                 context,
               ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w400),
             ),
-            content: Text(
-              L10n.of(context).chatDownloadModelBody(size),
-            ),
+            content: Text(L10n.of(context).chatDownloadModelBody(size)),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(false),
@@ -715,10 +812,7 @@ class _HomeShellState extends State<HomeShell>
         // from: the policy path never reaches the model's tool loop, and
         // without this the turn would look like it answered from nowhere.
         _generation.noteToolActivity(
-          ToolActivity(
-            kind: ToolActivityKind.search,
-            label: effectivePrompt,
-          ),
+          ToolActivity(kind: ToolActivityKind.search, label: effectivePrompt),
         );
         try {
           final agent = SearchAgent(searchService: _webSearch);
@@ -983,8 +1077,9 @@ class _HomeShellState extends State<HomeShell>
   Future<void> _openCreations() async {
     await _closeSidebarForNavigation();
     if (!mounted) return;
-    Navigator.of(context)
-        .push(FinnPageRoute<void>(child: const CreationsPage()));
+    Navigator.of(
+      context,
+    ).push(FinnPageRoute<void>(child: const CreationsPage()));
   }
 
   Future<void> _openYou() async {
@@ -992,7 +1087,8 @@ class _HomeShellState extends State<HomeShell>
     if (!mounted) return;
     Navigator.of(context).push(
       FinnPageRoute<void>(
-          child: YouPage(onBack: () => Navigator.of(context).pop())),
+        child: YouPage(onBack: () => Navigator.of(context).pop()),
+      ),
     );
   }
 
@@ -1011,9 +1107,27 @@ class _HomeShellState extends State<HomeShell>
     if (!mounted) return;
     Navigator.of(context).push(
       FinnPageRoute<void>(
-        child: SettingsPage(onBack: () => Navigator.of(context).pop()),
+        child: SettingsPage(
+          onBack: () => Navigator.of(context).pop(),
+          onOpenActions: _openDeviceActions,
+        ),
       ),
     );
+  }
+
+  Future<void> _openDeviceActions() async {
+    if (!mounted) return;
+    Navigator.of(context).push(
+      FinnPageRoute<void>(
+        child: DeviceActionsPage(onBack: () => Navigator.of(context).pop()),
+      ),
+    );
+  }
+
+  Future<void> _openDeviceActionsFromSidebar() async {
+    await _closeSidebarForNavigation();
+    if (!mounted) return;
+    await _openDeviceActions();
   }
 
   void _setSidebar(bool open) {
@@ -1084,6 +1198,9 @@ class _HomeShellState extends State<HomeShell>
                         onStop: _stopReply,
                         onContinue: _continueReply,
                         onRegenerate: _regenerateReply,
+                        onRunAction: _runPendingAction,
+                        onDismissAction: _dismissPendingAction,
+                        onActions: _openDeviceActions,
                         onEdit: _editUserMessage,
                         onSuggestion: _applySuggestion,
                         onOpenConversation: _activateConversation,
@@ -1102,9 +1219,8 @@ class _HomeShellState extends State<HomeShell>
                                 _upfrontSearchFailed) &&
                             !_dismissedSearchNotice &&
                             !_generation.busy,
-                        onDismissSearchNotice: () => setState(
-                          () => _dismissedSearchNotice = true,
-                        ),
+                        onDismissSearchNotice: () =>
+                            setState(() => _dismissedSearchNotice = true),
                       ),
                     ),
                     // 4. Header and composer are the topmost layers: crisp over
@@ -1166,7 +1282,11 @@ class _HomeShellState extends State<HomeShell>
                           focusNode: _focusNode,
                           blocked: _preparing || !_storesReady,
                           preparing: _preparing,
-                          busy: _generation.busy,
+                          // A turn being prepared has no job yet, but it is
+                          // already uncancellable from the composer without
+                          // this: the same stop control must be reachable from
+                          // the first tap until tokens arrive.
+                          busy: _generation.busy || _preparing,
                           compact: scrolledAway,
                           attachmentPath: _attachedImagePath,
                           isAttachmentMenuOpen: _attachmentMenuOpen,
@@ -1180,9 +1300,8 @@ class _HomeShellState extends State<HomeShell>
                           onSend: _send,
                           onStop: _stopReply,
                           browseEnabled: _browseEnabled,
-                          onToggleBrowse: () => setState(
-                            () => _browseEnabled = !_browseEnabled,
-                          ),
+                          onToggleBrowse: () =>
+                              setState(() => _browseEnabled = !_browseEnabled),
                           voiceEnabled: voiceSupportedOnPlatform,
                           onMic: _openVoiceMode,
                         ),
@@ -1204,6 +1323,7 @@ class _HomeShellState extends State<HomeShell>
                       onCreations: _openCreations,
                       onYou: _openYou,
                       onSkills: _openSkills,
+                      onActions: _openDeviceActionsFromSidebar,
                       onSettings: _openSettings,
                     ),
                   );
@@ -1257,19 +1377,25 @@ class _HomeHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-        width: 158,
-        height: 34,
+        width: 172,
+        height: 48,
         child: Row(
           children: [
             Tooltip(
               message: L10n.of(context).chatOpenMenuTooltip,
-              child: InkWell(
-                onTap: onMenu,
-                borderRadius: BorderRadius.circular(17),
-                child: const FigmaSvg(
-                  asset: FigmaAssets.menu,
-                  width: 34,
-                  height: 34,
+              child: SizedBox.square(
+                key: const ValueKey('home-menu-button'),
+                dimension: 48,
+                child: InkWell(
+                  onTap: onMenu,
+                  customBorder: const CircleBorder(),
+                  child: const Center(
+                    child: FigmaSvg(
+                      asset: FigmaAssets.menu,
+                      width: 34,
+                      height: 34,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -1364,9 +1490,7 @@ class _ConversationEmpty extends StatelessWidget {
       l10n.suggestionFreshPerspective,
     ];
     final start = (rotation * 3) % pool.length;
-    return [
-      for (var i = 0; i < 4; i++) pool[(start + i) % pool.length],
-    ];
+    return [for (var i = 0; i < 4; i++) pool[(start + i) % pool.length]];
   }
 
   @override
@@ -1417,9 +1541,7 @@ class _ConversationEmpty extends StatelessWidget {
                           ActionChip(
                             label: Text(suggestion),
                             onPressed: () => onSuggestion(suggestion),
-                            backgroundColor: FluxColors.isDark(context)
-                                ? const Color(0xFF1C1C1E)
-                                : const Color(0xFFEBEBF0),
+                            backgroundColor: FluxColors.disclosureOf(context),
                             side: BorderSide.none,
                             labelStyle: Theme.of(context)
                                 .textTheme
@@ -1458,6 +1580,9 @@ class _Conversation extends StatefulWidget {
     required this.onStop,
     required this.onContinue,
     required this.onRegenerate,
+    required this.onRunAction,
+    required this.onDismissAction,
+    required this.onActions,
     required this.onEdit,
     required this.onSuggestion,
     required this.onOpenConversation,
@@ -1476,6 +1601,9 @@ class _Conversation extends StatefulWidget {
   final VoidCallback onStop;
   final ValueChanged<ConversationMessage> onContinue;
   final ValueChanged<ConversationMessage> onRegenerate;
+  final ValueChanged<ConversationMessage> onRunAction;
+  final ValueChanged<ConversationMessage> onDismissAction;
+  final VoidCallback onActions;
   final ValueChanged<ConversationMessage> onEdit;
   final ValueChanged<String> onSuggestion;
   final ValueChanged<String> onOpenConversation;
@@ -1742,6 +1870,13 @@ class _ConversationState extends State<_Conversation> {
                         status: message.status,
                         sources: message.sources,
                         toolActivities: message.toolActivities,
+                        pendingAction: message.pendingAction,
+                        onRunAction: message.pendingAction == null
+                            ? null
+                            : () => widget.onRunAction(message),
+                        onDismissAction: message.pendingAction == null
+                            ? null
+                            : () => widget.onDismissAction(message),
                         onSourcesHeightDelta: _compensateSourcesGrowth,
                         showActions: true,
                         onContinue: message.status ==
@@ -1851,7 +1986,10 @@ class _Bubble extends StatelessWidget {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const FluxIcon(icon: FluxIcons.image, size: 16),
+                                const FluxIcon(
+                                  icon: FluxIcons.image,
+                                  size: 16,
+                                ),
                                 const SizedBox(width: 4),
                                 Expanded(
                                   child: Text(
@@ -2215,9 +2353,9 @@ class _StreamingReplyState extends State<_StreamingReply>
                   width: 8,
                   height: 8,
                   decoration: BoxDecoration(
-                    color: FluxColors.inkOf(context).withValues(
-                      alpha: .3 + .5 * _pulse.value,
-                    ),
+                    color: FluxColors.inkOf(
+                      context,
+                    ).withValues(alpha: .3 + .5 * _pulse.value),
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -2251,10 +2389,7 @@ class _StreamingReplyState extends State<_StreamingReply>
           _ArticlePhotoSlideshow(imageUrls: imageUrls),
           const SizedBox(height: 12),
         ],
-        Semantics(
-          liveRegion: true,
-          child: SafeMarkdownText(text: fullText),
-        ),
+        Semantics(liveRegion: true, child: SafeMarkdownText(text: fullText)),
         // Below the answer, in the same slot the finished reply uses, so the
         // pill never jumps position when the turn completes — and it stays on
         // screen while a long answer streams past it.
@@ -2264,10 +2399,7 @@ class _StreamingReplyState extends State<_StreamingReply>
         ],
         if (activeSources.isNotEmpty) ...[
           const SizedBox(height: 6),
-          _SourceList(
-            sources: activeSources,
-            onHeightDelta: (_) {},
-          ),
+          _SourceList(sources: activeSources, onHeightDelta: (_) {}),
         ],
       ],
     );
@@ -2295,7 +2427,7 @@ class OtherChatGenerationNotice extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
           decoration: BoxDecoration(
             color: FluxColors.cardOf(context).withValues(alpha: .78),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(FluxRadius.md),
             border: Border.all(color: FluxColors.lineOf(context)),
           ),
           child: Row(
@@ -2309,9 +2441,13 @@ class OtherChatGenerationNotice extends StatelessWidget {
                 ),
               ),
               TextButton(
-                  onPressed: onOpen, child: Text(L10n.of(context).commonOpen)),
+                onPressed: onOpen,
+                child: Text(L10n.of(context).commonOpen),
+              ),
               TextButton(
-                  onPressed: onStop, child: Text(L10n.of(context).commonStop)),
+                onPressed: onStop,
+                child: Text(L10n.of(context).commonStop),
+              ),
             ],
           ),
         ),
@@ -2333,7 +2469,7 @@ class _OfflineSearchNotice extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(13, 10, 6, 10),
         decoration: BoxDecoration(
           color: FluxColors.cardOf(context).withValues(alpha: .78),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(FluxRadius.md),
           border: Border.all(color: FluxColors.lineOf(context)),
         ),
         child: Row(
@@ -2374,6 +2510,9 @@ class _CompleteReply extends StatelessWidget {
     this.onRegenerate,
     this.sources = const [],
     this.toolActivities = const [],
+    this.pendingAction,
+    this.onRunAction,
+    this.onDismissAction,
     this.onSourcesHeightDelta,
   });
 
@@ -2388,6 +2527,12 @@ class _CompleteReply extends StatelessWidget {
 
   /// Browser steps this reply took, kept for the inline search indicator.
   final List<ToolActivity> toolActivities;
+
+  /// A device action this reply is proposing. While it is set the reply shows
+  /// its confirm controls and nothing has touched the device yet.
+  final DeviceActionInvocation? pendingAction;
+  final VoidCallback? onRunAction;
+  final VoidCallback? onDismissAction;
 
   /// Forwards the animated growth of the sources list in pixels so the chat
   /// can keep the answer anchored while the actions below slide down.
@@ -2412,6 +2557,27 @@ class _CompleteReply extends StatelessWidget {
         // The assistant answer sits directly on the canvas — no bubble — and its
         // text is natively selectable.
         SelectionArea(child: SafeMarkdownText(text: text)),
+        // The confirm controls sit directly under the sentence they confirm, so
+        // what is about to happen and the button that does it are read together.
+        if (pendingAction != null) ...[
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              FluxPillButton(
+                label: L10n.of(context).deviceActionsConfirm,
+                icon: FluxIcons.check,
+                compact: true,
+                onTap: onRunAction,
+              ),
+              const SizedBox(width: 8),
+              FluxPillButton(
+                label: L10n.of(context).deviceActionsCancel,
+                compact: true,
+                onTap: onDismissAction,
+              ),
+            ],
+          ),
+        ],
         // Browser steps and the pages they produced sit between the answer and
         // the reply actions: expanding either pushes only the actions below,
         // never the answer above.
@@ -2537,15 +2703,17 @@ class _ReplyActionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Tooltip(
       message: tooltip,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(FluxRadius.sm),
-        child: Padding(
-          padding: const EdgeInsets.all(7),
-          child: FluxIcon(
-            icon: icon,
-            size: 16,
-            color: FluxColors.mutedOf(context),
+      child: SizedBox.square(
+        dimension: 48,
+        child: InkWell(
+          onTap: onTap,
+          customBorder: const CircleBorder(),
+          child: Center(
+            child: FluxIcon(
+              icon: icon,
+              size: 16,
+              color: FluxColors.mutedOf(context),
+            ),
           ),
         ),
       ),
@@ -2578,11 +2746,13 @@ class _ArticlePhotoSlideshowState extends State<_ArticlePhotoSlideshow> {
     final count = widget.imageUrls.length;
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(FluxRadius.md),
       child: Container(
         height: 200,
         width: double.infinity,
-        color: isDark ? const Color(0xFF1C1C1E) : const Color(0xFFE5E5EA),
+        color: isDark
+            ? FluxColors.bubbleAssistantDark
+            : FluxColors.bubbleUserLight,
         child: Stack(
           children: [
             PageView.builder(
@@ -2628,14 +2798,16 @@ class _ArticlePhotoSlideshowState extends State<_ArticlePhotoSlideshow> {
                 bottom: 10,
                 right: 12,
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 9,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.black.withValues(alpha: 0.65),
                     borderRadius: BorderRadius.circular(FluxRadius.pill),
                   ),
                   child: Text(
-                    '${_currentPage + 1} of $count',
+                    '${_currentPage + 1}/$count',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 11.5,
@@ -2813,8 +2985,8 @@ class _ErrorReply extends StatelessWidget {
             label: Text(L10n.of(context).commonRetry),
             style: TextButton.styleFrom(
               foregroundColor: FluxColors.inkOf(context),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              minimumSize: const Size(0, 40),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              minimumSize: const Size(0, 48),
             ),
           ),
         ],
@@ -2850,7 +3022,8 @@ class _EditMessageDialogState extends State<_EditMessageDialog> {
         backgroundColor: FluxColors.cardOf(context),
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(FluxRadius.sheet)),
+          borderRadius: BorderRadius.circular(FluxRadius.sheet),
+        ),
         title: Text(
           L10n.of(context).chatEditMessage,
           style: Theme.of(
@@ -3243,7 +3416,9 @@ class _ChatComposerState extends State<ChatComposer> {
           color: FluxColors.isDark(context)
               ? const Color(0xFF1E1E22)
               : const Color(0xFFFFFFFF),
-          borderRadius: BorderRadius.circular(hasAttachment ? 24 : 999),
+          borderRadius: BorderRadius.circular(
+            hasAttachment ? FluxRadius.sheet : FluxRadius.pill,
+          ),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(
@@ -3255,8 +3430,8 @@ class _ChatComposerState extends State<ChatComposer> {
           ],
         ),
         width: widget.width,
-        constraints: const BoxConstraints(minHeight: 42, maxHeight: 220),
-        padding: const EdgeInsets.fromLTRB(8, 6, 6, 6),
+        constraints: const BoxConstraints(minHeight: 56, maxHeight: 220),
+        padding: const EdgeInsets.fromLTRB(8, 4, 6, 4),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -3283,7 +3458,7 @@ class _ChatComposerState extends State<ChatComposer> {
                   label: widget.pickAttachmentSemanticLabel ??
                       L10n.of(context).chatAddAttachmentSemantic,
                   child: SizedBox.square(
-                    dimension: 34,
+                    dimension: 48,
                     child: InkWell(
                       key: const ValueKey('add-attachment-button'),
                       onTap: widget.blocked || widget.busy
@@ -3357,7 +3532,7 @@ class _ChatComposerState extends State<ChatComposer> {
                       message: L10n.of(context).chatBrowseTooltip,
                       child: SizedBox.square(
                         key: const ValueKey('browse-toggle-surface'),
-                        dimension: 36,
+                        dimension: 48,
                         child: InkWell(
                           onTap: widget.blocked ? null : widget.onToggleBrowse,
                           customBorder: const CircleBorder(),
@@ -3394,7 +3569,7 @@ class _ChatComposerState extends State<ChatComposer> {
                     label: L10n.of(context).voiceMicSemantic,
                     child: SizedBox.square(
                       key: const ValueKey('mic-button-surface'),
-                      dimension: 36,
+                      dimension: 48,
                       child: InkWell(
                         onTap: widget.onMic,
                         customBorder: const CircleBorder(),
@@ -3415,7 +3590,7 @@ class _ChatComposerState extends State<ChatComposer> {
                     label: L10n.of(context).chatStopGeneratingSemantic,
                     child: SizedBox.square(
                       key: const ValueKey('stop-button-surface'),
-                      dimension: 36,
+                      dimension: 48,
                       child: InkWell(
                         onTap: widget.onStop,
                         customBorder: const CircleBorder(),
@@ -3455,20 +3630,29 @@ class _ChatComposerState extends State<ChatComposer> {
                     enabled: canSend,
                     label: L10n.of(context).chatSendMessageSemantic,
                     child: SizedBox.square(
-                      key: const ValueKey('send-button-surface'),
-                      dimension: 36,
+                      // The visual surface stays compact inside a full-size
+                      // (48dp) hit area so the control meets the minimum
+                      // touch target without enlarging the glyph.
+                      key: const ValueKey('send-button-hit'),
+                      dimension: 48,
                       child: InkWell(
                         onTap: canSend ? widget.onSend : null,
                         customBorder: const CircleBorder(),
                         child: Center(
-                          child: FigmaSvg(
-                            asset: canSend
-                                ? FigmaAssets.activeSend
-                                : FigmaAssets.send,
-                            key: const ValueKey('send-button-icon'),
-                            width: 30,
-                            height: 30,
-                            invertForDark: true,
+                          child: SizedBox.square(
+                            key: const ValueKey('send-button-surface'),
+                            dimension: 36,
+                            child: Center(
+                              child: FigmaSvg(
+                                asset: canSend
+                                    ? FigmaAssets.activeSend
+                                    : FigmaAssets.send,
+                                key: const ValueKey('send-button-icon'),
+                                width: 30,
+                                height: 30,
+                                invertForDark: true,
+                              ),
+                            ),
                           ),
                         ),
                       ),
@@ -3502,7 +3686,7 @@ class _ChatComposerState extends State<ChatComposer> {
             width: 54,
             height: 54,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(13),
+              borderRadius: BorderRadius.circular(FluxRadius.sm),
               border: Border.all(
                 color:
                     isDark ? const Color(0x33FFFFFF) : const Color(0x1F000000),
@@ -3665,6 +3849,7 @@ class _Sidebar extends StatefulWidget {
     required this.onCreations,
     required this.onYou,
     required this.onSkills,
+    required this.onActions,
     required this.onSettings,
   });
 
@@ -3676,6 +3861,7 @@ class _Sidebar extends StatefulWidget {
   final VoidCallback onCreations;
   final VoidCallback onYou;
   final VoidCallback onSkills;
+  final VoidCallback onActions;
   final VoidCallback onSettings;
 
   @override
@@ -3719,8 +3905,8 @@ class _SidebarState extends State<_Sidebar> {
           final double headerHeight = 34;
           final double gap1 = 14 * sy;
           final double buttonsTop = headerTop + headerHeight + gap1;
-          final double navSize = ((constraints.maxWidth - 80) / 3).clamp(
-            52.0,
+          final double navSize = ((constraints.maxWidth - 90) / 4).clamp(
+            48.0,
             62.0,
           );
           final double buttonsHeight = navSize + 20;
@@ -3976,6 +4162,12 @@ class _SidebarState extends State<_Sidebar> {
                         onTap: widget.onSkills,
                         size: navSize,
                       ),
+                      _IconNavTile(
+                        icon: FluxIcons.magic,
+                        label: L10n.of(context).deviceActionsTitle,
+                        onTap: widget.onActions,
+                        size: navSize,
+                      ),
                     ],
                   ),
                 ),
@@ -4045,6 +4237,77 @@ class _NavTile extends StatelessWidget {
               children: [
                 FigmaSvg(
                     asset: asset, width: size, height: size, isNavTile: true),
+                const SizedBox(height: 5),
+                SizedBox(
+                  width: size,
+                  height: 15,
+                  child: Center(
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                            color: FluxColors.inkOf(context),
+                          ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+}
+
+/// A destination tile drawn from an icon instead of a bespoke illustration.
+///
+/// The three established destinations ship their own Figma artwork; this keeps
+/// a new destination recognisable without inventing a fourth illustration that
+/// would not match the set.
+class _IconNavTile extends StatelessWidget {
+  const _IconNavTile({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.size = 62,
+  });
+
+  final List<List<dynamic>> icon;
+  final String label;
+  final VoidCallback onTap;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(FluxRadius.sm),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(FluxRadius.sm),
+          child: Container(
+            width: size,
+            height: size + 20,
+            color: Colors.transparent,
+            child: Column(
+              children: [
+                Container(
+                  width: size,
+                  height: size,
+                  decoration: BoxDecoration(
+                    // The illustrated tiles are white artwork that a dark-mode
+                    // colour matrix inverts; this one has to match by adapting
+                    // on its own.
+                    color: FluxColors.cardOf(context),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: FluxIcon(
+                      icon: icon,
+                      size: size * .42,
+                      color: FluxColors.inkOf(context),
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 5),
                 SizedBox(
                   width: size,
@@ -4138,7 +4401,8 @@ class _SidebarConversationTile extends StatelessWidget {
       context: context,
       builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(FluxRadius.sheet)),
+          borderRadius: BorderRadius.circular(FluxRadius.sheet),
+        ),
         title: Text(L10n.of(context).chatRenameTitle),
         content: TextField(
           controller: controller,
@@ -4191,7 +4455,8 @@ class _SidebarConversationTile extends StatelessWidget {
       context: context,
       builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(FluxRadius.sheet)),
+          borderRadius: BorderRadius.circular(FluxRadius.sheet),
+        ),
         title: Text(L10n.of(context).chatDeleteTitle),
         content: Text(
           generationActive
@@ -4244,12 +4509,21 @@ class _SidebarConversationTile extends StatelessWidget {
                 selected ? FluxColors.surfaceOf(context) : Colors.transparent,
             borderRadius: BorderRadius.circular(FluxRadius.sm),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-          child: Text(
-            conversation.title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodyMedium,
+          // 14 + a 15px body line reaches the 48dp minimum touch target.
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  conversation.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ),
+              const SizedBox(width: 8),
+              ConversationTimestamp(updatedAt: conversation.updatedAt),
+            ],
           ),
         ),
       ),

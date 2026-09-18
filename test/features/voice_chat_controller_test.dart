@@ -13,6 +13,7 @@ class FakeSpeechBackend implements SpeechBackend {
   void Function(double level)? onSoundLevel;
   void Function(SpeechRecognitionError error)? onError;
   void Function(String status)? onStatus;
+  final List<bool> listenRequests = [];
   int stopCalls = 0;
   int cancelCalls = 0;
 
@@ -36,8 +37,10 @@ class FakeSpeechBackend implements SpeechBackend {
   Future<void> listen({
     void Function(SpeechRecognitionResult result)? onResult,
     void Function(double level)? onSoundLevelChange,
+    bool preferOnDevice = false,
   }) async {
     if (throwOnListen) throw StateError('listen failed');
+    listenRequests.add(preferOnDevice);
     this.onResult = onResult;
     onSoundLevel = onSoundLevelChange;
     listening = true;
@@ -252,6 +255,78 @@ void main() {
 
       expect(controller.state, VoiceChatState.idle);
       expect(controller.error, VoiceChatError.micDenied);
+    });
+  });
+
+  group('VoiceChatController on-device recognition', () {
+    test('the first listen attempt asks for on-device recognition', () async {
+      final speech = FakeSpeechBackend();
+      final controller = makeController(speech: speech);
+
+      await controller.startListening();
+
+      expect(speech.listenRequests, [true]);
+      expect(controller.state, VoiceChatState.listening);
+    });
+
+    test('an unavailable on-device recognizer retries once on the platform',
+        () async {
+      final speech = FakeSpeechBackend();
+      final controller = makeController(speech: speech);
+
+      await controller.startListening();
+      speech.onError?.call(
+        SpeechRecognitionError('error_recognizer_not_available', true),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      expect(speech.listenRequests, [true, false]);
+      expect(controller.error, VoiceChatError.none);
+      expect(controller.state, VoiceChatState.listening);
+    });
+
+    test('a failing platform retry surfaces unavailable', () async {
+      final speech = FakeSpeechBackend();
+      final controller = makeController(speech: speech);
+
+      await controller.startListening();
+      speech.onError?.call(
+        SpeechRecognitionError('error_recognizer_not_available', true),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      speech.onError?.call(SpeechRecognitionError('error_audio_error', true));
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      expect(speech.listenRequests, [true, false]);
+      expect(controller.error, VoiceChatError.unavailable);
+      expect(controller.state, VoiceChatState.idle);
+    });
+
+    test('a successful on-device result never retries', () async {
+      final speech = FakeSpeechBackend();
+      final controller = makeController(speech: speech);
+
+      await controller.startListening();
+      speech.emitResult('hello finn', finalResult: true);
+
+      expect(speech.listenRequests, [true]);
+      expect(controller.state, VoiceChatState.thinking);
+    });
+
+    test('an on-device timeout keeps the existing transient handling',
+        () async {
+      final speech = FakeSpeechBackend();
+      final controller = makeController(speech: speech);
+
+      await controller.startListening();
+      speech.onError?.call(
+        SpeechRecognitionError('error_speech_timeout', true),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      expect(speech.listenRequests, [true]);
+      expect(controller.state, VoiceChatState.idle);
+      expect(controller.error, VoiceChatError.none);
     });
   });
 

@@ -125,7 +125,6 @@ class _VoiceSheetState extends State<VoiceSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = FluxColors.isDark(context);
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: AmbientBackground(
@@ -148,78 +147,113 @@ class _VoiceSheetState extends State<VoiceSheet> {
                           child: Semantics(
                             button: true,
                             label: L10n.of(context).voiceCloseSemantic,
-                            child: InkWell(
-                              onTap: _onClose,
-                              customBorder: const CircleBorder(),
-                              child: Padding(
-                                padding: const EdgeInsets.all(10),
-                                child: HugeIcon(
-                                  icon: HugeIcons.strokeRoundedCancel01,
-                                  size: 24,
-                                  color: FluxColors.mutedOf(context),
+                            child: SizedBox.square(
+                              key: const ValueKey('voice-close-button'),
+                              dimension: 48,
+                              child: InkWell(
+                                onTap: _onClose,
+                                customBorder: const CircleBorder(),
+                                child: Center(
+                                  child: HugeIcon(
+                                    icon: HugeIcons.strokeRoundedCancel01,
+                                    size: 24,
+                                    color: FluxColors.mutedOf(context),
+                                  ),
                                 ),
                               ),
                             ),
                           ),
                         ),
                       ),
-                      const Spacer(),
-                      _VoiceOrb(
-                        state: voice.state,
-                        soundLevel: voice.soundLevel,
-                        onTap: _onMicTap,
-                        scale: orbScale,
-                      ),
-                      SizedBox(height: isCompact ? 14 : 28),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 32),
-                        child: Text(
-                          _statusText(context, voice),
-                          textAlign: TextAlign.center,
-                          style:
-                              Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    color: FluxColors.inkOf(context),
-                                    fontWeight: FontWeight.w500,
+                      // The orb and the copy scroll rather than clip: a
+                      // landscape or split-screen window can be shorter than
+                      // the content even in its compact size.
+                      Expanded(
+                        child: LayoutBuilder(
+                          builder: (context, inner) => SingleChildScrollView(
+                            child: ConstrainedBox(
+                              constraints:
+                                  BoxConstraints(minHeight: inner.maxHeight),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  _VoiceOrb(
+                                    state: voice.state,
+                                    soundLevel: voice.soundLevel,
+                                    onTap: _onMicTap,
+                                    scale: orbScale,
                                   ),
+                                  SizedBox(height: isCompact ? 14 : 28),
+                                  // The error line already says what went
+                                  // wrong, so the status line stays out of the
+                                  // way instead of repeating the hint below.
+                                  if (voice.error == VoiceChatError.none)
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 32,
+                                      ),
+                                      child: Text(
+                                        _statusText(context, voice),
+                                        textAlign: TextAlign.center,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleMedium
+                                            ?.copyWith(
+                                              color: FluxColors.inkOf(context),
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                      ),
+                                    ),
+                                  if (voice.transcript.trim().isNotEmpty) ...[
+                                    SizedBox(height: isCompact ? 6 : 12),
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 32,
+                                      ),
+                                      child: Text(
+                                        '“${voice.transcript.trim()}”',
+                                        textAlign: TextAlign.center,
+                                        maxLines: isCompact ? 2 : 4,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodyLarge
+                                            ?.copyWith(
+                                              color:
+                                                  FluxColors.mutedOf(context),
+                                            ),
+                                      ),
+                                    ),
+                                  ],
+                                  if (voice.error != VoiceChatError.none) ...[
+                                    SizedBox(height: isCompact ? 6 : 12),
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 32,
+                                      ),
+                                      child: Text(
+                                        voice.error == VoiceChatError.micDenied
+                                            ? L10n.of(context).voiceMicDenied
+                                            : L10n.of(context).voiceUnavailable,
+                                        textAlign: TextAlign.center,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodyMedium
+                                            ?.copyWith(
+                                              color: FluxColors.destructiveOf(
+                                                context,
+                                              ),
+                                            ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ),
                         ),
                       ),
-                      if (voice.transcript.trim().isNotEmpty) ...[
-                        SizedBox(height: isCompact ? 6 : 12),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 32),
-                          child: Text(
-                            '“${voice.transcript.trim()}”',
-                            textAlign: TextAlign.center,
-                            maxLines: isCompact ? 2 : 4,
-                            overflow: TextOverflow.ellipsis,
-                            style:
-                                Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                      color: FluxColors.mutedOf(context),
-                                    ),
-                          ),
-                        ),
-                      ],
-                      if (voice.error != VoiceChatError.none) ...[
-                        SizedBox(height: isCompact ? 6 : 12),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 32),
-                          child: Text(
-                            voice.error == VoiceChatError.micDenied
-                                ? L10n.of(context).voiceMicDenied
-                                : L10n.of(context).voiceUnavailable,
-                            textAlign: TextAlign.center,
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodyMedium
-                                ?.copyWith(
-                                  color: isDark
-                                      ? FluxColors.destructiveDark
-                                      : FluxColors.destructive,
-                                ),
-                          ),
-                        ),
-                      ],
-                      const Spacer(),
                       Padding(
                         padding: EdgeInsets.only(bottom: isCompact ? 8 : 24),
                         child: Text(
@@ -242,9 +276,6 @@ class _VoiceSheetState extends State<VoiceSheet> {
   }
 
   String _statusText(BuildContext context, VoiceChatController voice) {
-    if (voice.error != VoiceChatError.none) {
-      return L10n.of(context).voiceTapToSpeak;
-    }
     switch (voice.state) {
       case VoiceChatState.listening:
         return voice.transcript.trim().isEmpty

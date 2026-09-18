@@ -915,6 +915,11 @@ class ChatGenerationController extends ChangeNotifier {
     if (_disposed) return;
     _disposed = true;
     runtime.removeListener(_runtimeChanged);
+    // Detach from the native token stream before flushing: a disposed
+    // controller must not keep writing late tokens over the partial response
+    // its flush just persisted.
+    _subscription?.cancel();
+    _subscription = null;
     _persistenceTimer?.cancel();
     _notifyTimer?.cancel();
     _preparingGuard?.cancel();

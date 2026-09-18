@@ -22,6 +22,7 @@ abstract class SpeechBackend {
   Future<void> listen({
     void Function(SpeechRecognitionResult result)? onResult,
     void Function(double level)? onSoundLevelChange,
+    bool preferOnDevice = false,
   });
   Future<void> stop();
   Future<void> cancel();
@@ -57,9 +58,14 @@ class SpeechToTextBackend implements SpeechBackend {
   Future<void> listen({
     void Function(SpeechRecognitionResult result)? onResult,
     void Function(double level)? onSoundLevelChange,
+    bool preferOnDevice = false,
   }) =>
       _speech.listen(
-          onResult: onResult, onSoundLevelChange: onSoundLevelChange);
+        onResult: onResult,
+        onSoundLevelChange: onSoundLevelChange,
+        listenOptions:
+            preferOnDevice ? SpeechListenOptions(onDevice: true) : null,
+      );
 
   @override
   Future<void> stop() => _speech.stop();
@@ -163,6 +169,7 @@ class VoiceChatController extends ChangeNotifier {
   bool _sttAvailable = false;
   bool _ttsReady = false;
   bool _suppressNextFinal = false;
+  bool _onDeviceOnly = false;
   Timer? _listenWatchdog;
   final StringBuffer _replyBuffer = StringBuffer();
   String _spokenUpTo = '';
@@ -237,8 +244,18 @@ class VoiceChatController extends ChangeNotifier {
     _error = VoiceChatError.none;
     _transcript = '';
     _suppressNextFinal = false;
+    _onDeviceOnly = true;
+    await _beginListening(preferOnDevice: true);
+  }
+
+  /// Starts a recognition session and arms the listen watchdog.
+  ///
+  /// [preferOnDevice] asks the platform for offline recognition; the caller
+  /// falls back once without it when the platform cannot recognise offline.
+  Future<void> _beginListening({required bool preferOnDevice}) async {
     try {
       await _speech.listen(
+        preferOnDevice: preferOnDevice,
         onResult: _onSpeechResult,
         onSoundLevelChange: (level) {
           _soundLevel = level.clamp(0.0, 1.0);
@@ -267,6 +284,7 @@ class VoiceChatController extends ChangeNotifier {
 
   Future<void> cancelListening() async {
     _suppressNextFinal = true;
+    _onDeviceOnly = false;
     _listenWatchdog?.cancel();
     _listenWatchdog = null;
     try {
@@ -331,6 +349,7 @@ class VoiceChatController extends ChangeNotifier {
     _listenWatchdog?.cancel();
     _listenWatchdog = null;
     _replyStreamOpen = false;
+    _onDeviceOnly = false;
     try {
       if (_speech.isListening) await _speech.cancel();
     } catch (_) {}
@@ -379,6 +398,19 @@ class VoiceChatController extends ChangeNotifier {
     if (msg.contains('permission') || msg.contains('not-allowed')) {
       _error = VoiceChatError.micDenied;
       _setState(VoiceChatState.idle);
+      return;
+    }
+
+    // When this session asked for offline recognition and the platform cannot
+    // provide it, retry once against the platform recognizer instead of
+    // failing. Timeouts, no-match and other transient errors keep the existing
+    // handling, so silence never sends the next attempt to the network.
+    if (_onDeviceOnly &&
+        (msg.contains('unavailable') ||
+            msg.contains('recognizer') ||
+            msg.contains('not_supported'))) {
+      _onDeviceOnly = false;
+      unawaited(_beginListening(preferOnDevice: false));
       return;
     }
 

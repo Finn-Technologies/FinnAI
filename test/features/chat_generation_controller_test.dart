@@ -355,6 +355,30 @@ void main() {
     );
   });
 
+  test('disposal detaches the token stream from the flushed partial', () async {
+    final conversation = store.startNew();
+    await controller.start(
+      conversationId: conversation.id,
+      prompt: 'Dispose mid-stream',
+      history: const [],
+      systemContext: '',
+    );
+    runtime.emit('Kept');
+    controller.dispose();
+    await Future<void>.delayed(const Duration(milliseconds: 40));
+
+    // The controller has let go of the native stream, so a token that lands
+    // after disposal cannot overwrite the partial its flush persisted.
+    runtime.emit(' LATE');
+    await controller.flushActive();
+    await Future<void>.delayed(const Duration(milliseconds: 40));
+
+    expect(
+      store.conversationById(conversation.id)!.messages.last.text,
+      'Kept',
+    );
+  });
+
   test(
     'token-limit continuation stays in original conversation once',
     () async {
