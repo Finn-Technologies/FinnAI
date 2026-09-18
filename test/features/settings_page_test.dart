@@ -59,5 +59,25 @@ void main() {
       expect(tester.getTopLeft(find.text('Settings')).dy, titleTop);
       expect(tester.takeException(), isNull);
     });
+
+    testWidgets('every section lays out without a horizontal overflow', (
+      WidgetTester tester,
+    ) async {
+      // A tall viewport builds every section, including About, whose long
+      // values must not squeeze their labels and overflow the row.
+      tester.view.physicalSize = const Size(390, 1600);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(MaterialApp(home: SettingsPage(onBack: () {})));
+      await tester.pump();
+      // Let the entrance animation settle so the body is at its resting place.
+      await tester.pump(const Duration(milliseconds: 700));
+
+      // Proves the About rows were actually built and laid out.
+      expect(find.text('LFM2.5-VL 1.6B (Liquid)'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
   });
 }

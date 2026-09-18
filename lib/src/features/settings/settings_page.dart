@@ -20,9 +20,12 @@ import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
 
 /// Full-screen Settings page for FinnAI.
 class SettingsPage extends StatefulWidget {
-  const SettingsPage({super.key, required this.onBack});
+  const SettingsPage({super.key, required this.onBack, this.onOpenActions});
 
   final VoidCallback onBack;
+
+  /// Opens the device actions screen. Null when the host has no route to it.
+  final VoidCallback? onOpenActions;
 
   @override
   State<SettingsPage> createState() => _SettingsPageState();
@@ -91,19 +94,25 @@ class _SettingsPageState extends State<SettingsPage>
 
   Future<void> _clearMemory() async {
     setState(() => _clearingMemory = true);
-    await FinnInference.instance.releaseMemory();
-    if (mounted) {
-      setState(() => _clearingMemory = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(L10n.of(context).settingsPurgeMemoryReleased),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(FluxRadius.sm),
-          ),
-        ),
-      );
+    var released = false;
+    try {
+      await FinnInference.instance.releaseMemory();
+      released = true;
+    } catch (error) {
+      debugPrint('FINN_MEMORY_RELEASE failed: $error');
     }
+    if (!mounted) return;
+    setState(() => _clearingMemory = false);
+    if (!released) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(L10n.of(context).settingsPurgeMemoryReleased),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(FluxRadius.sm),
+        ),
+      ),
+    );
   }
 
   void _confirmPurgeMemory() {
@@ -111,11 +120,10 @@ class _SettingsPageState extends State<SettingsPage>
       context: context,
       builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(FluxRadius.sheet)),
-        title: Text(L10n.of(context).settingsPurgeMemoryTitle),
-        content: Text(
-          L10n.of(context).settingsPurgeMemoryBody,
+          borderRadius: BorderRadius.circular(FluxRadius.sheet),
         ),
+        title: Text(L10n.of(context).settingsPurgeMemoryTitle),
+        content: Text(L10n.of(context).settingsPurgeMemoryBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
@@ -132,9 +140,7 @@ class _SettingsPageState extends State<SettingsPage>
             child: Text(
               L10n.of(context).commonPurge,
               style: TextStyle(
-                color: FluxColors.isDark(context)
-                    ? FluxColors.destructiveDark
-                    : FluxColors.destructive,
+                color: FluxColors.destructiveOf(context),
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -149,11 +155,10 @@ class _SettingsPageState extends State<SettingsPage>
       context: context,
       builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(FluxRadius.sheet)),
-        title: Text(L10n.of(context).settingsClearHistoryTitle),
-        content: Text(
-          L10n.of(context).settingsClearHistoryBody,
+          borderRadius: BorderRadius.circular(FluxRadius.sheet),
         ),
+        title: Text(L10n.of(context).settingsClearHistoryTitle),
+        content: Text(L10n.of(context).settingsClearHistoryBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
@@ -189,9 +194,7 @@ class _SettingsPageState extends State<SettingsPage>
             child: Text(
               L10n.of(context).commonClearAll,
               style: TextStyle(
-                color: FluxColors.isDark(context)
-                    ? FluxColors.destructiveDark
-                    : FluxColors.destructive,
+                color: FluxColors.destructiveOf(context),
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -206,11 +209,10 @@ class _SettingsPageState extends State<SettingsPage>
       context: context,
       builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(FluxRadius.sheet)),
-        title: Text(L10n.of(context).settingsDeleteAllDataTitle),
-        content: Text(
-          L10n.of(context).settingsDeleteAllDataBody,
+          borderRadius: BorderRadius.circular(FluxRadius.sheet),
         ),
+        title: Text(L10n.of(context).settingsDeleteAllDataTitle),
+        content: Text(L10n.of(context).settingsDeleteAllDataBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
@@ -261,7 +263,8 @@ class _SettingsPageState extends State<SettingsPage>
                     SnackBar(
                       content: Text(
                         L10n.of(context).settingsDeleteAllDataPartialFailure(
-                            result.failedItems.join(', ')),
+                          result.failedItems.join(', '),
+                        ),
                       ),
                       behavior: SnackBarBehavior.floating,
                       shape: RoundedRectangleBorder(
@@ -275,9 +278,7 @@ class _SettingsPageState extends State<SettingsPage>
             child: Text(
               L10n.of(context).commonDeleteEverything,
               style: TextStyle(
-                color: FluxColors.isDark(context)
-                    ? FluxColors.destructiveDark
-                    : FluxColors.destructive,
+                color: FluxColors.destructiveOf(context),
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -316,8 +317,9 @@ class _SettingsPageState extends State<SettingsPage>
             final double safeBottom = MediaQuery.paddingOf(context).bottom;
 
             const double pageHorizontalInset = 20;
-            final metrics =
-                FinnPageHeaderMetrics.forHeight(constraints.maxHeight);
+            final metrics = FinnPageHeaderMetrics.forHeight(
+              constraints.maxHeight,
+            );
             const double headerHeight = 34;
             final double headerTop = metrics.headerTop;
             final double initialTitleTop = metrics.initialTitleTop;
@@ -367,11 +369,11 @@ class _SettingsPageState extends State<SettingsPage>
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     _SectionHeader(
-                                        label:
-                                            L10n.of(context).settingsAiModel),
+                                      label: L10n.of(context).settingsAiModel,
+                                    ),
                                     const SizedBox(height: 8),
                                     FluxGlass(
-                                      radius: 20,
+                                      radius: FluxRadius.card,
                                       child: states == null
                                           ? const Padding(
                                               padding: EdgeInsets.symmetric(
@@ -418,6 +420,50 @@ class _SettingsPageState extends State<SettingsPage>
 
                           SliverToBoxAdapter(child: const SizedBox(height: 24)),
 
+                          // ── DEVICE ACTIONS section ──
+                          if (widget.onOpenActions != null) ...[
+                            SliverToBoxAdapter(
+                              child: _SpringSection(
+                                scrollOffset: _scrollOffset,
+                                shiftFn: (offset) => _shiftFor(
+                                  offset,
+                                  downMultiplier: 0.20,
+                                  upMultiplier: 0.20,
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: pageHorizontalInset,
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      _SectionHeader(
+                                        label: L10n.of(
+                                          context,
+                                        ).settingsActionsSection,
+                                      ),
+                                      const SizedBox(height: 8),
+                                      FluxGlass(
+                                        radius: FluxRadius.card,
+                                        child: _ActionRow(
+                                          icon: FluxIcons.magic,
+                                          label: L10n.of(
+                                            context,
+                                          ).settingsActionsRow,
+                                          onTap: widget.onOpenActions!,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                            SliverToBoxAdapter(
+                              child: const SizedBox(height: 24),
+                            ),
+                          ],
+
                           // ── STORAGE & DATA section ──
                           SliverToBoxAdapter(
                             child: _SpringSection(
@@ -435,66 +481,73 @@ class _SettingsPageState extends State<SettingsPage>
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     _SectionHeader(
-                                      label:
-                                          L10n.of(context).settingsStorageData,
+                                      label: L10n.of(
+                                        context,
+                                      ).settingsStorageData,
                                     ),
                                     const SizedBox(height: 8),
                                     FluxGlass(
-                                      radius: 20,
+                                      radius: FluxRadius.card,
                                       child: Column(
                                         children: [
                                           _InfoRow(
                                             icon: FluxIcons.settings,
-                                            label: L10n.of(context)
-                                                .settingsSavedConversationsLabel,
-                                            value: totalChats == 1
-                                                ? L10n.of(context)
-                                                    .settingsSavedConversations(
-                                                        1)
-                                                : L10n.of(context)
-                                                    .settingsSavedConversations(
-                                                        totalChats),
+                                            label: L10n.of(
+                                              context,
+                                            ).settingsSavedConversationsLabel,
+                                            value: L10n.of(context)
+                                                .settingsSavedConversations(
+                                              totalChats,
+                                            ),
                                           ),
                                           Divider(
                                             height: 1,
-                                            color: FluxColors.lineOf(context)
-                                                .withValues(alpha: 0.5),
+                                            color: FluxColors.lineOf(
+                                              context,
+                                            ).withValues(alpha: 0.5),
                                           ),
                                           _DestructiveRow(
                                             icon: FluxIcons.chip,
                                             label: _clearingMemory
-                                                ? L10n.of(context)
-                                                    .settingsReleasingMemory
-                                                : L10n.of(context)
-                                                    .settingsPurgeMemory,
+                                                ? L10n.of(
+                                                    context,
+                                                  ).settingsReleasingMemory
+                                                : L10n.of(
+                                                    context,
+                                                  ).settingsPurgeMemory,
                                             enabled: !_clearingMemory,
                                             loading: _clearingMemory,
                                             onTap: _confirmPurgeMemory,
                                           ),
                                           Divider(
                                             height: 1,
-                                            color: FluxColors.lineOf(context)
-                                                .withValues(alpha: 0.5),
+                                            color: FluxColors.lineOf(
+                                              context,
+                                            ).withValues(alpha: 0.5),
                                           ),
                                           _DestructiveRow(
                                             icon: FluxIcons.refresh,
-                                            label: L10n.of(context)
-                                                .settingsClearHistory,
+                                            label: L10n.of(
+                                              context,
+                                            ).settingsClearHistory,
                                             enabled: totalChats > 0,
                                             onTap: _confirmClearAllChats,
                                           ),
                                           Divider(
                                             height: 1,
-                                            color: FluxColors.lineOf(context)
-                                                .withValues(alpha: 0.5),
+                                            color: FluxColors.lineOf(
+                                              context,
+                                            ).withValues(alpha: 0.5),
                                           ),
                                           _DestructiveRow(
                                             icon: FluxIcons.security,
                                             label: _deletingAllData
-                                                ? L10n.of(context)
-                                                    .settingsDeleteAllDataDeleting
-                                                : L10n.of(context)
-                                                    .settingsDeleteAllData,
+                                                ? L10n.of(
+                                                    context,
+                                                  ).settingsDeleteAllDataDeleting
+                                                : L10n.of(
+                                                    context,
+                                                  ).settingsDeleteAllData,
                                             enabled: !_deletingAllData,
                                             loading: _deletingAllData,
                                             onTap: _confirmDeleteAllData,
@@ -529,12 +582,13 @@ class _SettingsPageState extends State<SettingsPage>
                                         CrossAxisAlignment.start,
                                     children: [
                                       _SectionHeader(
-                                        label: L10n.of(context)
-                                            .settingsSpokenResponses,
+                                        label: L10n.of(
+                                          context,
+                                        ).settingsSpokenResponses,
                                       ),
                                       const SizedBox(height: 8),
                                       FluxGlass(
-                                        radius: 20,
+                                        radius: FluxRadius.card,
                                         child: ListenableBuilder(
                                           listenable:
                                               VoiceSettingsStore.instance,
@@ -545,8 +599,9 @@ class _SettingsPageState extends State<SettingsPage>
                                               children: [
                                                 _SwitchRow(
                                                   icon: FluxIcons.voiceWaveform,
-                                                  label: L10n.of(context)
-                                                      .settingsSpokenResponses,
+                                                  label: L10n.of(
+                                                    context,
+                                                  ).settingsSpokenResponses,
                                                   description: L10n.of(
                                                     context,
                                                   ).settingsSpokenResponsesBody,
@@ -591,18 +646,20 @@ class _SettingsPageState extends State<SettingsPage>
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     _SectionHeader(
-                                      label:
-                                          L10n.of(context).settingsPrivacyLegal,
+                                      label: L10n.of(
+                                        context,
+                                      ).settingsPrivacyLegal,
                                     ),
                                     const SizedBox(height: 8),
                                     FluxGlass(
-                                      radius: 20,
+                                      radius: FluxRadius.card,
                                       child: Column(
                                         children: [
                                           _ActionRow(
                                             icon: FluxIcons.lock,
-                                            label: L10n.of(context)
-                                                .settingsPrivacyPolicy,
+                                            label: L10n.of(
+                                              context,
+                                            ).settingsPrivacyPolicy,
                                             onTap: () async {
                                               if (LegalConfig
                                                   .hasPrivacyPolicyUrl) {
@@ -622,10 +679,12 @@ class _SettingsPageState extends State<SettingsPage>
                                                     ).showSnackBar(
                                                       SnackBar(
                                                         content: Text(
-                                                          L10n.of(context)
-                                                              .settingsPrivacyPolicyLaunchFailed(
-                                                                  LegalConfig
-                                                                      .privacyPolicyUrl),
+                                                          L10n.of(
+                                                            context,
+                                                          ).settingsPrivacyPolicyLaunchFailed(
+                                                            LegalConfig
+                                                                .privacyPolicyUrl,
+                                                          ),
                                                         ),
                                                       ),
                                                     );
@@ -637,8 +696,9 @@ class _SettingsPageState extends State<SettingsPage>
                                                 ).showSnackBar(
                                                   SnackBar(
                                                     content: Text(
-                                                      L10n.of(context)
-                                                          .settingsPrivacyPolicyUnconfigured,
+                                                      L10n.of(
+                                                        context,
+                                                      ).settingsPrivacyPolicyUnconfigured,
                                                     ),
                                                   ),
                                                 );
@@ -647,13 +707,15 @@ class _SettingsPageState extends State<SettingsPage>
                                           ),
                                           Divider(
                                             height: 1,
-                                            color: FluxColors.lineOf(context)
-                                                .withValues(alpha: 0.5),
+                                            color: FluxColors.lineOf(
+                                              context,
+                                            ).withValues(alpha: 0.5),
                                           ),
                                           _ActionRow(
                                             icon: FluxIcons.security,
-                                            label: L10n.of(context)
-                                                .settingsTermsOfUse,
+                                            label: L10n.of(
+                                              context,
+                                            ).settingsTermsOfUse,
                                             onTap: () async {
                                               if (LegalConfig.hasTermsUrl) {
                                                 final uri = Uri.parse(
@@ -672,10 +734,12 @@ class _SettingsPageState extends State<SettingsPage>
                                                     ).showSnackBar(
                                                       SnackBar(
                                                         content: Text(
-                                                          L10n.of(context)
-                                                              .settingsTermsLaunchFailed(
-                                                                  LegalConfig
-                                                                      .termsUrl),
+                                                          L10n.of(
+                                                            context,
+                                                          ).settingsTermsLaunchFailed(
+                                                            LegalConfig
+                                                                .termsUrl,
+                                                          ),
                                                         ),
                                                       ),
                                                     );
@@ -687,8 +751,9 @@ class _SettingsPageState extends State<SettingsPage>
                                                 ).showSnackBar(
                                                   SnackBar(
                                                     content: Text(
-                                                      L10n.of(context)
-                                                          .settingsTermsUnconfigured,
+                                                      L10n.of(
+                                                        context,
+                                                      ).settingsTermsUnconfigured,
                                                     ),
                                                   ),
                                                 );
@@ -697,13 +762,15 @@ class _SettingsPageState extends State<SettingsPage>
                                           ),
                                           Divider(
                                             height: 1,
-                                            color: FluxColors.lineOf(context)
-                                                .withValues(alpha: 0.5),
+                                            color: FluxColors.lineOf(
+                                              context,
+                                            ).withValues(alpha: 0.5),
                                           ),
                                           _ActionRow(
                                             icon: FluxIcons.security,
-                                            label: L10n.of(context)
-                                                .settingsSupportContact,
+                                            label: L10n.of(
+                                              context,
+                                            ).settingsSupportContact,
                                             onTap: () async {
                                               if (LegalConfig.hasSupportEmail) {
                                                 final uri = Uri.parse(
@@ -718,10 +785,12 @@ class _SettingsPageState extends State<SettingsPage>
                                                     ).showSnackBar(
                                                       SnackBar(
                                                         content: Text(
-                                                          L10n.of(context)
-                                                              .settingsSupportEmailLabel(
-                                                                  LegalConfig
-                                                                      .supportEmail),
+                                                          L10n.of(
+                                                            context,
+                                                          ).settingsSupportEmailLabel(
+                                                            LegalConfig
+                                                                .supportEmail,
+                                                          ),
                                                         ),
                                                       ),
                                                     );
@@ -744,10 +813,12 @@ class _SettingsPageState extends State<SettingsPage>
                                                   ).showSnackBar(
                                                     SnackBar(
                                                       content: Text(
-                                                        L10n.of(context)
-                                                            .settingsSupportLaunchFailed(
-                                                                LegalConfig
-                                                                    .supportUrl),
+                                                        L10n.of(
+                                                          context,
+                                                        ).settingsSupportLaunchFailed(
+                                                          LegalConfig
+                                                              .supportUrl,
+                                                        ),
                                                       ),
                                                     ),
                                                   );
@@ -758,8 +829,9 @@ class _SettingsPageState extends State<SettingsPage>
                                                 ).showSnackBar(
                                                   SnackBar(
                                                     content: Text(
-                                                      L10n.of(context)
-                                                          .settingsSupportUnavailable,
+                                                      L10n.of(
+                                                        context,
+                                                      ).settingsSupportUnavailable,
                                                     ),
                                                   ),
                                                 );
@@ -768,17 +840,21 @@ class _SettingsPageState extends State<SettingsPage>
                                           ),
                                           Divider(
                                             height: 1,
-                                            color: FluxColors.lineOf(context)
-                                                .withValues(alpha: 0.5),
+                                            color: FluxColors.lineOf(
+                                              context,
+                                            ).withValues(alpha: 0.5),
                                           ),
                                           _ActionRow(
                                             icon: FluxIcons.leaf,
-                                            label: L10n.of(context)
-                                                .settingsOpenSourceLicenses,
+                                            label: L10n.of(
+                                              context,
+                                            ).settingsOpenSourceLicenses,
                                             onTap: () {
                                               showLicensePage(
                                                 context: context,
-                                                applicationName: 'FinnAI',
+                                                applicationName: L10n.of(
+                                                  context,
+                                                ).appBrandFinnAI,
                                                 applicationVersion: _appVersion,
                                                 applicationLegalese:
                                                     'Created using LFM2.5-VL 1.6B by Liquid AI, Inc. under the LFM Open License v1.0.\n'
@@ -814,53 +890,64 @@ class _SettingsPageState extends State<SettingsPage>
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     _SectionHeader(
-                                        label: L10n.of(context).settingsAbout),
+                                      label: L10n.of(context).settingsAbout,
+                                    ),
                                     const SizedBox(height: 8),
                                     FluxGlass(
-                                      radius: 20,
+                                      radius: FluxRadius.card,
                                       child: Column(
                                         children: [
                                           _InfoRow(
                                             icon: FluxIcons.magic,
-                                            label: L10n.of(context)
-                                                .settingsAppVersion,
+                                            label: L10n.of(
+                                              context,
+                                            ).settingsAppVersion,
                                             value: _appVersion,
                                           ),
                                           Divider(
                                             height: 1,
-                                            color: FluxColors.lineOf(context)
-                                                .withValues(alpha: 0.5),
+                                            color: FluxColors.lineOf(
+                                              context,
+                                            ).withValues(alpha: 0.5),
                                           ),
                                           _InfoRow(
                                             icon: FluxIcons.robot,
-                                            label: L10n.of(context)
-                                                .settingsInferenceEngine,
-                                            value: L10n.of(context)
-                                                .settingsInferenceEngineValue,
+                                            label: L10n.of(
+                                              context,
+                                            ).settingsInferenceEngine,
+                                            value: L10n.of(
+                                              context,
+                                            ).settingsInferenceEngineValue,
                                           ),
                                           Divider(
                                             height: 1,
-                                            color: FluxColors.lineOf(context)
-                                                .withValues(alpha: 0.5),
+                                            color: FluxColors.lineOf(
+                                              context,
+                                            ).withValues(alpha: 0.5),
                                           ),
                                           _InfoRow(
                                             icon: FluxIcons.security,
-                                            label: L10n.of(context)
-                                                .settingsPrivacyMode,
-                                            value: L10n.of(context)
-                                                .settingsPrivacyModeValue,
+                                            label: L10n.of(
+                                              context,
+                                            ).settingsPrivacyMode,
+                                            value: L10n.of(
+                                              context,
+                                            ).settingsPrivacyModeValue,
                                           ),
                                           Divider(
                                             height: 1,
-                                            color: FluxColors.lineOf(context)
-                                                .withValues(alpha: 0.5),
+                                            color: FluxColors.lineOf(
+                                              context,
+                                            ).withValues(alpha: 0.5),
                                           ),
                                           _InfoRow(
                                             icon: FluxIcons.leaf,
-                                            label: L10n.of(context)
-                                                .settingsModelArchitecture,
-                                            value: L10n.of(context)
-                                                .settingsModelArchitectureValue,
+                                            label: L10n.of(
+                                              context,
+                                            ).settingsModelArchitecture,
+                                            value: L10n.of(
+                                              context,
+                                            ).settingsModelArchitectureValue,
                                           ),
                                         ],
                                       ),
@@ -1060,13 +1147,11 @@ class _ModelRow extends StatelessWidget {
 
     final statusColor = downloading
         ? FluxColors.accentBlue
-        : activeAndInstalled
-            ? (isDark ? FluxColors.accentGreenDark : FluxColors.accentGreen)
-            : state.installed
-                ? (isDark ? FluxColors.accentGreenDark : FluxColors.accentGreen)
-                : state.resumable
-                    ? FluxColors.accentAmber
-                    : FluxColors.mutedOf(context);
+        : state.installed
+            ? FluxColors.accentGreenOf(context)
+            : state.resumable
+                ? FluxColors.accentAmber
+                : FluxColors.mutedOf(context);
 
     final transferInfo = [
       if (speedLabel != null) speedLabel,
@@ -1081,9 +1166,9 @@ class _ModelRow extends StatelessWidget {
             width: 38,
             height: 38,
             decoration: BoxDecoration(
-              color: FluxColors.inkOf(context).withValues(
-                alpha: isDark ? 0.08 : 0.05,
-              ),
+              color: FluxColors.inkOf(
+                context,
+              ).withValues(alpha: isDark ? 0.08 : 0.05),
               borderRadius: BorderRadius.circular(FluxRadius.sm),
             ),
             alignment: Alignment.center,
@@ -1199,40 +1284,53 @@ class _InfoRow extends StatelessWidget {
     final isDark = FluxColors.isDark(context);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: FluxColors.inkOf(context).withValues(
-                alpha: isDark ? 0.08 : 0.05,
+      // A long value (or translation) must not squeeze the label to zero width
+      // and overflow the row: the value is capped and both texts ellipsize.
+      child: LayoutBuilder(
+        builder: (context, constraints) => Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: FluxColors.inkOf(
+                  context,
+                ).withValues(alpha: isDark ? 0.08 : 0.05),
+                borderRadius: BorderRadius.circular(FluxRadius.sm),
               ),
-              borderRadius: BorderRadius.circular(FluxRadius.sm),
+              alignment: Alignment.center,
+              child: FluxIcon(
+                icon: icon,
+                size: 17,
+                color: FluxColors.mutedOf(context),
+              ),
             ),
-            alignment: Alignment.center,
-            child: FluxIcon(
-              icon: icon,
-              size: 17,
-              color: FluxColors.mutedOf(context),
+            const SizedBox(width: 13),
+            Expanded(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+              ),
             ),
-          ),
-          const SizedBox(width: 13),
-          Expanded(
-            child: Text(
-              label,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w500,
-                  ),
+            const SizedBox(width: 12),
+            ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: constraints.maxWidth * .6),
+              child: Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.end,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: FluxColors.mutedOf(context),
+                    ),
+              ),
             ),
-          ),
-          Text(
-            value,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: FluxColors.mutedOf(context),
-                ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1265,9 +1363,9 @@ class _ActionRow extends StatelessWidget {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: FluxColors.inkOf(context).withValues(
-                    alpha: isDark ? 0.08 : 0.05,
-                  ),
+                  color: FluxColors.inkOf(
+                    context,
+                  ).withValues(alpha: isDark ? 0.08 : 0.05),
                   borderRadius: BorderRadius.circular(FluxRadius.sm),
                 ),
                 alignment: Alignment.center,
@@ -1281,9 +1379,9 @@ class _ActionRow extends StatelessWidget {
               Expanded(
                 child: Text(
                   label,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w500,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
                 ),
               ),
               FluxIcon(
@@ -1394,9 +1492,9 @@ class _SwitchRow extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: FluxColors.inkOf(context).withValues(
-                alpha: isDark ? 0.08 : 0.05,
-              ),
+              color: FluxColors.inkOf(
+                context,
+              ).withValues(alpha: isDark ? 0.08 : 0.05),
               borderRadius: BorderRadius.circular(FluxRadius.sm),
             ),
             alignment: Alignment.center,
@@ -1413,9 +1511,9 @@ class _SwitchRow extends StatelessWidget {
               children: [
                 Text(
                   label,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w500,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
                 ),
                 const SizedBox(height: 2),
                 Text(
