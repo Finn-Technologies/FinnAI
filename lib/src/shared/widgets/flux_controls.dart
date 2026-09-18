@@ -52,6 +52,17 @@ abstract final class FluxIcons {
   static const education = HugeIcons.strokeRoundedGraduationScroll;
   static const task = HugeIcons.strokeRoundedTask01;
   static const search = HugeIcons.strokeRoundedSearch01;
+  static const alarm = HugeIcons.strokeRoundedAlarmClock;
+  static const timer = HugeIcons.strokeRoundedTimer01;
+  static const flashlight = HugeIcons.strokeRoundedFlashlight;
+  static const volume = HugeIcons.strokeRoundedVolumeHigh;
+  static const wifi = HugeIcons.strokeRoundedWifi01;
+  static const calendar = HugeIcons.strokeRoundedCalendar01;
+  static const navigation = HugeIcons.strokeRoundedNavigation01;
+  static const camera = HugeIcons.strokeRoundedCamera01;
+  static const battery = HugeIcons.strokeRoundedBatteryFull;
+  static const moon = HugeIcons.strokeRoundedMoon02;
+  static const sun = HugeIcons.strokeRoundedSun01;
 }
 
 abstract final class FigmaAssets {
@@ -219,30 +230,51 @@ class FluxIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final enabled = onTap != null;
     final bgColor = dark ? FluxColors.inkOf(context) : Colors.transparent;
     final fgColor =
         dark ? FluxColors.canvasOf(context) : FluxColors.inkOf(context);
 
+    final hit = math.max(48.0, size);
     final button = SizedBox.square(
-      dimension: math.max(48, size),
-      child: Center(
-        child: Material(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(size / 2),
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(24),
-            child: SizedBox.square(
-              dimension: size,
-              child: Center(
-                child: FluxIcon(icon: icon, size: size * .56, color: fgColor),
+      dimension: hit,
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(hit / 2),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(hit / 2),
+          child: Center(
+            child: Material(
+              color: bgColor,
+              borderRadius: BorderRadius.circular(size / 2),
+              child: SizedBox.square(
+                dimension: size,
+                child: Center(
+                  child: FluxIcon(icon: icon, size: size * .56, color: fgColor),
+                ),
               ),
             ),
           ),
         ),
       ),
     );
-    return tooltip == null ? button : Tooltip(message: tooltip!, child: button);
+    final tooltipMessage = tooltip;
+    final labelled = tooltipMessage == null
+        ? button
+        : Tooltip(
+            message: tooltipMessage,
+            excludeFromSemantics: true,
+            child: button,
+          );
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      label: tooltipMessage,
+      onTap: onTap,
+      excludeSemantics: true,
+      child: enabled ? labelled : Opacity(opacity: .4, child: labelled),
+    );
   }
 }
 
@@ -267,31 +299,45 @@ class FluxPillButton extends StatelessWidget {
         : FluxColors.inkOf(context);
     final fgColor = FluxColors.canvasOf(context);
 
-    return Material(
+    final painted = Material(
       color: bgColor,
       borderRadius: BorderRadius.circular(FluxRadius.pill),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(FluxRadius.pill),
-        child: SizedBox(
-          height: compact ? 30 : 36,
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: compact ? 15 : 18),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  label,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.labelMedium?.copyWith(color: fgColor),
-                ),
-                if (icon != null) ...[
-                  const SizedBox(width: 7),
-                  FluxIcon(icon: icon!, size: 14, color: fgColor),
-                ],
+      child: SizedBox(
+        height: compact ? 30 : 36,
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: compact ? 15 : 18),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                style: Theme.of(
+                  context,
+                ).textTheme.labelMedium?.copyWith(color: fgColor),
+              ),
+              if (icon != null) ...[
+                const SizedBox(width: 7),
+                FluxIcon(icon: icon!, size: 14, color: fgColor),
               ],
-            ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(FluxRadius.pill),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(FluxRadius.pill),
+          child: Align(
+            widthFactor: 1,
+            heightFactor: 1,
+            alignment: Alignment.center,
+            child: painted,
           ),
         ),
       ),
@@ -308,6 +354,8 @@ class BackControl extends StatelessWidget {
     return Semantics(
       button: true,
       label: L10n.of(context).commonBack,
+      onTap: onTap,
+      excludeSemantics: true,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(FluxRadius.card),
@@ -476,6 +524,7 @@ class _FluxDisclosureState extends State<FluxDisclosure>
 
   @override
   void dispose() {
+    _factor.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -493,57 +542,77 @@ class _FluxDisclosureState extends State<FluxDisclosure>
           label: _expanded
               ? widget.collapseLabel ?? widget.label
               : widget.expandLabel ?? widget.label,
-          child: InkWell(
-            onTap: _toggle,
-            borderRadius: BorderRadius.circular(FluxRadius.pill),
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(10, 5, 8, 5),
-              decoration: BoxDecoration(
-                color: FluxColors.disclosureOf(context),
+          onTap: _toggle,
+          excludeSemantics: true,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+            child: Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(FluxRadius.pill),
+              child: InkWell(
+                onTap: _toggle,
                 borderRadius: BorderRadius.circular(FluxRadius.pill),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  widget.leading,
-                  const SizedBox(width: 6),
-                  Flexible(
-                    child: Text(
-                      widget.label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                            color: FluxColors.inkOf(context),
-                            fontWeight: FontWeight.w500,
-                            fontSize: 12.5,
-                          ),
+                child: Align(
+                  widthFactor: 1,
+                  heightFactor: 1,
+                  alignment: Alignment.center,
+                  child: Container(
+                    padding: const EdgeInsets.fromLTRB(10, 5, 8, 5),
+                    decoration: BoxDecoration(
+                      color: FluxColors.disclosureOf(context),
+                      borderRadius: BorderRadius.circular(FluxRadius.pill),
                     ),
-                  ),
-                  if (trailing != null) ...[
-                    const SizedBox(width: 4),
-                    Text(
-                      trailing,
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        widget.leading,
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            widget.label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelMedium
+                                ?.copyWith(
+                                  color: FluxColors.inkOf(context),
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 12.5,
+                                ),
+                          ),
+                        ),
+                        if (trailing != null) ...[
+                          const SizedBox(width: 4),
+                          Text(
+                            trailing,
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelMedium
+                                ?.copyWith(
+                                  color: muted,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 12,
+                                ),
+                          ),
+                        ],
+                        const SizedBox(width: 4),
+                        AnimatedRotation(
+                          turns: _expanded ? 0.25 : 0.0,
+                          duration: MediaQuery.disableAnimationsOf(context)
+                              ? Duration.zero
+                              : const Duration(milliseconds: 180),
+                          curve: Curves.easeOutCubic,
+                          child: FluxIcon(
+                            icon: FluxIcons.arrowRight01,
+                            size: 14,
                             color: muted,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 12,
                           ),
-                    ),
-                  ],
-                  const SizedBox(width: 4),
-                  AnimatedRotation(
-                    turns: _expanded ? 0.25 : 0.0,
-                    duration: MediaQuery.disableAnimationsOf(context)
-                        ? Duration.zero
-                        : const Duration(milliseconds: 180),
-                    curve: Curves.easeOutCubic,
-                    child: FluxIcon(
-                      icon: FluxIcons.arrowRight01,
-                      size: 14,
-                      color: muted,
+                        ),
+                      ],
                     ),
                   ),
-                ],
+                ),
               ),
             ),
           ),
@@ -647,15 +716,35 @@ class FluxDisclosureRow extends StatelessWidget {
       ),
     );
 
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 3),
+    final painted = Container(
       decoration: BoxDecoration(
         color: FluxColors.disclosureRowOf(context),
         borderRadius: radius,
       ),
+      child: content,
+    );
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 3),
       child: onTap == null
-          ? content
-          : InkWell(onTap: onTap, borderRadius: radius, child: content),
+          ? painted
+          : ConstrainedBox(
+              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+              child: Material(
+                color: Colors.transparent,
+                borderRadius: radius,
+                child: InkWell(
+                  onTap: onTap,
+                  borderRadius: radius,
+                  child: Align(
+                    widthFactor: 1,
+                    heightFactor: 1,
+                    alignment: Alignment.center,
+                    child: painted,
+                  ),
+                ),
+              ),
+            ),
     );
   }
 }

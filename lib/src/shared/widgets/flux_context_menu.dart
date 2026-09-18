@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'package:finn_ai/l10n/l10n_helper.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
 
@@ -85,22 +86,31 @@ class _FluxSpringPressableState extends State<FluxSpringPressable>
 
   @override
   Widget build(BuildContext context) {
-    if (!widget.enabled) return widget.child;
+    final enabled = widget.enabled;
+    final content = enabled
+        ? GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTapDown: _handleTapDown,
+            onTapUp: _handleTapUp,
+            onTapCancel: _handleTapCancel,
+            onLongPress: _handleLongPress,
+            child: AnimatedBuilder(
+              animation: _scaleAnimation,
+              builder: (context, child) => Transform.scale(
+                scale: _scaleAnimation.value,
+                child: child,
+              ),
+              child: widget.child,
+            ),
+          )
+        : widget.child;
 
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTapDown: _handleTapDown,
-      onTapUp: _handleTapUp,
-      onTapCancel: _handleTapCancel,
-      onLongPress: _handleLongPress,
-      child: AnimatedBuilder(
-        animation: _scaleAnimation,
-        builder: (context, child) => Transform.scale(
-          scale: _scaleAnimation.value,
-          child: child,
-        ),
-        child: widget.child,
-      ),
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      onTap: enabled ? widget.onTap : null,
+      onLongPress: enabled ? widget.onLongPress : null,
+      child: content,
     );
   }
 }
@@ -145,6 +155,7 @@ Future<T?> showFluxContextMenu<T>({
       targetBorderRadius:
           targetBorderRadius ?? BorderRadius.circular(FluxRadius.md),
       isDark: FluxColors.isDark(context),
+      barrierLabel: L10n.of(context).commonDismiss,
     ),
   );
 }
@@ -156,6 +167,7 @@ class _FluxContextMenuRoute<T> extends PopupRoute<T> {
     required this.items,
     required this.targetBorderRadius,
     required this.isDark,
+    required this.barrierLabel,
   });
 
   final Rect targetRect;
@@ -165,13 +177,13 @@ class _FluxContextMenuRoute<T> extends PopupRoute<T> {
   final bool isDark;
 
   @override
+  final String? barrierLabel;
+
+  @override
   Color? get barrierColor => Colors.transparent;
 
   @override
   bool get barrierDismissible => true;
-
-  @override
-  String? get barrierLabel => 'Dismiss menu';
 
   @override
   Duration get transitionDuration => const Duration(milliseconds: 280);
@@ -192,7 +204,7 @@ class _FluxContextMenuRoute<T> extends PopupRoute<T> {
   }
 }
 
-class _FluxContextMenuOverlay extends StatelessWidget {
+class _FluxContextMenuOverlay extends StatefulWidget {
   const _FluxContextMenuOverlay({
     required this.route,
     required this.animation,
@@ -202,27 +214,42 @@ class _FluxContextMenuOverlay extends StatelessWidget {
   final Animation<double> animation;
 
   @override
+  State<_FluxContextMenuOverlay> createState() =>
+      _FluxContextMenuOverlayState();
+}
+
+class _FluxContextMenuOverlayState extends State<_FluxContextMenuOverlay> {
+  late final CurvedAnimation curvedAnimation = CurvedAnimation(
+    parent: widget.animation,
+    curve: Curves.easeOutCubic,
+    reverseCurve: Curves.easeInCubic,
+  );
+
+  late final CurvedAnimation springAnimation = CurvedAnimation(
+    parent: widget.animation,
+    curve: Curves.easeOutBack,
+    reverseCurve: Curves.easeInCubic,
+  );
+
+  late final CurvedAnimation fadeAnimation = CurvedAnimation(
+    parent: widget.animation,
+    curve: const Interval(0.0, 0.65, curve: Curves.easeOut),
+    reverseCurve: Curves.easeInCubic,
+  );
+
+  @override
+  void dispose() {
+    curvedAnimation.dispose();
+    springAnimation.dispose();
+    fadeAnimation.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final route = widget.route;
     final screenSize = MediaQuery.sizeOf(context);
     final isDark = route.isDark;
-
-    final curvedAnimation = CurvedAnimation(
-      parent: animation,
-      curve: Curves.easeOutCubic,
-      reverseCurve: Curves.easeInCubic,
-    );
-
-    final springAnimation = CurvedAnimation(
-      parent: animation,
-      curve: Curves.easeOutBack,
-      reverseCurve: Curves.easeInCubic,
-    );
-
-    final fadeAnimation = CurvedAnimation(
-      parent: animation,
-      curve: const Interval(0.0, 0.65, curve: Curves.easeOut),
-      reverseCurve: Curves.easeInCubic,
-    );
 
     // Calculate layout geometry
     final targetRect = route.targetRect;
@@ -309,7 +336,7 @@ class _FluxContextMenuOverlay extends StatelessWidget {
             top: menuTop,
             width: menuWidth,
             child: AnimatedBuilder(
-              animation: animation,
+              animation: widget.animation,
               builder: (context, child) {
                 final scale = 0.78 + 0.22 * springAnimation.value;
                 final opacity = fadeAnimation.value.clamp(0.0, 1.0);
@@ -417,35 +444,43 @@ class _ContextMenuItemTile extends StatelessWidget {
 
     return Material(
       color: Colors.transparent,
-      child: InkWell(
-        onTap: () {
-          HapticFeedback.selectionClick();
-          Navigator.of(context).pop();
-          item.onTap();
-        },
-        borderRadius: BorderRadius.circular(FluxRadius.sm),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-          child: Row(
-            children: [
-              FluxIcon(
-                icon: item.icon,
-                size: 18,
-                color: iconColor,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  item.label,
-                  style: TextStyle(
-                    fontFamily: 'InstrumentSans',
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                    color: textColor,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 48),
+        child: InkWell(
+          onTap: () {
+            HapticFeedback.selectionClick();
+            Navigator.of(context).pop();
+            item.onTap();
+          },
+          borderRadius: BorderRadius.circular(FluxRadius.sm),
+          child: Align(
+            widthFactor: 1,
+            heightFactor: 1,
+            alignment: Alignment.center,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+              child: Row(
+                children: [
+                  FluxIcon(
+                    icon: item.icon,
+                    size: 18,
+                    color: iconColor,
                   ),
-                ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      item.label,
+                      style: TextStyle(
+                        fontFamily: 'InstrumentSans',
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        color: textColor,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
