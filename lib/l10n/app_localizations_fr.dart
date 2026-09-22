@@ -234,6 +234,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get chatSources => 'Sources';
 
   @override
+  String get chatHistoryUnavailableNotice =>
+      'Finn n\'a pas pu ouvrir votre historique de discussion sur cet appareil, les nouvelles réponses ne seront pas enregistrées.';
+
+  @override
   String get chatOfflineNotice =>
       'Hors ligne — la réponse peut être moins précise. Connectez-vous pour obtenir des sources citées.';
 

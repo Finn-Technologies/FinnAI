@@ -6,6 +6,7 @@ import 'package:finn_ai/src/features/creations/creation_prompts.dart';
 import 'package:finn_ai/src/features/creations/json_salvage.dart';
 import 'package:finn_ai/src/features/creations/spec/deck_spec.dart';
 import 'package:finn_ai/src/features/creations/spec/mini_app_spec.dart';
+import 'package:finn_ai/src/features/creations/spec/spec_repair.dart';
 import 'package:finn_ai/src/features/creations/spec/spec_validator.dart';
 import 'package:finn_ai/src/features/creations/spec/widget_spec.dart';
 import 'package:finn_ai/src/inference/finn_inference.dart';
@@ -173,7 +174,17 @@ class FinnCreationGenerator
     )) {
       output.write(token);
     }
-    return output.toString();
+    final raw = output.toString();
+    if (!kReleaseMode) {
+      // Debug/profile only. Telling a bad prompt apart from a bad parse needs
+      // the text the model actually produced, and that must never reach a
+      // production log.
+      debugPrint(
+        'FINN_CREATION_RAW chars=${raw.length} '
+        'head=${raw.length > 400 ? raw.substring(0, 400) : raw}',
+      );
+    }
+    return raw;
   }
 
   ({CreationOutcome? outcome, List<SpecIssue> issues}) _evaluate(
@@ -193,11 +204,31 @@ class FinnCreationGenerator
     }
 
     onStage(CreationStage.validating);
-    final issues = switch (kind) {
+    var issues = switch (kind) {
       CreationKind.app => SpecValidator.validateMiniApp(decoded),
       CreationKind.widget => SpecValidator.validateHomeWidget(decoded),
       CreationKind.presentation => SpecValidator.validateDeck(decoded),
     };
+
+    // Before spending a repair round re-asking, drop any node that displays a
+    // key nothing writes and see whether the remainder is usable. The validator
+    // still decides: this pass is only accepted when it produces zero issues.
+    if (issues.isNotEmpty && kind == CreationKind.app) {
+      final pruned = pruneUnwiredNodes(decoded);
+      if (pruned != null && SpecValidator.validateMiniApp(pruned).isEmpty) {
+        debugPrint('FINN_CREATION pruned unwired node(s) instead of repairing');
+        return (
+          outcome: CreationOutcome(
+            title: _titleFrom(pruned, prompt),
+            summary: _summaryFrom(pruned),
+            artifact: MiniAppArtifact(MiniAppSpec.fromJson(pruned)),
+            usedFallback: false,
+          ),
+          issues: const <SpecIssue>[],
+        );
+      }
+    }
+
     if (issues.isNotEmpty) return (outcome: null, issues: issues);
 
     try {

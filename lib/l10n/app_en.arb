@@ -302,6 +302,10 @@
   "@chatSources": {
     "description": "Sources heading"
   },
+  "chatHistoryUnavailableNotice": "Finn couldn't open your chat history on this device, so new replies won't be saved.",
+  "@chatHistoryUnavailableNotice": {
+    "description": "Shown in the chat when the saved history file cannot be opened, so replies are kept in memory only for this session."
+  },
   "chatOfflineNotice": "Offline — answer may be less accurate. Connect for cited sources.",
   "@chatOfflineNotice": {
     "description": "Offline notice"

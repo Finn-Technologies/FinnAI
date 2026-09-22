@@ -80,6 +80,17 @@ void main() {
       );
     });
 
+    // The pill looks like one big input. On device the bare field measured only
+    // 20dp tall inside a 56dp pill, so most of the visible input was inert and
+    // tapping it did nothing — the field itself has to carry the target.
+    testWidgets('the text field is at least 48dp tall', (tester) async {
+      _useMobileSize(tester);
+      await _pumpComposer(tester, voiceEnabled: true, browse: true);
+
+      expect(tester.getSize(find.byType(TextField)).height,
+          greaterThanOrEqualTo(48));
+    });
+
     testWidgets('a busy composer swaps send and mic for a full-size stop', (
       tester,
     ) async {

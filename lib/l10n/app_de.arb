@@ -302,6 +302,10 @@
   "@chatSources": {
     "description": "Sources heading"
   },
+  "chatHistoryUnavailableNotice": "Finn konnte deinen Chatverlauf auf diesem Gerät nicht öffnen, neue Antworten werden nicht gespeichert.",
+  "@chatHistoryUnavailableNotice": {
+    "description": "Wird im Chat angezeigt, wenn die gespeicherte Verlaufsdatei nicht geöffnet werden kann; Antworten bleiben nur für diese Sitzung im Speicher."
+  },
   "chatOfflineNotice": "Offline — die Antwort ist möglicherweise weniger genau. Stelle eine Verbindung her, um Quellen zu erhalten.",
   "@chatOfflineNotice": {
     "description": "Offline notice"

@@ -381,6 +381,29 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    // On device this pill is the most obvious way in — it sits where the chat
+    // composer sits and is the only control above the fold once the gallery has
+    // a few tiles, because "New creation" scrolls out of view. Tapping it must
+    // open the kind picker.
+    testWidgets('the composer attachment button opens the kind picker', (
+      tester,
+    ) async {
+      await store.save([
+        _creation(id: 'a', title: 'Flappy Bird', artifact: _appArtifact),
+      ]);
+      await pumpPage(tester, generator: FakeGenerator(artifact: _appArtifact));
+
+      await tester.tap(
+        find.byKey(const ValueKey('add-attachment-button')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('App'), findsOneWidget);
+      expect(find.text('Widget'), findsOneWidget);
+      expect(find.text('Presentation'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('the builder offers a way back to the saved creations', (
       tester,
     ) async {

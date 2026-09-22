@@ -302,6 +302,10 @@
   "@chatSources": {
     "description": "Sources heading"
   },
+  "chatHistoryUnavailableNotice": "Finn no ha podido abrir tu historial de chat en este dispositivo, así que las nuevas respuestas no se guardarán.",
+  "@chatHistoryUnavailableNotice": {
+    "description": "Se muestra en el chat cuando no se puede abrir el archivo de historial guardado, así que las respuestas solo se mantienen en memoria durante esta sesión."
+  },
   "chatOfflineNotice": "Sin conexión: la respuesta puede ser menos precisa. Conéctate para obtener fuentes citadas.",
   "@chatOfflineNotice": {
     "description": "Offline notice"

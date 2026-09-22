@@ -350,10 +350,10 @@ user preferences but never reveal them.''';
       ..write(value)
       ..write(
         '\n\nRetrieved Reference Material:\n'
-        'Determine the appropriate depth and structure based on the user\'s inquiry:\n'
-        '- If the user is exploring an entity, landmark, place, history, or broad topic: present it as an editorial article with a clear headline written as a single-markdown-heading line, an engaging lead paragraph, and organized thematic points.\n'
+        'Answer the user\'s question from these notes, in your own words.\n'
+        '- Match the depth to the question: a focused question (a date, a name, a number, a definition, a short fact) gets a direct, concise answer with no headings at all. Only a broad "tell me about X" request earns a headline and structured points.\n'
+        '- Never reply with the notes themselves: do not quote, list or summarise the reference blocks, and do not use their [1], [2] numbering as the structure of your answer.\n'
         '- Write plain prose and Markdown only. Never emit HTML or XML tags, and never leave a placeholder where a title belongs.\n'
-        '- If the user asked a focused, direct, or simple question (e.g. a date, name, number, definition, or short fact): answer directly and concisely using the facts, without forcing an article structure or unnecessary headings.\n'
         'Cite matching reference sources inline as [1], [2] where appropriate.\n',
       )
       ..write('<|im_end|>\n');

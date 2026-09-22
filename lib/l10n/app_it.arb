@@ -302,6 +302,10 @@
   "@chatSources": {
     "description": "Sources heading"
   },
+  "chatHistoryUnavailableNotice": "Finn non ha potuto aprire la cronologia delle chat su questo dispositivo, quindi le nuove risposte non verranno salvate.",
+  "@chatHistoryUnavailableNotice": {
+    "description": "Mostrato nella chat quando il file della cronologia salvata non può essere aperto, quindi le risposte restano in memoria solo per questa sessione."
+  },
   "chatOfflineNotice": "Offline — la risposta potrebbe essere meno precisa. Connettiti per ottenere fonti citate.",
   "@chatOfflineNotice": {
     "description": "Offline notice"

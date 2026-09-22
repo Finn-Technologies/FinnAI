@@ -231,6 +231,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get chatSources => 'Quellen';
 
   @override
+  String get chatHistoryUnavailableNotice =>
+      'Finn konnte deinen Chatverlauf auf diesem Gerät nicht öffnen, neue Antworten werden nicht gespeichert.';
+
+  @override
   String get chatOfflineNotice =>
       'Offline — die Antwort ist möglicherweise weniger genau. Stelle eine Verbindung her, um Quellen zu erhalten.';
 

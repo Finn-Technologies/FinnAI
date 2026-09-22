@@ -25,19 +25,34 @@ abstract final class CreationPrompts {
         'Reply with one JSON object and nothing else.',
       )
       ..writeln()
-      ..writeln('Brief: "$brief"')
-      ..writeln()
       ..write(instruction)
       ..writeln();
     if (repairIssues != null && repairIssues.trim().isNotEmpty) {
       buffer
         ..writeln('That JSON was rejected for these reasons:')
         ..writeln(repairIssues.trim())
-        ..writeln()
-        ..writeln('Return the corrected JSON object only.');
-    } else {
-      buffer.writeln('Return only the JSON object.');
+        ..writeln();
     }
+    // The Brief comes last, after the Example. A 1.6B model continues from
+    // whatever it read most recently, so ending on the shape reference made it
+    // emit the reference's own nodes: a "habit tracker" brief came back as the
+    // example counter, twice. Closing on the Brief, with the ban on reusing the
+    // Example made explicit, is what keeps the output about the request.
+    buffer
+      ..writeln(
+        'Now design the ${kind.label.toLowerCase()} described by this Brief. '
+        'Do not reuse anything from the Example above — not its title, labels, '
+        'keys, values or wording. The Example only shows the JSON structure.',
+      )
+      ..writeln()
+      ..writeln('Brief: "$brief"')
+      ..writeln()
+      ..writeln(
+        repairIssues != null && repairIssues.trim().isNotEmpty
+            ? 'Return the corrected JSON object for this Brief only, '
+                'and nothing else.'
+            : 'Return the JSON object for this Brief only, and nothing else.',
+      );
     return buffer.toString();
   }
 
@@ -76,10 +91,17 @@ Rules:
 - A "slider" needs max greater than min. A "progress" needs max greater than 0. A "spacer" size is 0 to 200.
 - An "image" needs either an "emoji" or an "https" url.
 - Expressions use only + - * / % ( ) and whole numbers. No words, no functions.
-- Every {key} you display must also be set by a field, toggle, slider, choice or action.
+- Wiring: a "text" containing {key}, a "list" and a "progress" all DISPLAY a stored
+  key, and the JSON may not display anything it cannot change. Every displayed key
+  must be written somewhere in the same JSON by a
+  "field", "toggle", "slider", "choice", or a button action.
+  A "list" is written only by an "append" action, so a list always needs a button
+  like {"type":"button","label":"Add","action":{"kind":"append","key":"items","value":"New"}}.
+  A "progress" is written only by "set"/"increment" on its key. If nothing writes
+  the key, do not use that node at all.
 - These node types are the complete set. Do not invent others.
 
-Example:
+Example (structure only — never reuse its content):
 {"title":"Tap Counter","summary":"Counts taps.","accent":"mint","nodes":[{"type":"text","value":"Taps: {count}","style":"title"},{"type":"progress","bind":"count","max":10},{"type":"button","label":"Tap","action":{"kind":"set","key":"count","expr":"count + 1"}},{"type":"button","label":"Clear","action":{"kind":"reset"}}]}''';
 
   static String get _widgetInstruction => '''
@@ -95,7 +117,7 @@ Rules:
 - "accent" is exactly one of these words, on its own: ${SpecLimits.accentNames}.
 - No buttons and no actions. The whole widget opens the app when tapped.
 
-Example:
+Example (structure only — never reuse its content):
 {"title":"Hydration","summary":"Tracks glasses of water.","accent":"sky","rows":[{"label":"Glasses","value":"3"},{"label":"Goal","value":"8"}],"footer":"Tap to open"}''';
 
   static String get _deckInstruction => '''
@@ -108,6 +130,6 @@ Rules:
 - The first slide introduces the topic. The last slide closes it.
 - Bullets are short phrases, not sentences.
 
-Example:
+Example (structure only — never reuse its content):
 {"title":"Quarterly Review","summary":"A short review deck.","slides":[{"title":"Quarterly Review","bullets":["Revenue and churn","What changed"],"notes":"Welcome everyone."},{"title":"What Changed","bullets":["Revenue up 12%","Churn down to 3%"],"notes":"Lead with growth."}]}''';
 }

@@ -127,6 +127,12 @@ class _HomeShellState extends State<HomeShell>
   /// [FinnInference.lastSearchFailed]; the notice is shown for either.
   bool _upfrontSearchFailed = false;
 
+  /// True when the conversation store could not be opened, so replies only
+  /// live in memory. The chat still works; the notice says why history is not
+  /// being kept.
+  bool _historyUnavailable = false;
+  bool _dismissedHistoryNotice = false;
+
   /// True when the user asked Finn to browse the web for the next turn.
   bool _browseEnabled = false;
 
@@ -435,18 +441,51 @@ class _HomeShellState extends State<HomeShell>
   }
 
   Future<void> _initializeStores() async {
+    final started = DateTime.now();
+    // This future is what unlocks the composer, so a store that throws must
+    // not be allowed to leave the field permanently disabled with no
+    // explanation: each initializer is isolated, the gate is always released,
+    // and a failure is reported instead of swallowed.
+    final failed = <String>[];
+    Future<void> guard(String name, Future<void> Function() initialize) async {
+      try {
+        await initialize();
+      } catch (error, stack) {
+        failed.add(name);
+        debugPrint('FINN_STORES_ERROR $name $error');
+        FlutterError.reportError(
+          FlutterErrorDetails(
+            exception: error,
+            stack: stack,
+            library: 'finn stores',
+            context: ErrorDescription('initializing the $name store'),
+          ),
+        );
+      }
+    }
+
     await Future.wait([
-      _conversations.initialize(),
-      YouProfileStore.instance.initialize(),
-      SkillsStore.instance.initialize(),
-      VoiceSettingsStore.instance.initialize(),
+      guard('conversations', _conversations.initialize),
+      guard('you', YouProfileStore.instance.initialize),
+      guard('skills', SkillsStore.instance.initialize),
+      guard('voice', VoiceSettingsStore.instance.initialize),
     ]);
+    debugPrint(
+      'FINN_STORES_READY ms=${DateTime.now().difference(started).inMilliseconds} '
+      'failed=${failed.isEmpty ? 'none' : failed.join(',')}',
+    );
     if (!mounted) return;
     // Every cold start lands on the welcome slate instead of dropping the
     // user back into the last conversation. History stays in the sidebar;
     // tapping a past chat re-activates it.
     _conversations.clearActive();
-    setState(() => _storesReady = true);
+    setState(() {
+      _storesReady = true;
+      // Chatting still works when the history file cannot be opened — replies
+      // just live in memory — but the user has to be told that.
+      _historyUnavailable =
+          failed.contains('conversations') || _conversations.storageError;
+    });
     _schedulePrewarm();
   }
 
@@ -1221,6 +1260,10 @@ class _HomeShellState extends State<HomeShell>
                             !_generation.busy,
                         onDismissSearchNotice: () =>
                             setState(() => _dismissedSearchNotice = true),
+                        historyUnavailable:
+                            _historyUnavailable && !_dismissedHistoryNotice,
+                        onDismissHistoryNotice: () =>
+                            setState(() => _dismissedHistoryNotice = true),
                       ),
                     ),
                     // 4. Header and composer are the topmost layers: crisp over
@@ -1629,6 +1672,8 @@ class _Conversation extends StatefulWidget {
     required this.scrollController,
     this.searchFailed = false,
     this.onDismissSearchNotice,
+    this.historyUnavailable = false,
+    this.onDismissHistoryNotice,
   });
   final List<ConversationMessage> messages;
   final String? activeConversationId;
@@ -1644,6 +1689,11 @@ class _Conversation extends StatefulWidget {
   final ValueChanged<String> onSuggestion;
   final ValueChanged<String> onOpenConversation;
   final bool preparing;
+
+  /// True when the conversation store could not be opened, so the notice
+  /// explaining that history is not being kept should be shown.
+  final bool historyUnavailable;
+  final VoidCallback? onDismissHistoryNotice;
 
   /// Advances each time the home screen opens so the welcome slate shows a
   /// fresh "Try asking" suggestion set.
@@ -1843,6 +1893,12 @@ class _ConversationState extends State<_Conversation> {
                   if (widget.searchFailed) ...[
                     _OfflineSearchNotice(
                       onDismiss: widget.onDismissSearchNotice,
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+                  if (widget.historyUnavailable) ...[
+                    _HistoryUnavailableNotice(
+                      onDismiss: widget.onDismissHistoryNotice,
                     ),
                     const SizedBox(height: 10),
                   ],
@@ -2520,6 +2576,49 @@ class _OfflineSearchNotice extends StatelessWidget {
             Expanded(
               child: Text(
                 L10n.of(context).chatOfflineNotice,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: FluxColors.mutedOf(context),
+                    ),
+              ),
+            ),
+            if (onDismiss != null)
+              _ReplyActionButton(
+                icon: FluxIcons.close,
+                tooltip: L10n.of(context).commonDismiss,
+                onTap: onDismiss!,
+              ),
+          ],
+        ),
+      );
+}
+
+/// Shown when the conversation file could not be opened, so replies are only
+/// kept in memory. Chatting is still possible — this notice exists so a silent
+/// loss of history never happens.
+class _HistoryUnavailableNotice extends StatelessWidget {
+  const _HistoryUnavailableNotice({this.onDismiss});
+
+  final VoidCallback? onDismiss;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.fromLTRB(13, 10, 6, 10),
+        decoration: BoxDecoration(
+          color: FluxColors.cardOf(context).withValues(alpha: .78),
+          borderRadius: BorderRadius.circular(FluxRadius.md),
+          border: Border.all(color: FluxColors.lineOf(context)),
+        ),
+        child: Row(
+          children: [
+            FluxIcon(
+              icon: FluxIcons.info,
+              size: 16,
+              color: FluxColors.mutedOf(context),
+            ),
+            const SizedBox(width: 9),
+            Expanded(
+              child: Text(
+                L10n.of(context).chatHistoryUnavailableNotice,
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
                       color: FluxColors.mutedOf(context),
                     ),
@@ -3526,33 +3625,44 @@ class _ChatComposerState extends State<ChatComposer> {
                 ),
                 const SizedBox(width: 4),
                 Expanded(
+                  // The pill reads as one big input, so every pixel of it has to
+                  // be tappable. A bare single-line TextField is only as tall as
+                  // its text (measured on device: 20dp inside a 56dp pill),
+                  // which left most of the visible field inert — tapping it
+                  // usually did nothing at all.
                   child: Semantics(
                     label: L10n.of(context).chatMessageToFinnSemantic,
                     textField: true,
-                    child: TextField(
-                      controller: widget.controller,
-                      focusNode: widget.focusNode,
-                      inputFormatters: [LengthLimitingTextInputFormatter(4000)],
-                      enabled: !widget.blocked,
-                      minLines: 1,
-                      maxLines: 5,
-                      keyboardType: TextInputType.multiline,
-                      textInputAction: TextInputAction.send,
-                      onSubmitted: (_) => canSend ? widget.onSend() : null,
-                      onTap: () => widget.onReturnToLatest?.call(),
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: FluxColors.inkOf(context),
-                          ),
-                      cursorColor: FluxColors.inkOf(context),
-                      decoration: InputDecoration.collapsed(
-                        hintText: widget.hintText ??
-                            (widget.preparing
-                                ? L10n.of(context).chatFinnTyping
-                                : L10n.of(context).chatAskAnythingHint),
-                        hintStyle: Theme.of(context)
-                            .textTheme
-                            .bodyMedium
-                            ?.copyWith(color: FluxColors.mutedOf(context)),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(minHeight: 48),
+                      child: TextField(
+                        controller: widget.controller,
+                        focusNode: widget.focusNode,
+                        inputFormatters: [
+                          LengthLimitingTextInputFormatter(4000)
+                        ],
+                        enabled: !widget.blocked,
+                        minLines: 1,
+                        maxLines: 5,
+                        textAlignVertical: TextAlignVertical.center,
+                        keyboardType: TextInputType.multiline,
+                        textInputAction: TextInputAction.send,
+                        onSubmitted: (_) => canSend ? widget.onSend() : null,
+                        onTap: () => widget.onReturnToLatest?.call(),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: FluxColors.inkOf(context),
+                            ),
+                        cursorColor: FluxColors.inkOf(context),
+                        decoration: InputDecoration.collapsed(
+                          hintText: widget.hintText ??
+                              (widget.preparing
+                                  ? L10n.of(context).chatFinnTyping
+                                  : L10n.of(context).chatAskAnythingHint),
+                          hintStyle: Theme.of(context)
+                              .textTheme
+                              .bodyMedium
+                              ?.copyWith(color: FluxColors.mutedOf(context)),
+                        ),
                       ),
                     ),
                   ),

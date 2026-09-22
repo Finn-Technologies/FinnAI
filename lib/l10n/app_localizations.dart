@@ -506,6 +506,12 @@ abstract class AppLocalizations {
   /// **'Sources'**
   String get chatSources;
 
+  /// Shown in the chat when the saved history file cannot be opened, so replies are kept in memory only for this session.
+  ///
+  /// In en, this message translates to:
+  /// **'Finn couldn\'t open your chat history on this device, so new replies won\'t be saved.'**
+  String get chatHistoryUnavailableNotice;
+
   /// Offline notice
   ///
   /// In en, this message translates to:
