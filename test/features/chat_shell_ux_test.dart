@@ -82,13 +82,77 @@ void main() {
 
     // The pill looks like one big input. On device the bare field measured only
     // 20dp tall inside a 56dp pill, so most of the visible input was inert and
-    // tapping it did nothing — the field itself has to carry the target.
-    testWidgets('the text field is at least 48dp tall', (tester) async {
+    // tapping it did nothing. The band carries the 48dp target instead of the
+    // field, because a 48dp field pushes the placeholder off the midline.
+    testWidgets('the field band carries a 48dp target', (tester) async {
       _useMobileSize(tester);
       await _pumpComposer(tester, voiceEnabled: true, browse: true);
 
-      expect(tester.getSize(find.byType(TextField)).height,
-          greaterThanOrEqualTo(48));
+      final band = find.byKey(const ValueKey('composer-field-band'));
+      expect(tester.getSize(band).height, greaterThanOrEqualTo(48));
+      expect(
+        tester.getSize(band).width,
+        tester.getSize(find.byType(TextField)).width,
+        reason: 'the tappable band covers the field, edge to edge',
+      );
+      // The field itself stays natural-height: the band is the target.
+      expect(tester.getSize(find.byType(TextField)).height, lessThan(48));
+    });
+
+    // "Ask anything" sits on the pill's midline. Stretching the field to 48dp
+    // put it 12dp above that line, because the decorator lays the placeholder
+    // out from the top of whatever box it is given.
+    testWidgets('the placeholder sits on the pill midline', (tester) async {
+      _useMobileSize(tester);
+      await _pumpComposer(tester, voiceEnabled: true, browse: true);
+
+      final pill = find.byKey(const ValueKey('chat-composer-motion'));
+      expect(
+        tester.getCenter(find.text('Ask anything')).dy,
+        closeTo(tester.getCenter(pill).dy, 1.0),
+      );
+
+      // The draft the placeholder becomes keeps that line: the field box is
+      // centred in the band, so a one-line draft sits on the midline too.
+      await tester.enterText(find.byType(TextField), 'Draft a short email');
+      await tester.pump();
+      expect(
+        tester.getCenter(find.byType(TextField)).dy,
+        closeTo(tester.getCenter(pill).dy, 1.0),
+      );
+    });
+
+    // A placeholder long enough to wrap must not inflate the pill — it is one
+    // line in every locale, ellipsised when the pill is narrow.
+    testWidgets('a long hint stays on one line', (tester) async {
+      _useMobileSize(tester);
+      await _pumpComposer(
+        tester,
+        hintText: 'Ask Finn anything at all about this phone',
+      );
+
+      expect(tester.getSize(find.byType(TextField)).height, lessThan(48));
+      expect(
+        tester
+            .getSize(find.byKey(const ValueKey('chat-composer-motion')))
+            .height,
+        56,
+      );
+    });
+
+    testWidgets('tapping the band focuses the field', (tester) async {
+      _useMobileSize(tester);
+      await _pumpComposer(tester, voiceEnabled: true, browse: true);
+
+      final band = find.byKey(const ValueKey('composer-field-band'));
+      final rect = tester.getRect(band);
+      // A point inside the band but clear of the field's own text line.
+      await tester.tapAt(Offset(rect.center.dx, rect.top + 2));
+      await tester.pump();
+
+      expect(
+          tester.widget<TextField>(find.byType(TextField)).focusNode?.hasFocus,
+          isTrue);
     });
 
     testWidgets('a busy composer swaps send and mic for a full-size stop', (
@@ -367,6 +431,7 @@ Future<void> _pumpComposer(
   bool busy = false,
   bool voiceEnabled = false,
   bool browse = false,
+  String? hintText,
   String text = '',
 }) async {
   final controller = TextEditingController(text: text);
@@ -386,6 +451,7 @@ Future<void> _pumpComposer(
           onStop: () {},
           onMic: () {},
           voiceEnabled: voiceEnabled,
+          hintText: hintText,
           onToggleBrowse: browse ? () {} : null,
         ),
       ),

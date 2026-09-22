@@ -3625,43 +3625,65 @@ class _ChatComposerState extends State<ChatComposer> {
                 ),
                 const SizedBox(width: 4),
                 Expanded(
-                  // The pill reads as one big input, so every pixel of it has to
-                  // be tappable. A bare single-line TextField is only as tall as
+                  // The pill reads as one big input, so the whole row focuses
+                  // the field: a bare single-line TextField is only as tall as
                   // its text (measured on device: 20dp inside a 56dp pill),
-                  // which left most of the visible field inert — tapping it
-                  // usually did nothing at all.
+                  // which left most of the visible field inert. The band
+                  // carries the 48dp target and the field keeps its natural
+                  // height, centred inside it — stretched to the band, the
+                  // decorator lays the placeholder and the caret out from the
+                  // top of the box, measured 12dp above the pill's midline.
                   child: Semantics(
                     label: L10n.of(context).chatMessageToFinnSemantic,
                     textField: true,
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(minHeight: 48),
-                      child: TextField(
-                        controller: widget.controller,
-                        focusNode: widget.focusNode,
-                        inputFormatters: [
-                          LengthLimitingTextInputFormatter(4000)
-                        ],
-                        enabled: !widget.blocked,
-                        minLines: 1,
-                        maxLines: 5,
-                        textAlignVertical: TextAlignVertical.center,
-                        keyboardType: TextInputType.multiline,
-                        textInputAction: TextInputAction.send,
-                        onSubmitted: (_) => canSend ? widget.onSend() : null,
-                        onTap: () => widget.onReturnToLatest?.call(),
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: FluxColors.inkOf(context),
+                    child: GestureDetector(
+                      key: const ValueKey('composer-field-band'),
+                      behavior: HitTestBehavior.opaque,
+                      // The band is a touch target, not a second control: the
+                      // field keeps its own semantics, so a screen reader
+                      // still reads exactly one text field here.
+                      excludeFromSemantics: true,
+                      onTap: () => widget.focusNode.requestFocus(),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(minHeight: 48),
+                        child: Center(
+                          child: TextField(
+                            controller: widget.controller,
+                            focusNode: widget.focusNode,
+                            inputFormatters: [
+                              LengthLimitingTextInputFormatter(4000)
+                            ],
+                            enabled: !widget.blocked,
+                            minLines: 1,
+                            maxLines: 5,
+                            textAlignVertical: TextAlignVertical.center,
+                            keyboardType: TextInputType.multiline,
+                            textInputAction: TextInputAction.send,
+                            onSubmitted: (_) =>
+                                canSend ? widget.onSend() : null,
+                            onTap: () => widget.onReturnToLatest?.call(),
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(color: FluxColors.inkOf(context)),
+                            cursorColor: FluxColors.inkOf(context),
+                            decoration: InputDecoration.collapsed(
+                              hintText: widget.hintText ??
+                                  (widget.preparing
+                                      ? L10n.of(context).chatFinnTyping
+                                      : L10n.of(context).chatAskAnythingHint),
+                              // One line, always. A wrapped hint stretches the
+                              // field — and with it the pill — on narrow
+                              // screens and in the longer locales.
+                              hintMaxLines: 1,
+                              hintStyle: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(
+                                    color: FluxColors.mutedOf(context),
+                                  ),
                             ),
-                        cursorColor: FluxColors.inkOf(context),
-                        decoration: InputDecoration.collapsed(
-                          hintText: widget.hintText ??
-                              (widget.preparing
-                                  ? L10n.of(context).chatFinnTyping
-                                  : L10n.of(context).chatAskAnythingHint),
-                          hintStyle: Theme.of(context)
-                              .textTheme
-                              .bodyMedium
-                              ?.copyWith(color: FluxColors.mutedOf(context)),
+                          ),
                         ),
                       ),
                     ),
