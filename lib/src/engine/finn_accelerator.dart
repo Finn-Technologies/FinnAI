@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:finn_ai/src/engine/backends/llama_shim.dart';
 import 'package:finn_ai/src/engine/prompt/bare_tool_call_filter.dart';
 import 'package:finn_ai/src/engine/prompt/prompt_formatter.dart';
+import 'package:finn_ai/src/engine/prompt/tool_tag_filter.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'package:finn_ai/src/engine/profiler/device_profile.dart';
@@ -1118,8 +1119,11 @@ class FinnAccelerator extends ChangeNotifier {
     // Tool-call JSON that arrives without its <tool_call> wrapper is not prose
     // and must never reach the user; see [BareToolCallFilter].
     final toolCalls = BareToolCallFilter();
+    // Tool tags themselves are dropped here so a tag that the model streams in
+    // pieces cannot leak a fragment; see [ToolTagFilter].
+    final toolTags = ToolTagFilter();
 
-    String visible(String text) => toolCalls.add(_stripToolTags(text));
+    String visible(String text) => toolCalls.add(toolTags.add(text));
 
     await for (final token in source) {
       if (decided) {
@@ -1166,16 +1170,15 @@ class FinnAccelerator extends ChangeNotifier {
         yield sanitized;
       }
     }
-    final tail = toolCalls.flush();
+    // Close the filters in feed order: text passes through the tag filter and
+    // then the bare-call filter, so anything the tag filter releases still has
+    // to clear the call filter before it can be shown.
+    final tail = toolCalls.add(toolTags.flush()) + toolCalls.flush();
     if (tail.isNotEmpty) {
       trace?.mark(TtftPhase.sanitizedToken);
       yield tail;
     }
   }
-
-  static String _stripToolTags(String text) => text
-      .replaceAll(RegExp(r'</?tool_call>', caseSensitive: false), '')
-      .replaceAll(RegExp(r'</?tool_response>', caseSensitive: false), '');
 
   /// Runs the model-driven tool-calling pass. The AI model itself evaluates
   /// whether to call the browser_search tool. When a tool call is emitted,
@@ -1433,27 +1436,31 @@ class FinnAccelerator extends ChangeNotifier {
           _throwIfGenerationCancelled(generationEpoch);
           final entry = prepared.entry;
           final session = entry.session;
-          // Collect ALL image attachments in history window + prefer in-memory bytes.
-          final allImageTurns = history
-              .where((t) =>
-                  (t.imagePath != null && t.imagePath!.isNotEmpty) ||
-                  t.imageBytes != null)
-              .toList(growable: false);
+          // Only the newest attachment is fed back as media, and the current
+          // turn's own attachment always wins. When this turn has no
+          // attachment, the newest earlier image is reused so a follow-up
+          // about a photo still has its pixels after a session reset.
+          //
+          // Re-sending *every* historic image was what broke documents:
+          // attaching a file after a photo left the old picture in front of
+          // the model as media (with a media marker immediately before the
+          // prompt), and a 1.6B model answered about the picture and ignored
+          // the file it had just been handed.
+          final latestAttachment = newestAttachmentTurn(history);
           final candidatePaths = <String>[];
           final candidateBytes = <Uint8List?>[];
-          for (final turn in allImageTurns) {
-            if (turn.imageBytes != null) {
-              candidatePaths.add(turn.imagePath ?? 'memory');
-              candidateBytes.add(turn.imageBytes);
-            } else if (turn.imagePath != null) {
-              candidatePaths.add(turn.imagePath!);
+          if (latestAttachment != null) {
+            if (latestAttachment.imageBytes != null) {
+              candidatePaths.add(latestAttachment.imagePath ?? 'memory');
+              candidateBytes.add(latestAttachment.imageBytes);
+            } else if (latestAttachment.imagePath != null) {
+              candidatePaths.add(latestAttachment.imagePath!);
               candidateBytes.add(null);
             }
           }
 
           final mediaList = <LlamaMedia>[];
           final skippedHeicPaths = <String>[];
-          final validImageIndices = <int>[];
           for (var i = 0; i < candidatePaths.length; i++) {
             final path = candidatePaths[i];
             final bytes = candidateBytes[i];
@@ -1466,7 +1473,6 @@ class FinnAccelerator extends ChangeNotifier {
               }
               try {
                 mediaList.add(LlamaMedia.imageBytes(bytes));
-                validImageIndices.add(i);
               } catch (e) {
                 debugPrint('FINN_MEDIA imageBytes failed for $path: $e');
               }
@@ -1490,7 +1496,6 @@ class FinnAccelerator extends ChangeNotifier {
                   continue;
                 }
                 mediaList.add(LlamaMedia.imageBytes(fileBytes));
-                validImageIndices.add(i);
               } catch (e) {
                 if (isHeic) {
                   skippedHeicPaths.add(path);
@@ -1511,7 +1516,10 @@ class FinnAccelerator extends ChangeNotifier {
           final effectiveMediaList = cappedMediaList;
 
           String? attachedDocContext;
-          // Handle single non-image doc attachment (text files)
+          // A non-image attachment is read from disk and handed to the model as
+          // a system block. Only the most recent one is used: the composer
+          // holds a single attachment, so a later turn's file supersedes an
+          // earlier turn's.
           final docPath = history.reversed
               .where((t) => t.imagePath != null && t.imagePath!.isNotEmpty)
               .firstOrNull
@@ -1519,18 +1527,26 @@ class FinnAccelerator extends ChangeNotifier {
           if (docPath != null &&
               !_isImageFile(docPath) &&
               !_isHeicPath(docPath)) {
+            final docName = docPath.split(Platform.pathSeparator).last;
             try {
-              final exists = await File(docPath).exists();
-              if (exists) {
-                final content = await File(docPath).readAsString();
-                final docName = docPath.split(Platform.pathSeparator).last;
-                final truncated = content.length > 4000
-                    ? '${content.substring(0, 4000)}\n[... content truncated]'
-                    : content;
-                attachedDocContext =
-                    'Attached document ($docName):\n```\n$truncated\n```';
-              }
-            } catch (_) {}
+              final content = await File(docPath).readAsString();
+              final truncated = content.length > 4000
+                  ? '${content.substring(0, 4000)}\n[... content truncated]'
+                  : content;
+              attachedDocContext =
+                  'Attached document ($docName):\n```\n$truncated\n```';
+              debugPrint('FINN_DOC attached=$docName chars=${content.length}');
+            } catch (e) {
+              // The picker hands back a cache copy, so the path can be gone by
+              // the time the turn is generated — or after a restart. Doing
+              // nothing here is what made an attached document look ignored:
+              // the reply arrived with no sign the file was ever missing.
+              debugPrint('FINN_DOC unreadable path=$docPath error=$e');
+              attachedDocContext =
+                  'Note: the user attached "$docName" but it could not be read '
+                  'on this device. Tell them the attachment is unavailable and '
+                  'ask them to attach it again.';
+            }
           }
           if (skippedHeicPaths.isNotEmpty && !useMediaMarker) {
             final heicNote =
@@ -1602,10 +1618,17 @@ class FinnAccelerator extends ChangeNotifier {
           var effectiveGroundedContext = groundedContext;
           var effectiveSources = sources;
           final toolActivities = <ToolActivity>[];
+          final hasDocAttachment =
+              attachedDocContext != null && attachedDocContext.isNotEmpty;
           // A forced browse bypasses the "is this prompt advanced?" gate: the
           // user explicitly asked for the web this turn.
           final decisionEnabled = enableSearchDecision &&
+              // An attachment — image or document — is answered from the
+              // attachment. Letting the research pass run for a document spent
+              // the turn's budget on a tool call, and the reply became the
+              // tool-call machinery instead of the file's contents.
               !hasAttachedImage &&
+              !hasDocAttachment &&
               effectiveGroundedContext.isEmpty &&
               (forceBrowse ||
                   PromptIntentPolicy.needsSearchDecision(promptAnalysis));
@@ -1763,6 +1786,18 @@ class FinnAccelerator extends ChangeNotifier {
             InferencePhase.generating,
             'Thinking on this device',
             key: FinnStatusKey.thinkingOnDevice,
+          );
+          // Structural, content-free diagnostics. The prompt text itself is
+          // never logged outside debug builds (see the breakdown guard above),
+          // and neither is this: it only says which prompt shape was used, so a
+          // mis-shaped turn can be diagnosed from a device log alone.
+          debugPrint(
+            'FINN_PROMPT primed=${entry.primed} '
+            'basePrefix=${entry.basePrefixReady} '
+            'media=${(hasAttachedImage && runtime.engine.multimodalLoaded) ? effectiveMediaList.length : 0} '
+            'docChars=${attachedDocContext?.length ?? 0} '
+            'historyTurns=${history.length} '
+            'promptChars=${renderedPrompt.length}',
           );
           trace?.mark(TtftPhase.generationRequested);
           _generation = session

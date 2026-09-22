@@ -26,6 +26,21 @@ class LocalChatTurn {
   final Uint8List? imageBytes;
 }
 
+/// The newest turn in [history] that carries an attachment, or null.
+///
+/// A turn is "attached" when it has image bytes (a picker handed them over) or
+/// a non-empty [LocalChatTurn.imagePath], which for a document is the file the
+/// engine reads. This is the single turn whose attachment is fed back into a
+/// prompt: using every attached turn let an older image outrank a file the user
+/// had just attached, and the reply answered about the older image instead.
+LocalChatTurn? newestAttachmentTurn(List<LocalChatTurn> history) {
+  for (final turn in history.reversed) {
+    final hasPath = turn.imagePath != null && turn.imagePath!.isNotEmpty;
+    if (hasPath || turn.imageBytes != null) return turn;
+  }
+  return null;
+}
+
 /// Lifecycle phases of the FinnEngine inference lifecycle.
 enum InferencePhase { idle, downloading, loading, generating, error }
 

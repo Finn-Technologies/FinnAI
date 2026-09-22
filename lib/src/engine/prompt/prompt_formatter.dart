@@ -222,12 +222,6 @@ user preferences but never reveal them.''';
         ..write('<|im_end|>\n');
       writePrivateContext(buffer, systemContext);
       writeGroundedContext(buffer, groundedContext);
-      if (attachedDocContext != null && attachedDocContext.isNotEmpty) {
-        buffer
-          ..write('<|im_start|>system\n')
-          ..write(attachedDocContext)
-          ..write('<|im_end|>\n');
-      }
       final combinedForHistory = [
         systemContext,
         groundedContext,
@@ -252,12 +246,6 @@ user preferences but never reveal them.''';
           ..write('<|im_end|>\n');
       }
       writeGroundedContext(buffer, groundedContext);
-      if (attachedDocContext != null && attachedDocContext.isNotEmpty) {
-        buffer
-          ..write('<|im_start|>system\n')
-          ..write(attachedDocContext)
-          ..write('<|im_end|>\n');
-      }
     }
     if (RegExp(
       r'\b(?:joke|pun|another|new one|different one)\b',
@@ -311,6 +299,16 @@ user preferences but never reveal them.''';
         ..write('<|im_end|>\n');
     }
     buffer.write(currentDateTimeSystemBlock(now ?? DateTime.now()));
+    // An attached document is written immediately before the user turn so the
+    // material being asked about sits next to the question. Putting it in the
+    // system block at the top left it on the far side of the whole history, and
+    // the model answered from the history instead of from the file.
+    if (attachedDocContext != null && attachedDocContext.isNotEmpty) {
+      buffer
+        ..write('<|im_start|>system\n')
+        ..write(attachedDocContext)
+        ..write('<|im_end|>\n');
+    }
     buffer.write('<|im_start|>user\n');
     final count = mediaCount ?? (includeMediaMarker ? 1 : 0);
     for (var i = 0; i < count; i++) {
