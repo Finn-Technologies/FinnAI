@@ -1237,11 +1237,16 @@ class FinnAccelerator extends ChangeNotifier {
       prompt: decisionPrompt,
       addSpecial: !primed && !basePrefixReady,
       parseSpecial: true,
-      // Fast bounded budget to decode decision or tool call
-      maxTokens: 40,
-      sampler: PromptIntentPolicy.searchDecisionSampler.params.copyWith(
-        seed: _nextGenerationSeed(),
-      ),
+      // Fast bounded budget to decode the decision or the tool call. The call
+      // is grammar-constrained, so it is one compact object rather than a
+      // paragraph with JSON inside it, but a long query still needs headroom
+      // over the old 40-token prose budget.
+      maxTokens: 64,
+      sampler: PromptIntentPolicy.searchDecisionSampler(
+        requireToolCall: requireToolCall,
+      ).params.copyWith(
+            seed: _nextGenerationSeed(),
+          ),
     )) {
       if (generationEpoch != _generationEpoch) {
         throw const _GenerationCancelled();

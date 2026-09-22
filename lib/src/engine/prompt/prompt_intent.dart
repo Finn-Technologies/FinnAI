@@ -440,6 +440,7 @@ class IntentSamplerProfile {
     required this.minP,
     required this.repeatPenalty,
     required this.penaltyLastN,
+    this.grammar,
   });
 
   final double temperature;
@@ -449,6 +450,12 @@ class IntentSamplerProfile {
   final double repeatPenalty;
   final int penaltyLastN;
 
+  /// Optional GBNF grammar source constraining this turn's output.
+  ///
+  /// Null disables the grammar stage, so every other profile samples exactly as
+  /// it did before. Used where the output has to parse as JSON.
+  final String? grammar;
+
   SamplerParams get params => SamplerParams(
         temperature: temperature,
         topK: topK,
@@ -456,6 +463,7 @@ class IntentSamplerProfile {
         minP: minP,
         repeatPenalty: repeatPenalty,
         penaltyLastN: penaltyLastN,
+        grammar: GrammarConfig(grammar: grammar),
       );
 }
 
@@ -507,15 +515,71 @@ class PromptIntentPolicy {
       'If the user request requires external facts, current or time-sensitive information (such as latest products, release dates, current news, or live data), or inspecting a website, output a tool call.\n'
       '${requireToolCall ? 'The user asked you to browse, so you must output one tool call now. Do not reply ANSWER.' : 'Otherwise, reply exactly: ANSWER.'}';
 
-  static const IntentSamplerProfile searchDecisionSampler =
+  /// Sampler for the model-driven search-decision turn.
+  ///
+  /// The turn is a routing decision, not prose, so it is grammar-constrained:
+  /// the reply can only be the literal `ANSWER.` or one well-formed tool call
+  /// naming a tool that exists. Malformed JSON, a sentence before the JSON, an
+  /// invented tool name and a missing argument stop being possible rather than
+  /// merely unlikely, which leaves the parser checking meaning instead of
+  /// guessing at syntax.
+  ///
+  /// [requireToolCall] drops the `ANSWER.` alternative for a turn where the user
+  /// explicitly asked Finn to browse: the model then has one shape available
+  /// and cannot decline.
+  static IntentSamplerProfile searchDecisionSampler({
+    required bool requireToolCall,
+  }) =>
       IntentSamplerProfile(
-    temperature: .0,
-    topK: 1,
-    topP: .10,
-    minP: .05,
-    repeatPenalty: 1.0,
-    penaltyLastN: 32,
+        temperature: .0,
+        topK: 1,
+        topP: .10,
+        minP: .05,
+        repeatPenalty: 1.0,
+        penaltyLastN: 32,
+        grammar: decisionGrammarEnabled
+            ? searchDecisionGrammar(requireToolCall: requireToolCall)
+            : null,
+      );
+
+  /// Whether the decision turn runs grammar-constrained.
+  ///
+  /// Off by default: on the pinned llama.cpp the runtime rejects the grammar
+  /// below, and although a rejected grammar now degrades to unconstrained
+  /// sampling instead of killing the process, shipping an off turn that logs
+  /// `FINN_GRAMMAR_REJECTED` on every search would be noise, not a feature.
+  /// Build with `--dart-define=FINN_DECISION_GRAMMAR=true` to pick the
+  /// investigation back up; the parser's own error is available through
+  /// `LlamaLog.captureToFile`, which the engine worker already honours.
+  static const bool decisionGrammarEnabled = bool.fromEnvironment(
+    'FINN_DECISION_GRAMMAR',
   );
+
+  /// GBNF for the search-decision turn.
+  ///
+  /// The `str` and `ws` rules are copied verbatim from the `json.gbnf` shipped
+  /// with the pinned llama.cpp commit, because a grammar the runtime rejects is
+  /// not a caught error at the sampler level; `SamplerFactory` now skips a
+  /// grammar stage that fails to compile (`FINN_GRAMMAR_REJECTED`) rather than
+  /// adding a null to the chain. Rules the variant cannot reach are omitted
+  /// rather than left defined, so the grammar is exactly the language it means
+  /// to accept.
+  static String searchDecisionGrammar({required bool requireToolCall}) {
+    const toolCalls = [
+      r'obj ::= "{" ws "\"name\"" ws ":" ws "\"browser_search\"" ws "," ws "\"arguments\"" ws ":" ws "{" ws "\"query\"" ws ":" ws str ws "}" ws "}"',
+      r'      | "{" ws "\"name\"" ws ":" ws "\"browser_find\"" ws "," ws "\"arguments\"" ws ":" ws "{" ws "\"query\"" ws ":" ws str ws "}" ws "}"',
+      r'      | "{" ws "\"name\"" ws ":" ws "\"browser_open\"" ws "," ws "\"arguments\"" ws ":" ws "{" ws "\"url\"" ws ":" ws str ws "}" ws "}"',
+    ];
+    final rules = <String>[
+      requireToolCall ? 'root ::= call' : 'root ::= answer | call',
+      if (!requireToolCall) 'answer ::= "ANSWER."',
+      'call ::= "<tool_call>" ws obj ws "</tool_call>"',
+      ...toolCalls,
+      r'str ::= "\"" ( [^"\\\x7F\x00-\x1F] | "\\" (["\\bfnrt] | "u" [0-9a-fA-F]{4}) )* "\""',
+      r'ws ::= | " " | "\n" [ \t]{0,20}',
+    ];
+    return '${rules.join('\n')}\n';
+  }
 
   static IntentSamplerProfile sampler(PromptIntent intent) => switch (intent) {
         PromptIntent.quickQuestion ||

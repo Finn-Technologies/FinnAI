@@ -283,14 +283,26 @@ final class SamplerFactory {
     final rootPtr = cfg.root.toNativeUtf8(allocator: calloc);
     try {
       if (!cfg.lazy) {
-        b.llama_sampler_chain_add(
-          chain,
-          b.llama_sampler_init_grammar(
-            vocab,
-            grammarPtr.cast(),
-            rootPtr.cast(),
-          ),
+        // FinnAI: llama.cpp returns NULL for a grammar it cannot compile, and a
+        // NULL stage in the chain is dereferenced by the first sample — an
+        // uncatchable SIGSEGV inside llama_sampler_sample with no Dart-side
+        // error. Skipping the stage samples unconstrained for this generation
+        // instead of taking the process down mid-turn, and says so once.
+        final stage = b.llama_sampler_init_grammar(
+          vocab,
+          grammarPtr.cast(),
+          rootPtr.cast(),
         );
+        if (stage == nullptr) {
+          // ignore: avoid_print
+          print(
+            'FINN_GRAMMAR_REJECTED non-lazy grammar did not compile; '
+            'vocab=${vocab == nullptr ? 'null' : 'ok'} '
+            'root=${cfg.root} bytes=${grammarPtr.length}',
+          );
+          return;
+        }
+        b.llama_sampler_chain_add(chain, stage);
         return;
       }
 
@@ -311,18 +323,26 @@ final class SamplerFactory {
       }
 
       try {
-        b.llama_sampler_chain_add(
-          chain,
-          b.llama_sampler_init_grammar_lazy_patterns(
-            vocab,
-            grammarPtr.cast(),
-            rootPtr.cast(),
-            patternPtrs,
-            patterns.length,
-            tokenPtr,
-            tokens.length,
-          ),
+        // FinnAI: same NULL guard as the non-lazy branch above.
+        final stage = b.llama_sampler_init_grammar_lazy_patterns(
+          vocab,
+          grammarPtr.cast(),
+          rootPtr.cast(),
+          patternPtrs,
+          patterns.length,
+          tokenPtr,
+          tokens.length,
         );
+        if (stage == nullptr) {
+          // ignore: avoid_print
+          print(
+            'FINN_GRAMMAR_REJECTED lazy grammar did not compile; '
+            'vocab=${vocab == nullptr ? 'null' : 'ok'} '
+            'root=${cfg.root} patterns=${patterns.length}',
+          );
+          return;
+        }
+        b.llama_sampler_chain_add(chain, stage);
       } finally {
         for (final p in allocated) {
           calloc.free(p);

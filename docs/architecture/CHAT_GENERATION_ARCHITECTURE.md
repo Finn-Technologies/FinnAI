@@ -91,28 +91,30 @@ tags, bare objects, function-call syntax) because a 1.6B model formats output
 inconsistently; today the app filters and validates after the fact.
 
 Constraining that turn with a GBNF grammar — llama.cpp supports it, and the
-vendored sampler params already carry `GrammarConfig` — was attempted and
-**must not be shipped until both of the following are true**:
+vendored sampler params carry `GrammarConfig` — is wired but **off**
+(`PromptIntentPolicy.decisionGrammarEnabled`, `--dart-define=FINN_DECISION_GRAMMAR=true`
+to turn it back on). Two things were learned the hard way:
 
-1. **The binding must reject a failed grammar.** When `llama_sampler_init_grammar`
-   cannot compile a grammar it returns NULL, and
-   `third_party/llama_cpp_dart/lib/src/sampling/sampler_factory.dart`
-   (`_addGrammar`) adds it to the chain unchecked. The first sample then
-   dereferences NULL. Observed on device (release build, emulator
-   `sdk_gphone16k_arm64`, pinned llama.cpp `d6d0ce8`) as
-   `Fatal signal 11 (SIGSEGV) … SEGV_MAPERR, fault addr 0x0` with
-   `#01 libllama.so (llama_sampler_sample+1136)` and nothing on the Dart side —
-   no exception, no log, just a dead process mid-turn. The guard belongs in the
-   vendored package, which `AGENTS.md` routes through
-   `tool/llama_android_build.patch` + `tool/rebuild_llama_android_aar.sh`
-   rather than hand-editing.
-2. **The grammar must be provably valid before it reaches the device.** The
-   first attempt used a hand-built grammar; after it crashed, the retry used
-   the `str`/`ws` rules copied verbatim from the `json.gbnf` shipped with the
-   pinned commit (and no unreachable rules) and **still** crashed identically.
-   So the cause is not the obvious syntax differences, and there is no local
-   way to validate a grammar: the only parser is the native one, and
-   `flutter test` cannot load a model to run it.
+1. **A failed grammar used to take the process down, and no longer does.**
+   `llama_sampler_init_grammar` returns NULL for a grammar it cannot compile,
+   and `SamplerFactory._addGrammar` added that NULL to the chain unchecked, so
+   the first sample dereferenced it: `Fatal signal 11 (SIGSEGV) … SEGV_MAPERR,
+   fault addr 0x0` with `#01 libllama.so (llama_sampler_sample+1136)` and
+   nothing on the Dart side — no exception, no log, a dead process mid-turn.
+   The stage is now skipped and logged as `FINN_GRAMMAR_REJECTED …` (with
+   `vocab=`/`bytes=` evidence), and the turn continues unconstrained. Verified
+   on device: the process survived the rejection and completed the turn.
+2. **The runtime rejects this grammar, and the reason is not yet known.**
+   Devices report `FINN_GRAMMAR_REJECTED … vocab=ok root=root bytes=592`, while
+   a diagnostic probe of `root ::= "A" | "B"` compiled fine in the same
+   process — so grammar support works and something in the ~600-byte grammar is
+   unacceptable to the parser. The `str`/`ws` rules are copied verbatim from
+   the `json.gbnf` shipped with the pinned commit and unreachable rules are
+   omitted, so the obvious differences were eliminated; the next step is to
+   read the parser's own error rather than bisect by rebuild. The engine worker
+   already accepts a capture path on spawn and calls
+   `LlamaLog.captureToFile`, which redirects llama.cpp's stderr to a file the
+   host can tail; the parser logs "error parsing grammar" with a position.
 
-Until then the working invariant is: sampling is unconstrained, and the app
-handles malformed tool output by parsing, validating, and falling back.
+Until that is resolved the working invariant is: sampling is unconstrained, and
+the app handles malformed tool output by parsing, validating, and falling back.

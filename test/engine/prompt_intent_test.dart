@@ -233,4 +233,110 @@ void main() {
     expect(SafeMarkdownText.sanitize('a < b and c'), 'a < b and c');
     expect(SafeMarkdownText.sanitize('Titles</'), 'Titles</');
   });
+
+  group('search decision turn is grammar-constrained', () {
+    // The decision turn used to rely on the model formatting JSON correctly and
+    // only naming tools that exist; malformed output was a normal event that had
+    // to be filtered afterwards. A GBNF grammar makes it unrepresentable.
+    test('the grammar only allows answering or one known tool call', () {
+      final grammar = PromptIntentPolicy.searchDecisionGrammar(
+        requireToolCall: false,
+      );
+
+      expect(grammar, contains(r'root ::= answer | call'));
+      expect(grammar, contains('"ANSWER."'));
+      for (final tool in ['browser_search', 'browser_open', 'browser_find']) {
+        expect(grammar, contains('\\"$tool\\"'));
+      }
+    });
+
+    test('a required tool call has no way to decline', () {
+      final grammar = PromptIntentPolicy.searchDecisionGrammar(
+        requireToolCall: true,
+      );
+
+      expect(grammar, contains(r'root ::= call'));
+      expect(grammar, isNot(contains('ANSWER')));
+      expect(grammar, isNot(contains('answer')));
+    });
+
+    test('every rule the grammar references is defined', () {
+      // A rule name nothing defines makes llama.cpp fail to compile the
+      // grammar, which now degrades to unconstrained sampling — but the turn
+      // still loses its constraint, so the reference stays pinned.
+      for (final requireToolCall in [true, false]) {
+        final grammar = PromptIntentPolicy.searchDecisionGrammar(
+          requireToolCall: requireToolCall,
+        );
+        final defined = RegExp(r'^([a-z][a-z0-9-]*)\s*::=', multiLine: true)
+            .allMatches(grammar)
+            .map((m) => m.group(1)!)
+            .toSet();
+        final referenced = RegExp(r'[a-z][a-z0-9-]*')
+            .allMatches(
+              grammar
+                  // Character classes first, then quoted literals (which may
+                  // contain escaped quotes), then rule headers: what is left is
+                  // the non-terminal names.
+                  .replaceAll(RegExp(r'\[[^\]]*\]'), ' ')
+                  .replaceAll(RegExp(r'"(?:\\.|[^"\\])*"'), ' ')
+                  .replaceAll(
+                    RegExp(r'^[a-z][a-z0-9-]*\s*::=', multiLine: true),
+                    ' ',
+                  ),
+            )
+            .map((m) => m.group(0)!)
+            .toSet();
+
+        expect(defined, isNotEmpty);
+        expect(
+          referenced.difference(defined),
+          isEmpty,
+          reason: 'undefined rule(s) in the decision grammar',
+        );
+      }
+    });
+
+    test('the grammar and the directive name the same tools', () {
+      final directive = PromptIntentPolicy.searchDecisionDirectiveFor(
+        PromptLanguage.english,
+      );
+      final grammar = PromptIntentPolicy.searchDecisionGrammar(
+        requireToolCall: false,
+      );
+
+      for (final tool in ['browser_search', 'browser_open', 'browser_find']) {
+        expect(directive, contains(tool));
+        expect(grammar, contains(tool));
+      }
+    });
+
+    test('the decision sampler follows the grammar flag, and it is off', () {
+      // The pinned llama.cpp rejects this grammar (see
+      // docs/architecture/CHAT_GENERATION_ARCHITECTURE.md): the runtime guard
+      // keeps a rejected grammar from killing the process, and this flag keeps
+      // the grammar out of the default build until it is proven.
+      expect(PromptIntentPolicy.decisionGrammarEnabled, isFalse);
+      for (final requireToolCall in [true, false]) {
+        expect(
+          PromptIntentPolicy.searchDecisionSampler(
+            requireToolCall: requireToolCall,
+          ).params.grammar.enabled,
+          isFalse,
+        );
+      }
+    });
+
+    test('ordinary turns are left unconstrained', () {
+      // Grammar is opt-in per turn: chat, creative and JSON-free paths must
+      // sample exactly as they did before.
+      for (final intent in PromptIntent.values) {
+        expect(
+          PromptIntentPolicy.sampler(intent).params.grammar.enabled,
+          isFalse,
+          reason: '$intent must not be grammar-constrained',
+        );
+      }
+    });
+  });
 }
