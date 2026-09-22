@@ -12,7 +12,12 @@
     android:background="@drawable/finn_widget_background"
     android:padding="14dp">
 
-    <View
+    <!-- An ImageView, not a plain <View>: RemoteViews inflates only an
+         allow-listed set of classes and android.view.View is not one of them,
+         so a <View> here made every widget fail to inflate with
+         "Class not allowed to be inflated android.view.View" — the launcher
+         then showed "Can't load widget" instead of the creation. -->
+    <ImageView
         android:id="@+id/finn_widget_accent"
         android:layout_width="28dp"
         android:layout_height="4dp"
