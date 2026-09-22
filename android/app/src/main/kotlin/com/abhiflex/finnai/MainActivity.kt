@@ -168,6 +168,7 @@ class MainActivity : FlutterActivity() {
                     "noSha" to boolExtra("FINN_BENCH_NO_SHA"),
                     "cpu" to boolExtra("FINN_BENCH_CPU"),
                     "f16Kv" to boolExtra("FINN_BENCH_F16_KV"),
+                    "compactKv" to boolExtra("FINN_BENCH_COMPACT_KV"),
                     "flashOff" to boolExtra("FINN_BENCH_FLASH_OFF"),
                 ),
             )

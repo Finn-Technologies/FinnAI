@@ -90,7 +90,7 @@ void main() {
       expect(plan.batchThreads, 4);
       expect(plan.batchSize, 128);
       expect(plan.microBatchSize, 64);
-      expect(plan.compactKv, isTrue);
+      expect(plan.compactKv, isFalse);
       expect(plan.flashAttention, isFalse);
     },
   );
@@ -136,7 +136,7 @@ void main() {
   );
 
   test(
-    'runtimeConfigFromPlan selects high-performance TurboQuant Q4_0 KV for all device tiers',
+    'runtimeConfigFromPlan keeps KV lossless because f16 measured faster on CPU',
     () {
       const flagshipProfile = DeviceProfile(
         totalRamBytes: 8000000000,
@@ -151,7 +151,7 @@ void main() {
         flagshipPlan,
         flagshipProfile,
       );
-      expect(flagshipConfig.kvType.name, 'q4_0');
+      expect(flagshipConfig.kvType.name, 'f16');
       expect(flagshipConfig.contextSize, 4096);
 
       const entryProfile = DeviceProfile(
@@ -164,9 +164,66 @@ void main() {
       );
       final entryPlan = DeviceProfiler.plan(entryProfile);
       final entryConfig = runtimeConfigFromPlan(entryPlan, entryProfile);
-      expect(entryConfig.kvType.name, 'q4_0');
+      expect(entryConfig.kvType.name, 'f16');
       expect(entryConfig.contextSize, 2048);
       expect(entryConfig.batchSize, 128);
     },
   );
+
+  test('a big.LITTLE part caps both thread pools at its fast cluster', () {
+    // SM6225: 4x A73 at 2.4 GHz plus 4x A53 at 1.8 GHz. On this reference
+    // device the same 327-token prompt reached first token in 11.9 s with 8
+    // batch threads, 13.0 s with 6, and 7.0 s with 4.
+    const profile = DeviceProfile(
+      totalRamBytes: 6000000000,
+      availableRamBytes: 3000000000,
+      processor: ProcessorClass.balanced,
+      soc: 'Qualcomm SM6225 Snapdragon 680',
+      cores: 8,
+      lowMemory: false,
+      performanceCores: 4,
+    );
+
+    final plan = DeviceProfiler.plan(profile);
+
+    expect(plan.threads, 4);
+    expect(plan.batchThreads, 4);
+  });
+
+  test('a 2+6 part never puts a worker on a little core', () {
+    const profile = DeviceProfile(
+      totalRamBytes: 8000000000,
+      availableRamBytes: 5000000000,
+      processor: ProcessorClass.balanced,
+      soc: 'Heterogeneous 2+6',
+      cores: 8,
+      lowMemory: false,
+      performanceCores: 2,
+    );
+
+    final plan = DeviceProfiler.plan(profile);
+
+    expect(plan.threads, 2);
+    expect(plan.batchThreads, 2);
+  });
+
+  test('a tri-cluster part keeps both of its fast clusters for prefill', () {
+    // 1x prime + 3x performance + 4x efficiency: only the efficiency cluster
+    // is excluded, so prefill still gets four workers.
+    const profile = DeviceProfile(
+      totalRamBytes: 12000000000,
+      availableRamBytes: 7000000000,
+      processor: ProcessorClass.flagship,
+      soc: 'Qualcomm SM8650',
+      cores: 8,
+      lowMemory: false,
+      performanceCores: 4,
+    );
+
+    final plan = DeviceProfiler.plan(profile);
+
+    expect(plan.threads, 4);
+    expect(plan.batchThreads, 4);
+    expect(plan.compactKv, isFalse);
+  });
 }

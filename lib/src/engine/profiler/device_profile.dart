@@ -18,6 +18,7 @@ class DeviceProfile {
     this.supportedAbis = const [],
     this.availableStorageBytes,
     this.nativeLibraryDir,
+    this.performanceCores,
   });
 
   static const minimumRamBytes = 2200000000;
@@ -27,6 +28,12 @@ class DeviceProfile {
   final ProcessorClass processor;
   final String soc;
   final int cores;
+
+  /// Cores in the fastest cluster(s), as reported by the platform, or `null`
+  /// when the topology could not be read. `null` is treated as homogeneous:
+  /// the plan may then use every core.
+  final int? performanceCores;
+
   final bool lowMemory;
   final List<String> supportedAbis;
   final int? availableStorageBytes;
@@ -160,6 +167,7 @@ class DeviceProfiler {
       processor: _classifyProcessor(soc, cores),
       soc: soc.isEmpty ? 'Unknown SoC' : soc,
       cores: cores,
+      performanceCores: await _performanceCores(cores),
       lowMemory: native['lowMemory'] == true,
       supportedAbis:
           (native['supportedAbis'] as List<Object?>? ?? const <Object?>[])
@@ -179,11 +187,15 @@ class DeviceProfiler {
         (profile.totalRamBytes != null &&
             profile.totalRamBytes! <= 3000 * 1000 * 1000);
 
-    // Compact KV cache quantization (llama.cpp IQ4_NL / Q4_0, with Flash
-    // Attention) is what lets these context sizes fit on entry hardware: it
-    // stores a KV value in a few bits instead of 16. Devices whose backend
-    // rejects the compact type fall back to f16 — recorded per device+model in
-    // the adaptive KV memo so the fallback is paid once, not every launch.
+    // Compact KV cache quantization stores a KV value in a few bits instead of
+    // 16. It is a memory optimisation, not a speed one: on CPU every attention
+    // step pays to dequantise it. Measured on the SM6225 reference (4x A73
+    // 2.4 GHz + 4x A53 1.8 GHz) with Flash Attention on, f16 KV reached the
+    // first token 16% sooner (7.0 s vs 8.4 s across a 327-token prompt) and
+    // decoded 3% faster than q4_0 KV, for ~11 MB more state at 4096 context.
+    // f16 is therefore the default; the compact path stays reachable through
+    // [PlanOverrides], and the adaptive KV memo still records devices whose
+    // backend rejects it.
     final context = constrained
         ? 2048
         : switch (processor) {
@@ -192,18 +204,27 @@ class DeviceProfiler {
             ProcessorClass.flagship => 4096,
           };
 
-    // Measured on SM7325 (4x A78 + 4x A55, full CPU): decode is
-    // bandwidth-bound and scales to 4 threads on the fast cluster.
-    // Batch (prefill) is compute-bound, scaling across all cores (6-8 threads).
+    // Both pools are barrier-synchronised, so a worker on a little core does
+    // not merely do less work — every other thread waits for it. Decode is
+    // bandwidth-bound and was already capped at the fast cluster; prefill is
+    // compute-bound and used to scale across every core, which measured much
+    // worse on real hardware: the same prompt reached its first token in
+    // 11.9 s at 8 batch threads, 13.0 s at 6, and 7.0 s at 4, while 8 decode
+    // threads collapsed throughput to 0.25 tok/s. Homogeneous devices, where
+    // the platform reports no separate cluster, keep every core.
+    final fastCores = switch (profile.performanceCores) {
+      final int reported when reported > 0 => math.min(reported, profile.cores),
+      _ => profile.cores,
+    };
     final decodeCeiling = constrained ? 2 : 4;
-    final batchCeiling = constrained ? 4 : math.max(4, profile.cores);
+    final batchCeiling = constrained ? 4 : math.max(4, fastCores);
     const threadOverride = int.fromEnvironment(
       'FINN_BENCH_THREADS',
       defaultValue: 0,
     );
     final normalThreads = threadOverride > 0
         ? threadOverride
-        : math.max(1, math.min(decodeCeiling, profile.cores));
+        : math.max(1, math.min(decodeCeiling, fastCores));
     final threads = normalThreads;
     const batchThreadOverride = int.fromEnvironment(
       'FINN_BENCH_BATCH_THREADS',
@@ -211,7 +232,7 @@ class DeviceProfiler {
     );
     final normalBatchThreads = math.max(
       threads,
-      math.min(batchCeiling, profile.cores),
+      math.min(batchCeiling, fastCores),
     );
     final batchThreads =
         batchThreadOverride > 0 ? batchThreadOverride : normalBatchThreads;
@@ -236,14 +257,13 @@ class DeviceProfiler {
             : 256;
     final microBatchSize =
         microBatchOverride > 0 ? microBatchOverride : normalMicroBatchSize;
-    const f16Kv = bool.fromEnvironment('FINN_BENCH_F16_KV');
     const flashOff = bool.fromEnvironment('FINN_BENCH_FLASH_OFF');
     final overrides = planOverrides;
     final effectiveThreads = overrides.threads ?? threads;
     final effectiveBatchThreads = overrides.batchThreads ?? batchThreads;
     final effectiveBatch = overrides.batchSize ?? batchSize;
     final effectiveMicroBatch = overrides.microBatchSize ?? microBatchSize;
-    final effectiveCompactKv = overrides.compactKv ?? !f16Kv;
+    final effectiveCompactKv = overrides.compactKv ?? false;
     final effectiveFlash = overrides.flashAttention ??
         (!flashOff && processor != ProcessorClass.entry);
     return InferencePlan(
@@ -425,6 +445,46 @@ class DeviceProfiler {
         multiLine: true,
       ).firstMatch(contents);
       return match == null ? null : int.parse(match.group(1)!) * 1024;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static int? _cachedPerformanceCores;
+
+  /// Cores in the fastest cluster(s) of a heterogeneous CPU.
+  ///
+  /// Android publishes each core's peak frequency under sysfs, so cores
+  /// clocked above the slowest peak form the performance cluster. A
+  /// tri-cluster part (prime + performance + efficiency) reports both of its
+  /// fast clusters this way. Returns `null` when every core is clocked the
+  /// same or when the topology cannot be read — the plan treats `null` as
+  /// homogeneous and leaves the thread counts alone.
+  ///
+  /// Read once: a CPU's cluster layout cannot change while the app runs.
+  static Future<int?> _performanceCores(int cores) async {
+    final cached = _cachedPerformanceCores;
+    if (cached != null) return cached;
+    final peaks = <int>[];
+    for (var cpu = 0; cpu < cores; cpu++) {
+      final peak = await _peakFrequencyKhz(cpu);
+      if (peak == null || peak <= 0) return null;
+      peaks.add(peak);
+    }
+    if (peaks.isEmpty) return null;
+    final slowest = peaks.reduce(math.min);
+    if (peaks.every((peak) => peak == slowest)) return null;
+    final performance = peaks.where((peak) => peak > slowest).length;
+    if (performance < 1) return null;
+    return _cachedPerformanceCores = performance;
+  }
+
+  static Future<int?> _peakFrequencyKhz(int cpu) async {
+    try {
+      final raw = await File(
+        '/sys/devices/system/cpu/cpu$cpu/cpufreq/cpuinfo_max_freq',
+      ).readAsString();
+      return int.tryParse(raw.trim());
     } catch (_) {
       return null;
     }

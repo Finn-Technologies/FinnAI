@@ -264,7 +264,11 @@ Future<void> _runDeviceBenchmark() async {
     batchSize: override('batch') is int ? (override('batch') as int) : null,
     microBatchSize:
         override('ubatch') is int ? (override('ubatch') as int) : null,
-    compactKv: override('f16Kv') == true ? false : null,
+    compactKv: override('compactKv') == true
+        ? true
+        : override('f16Kv') == true
+            ? false
+            : null,
     flashAttention: override('flashOff') == true ? false : null,
     nRsSeq: override('nrs') is int ? (override('nrs') as int) : null,
   );

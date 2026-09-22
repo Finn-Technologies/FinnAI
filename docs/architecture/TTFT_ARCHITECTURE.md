@@ -92,14 +92,20 @@ tokenizer settings, and intent route. Raw private configuration is never
 metadata. Safe shared-prefix reuse requires a maintained prefill-only or
 sequence-clone command in the dependency worker protocol.
 
-## Thermal policy
+## Worker threads
 
-Android supplies current thermal status and one-shot thermal headroom with the
-normal device-profile read. The measured balanced-device cool plan uses 5
-decode and 8 batch threads with 512/256 batches. Severe heat suppresses
-background prewarm and changes newly loaded engines to 4/4 threads with
-256/128 batches. The UI truthfully warns that local generation may start more
-slowly. Missing thermal APIs leave the normal policy unchanged.
+Both llama.cpp worker pools are barrier-synchronised, so a worker scheduled on
+a little core does not merely do less work — every other thread waits for it.
+The plan therefore caps decode *and* prefill at the number of cores in the
+device's fast cluster, read from the per-core peak frequencies Android
+publishes under sysfs. A homogeneous part reports a single cluster and keeps
+every core; a part whose topology cannot be read is treated as homogeneous,
+which leaves the older behaviour in place.
+
+Measured on the SM6225 reference (4x A73 2.4 GHz + 4x A53 1.8 GHz, LFM2.5-VL
+1.6B Q4_0, full CPU, 327-token prompt): 7.0 s to the first token at 4 batch
+threads, 13.0 s at 6, and 11.9 s at 8; 8 decode threads collapsed decode to
+0.25 tok/s. No thermal-specific thread plan ships.
 
 ## Benchmark controls
 
@@ -113,7 +119,7 @@ The profile harness accepts:
 - `FINN_BENCH_BATCH_THREADS`
 - `FINN_BENCH_BATCH`
 - `FINN_BENCH_UBATCH`
-- `FINN_BENCH_F16_KV`
+- `FINN_BENCH_COMPACT_KV` / `FINN_BENCH_F16_KV` (KV type; f16 is the default)
 - `FINN_BENCH_FLASH_OFF`
 
 The production model catalog (LFM2.5-VL 1.6B) is unchanged; there is a single
