@@ -294,6 +294,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsReleasingMemory => 'Releasing Memory…';
 
   @override
+  String get settingsPurgeMemorySubtitle =>
+      'Frees RAM. The model reloads on your next message.';
+
+  @override
+  String get settingsClearHistorySubtitle =>
+      'Deletes every saved chat. Cannot be undone.';
+
+  @override
+  String get settingsDeleteAllDataSubtitle =>
+      'Chats, models, creations and preferences — back to a first run.';
+
+  @override
   String get settingsPurgeMemory => 'Purge AI Memory';
 
   @override

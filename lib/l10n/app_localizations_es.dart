@@ -301,6 +301,18 @@ class AppLocalizationsEs extends AppLocalizations {
   String get settingsReleasingMemory => 'Liberando memoria…';
 
   @override
+  String get settingsPurgeMemorySubtitle =>
+      'Libera RAM. El modelo se recarga con tu próximo mensaje.';
+
+  @override
+  String get settingsClearHistorySubtitle =>
+      'Elimina todos los chats guardados. No se puede deshacer.';
+
+  @override
+  String get settingsDeleteAllDataSubtitle =>
+      'Conversaciones, modelos, creaciones y preferencias: como en el primer inicio.';
+
+  @override
   String get settingsPurgeMemory => 'Purgar la memoria de la IA';
 
   @override

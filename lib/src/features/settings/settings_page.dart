@@ -506,7 +506,11 @@ class _SettingsPageState extends State<SettingsPage>
                                               context,
                                             ).withValues(alpha: 0.5),
                                           ),
-                                          _DestructiveRow(
+                                          // Reversible: this only drops the
+                                          // model out of RAM. Painting it red
+                                          // next to two irreversible actions
+                                          // taught the wrong signal.
+                                          _ActionRow(
                                             icon: FluxIcons.chip,
                                             label: _clearingMemory
                                                 ? L10n.of(
@@ -515,6 +519,9 @@ class _SettingsPageState extends State<SettingsPage>
                                                 : L10n.of(
                                                     context,
                                                   ).settingsPurgeMemory,
+                                            subtitle: L10n.of(
+                                              context,
+                                            ).settingsPurgeMemorySubtitle,
                                             enabled: !_clearingMemory,
                                             loading: _clearingMemory,
                                             onTap: _confirmPurgeMemory,
@@ -530,6 +537,9 @@ class _SettingsPageState extends State<SettingsPage>
                                             label: L10n.of(
                                               context,
                                             ).settingsClearHistory,
+                                            subtitle: L10n.of(
+                                              context,
+                                            ).settingsClearHistorySubtitle,
                                             enabled: totalChats > 0,
                                             onTap: _confirmClearAllChats,
                                           ),
@@ -548,6 +558,9 @@ class _SettingsPageState extends State<SettingsPage>
                                                 : L10n.of(
                                                     context,
                                                   ).settingsDeleteAllData,
+                                            subtitle: L10n.of(
+                                              context,
+                                            ).settingsDeleteAllDataSubtitle,
                                             enabled: !_deletingAllData,
                                             loading: _deletingAllData,
                                             onTap: _confirmDeleteAllData,
@@ -1328,11 +1341,17 @@ class _ActionRow extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.onTap,
+    this.subtitle,
+    this.enabled = true,
+    this.loading = false,
   });
 
   final List<List<dynamic>> icon;
   final String label;
+  final String? subtitle;
   final VoidCallback onTap;
+  final bool enabled;
+  final bool loading;
 
   @override
   Widget build(BuildContext context) {
@@ -1340,7 +1359,7 @@ class _ActionRow extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: onTap,
+        onTap: enabled ? onTap : null,
         borderRadius: BorderRadius.circular(FluxRadius.md),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
@@ -1364,18 +1383,29 @@ class _ActionRow extends StatelessWidget {
               ),
               const SizedBox(width: 13),
               Expanded(
-                child: Text(
-                  label,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+                child: _RowText(
+                  label: label,
+                  subtitle: subtitle,
+                  labelColor: FluxColors.inkOf(context),
                 ),
               ),
-              FluxIcon(
-                icon: FluxIcons.arrowRight01,
-                size: 18,
-                color: FluxColors.mutedOf(context).withValues(alpha: 0.6),
-              ),
+              if (loading)
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: FluxColors.mutedOf(context),
+                  ),
+                )
+              else
+                FluxIcon(
+                  icon: FluxIcons.arrowRight01,
+                  size: 18,
+                  color: FluxColors.mutedOf(context).withValues(
+                    alpha: enabled ? 0.6 : 0.25,
+                  ),
+                ),
             ],
           ),
         ),
@@ -1391,6 +1421,7 @@ class _DestructiveRow extends StatelessWidget {
     required this.onTap,
     this.enabled = true,
     this.loading = false,
+    this.subtitle,
   });
 
   final List<List<dynamic>> icon;
@@ -1398,6 +1429,7 @@ class _DestructiveRow extends StatelessWidget {
   final VoidCallback onTap;
   final bool enabled;
   final bool loading;
+  final String? subtitle;
 
   @override
   Widget build(BuildContext context) {
@@ -1427,12 +1459,10 @@ class _DestructiveRow extends StatelessWidget {
               ),
               const SizedBox(width: 13),
               Expanded(
-                child: Text(
-                  label,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w500,
-                        color: color,
-                      ),
+                child: _RowText(
+                  label: label,
+                  subtitle: subtitle,
+                  labelColor: color,
                 ),
               ),
               if (loading)
@@ -1448,6 +1478,48 @@ class _DestructiveRow extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Label plus the optional line that says what a row will actually do.
+///
+/// The storage rows used to be three bare labels: "Purge AI Memory", "Clear All
+/// Chat History" and "Delete All Local Data" all sat together in red, so the
+/// reversible RAM flush looked exactly as dangerous as wiping the device, and
+/// the only way to learn which was which was to open each confirmation.
+class _RowText extends StatelessWidget {
+  const _RowText({
+    required this.label,
+    required this.labelColor,
+    this.subtitle,
+  });
+
+  final String label;
+  final String? subtitle;
+  final Color labelColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = Theme.of(
+      context,
+    ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500);
+    final detail = subtitle;
+    if (detail == null || detail.isEmpty) {
+      return Text(label, style: style?.copyWith(color: labelColor));
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: style?.copyWith(color: labelColor)),
+        const SizedBox(height: 2),
+        Text(
+          detail,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: FluxColors.mutedOf(context),
+              ),
+        ),
+      ],
     );
   }
 }

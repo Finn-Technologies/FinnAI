@@ -385,6 +385,18 @@
   "@settingsReleasingMemory": {
     "description": "Releasing memory"
   },
+  "settingsPurgeMemorySubtitle": "Libère la RAM. Le modèle se recharge au prochain message.",
+  "@settingsPurgeMemorySubtitle": {
+    "description": "Explains that freeing model memory is reversible, unlike the two rows below it."
+  },
+  "settingsClearHistorySubtitle": "Supprime toutes les discussions enregistrées. Action irréversible.",
+  "@settingsClearHistorySubtitle": {
+    "description": "States the irreversible consequence of clearing chat history before the tap."
+  },
+  "settingsDeleteAllDataSubtitle": "Discussions, modèles, créations et préférences — comme au premier lancement.",
+  "@settingsDeleteAllDataSubtitle": {
+    "description": "Lists what a full wipe removes, so it is not confused with clearing history."
+  },
   "settingsPurgeMemory": "Purger la mémoire de l'IA",
   "@settingsPurgeMemory": {
     "description": "Purge memory row"

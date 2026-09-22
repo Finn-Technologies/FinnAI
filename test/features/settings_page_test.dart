@@ -6,6 +6,37 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('SettingsPage', () {
+    // "Purge AI Memory", "Clear All Chat History" and "Delete All Local Data"
+    // sat together as three bare red labels, so the reversible RAM flush looked
+    // as dangerous as wiping the device and the only way to tell them apart was
+    // to open each confirmation. Each row now says what it does.
+    testWidgets('the storage rows state what they will do', (
+      WidgetTester tester,
+    ) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(MaterialApp(home: SettingsPage(onBack: () {})));
+      await tester.pump();
+
+      for (final line in [
+        'Frees RAM. The model reloads on your next message.',
+        'Deletes every saved chat. Cannot be undone.',
+        'Chats, models, creations and preferences — back to a first run.',
+      ]) {
+        final target = find.text(line);
+        await tester.scrollUntilVisible(
+          target,
+          120,
+          scrollable: find.byType(Scrollable).first,
+        );
+        expect(target, findsOneWidget, reason: line);
+      }
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('renders title and visible content', (
       WidgetTester tester,
     ) async {

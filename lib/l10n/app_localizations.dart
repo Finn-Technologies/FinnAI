@@ -608,6 +608,24 @@ abstract class AppLocalizations {
   /// **'Releasing Memory…'**
   String get settingsReleasingMemory;
 
+  /// Explains that freeing model memory is reversible, unlike the two rows below it.
+  ///
+  /// In en, this message translates to:
+  /// **'Frees RAM. The model reloads on your next message.'**
+  String get settingsPurgeMemorySubtitle;
+
+  /// States the irreversible consequence of clearing chat history before the tap.
+  ///
+  /// In en, this message translates to:
+  /// **'Deletes every saved chat. Cannot be undone.'**
+  String get settingsClearHistorySubtitle;
+
+  /// Lists what a full wipe removes, so it is not confused with clearing history.
+  ///
+  /// In en, this message translates to:
+  /// **'Chats, models, creations and preferences — back to a first run.'**
+  String get settingsDeleteAllDataSubtitle;
+
   /// Purge memory row
   ///
   /// In en, this message translates to:

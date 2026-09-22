@@ -385,6 +385,18 @@
   "@settingsReleasingMemory": {
     "description": "Releasing memory"
   },
+  "settingsPurgeMemorySubtitle": "Frees RAM. The model reloads on your next message.",
+  "@settingsPurgeMemorySubtitle": {
+    "description": "Explains that freeing model memory is reversible, unlike the two rows below it."
+  },
+  "settingsClearHistorySubtitle": "Deletes every saved chat. Cannot be undone.",
+  "@settingsClearHistorySubtitle": {
+    "description": "States the irreversible consequence of clearing chat history before the tap."
+  },
+  "settingsDeleteAllDataSubtitle": "Chats, models, creations and preferences — back to a first run.",
+  "@settingsDeleteAllDataSubtitle": {
+    "description": "Lists what a full wipe removes, so it is not confused with clearing history."
+  },
   "settingsPurgeMemory": "Purge AI Memory",
   "@settingsPurgeMemory": {
     "description": "Purge memory row"

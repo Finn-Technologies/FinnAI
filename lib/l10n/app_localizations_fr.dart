@@ -302,6 +302,18 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsReleasingMemory => 'Libération de la mémoire…';
 
   @override
+  String get settingsPurgeMemorySubtitle =>
+      'Libère la RAM. Le modèle se recharge au prochain message.';
+
+  @override
+  String get settingsClearHistorySubtitle =>
+      'Supprime toutes les discussions enregistrées. Action irréversible.';
+
+  @override
+  String get settingsDeleteAllDataSubtitle =>
+      'Discussions, modèles, créations et préférences — comme au premier lancement.';
+
+  @override
   String get settingsPurgeMemory => 'Purger la mémoire de l\'IA';
 
   @override

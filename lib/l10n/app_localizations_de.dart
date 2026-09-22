@@ -300,6 +300,18 @@ class AppLocalizationsDe extends AppLocalizations {
   String get settingsReleasingMemory => 'Speicher wird freigegeben…';
 
   @override
+  String get settingsPurgeMemorySubtitle =>
+      'Gibt Arbeitsspeicher frei. Das Modell lädt bei der nächsten Nachricht neu.';
+
+  @override
+  String get settingsClearHistorySubtitle =>
+      'Löscht jeden gespeicherten Chat. Kann nicht rückgängig gemacht werden.';
+
+  @override
+  String get settingsDeleteAllDataSubtitle =>
+      'Chats, Modelle, Kreationen und Einstellungen — zurück zum ersten Start.';
+
+  @override
   String get settingsPurgeMemory => 'KI-Speicher leeren';
 
   @override
