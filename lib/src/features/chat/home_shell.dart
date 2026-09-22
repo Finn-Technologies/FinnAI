@@ -1419,13 +1419,32 @@ class _HomeHeader extends StatelessWidget {
       );
 }
 
+/// Height of the chat's top scroll-fade band, in logical pixels.
+///
+/// Declared once because the gradient's opaque stretch is a fraction of it:
+/// the band and the gradient stops have to stay in step.
+const double _chatTopFadeHeight = 210;
+
+/// Depth of the fully opaque stretch at the top of the fade band.
+///
+/// The brand row must stay readable while messages scroll beneath it, so the
+/// fade is opaque wherever the header can sit. `_HomeHeader` is 48 tall at
+/// `top: 71 * sy`, and `sy` is clamped to 1.08, so its bottom edge reaches
+/// (71 + 48) * 1.08 ≈ 128.5.
+const double _chatTopFadeOpaqueDepth = 134;
+
 /// A static soft-edge fade that sits over the scrolling chat list so messages
 /// appear to slide beneath the header at the top and fade into the very bottom
 /// edge of the screen below the composer. It replaces the old progressive
-/// backdrop blur with a plain gradient — effectively free per scroll frame —
-/// and never reaches full opacity, so the outermost row of the chat stays
-/// faintly visible at the screen edges. The header and composer are drawn
-/// above these fades in the shell Stack, so they stay crisp and tappable.
+/// backdrop blur with a plain gradient — effectively free per scroll frame.
+/// The header and composer are drawn above these fades in the shell Stack, so
+/// they stay crisp and tappable.
+///
+/// The top band is *fully* opaque across the brand row and only then ramps to
+/// transparent. At anything less than opaque, scrolled message text stays
+/// legible straight through the app title, which reads as a rendering fault
+/// rather than as depth. The bottom band has no content drawn over it, so it
+/// keeps the softer profile that lets the last row dissolve into the composer.
 class _ChatEdgeFade extends StatelessWidget {
   const _ChatEdgeFade({super.key, required this.top});
 
@@ -1437,6 +1456,28 @@ class _ChatEdgeFade extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = FluxColors.isDark(context);
     final color = isDark ? FluxColors.darkCanvas : FluxColors.canvas;
+    final stops = top
+        ? const <double>[
+            0.0,
+            _chatTopFadeOpaqueDepth / _chatTopFadeHeight,
+            0.80,
+            1.0,
+          ]
+        : const <double>[0.0, 0.35, 0.7, 1.0];
+    final colors = top
+        ? <Color>[
+            // Opaque across the brand row; the ramp starts below it.
+            color,
+            color,
+            color.withValues(alpha: 0.42),
+            color.withValues(alpha: 0.0),
+          ]
+        : <Color>[
+            color.withValues(alpha: 0.93),
+            color.withValues(alpha: 0.64),
+            color.withValues(alpha: 0.25),
+            color.withValues(alpha: 0.0),
+          ];
     return DecoratedBox(
       decoration: BoxDecoration(
         // Progressive: mostly transparent across the band and easing smoothly
@@ -1444,13 +1485,8 @@ class _ChatEdgeFade extends StatelessWidget {
         gradient: LinearGradient(
           begin: top ? Alignment.topCenter : Alignment.bottomCenter,
           end: top ? Alignment.bottomCenter : Alignment.topCenter,
-          stops: const [0.0, 0.35, 0.7, 1.0],
-          colors: [
-            color.withValues(alpha: 0.93),
-            color.withValues(alpha: 0.64),
-            color.withValues(alpha: 0.25),
-            color.withValues(alpha: 0.0),
-          ],
+          stops: stops,
+          colors: colors,
         ),
       ),
       child: const SizedBox.expand(),
@@ -1895,14 +1931,15 @@ class _ConversationState extends State<_Conversation> {
         ),
         // Fixed overlay bands (Positioned, not Align) so they are anchored to
         // the real top and bottom edges of the viewport. The top band is tall
-        // enough to wash over the header; the bottom band fades content into
-        // the very bottom edge of the screen and completes exactly at the
-        // composer's top edge, so messages stay crisp right up to the input.
+        // enough to hide the header completely and still ramp out below it; the
+        // bottom band fades content into the very bottom edge of the screen and
+        // completes exactly at the composer's top edge, so messages stay crisp
+        // right up to the input.
         Positioned(
           top: 0,
           left: 0,
           right: 0,
-          height: 160,
+          height: _chatTopFadeHeight,
           child: IgnorePointer(
             child: const _ChatEdgeFade(
               key: ValueKey('chat-fade-top'),

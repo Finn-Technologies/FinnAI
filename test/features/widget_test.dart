@@ -185,6 +185,97 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
   });
 
+  testWidgets('the top fade stays fully opaque beneath the brand row', (
+    tester,
+  ) async {
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    tester.view.devicePixelRatio = 1;
+
+    LinearGradient gradientOf(Key key) {
+      final box = tester.widget<DecoratedBox>(
+        find.descendant(
+          of: find.byKey(key),
+          matching: find.byType(DecoratedBox),
+        ),
+      );
+      return (box.decoration as BoxDecoration).gradient! as LinearGradient;
+    }
+
+    // Samples a gradient the way the rasteriser does: linear between stops,
+    // clamped outside them.
+    double alphaAt(LinearGradient gradient, double t) {
+      final stops = gradient.stops!;
+      for (var index = 0; index < stops.length; index++) {
+        if (t > stops[index]) continue;
+        if (index == 0) return gradient.colors.first.a;
+        final span = stops[index] - stops[index - 1];
+        final local = span == 0 ? 0.0 : (t - stops[index - 1]) / span;
+        return gradient.colors[index - 1].a +
+            (gradient.colors[index].a - gradient.colors[index - 1].a) * local;
+      }
+      return gradient.colors.last.a;
+    }
+
+    // 844 is the reference layout height (scale factor 1.0) and the taller
+    // viewport is the worst case for where the header lands.
+    for (final height in const <double>[844, 912]) {
+      tester.view.physicalSize = Size(390, height);
+
+      final conversations = ConversationStore();
+      conversations.startNew();
+      conversations.add(
+          ConversationRole.user, 'Does text collide with the title?');
+      addTearDown(conversations.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: FluxTheme.light,
+          home: HomeShell(
+            conversationStore: conversations,
+            initializeServices: false,
+          ),
+        ),
+      );
+      await tester.pump();
+
+      final top = gradientOf(const ValueKey('chat-fade-top'));
+      final band = tester.getRect(find.byKey(const ValueKey('chat-fade-top')));
+      final header = tester.getRect(
+        find.byKey(const ValueKey('home-menu-button')),
+      );
+
+      // The band has to reach past the header, otherwise its ramp would begin
+      // inside the brand row.
+      expect(
+        band.bottom,
+        greaterThan(header.bottom),
+        reason: 'at height $height the fade ramp starts inside the brand row',
+      );
+
+      // Nothing under the header may show through: scrolled message text that
+      // stays legible behind the title reads as a rendering fault, not depth.
+      final headerBottom = (header.bottom - band.top) / band.height;
+      expect(
+        alphaAt(top, headerBottom),
+        1.0,
+        reason: 'at height $height the fade is translucent at the header '
+            'bottom (t=$headerBottom)',
+      );
+
+      expect(top.colors.last.a, 0.0);
+
+      // The bottom band has no content drawn over it and keeps the soft
+      // profile that lets the last row dissolve into the composer.
+      final bottom = gradientOf(const ValueKey('chat-fade-bottom'));
+      expect(bottom.colors.first.a, lessThan(top.colors.first.a));
+
+      expect(tester.takeException(), isNull);
+      // Let the store's debounced save fire so no timer outlives the tree.
+      await tester.pump(const Duration(milliseconds: 500));
+    }
+  });
+
   testWidgets('expanding sources anchors the answer and slides actions below', (
     tester,
   ) async {
