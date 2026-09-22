@@ -99,6 +99,18 @@ android {
                 "**/armeabi-v7a/*.so",
                 "**/x86_64/*.so",
             )
+            // The vendored AAR also carries llama.cpp's Vulkan backend
+            // (libggml-vulkan.so, ~71 MB uncompressed). FinnAI never selects it
+            // on Android: AdaptiveInferenceEngine.accelerateIfAvailable returns
+            // null for `Platform.isAndroid` and the planner pins gpuLayers to
+            // 0, so the backend is unreachable. It is loaded only through
+            // ggml_backend_load_all's directory scan — nothing NEEDs it — so
+            // dropping it cannot break the loader; it just is not offered.
+            // Removing it roughly halves the native payload of the shipped APK.
+            // Keep this in step with the AAR contents in
+            // tool/rebuild_llama_android_aar.sh: if Android GPU offload is ever
+            // enabled, delete this exclude instead of changing the build.
+            excludes += "**/libggml-vulkan.so"
         }
     }
 

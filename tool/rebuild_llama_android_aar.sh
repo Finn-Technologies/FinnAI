@@ -9,7 +9,10 @@ set -euo pipefail
 # The Vulkan build config (llama_android_build.patch) requires Homebrew
 # packages on the build machine: vulkan-headers, shaderc, spirv-headers.
 # The AAR is arm64-v8a only and ships the CPU variants plus the Vulkan
-# backend (libggml-vulkan.so).
+# backend (libggml-vulkan.so). Keep in mind that the Android app excludes
+# libggml-vulkan.so at packaging time (android/app/build.gradle.kts) because
+# no code path can select a non-CPU backend on Android; if GPU offload is ever
+# enabled, remove that exclude rather than dropping the library here.
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PACKAGE_COMMIT="1a8c7563cb5382e23bcd20dc5720fc8d8099ec58"

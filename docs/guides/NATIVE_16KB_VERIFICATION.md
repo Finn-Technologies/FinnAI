@@ -71,12 +71,26 @@ python3 tool/verify_native_alignment.py \
 Verified output:
 
 ```text
-OK: libggml-base.so: PT_LOAD alignments [0x4000, 0x4000, 0x4000]
-OK: libggml-cpu.so:  PT_LOAD alignments [0x4000, 0x4000, 0x4000]
-OK: libggml.so:      PT_LOAD alignments [0x4000, 0x4000, 0x4000]
-OK: libllama.so:     PT_LOAD alignments [0x4000, 0x4000, 0x4000]
-OK: libmtmd.so:      PT_LOAD alignments [0x4000, 0x4000, 0x4000]
+OK: libggml-base.so: PT_LOAD alignments [0x4000, 0x4000, 0x4000], minimum 0x4000
+OK: libggml-cpu-android_armv8.0_1.so: PT_LOAD alignments [0x4000, 0x4000, 0x4000], minimum 0x4000
+OK: libggml-cpu-android_armv8.2_1.so: PT_LOAD alignments [0x4000, 0x4000, 0x4000], minimum 0x4000
+OK: libggml-cpu-android_armv8.2_2.so: PT_LOAD alignments [0x4000, 0x4000, 0x4000], minimum 0x4000
+OK: libggml-cpu-android_armv8.6_1.so: PT_LOAD alignments [0x4000, 0x4000, 0x4000], minimum 0x4000
+OK: libggml-cpu-android_armv9.0_1.so: PT_LOAD alignments [0x4000, 0x4000, 0x4000], minimum 0x4000
+OK: libggml-cpu-android_armv9.2_1.so: PT_LOAD alignments [0x4000, 0x4000, 0x4000], minimum 0x4000
+OK: libggml-cpu-android_armv9.2_2.so: PT_LOAD alignments [0x4000, 0x4000, 0x4000], minimum 0x4000
+OK: libggml-vulkan.so: PT_LOAD alignments [0x4000, 0x4000, 0x4000], minimum 0x4000
+OK: libggml.so: PT_LOAD alignments [0x4000, 0x4000, 0x4000], minimum 0x4000
+OK: libllama.so: PT_LOAD alignments [0x4000, 0x4000, 0x4000], minimum 0x4000
+OK: libmtmd.so: PT_LOAD alignments [0x4000, 0x4000, 0x4000], minimum 0x4000
 ```
+
+`libggml-vulkan.so` is checked here because it is part of the AAR, but the
+Android app does not package it: `accelerateIfAvailable` returns `null` on
+Android and the planner pins `gpuLayers` to 0, so the Vulkan backend is
+unreachable there. `android/app/build.gradle.kts` excludes it from the APK,
+which removes roughly 71 MB of dead native payload. The release gate therefore
+checks the ten CPU/runtime libraries the app actually ships.
 
 The source-built libraries retain the same complete public C ABI as the
 original release libraries:
