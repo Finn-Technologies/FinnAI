@@ -390,6 +390,47 @@ class ConversationStore extends ChangeNotifier {
 
   static const String _keyStorageAlias = 'finn_ai_conversation_master_key_v2';
 
+  /// Monotonic counter that makes every temporary write file unique within
+  /// this isolate.
+  ///
+  /// A single fixed temp name (`conversations.v2.enc.tmp`) is shared by every
+  /// writer and is also deleted by [_initialize] when the main file is absent.
+  /// Two stores opened on the same directory — which is exactly what a
+  /// reload-after-restart does — could therefore rename away (or delete) a
+  /// temp file another writer was about to rename, raising ENOENT, latching
+  /// [_storageError] and silently dropping the snapshot. Unique names remove
+  /// that class of interference entirely.
+  static int _tempSequence = 0;
+
+  /// Temp files older than this are crash leftovers and are cleaned up on
+  /// initialize. The window is far longer than any real write, so a live
+  /// writer's in-flight temp file is never touched.
+  static const Duration _staleTempAge = Duration(hours: 1);
+
+  static String _uniqueTempPath(String path) {
+    final sequence = _tempSequence++;
+    final stamp = DateTime.now().microsecondsSinceEpoch;
+    return '$path.$sequence-$stamp.tmp';
+  }
+
+  static bool _isTransientWriteFailure(Object error) {
+    if (error is PathNotFoundException) return true;
+    if (error is FileSystemException) {
+      // ENOENT while swapping the temp file into place is a lost race, not a
+      // durable storage fault; one retry with a fresh temp file recovers.
+      return error.osError?.errorCode == 2;
+    }
+    return false;
+  }
+
+  static Future<void> _discardTempFile(File temp) async {
+    try {
+      if (await temp.exists()) await temp.delete();
+    } catch (_) {
+      // Best effort: a leftover temp file is reclaimed by the stale sweep.
+    }
+  }
+
   /// Conversation ids become archive file names; reject anything that
   /// could escape the archive directory.
   static final RegExp _unsafeArchiveIdChars = RegExp(r'[^A-Za-z0-9._-]');
@@ -696,6 +737,9 @@ class ConversationStore extends ChangeNotifier {
       // Build the lazy index of per-conversation archives so evicted
       // conversations can fault back on demand.
       await _restoreArchiveIndex();
+    }
+    if (!_storageError) {
+      await _purgeStaleTempFiles();
     }
     if (!_storageError && _reconcileInterruptedGenerations()) {
       await flush();
@@ -1256,6 +1300,21 @@ class ConversationStore extends ChangeNotifier {
       failures.add('conversations.v2.enc.tmp ($e)');
     }
 
+    // Sweep every other temporary write file so "Delete All Local Data"
+    // cannot leave partially written ciphertext behind.
+    try {
+      final root = Directory(await _path(''));
+      if (await root.exists()) {
+        await for (final entity in root.list()) {
+          if (entity is File && entity.path.endsWith('.tmp')) {
+            await entity.delete();
+          }
+        }
+      }
+    } catch (e) {
+      failures.add('temporary write files ($e)');
+    }
+
     try {
       final encV1 = await _file(filename: 'conversations.json.enc');
       if (await encV1.exists()) await encV1.delete();
@@ -1320,6 +1379,15 @@ class ConversationStore extends ChangeNotifier {
     return _flushQueue;
   }
 
+  @override
+  void dispose() {
+    // Cancel a pending debounced save so a discarded store cannot write into a
+    // directory now owned by a newer instance.
+    _saveDebounce?.cancel();
+    _saveDebounce = null;
+    super.dispose();
+  }
+
   Future<void> _writeEncrypted(String plaintext) async {
     if (_deleting) return;
     if (_storageError) {
@@ -1335,11 +1403,25 @@ class ConversationStore extends ChangeNotifier {
         return;
       }
       final file = await _file(filename: 'conversations.v2.enc');
-      final temp = File('${file.path}.tmp');
       final envelope = await _encryptOffMain(key, plaintext);
+      final payload = jsonEncode(envelope);
 
-      await temp.writeAsString(jsonEncode(envelope), flush: true);
-      await temp.rename(file.path);
+      // One retry with a fresh temp file absorbs a lost rename race (see
+      // [_uniqueTempPath]); a second failure is a real storage fault and
+      // latches the error state below.
+      for (var attempt = 0;; attempt++) {
+        final temp = File(_uniqueTempPath(file.path));
+        try {
+          await temp.parent.create(recursive: true);
+          await temp.writeAsString(payload, flush: true);
+          await temp.rename(file.path);
+          return;
+        } catch (e) {
+          await _discardTempFile(temp);
+          if (attempt == 0 && _isTransientWriteFailure(e)) continue;
+          rethrow;
+        }
+      }
     } catch (e) {
       _storageError = true;
       _storageErrorMessage = 'Flush error: $e';
@@ -1481,15 +1563,24 @@ class ConversationStore extends ChangeNotifier {
       final key = await _getOrCreateMasterKey();
       if (key == null) return false;
       final file = await _archiveFile(conversation.id);
-      final temp = File('${file.path}.tmp');
       final envelope = await _encryptOffMain(
         key,
         jsonEncode(conversation.toJson()),
       );
-      await temp.parent.create(recursive: true);
-      await temp.writeAsString(jsonEncode(envelope), flush: true);
-      await temp.rename(file.path);
-      return true;
+      final payload = jsonEncode(envelope);
+      for (var attempt = 0;; attempt++) {
+        final temp = File(_uniqueTempPath(file.path));
+        try {
+          await temp.parent.create(recursive: true);
+          await temp.writeAsString(payload, flush: true);
+          await temp.rename(file.path);
+          return true;
+        } catch (e) {
+          await _discardTempFile(temp);
+          if (attempt == 0 && _isTransientWriteFailure(e)) continue;
+          rethrow;
+        }
+      }
     } catch (e) {
       // Sticky storage error: subsequent main-file writes must not drop
       // the not-yet-archived data this failure would have lost.
@@ -1532,6 +1623,30 @@ class ConversationStore extends ChangeNotifier {
       if (await dir.exists()) await dir.delete(recursive: true);
     } catch (e) {
       debugPrint('Archive purge failed: $e');
+    }
+  }
+
+  /// Deletes temporary write files left behind by an interrupted process.
+  /// Only files older than [_staleTempAge] are removed, so a temp file that a
+  /// live writer is currently renaming into place is never deleted.
+  Future<void> _purgeStaleTempFiles() async {
+    final cutoff = DateTime.now().subtract(_staleTempAge);
+    for (final relative in const <String>['', 'conversations/archive']) {
+      try {
+        final dir = Directory(await _path(relative));
+        if (!await dir.exists()) continue;
+        await for (final entity in dir.list()) {
+          if (entity is! File || !entity.path.endsWith('.tmp')) continue;
+          try {
+            final stat = await entity.stat();
+            if (stat.modified.isBefore(cutoff)) await entity.delete();
+          } catch (_) {
+            // Skip entries that vanish or cannot be inspected.
+          }
+        }
+      } catch (e) {
+        debugPrint('Stale temp cleanup failed for "$relative": $e');
+      }
     }
   }
 
