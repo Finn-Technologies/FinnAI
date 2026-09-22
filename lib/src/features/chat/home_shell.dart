@@ -3644,13 +3644,6 @@ class _ChatComposerState extends State<ChatComposer> {
                         enabled: !widget.blocked,
                         minLines: 1,
                         maxLines: 5,
-                        // An untouched pill reads as a centred invitation —
-                        // "Ask anything" sits in the middle of the field the
-                        // way Gemini and ChatGPT place their opening prompt —
-                        // and snaps to the left as soon as there is a draft to
-                        // read, so multi-line text still reads like text.
-                        textAlign:
-                            _hasText ? TextAlign.start : TextAlign.center,
                         textAlignVertical: TextAlignVertical.center,
                         keyboardType: TextInputType.multiline,
                         textInputAction: TextInputAction.send,

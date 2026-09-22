@@ -91,34 +91,6 @@ void main() {
           greaterThanOrEqualTo(48));
     });
 
-    // The opening prompt is centred, the way Gemini and ChatGPT place theirs,
-    // and the draft it becomes is left-aligned. Asserting the rendered position
-    // of the hint — not just the property — is what proves it.
-    testWidgets('the placeholder is centred until there is a draft', (
-      tester,
-    ) async {
-      _useMobileSize(tester);
-      await _pumpComposer(tester);
-
-      final field = find.byType(TextField);
-      expect(tester.widget<TextField>(field).textAlign, TextAlign.center);
-      expect(
-        tester.widget<Text>(find.text('Ask anything')).textAlign,
-        TextAlign.center,
-      );
-      expect(
-        tester.getCenter(find.text('Ask anything')).dx,
-        closeTo(tester.getCenter(field).dx, 1.0),
-      );
-
-      await tester.enterText(field, 'Draft a short email');
-      await tester.pump();
-
-      // The editable's own box spans the field, so its geometry cannot show the
-      // alignment; the field's alignment is the contract that matters here.
-      expect(tester.widget<TextField>(field).textAlign, TextAlign.start);
-    });
-
     testWidgets('a busy composer swaps send and mic for a full-size stop', (
       tester,
     ) async {
