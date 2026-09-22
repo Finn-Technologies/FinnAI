@@ -125,6 +125,14 @@ class BackendSelection {
   final String deviceName;
   final String registryName;
   final String reason;
+
+  BackendSelection copyWithConfig(RuntimeConfig next) => BackendSelection(
+        config: next,
+        backend: backend,
+        deviceName: deviceName,
+        registryName: registryName,
+        reason: reason,
+      );
 }
 
 RuntimeConfig runtimeConfigFromPlan(
@@ -272,6 +280,34 @@ class AdaptiveInferenceEngine {
   BackendSelection? _selection;
   String? _appVersion;
 
+  /// Device+model fingerprints whose quantized KV cache could not be created
+  /// by llama.cpp (`llama_init_from_model` returns null for an unsupported KV
+  /// type). [FinnAccelerator] recovers by retrying with F16, but without this
+  /// memory every cold start repeated the doomed native init — several seconds
+  /// of delay plus a native error log before the first reply of each launch.
+  final List<String> _compactKvUnsupported = <String>[];
+  bool _compactKvCacheLoaded = false;
+
+  /// Fingerprints are kept newest-last; older ones are dropped so an app that
+  /// is updated repeatedly does not grow the file without bound.
+  static const int _maxCompactKvFingerprints = 8;
+
+  Directory? _cacheDirectoryOverride;
+
+  /// Test hook: redirects the on-device cache file into [directory].
+  @visibleForTesting
+  set debugCacheDirectory(Directory? directory) {
+    _cacheDirectoryOverride = directory;
+    _compactKvCacheLoaded = false;
+    _compactKvUnsupported.clear();
+  }
+
+  @visibleForTesting
+  void debugResetCacheState() {
+    _compactKvCacheLoaded = false;
+    _compactKvUnsupported.clear();
+  }
+
   /// Selects the initial config. Returns a cached accelerator when the device
   /// fingerprint still matches; otherwise the conservative CPU baseline.
   Future<SelectionOutcome> select({
@@ -282,7 +318,11 @@ class AdaptiveInferenceEngine {
   }) async {
     final profile = _profile ?? await DeviceProfiler.read();
     _profile = profile;
-    final cpu = runtimeConfigFromPlan(heuristicPlan, profile);
+    final cpu = await _withSupportedKv(
+      runtimeConfigFromPlan(heuristicPlan, profile),
+      profile,
+      modelSha256,
+    );
 
     // Benchmark harness overrides always win over the cached backend so
     // config sweeps are honored without editing the cache.
@@ -298,13 +338,22 @@ class AdaptiveInferenceEngine {
 
     final cached = await _readCachedSelection(profile, modelSha256);
     if (cached != null) {
-      _config = cached.config;
-      _selection = cached;
+      final cachedConfig = await _withSupportedKv(
+        cached.config,
+        profile,
+        modelSha256,
+      );
+      final effective = cachedConfig == cached.config
+          ? cached
+          : cached.copyWithConfig(cachedConfig);
+      _config = effective.config;
+      _selection = effective;
       return SelectionOutcome(
-        config: cached.config,
+        config: effective.config,
         results: const [],
-        reason: 'Cached ${cached.backend.name} backend: ${cached.deviceName}.',
-        selection: cached,
+        reason: 'Cached ${effective.backend.name} backend: '
+            '${effective.deviceName}.',
+        selection: effective,
       );
     }
 
@@ -355,6 +404,95 @@ class AdaptiveInferenceEngine {
 
   void attachLlamaCppCommit(String? commit) {
     if (commit != null && commit.isNotEmpty) _llamaCppCommit = commit;
+  }
+
+  /// True when a quantized KV cache is known to be unusable for this device
+  /// and model, so planning F16 saves a doomed native init at startup.
+  Future<bool> isCompactKvUnsupported({
+    required DeviceProfile profile,
+    required String modelSha256,
+  }) async {
+    await _loadCompactKvCache();
+    if (_compactKvUnsupported.isEmpty) return false;
+    return _compactKvUnsupported.contains(
+      await _kvFingerprint(profile, modelSha256),
+    );
+  }
+
+  /// Records that a quantized KV cache could not be created here, so later
+  /// launches plan F16 directly instead of failing first.
+  Future<void> recordCompactKvUnsupported({
+    required DeviceProfile profile,
+    required String modelSha256,
+  }) async {
+    await _loadCompactKvCache();
+    final fingerprint = await _kvFingerprint(profile, modelSha256);
+    if (_compactKvUnsupported.contains(fingerprint)) return;
+    _compactKvUnsupported.add(fingerprint);
+    while (_compactKvUnsupported.length > _maxCompactKvFingerprints) {
+      _compactKvUnsupported.removeAt(0);
+    }
+    debugPrint('FINN_KV_MEMO quantized KV unsupported; planning F16 KV');
+    await _flushCompactKvCache();
+  }
+
+  /// Downgrades [config] to F16 KV when this device cannot create a quantized
+  /// one. Every other setting is preserved.
+  Future<RuntimeConfig> _withSupportedKv(
+    RuntimeConfig config,
+    DeviceProfile profile,
+    String modelSha256,
+  ) async {
+    final compact =
+        config.kvType != KvCacheType.f16 && config.kvType != KvCacheType.f32;
+    if (!compact) return config;
+    final unsupported = await isCompactKvUnsupported(
+      profile: profile,
+      modelSha256: modelSha256,
+    );
+    if (!unsupported) return config;
+    return config.copyWith(kvType: KvCacheType.f16);
+  }
+
+  Future<void> _loadCompactKvCache() async {
+    if (_compactKvCacheLoaded) return;
+    _compactKvCacheLoaded = true;
+    try {
+      final file = await _cacheFile();
+      if (!await file.exists()) return;
+      final data =
+          (jsonDecode(await file.readAsString()) as Map<Object?, Object?>)
+              .cast<String, Object?>();
+      final stored = data['compactKvUnsupported'];
+      if (stored is List) {
+        _compactKvUnsupported
+          ..clear()
+          ..addAll(stored.whereType<String>());
+      }
+    } catch (_) {
+      // The cache is an optimization; a read failure just re-attempts.
+    }
+  }
+
+  Future<void> _flushCompactKvCache() async {
+    try {
+      final file = await _cacheFile();
+      await file.parent.create(recursive: true);
+      var data = <String, Object?>{};
+      if (await file.exists()) {
+        try {
+          data =
+              (jsonDecode(await file.readAsString()) as Map<Object?, Object?>)
+                  .cast<String, Object?>();
+        } catch (_) {
+          // Overwrite a corrupt cache rather than failing.
+        }
+      }
+      data['compactKvUnsupported'] = List<String>.of(_compactKvUnsupported);
+      await file.writeAsString(jsonEncode(data), flush: true);
+    } catch (_) {
+      // Worst case the next launch repeats one fallback attempt.
+    }
   }
 
   /// True when there is no cached accelerator selection that is still valid
@@ -424,6 +562,29 @@ class AdaptiveInferenceEngine {
   Future<String> _fingerprint(DeviceProfile profile, String modelSha256) async {
     // The app version invalidates the cache after a software update so the
     // benchmark re-runs against the newly shipped runtime.
+    final raw = '${profile.processor}|${profile.totalRamBytes}|$modelSha256|'
+        '${profile.nativeLibraryDir}|${await _appVersionString()}';
+    return sha256.convert(utf8.encode(raw)).toString();
+  }
+
+  /// Fingerprint for the quantized-KV capability memory.
+  ///
+  /// Deliberately excludes [DeviceProfile.nativeLibraryDir]. On Android that
+  /// path embeds the per-install random `/data/app/~~<id>==/…` directory, so
+  /// folding it in would drop the memory on every update and make each user pay
+  /// the doomed native init again after each release. The capability being
+  /// remembered is a property of the chip, the model and the shipped runtime,
+  /// none of which that path describes.
+  Future<String> _kvFingerprint(
+    DeviceProfile profile,
+    String modelSha256,
+  ) async {
+    final raw = '${profile.processor}|${profile.totalRamBytes}|$modelSha256|'
+        '${await _appVersionString()}';
+    return sha256.convert(utf8.encode(raw)).toString();
+  }
+
+  Future<String> _appVersionString() async {
     if (_appVersion == null) {
       try {
         final info = await PackageInfo.fromPlatform();
@@ -432,13 +593,12 @@ class AdaptiveInferenceEngine {
         _appVersion = 'unknown';
       }
     }
-    final raw = '${profile.processor}|${profile.totalRamBytes}|$modelSha256|'
-        '${profile.nativeLibraryDir}|$_appVersion';
-    return sha256.convert(utf8.encode(raw)).toString();
+    return _appVersion!;
   }
 
   Future<File> _cacheFile() async {
-    final root = await getApplicationSupportDirectory();
+    final root =
+        _cacheDirectoryOverride ?? await getApplicationSupportDirectory();
     return File('${root.path}${Platform.pathSeparator}adaptive_backend.json');
   }
 

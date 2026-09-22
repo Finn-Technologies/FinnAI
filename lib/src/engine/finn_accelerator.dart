@@ -7,6 +7,7 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:finn_ai/src/engine/backends/llama_shim.dart';
+import 'package:finn_ai/src/engine/prompt/bare_tool_call_filter.dart';
 import 'package:finn_ai/src/engine/prompt/prompt_formatter.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -1114,9 +1115,15 @@ class FinnAccelerator extends ChangeNotifier {
     final prefix = StringBuffer();
     var decided = false;
     var hidingThought = false;
+    // Tool-call JSON that arrives without its <tool_call> wrapper is not prose
+    // and must never reach the user; see [BareToolCallFilter].
+    final toolCalls = BareToolCallFilter();
+
+    String visible(String text) => toolCalls.add(_stripToolTags(text));
+
     await for (final token in source) {
       if (decided) {
-        final sanitized = _stripToolTags(token);
+        final sanitized = visible(token);
         if (sanitized.isNotEmpty) {
           trace?.mark(TtftPhase.sanitizedToken);
           yield sanitized;
@@ -1132,7 +1139,7 @@ class FinnAccelerator extends ChangeNotifier {
           hidingThought = true;
         } else {
           decided = true;
-          final sanitized = _stripToolTags(trimmed);
+          final sanitized = visible(trimmed);
           if (sanitized.isNotEmpty) {
             trace?.mark(TtftPhase.sanitizedToken);
             yield sanitized;
@@ -1142,9 +1149,10 @@ class FinnAccelerator extends ChangeNotifier {
       }
       final close = buffered.indexOf('</think>');
       if (close < 0) continue;
-      final visible = buffered.substring(close + '</think>'.length).trimLeft();
+      final afterThought =
+          buffered.substring(close + '</think>'.length).trimLeft();
       decided = true;
-      final sanitized = _stripToolTags(visible);
+      final sanitized = visible(afterThought);
       if (sanitized.isNotEmpty) {
         trace?.mark(TtftPhase.sanitizedToken);
         yield sanitized;
@@ -1152,11 +1160,16 @@ class FinnAccelerator extends ChangeNotifier {
     }
     // An unterminated reasoning block is intentionally not surfaced.
     if (!decided && !hidingThought && prefix.isNotEmpty) {
-      final sanitized = _stripToolTags(prefix.toString());
+      final sanitized = visible(prefix.toString());
       if (sanitized.isNotEmpty) {
         trace?.mark(TtftPhase.sanitizedToken);
         yield sanitized;
       }
+    }
+    final tail = toolCalls.flush();
+    if (tail.isNotEmpty) {
+      trace?.mark(TtftPhase.sanitizedToken);
+      yield tail;
     }
   }
 
@@ -1671,6 +1684,20 @@ class FinnAccelerator extends ChangeNotifier {
                   '<|im_end|>\n',
                 );
               }
+              // The decision pass leaves the TinyBrowser tool advertisement in
+              // the cached session, and a 1.6B model will keep emitting tool
+              // calls into the answer turn. When it drops the <tool_call>
+              // wrapper the engine cannot parse the call, so the raw JSON used
+              // to reach the user verbatim (sometimes thousands of tokens of
+              // it). Close the tool phase explicitly before answering.
+              continuation.write(
+                '<|im_start|>system\n'
+                'Stop using tools now. Answer the user\'s question in plain '
+                'prose using the information above. Do not output JSON, a '
+                'tool_call block, or the names browser_search, browser_open '
+                'or browser_find.\n'
+                '<|im_end|>\n',
+              );
               continuation.write(
                 '<|im_start|>assistant\n<think>\n\n</think>\n\n',
               );
@@ -3200,6 +3227,7 @@ class FinnAccelerator extends ChangeNotifier {
     var compactKv =
         config.kvType != KvCacheType.f16 && config.kvType != KvCacheType.f32;
     var fellBackFromAccelerator = false;
+    var fellBackFromCompactKv = false;
     try {
       engine ??= await spawnWith(
         config,
@@ -3234,7 +3262,17 @@ class FinnAccelerator extends ChangeNotifier {
         );
       }
     } catch (e) {
-      debugPrint('FINN_LOADMODEL_ERROR $e');
+      if (config.isCpu && compactKv) {
+        // Quantized KV is not universal. The F16 retry below is the
+        // compatibility baseline, so this failure is expected and handled
+        // rather than a load error — logging it as one made a normal first
+        // launch look broken.
+        debugPrint(
+          'FINN_KV_FALLBACK quantized KV init failed, retrying F16: $e',
+        );
+      } else {
+        debugPrint('FINN_LOADMODEL_ERROR $e');
+      }
       if (!config.isCpu) {
         // A stale cached accelerator config failed (driver changed or the
         // backend was removed from the APK). Fall back to the guaranteed CPU
@@ -3264,6 +3302,7 @@ class FinnAccelerator extends ChangeNotifier {
             config,
             compactKv: false,
           ).timeout(const Duration(seconds: 90));
+          fellBackFromCompactKv = true;
         } on TimeoutException catch (e2) {
           debugPrint('FINN_LOADMODEL retry timeout: $e2');
           throw TimeoutException(
@@ -3273,6 +3312,15 @@ class FinnAccelerator extends ChangeNotifier {
       } else {
         rethrow;
       }
+    }
+
+    if (fellBackFromCompactKv) {
+      // Remember this device's KV capability so the next cold start plans F16
+      // directly instead of paying another doomed quantized-KV native init.
+      await adaptive.recordCompactKvUnsupported(
+        profile: profile,
+        modelSha256: model.sha256Digest,
+      );
     }
 
     final primaryEngine = engine;
