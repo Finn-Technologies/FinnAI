@@ -179,9 +179,11 @@ class DeviceProfiler {
         (profile.totalRamBytes != null &&
             profile.totalRamBytes! <= 3000 * 1000 * 1000);
 
-    // TurboQuant compact KV cache quantization (Q4_0 / IQ4_NL + FlashAttention)
-    // shrinks KV memory by ~75%, allowing substantial context windows across
-    // all hardware tiers without memory pressure or out-of-memory risks.
+    // Compact KV cache quantization (llama.cpp IQ4_NL / Q4_0, with Flash
+    // Attention) is what lets these context sizes fit on entry hardware: it
+    // stores a KV value in a few bits instead of 16. Devices whose backend
+    // rejects the compact type fall back to f16 — recorded per device+model in
+    // the adaptive KV memo so the fallback is paid once, not every launch.
     final context = constrained
         ? 2048
         : switch (processor) {

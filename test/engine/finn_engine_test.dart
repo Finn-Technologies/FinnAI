@@ -16,21 +16,21 @@ void main() {
       expect(engine.selected.name, contains('LFM2.5-VL 1.6B'));
     });
 
-    test('FinnEngineConfig supports TurboQuant and compact KV types', () {
+    test('config KV types name the llama.cpp types they map to', () {
       const config = FinnEngineConfig(
         contextSize: 2048,
         threads: 2,
         batchThreads: 4,
         batchSize: 128,
         microBatchSize: 64,
-        kvCacheType: FinnKvCacheType.turboQuant2Bit,
+        kvCacheType: FinnKvCacheType.compactIq4,
         flashAttention: false,
       );
 
       expect(config.contextSize, 2048);
       expect(config.threads, 2);
       expect(config.batchThreads, 4);
-      expect(config.kvCacheType, FinnKvCacheType.turboQuant2Bit);
+      expect(config.kvCacheType, FinnKvCacheType.compactIq4);
       expect(config.flashAttention, isFalse);
 
       final upgraded = config.copyWith(

@@ -2,9 +2,15 @@ import 'package:flutter/foundation.dart';
 import 'package:finn_ai/src/engine/backends/llama_shim.dart';
 
 /// Supported Key-Value (KV) cache quantization formats.
+///
+/// These are llama.cpp's own KV cache types. TurboQuant — the research method
+/// that quantises the KV cache with a Hadamard rotation down to a few bits per
+/// value — is **not** one of them, and no part of this app implements it:
+/// llama.cpp has no such KV type, so it would take ggml kernels, not a config
+/// value. Naming a shipped type after it invites exactly the wrong conclusion.
 enum FinnKvCacheType {
-  /// TurboQuant Hadamard-rotated 2-bit/3-bit vector quantization.
-  turboQuant2Bit,
+  /// llama.cpp `IQ4_NL` — 4-bit non-linear, the densest useful KV type.
+  compactIq4,
 
   /// Fast integer Q8_0 quantization (compact ~32MB at 2048 context).
   compactQ8,
@@ -18,7 +24,7 @@ enum FinnKvCacheType {
 
 extension FinnKvCacheTypeExtension on FinnKvCacheType {
   KvCacheType toLlama() => switch (this) {
-        FinnKvCacheType.turboQuant2Bit => KvCacheType.iq4_nl,
+        FinnKvCacheType.compactIq4 => KvCacheType.iq4_nl,
         FinnKvCacheType.compactQ8 => KvCacheType.q8_0,
         FinnKvCacheType.compactQ4 => KvCacheType.q4_0,
         FinnKvCacheType.fp16 => KvCacheType.f16,
@@ -34,7 +40,7 @@ class FinnEngineConfig {
     required this.batchThreads,
     required this.batchSize,
     required this.microBatchSize,
-    this.kvCacheType = FinnKvCacheType.turboQuant2Bit,
+    this.kvCacheType = FinnKvCacheType.compactIq4,
     this.flashAttention = true,
     this.gpuLayers = 0,
     this.deviceName = 'CPU',
