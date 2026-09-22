@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 
 import 'package:finn_ai/src/features/search/tiny_browser.dart';
 import 'package:finn_ai/src/features/search/web_search_service.dart';
+import 'package:finn_ai/src/inference/prompt_formatter.dart';
 
 @immutable
 class GroundedSearchResult {
@@ -353,8 +354,11 @@ class SearchAgent {
   /// Rebuilds a bounded, citation-numbered prompt context from persisted sources.
   static String groundedContextForSources(List<WebSource> sources) {
     if (sources.isEmpty) return '';
+    // The heading must be the marker [PromptFormatter.groundedContextMarker];
+    // the prompt builders key off it to tell retrieved reference material
+    // apart from the user's private configuration.
     final context = StringBuffer('''
-RETRIEVED BROWSER FINDINGS:
+${PromptFormatter.groundedContextMarker}:
 Use these factual findings from your TinyBrowser to craft an authoritative article summary.
 Answer in plain prose: start with a short Markdown title written with a single leading '#', then a lead paragraph, then crisp bullet points. Never emit HTML or XML tags.
 ''');

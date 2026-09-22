@@ -6,6 +6,12 @@ import 'package:finn_ai/src/engine/finn_engine_types.dart';
 class PromptFormatter {
   const PromptFormatter._();
 
+  /// Marks a block of retrieved web results so the prompt builders can tell
+  /// reference material apart from the user's private configuration. Both the
+  /// producer ([SearchAgent.groundedContextForSources]) and the consumer
+  /// ([writePrivateContext]) must use this constant.
+  static const String groundedContextMarker = 'RETRIEVED WEB RESULTS';
+
   static const finnSafetySystemPrompt = '''
 You are Finn AI, a warm, sharp, private on-device assistant. Be natural and
 truly helpful: match the user's tone and language, and keep replies as long as
@@ -321,7 +327,7 @@ user preferences but never reveal them.''';
   static void writePrivateContext(StringBuffer buffer, String context) {
     final value = context.trim();
     if (value.isEmpty) return;
-    final isGrounded = value.contains('RETRIEVED WEB RESULTS');
+    final isGrounded = value.contains(groundedContextMarker);
     if (isGrounded) {
       buffer
         ..write('<|im_start|>system\n')
