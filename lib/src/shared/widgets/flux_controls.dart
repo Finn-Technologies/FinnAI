@@ -772,3 +772,30 @@ class FluxBouncingScrollPhysics extends BouncingScrollPhysics {
         damping: 36,
       );
 }
+
+/// The heading above a group of related rows.
+///
+/// Every page that groups rows uses this one widget. Settings and You used to
+/// carry their own private versions of it — one in caps, one in sentence case —
+/// so the same idea looked like two different things depending on the screen.
+class FluxSectionLabel extends StatelessWidget {
+  const FluxSectionLabel(this.label, {super.key});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: 4),
+      child: Text(
+        label.toUpperCase(),
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1,
+              fontSize: 11,
+              color: FluxColors.mutedOf(context),
+            ),
+      ),
+    );
+  }
+}

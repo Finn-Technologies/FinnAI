@@ -1252,20 +1252,7 @@ class _SectionHeader extends StatelessWidget {
   final String label;
 
   @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: 4),
-      child: Text(
-        label,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.0,
-              fontSize: 11,
-              color: FluxColors.mutedOf(context),
-            ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => FluxSectionLabel(label);
 }
 
 class _InfoRow extends StatelessWidget {

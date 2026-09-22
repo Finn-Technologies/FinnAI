@@ -133,7 +133,8 @@ class _YouPageState extends State<YouPage> {
                                       body: L10n.of(context).youIntroBody,
                                     ),
                                     const SizedBox(height: 22),
-                                    _SectionLabel(L10n.of(context).youAboutYou),
+                                    FluxSectionLabel(
+                                        L10n.of(context).youAboutYou),
                                     const SizedBox(height: 9),
                                     _FinnTextField(
                                       key: const Key('you-name-field'),
@@ -153,7 +154,7 @@ class _YouPageState extends State<YouPage> {
                                       maxLength: 400,
                                     ),
                                     const SizedBox(height: 22),
-                                    _SectionLabel(
+                                    FluxSectionLabel(
                                       L10n.of(context).youResponseStyle,
                                     ),
                                     const SizedBox(height: 9),
@@ -173,7 +174,7 @@ class _YouPageState extends State<YouPage> {
                                           .toList(),
                                     ),
                                     const SizedBox(height: 22),
-                                    _SectionLabel(
+                                    FluxSectionLabel(
                                       L10n.of(context).youInstructionsLabel,
                                     ),
                                     const SizedBox(height: 9),
@@ -317,20 +318,6 @@ class _IntroCard extends StatelessWidget {
       );
 }
 
-class _SectionLabel extends StatelessWidget {
-  const _SectionLabel(this.text);
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Text(
-        text,
-        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: FluxColors.mutedOf(context),
-              letterSpacing: .2,
-            ),
-      );
-}
-
 class _FinnTextField extends StatelessWidget {
   const _FinnTextField({
     super.key,
@@ -415,7 +402,15 @@ class _StyleChip extends StatelessWidget {
               child: Padding(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+                // widthFactor/heightFactor make the Center shrink to the label.
+                // A plain Center expands to the widest constraint it is given,
+                // and Wrap hands its children the full line width, so each
+                // style chip stretched edge to edge and the four of them
+                // stacked into what looked like four full-width buttons
+                // instead of one row of choices.
                 child: Center(
+                  widthFactor: 1,
+                  heightFactor: 1,
                   child: Text(
                     _styleLabel(context, style),
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
