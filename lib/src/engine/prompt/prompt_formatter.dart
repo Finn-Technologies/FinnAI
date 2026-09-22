@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'package:finn_ai/src/engine/prompt/local_arithmetic.dart';
 import 'package:finn_ai/src/engine/prompt/prompt_intent.dart';
 import 'package:finn_ai/src/engine/finn_engine_types.dart';
 
@@ -299,6 +300,10 @@ user preferences but never reveal them.''';
         ..write('<|im_end|>\n');
     }
     buffer.write(currentDateTimeSystemBlock(now ?? DateTime.now()));
+    // Arithmetic the app can do exactly is not left to a 1.6B model to guess at
+    // (see [LocalArithmetic]); it is injected next to the question so the answer
+    // carries the right number.
+    buffer.write(LocalArithmetic.systemBlockFor(prompt));
     // An attached document is written immediately before the user turn so the
     // material being asked about sits next to the question. Putting it in the
     // system block at the top left it on the far side of the whole history, and
@@ -353,6 +358,7 @@ user preferences but never reveal them.''';
         'Answer the user\'s question from these notes, in your own words.\n'
         '- Match the depth to the question: a focused question (a date, a name, a number, a definition, a short fact) gets a direct, concise answer with no headings at all. Only a broad "tell me about X" request earns a headline and structured points.\n'
         '- Never reply with the notes themselves: do not quote, list or summarise the reference blocks, and do not use their [1], [2] numbering as the structure of your answer.\n'
+        '- If the notes do not answer the question, say plainly that you could not find it there and offer to look again — never fill the gap from memory.\n'
         '- Write plain prose and Markdown only. Never emit HTML or XML tags, and never leave a placeholder where a title belongs.\n'
         'Cite matching reference sources inline as [1], [2] where appropriate.\n',
       )

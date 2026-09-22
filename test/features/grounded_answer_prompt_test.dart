@@ -107,4 +107,19 @@ void main() {
 
     expect(buffer.toString(), isEmpty);
   });
+
+  // Grounding gave the model a way to be wrong with confidence: sources that do
+  // not contain the answer, and a model that would rather fill the gap from
+  // memory than say it came up empty. Absence of evidence has to be an allowed
+  // answer, in the prompt as well as in the parser.
+  test('notes that do not answer the question are allowed to say so', () {
+    final buffer = StringBuffer();
+    PromptFormatter.writeGroundedContext(
+      buffer,
+      SearchAgent.groundedContextForSources(sources),
+    );
+
+    expect(buffer.toString(), contains('do not answer the question'));
+    expect(buffer.toString(), contains('never fill the gap from memory'));
+  });
 }

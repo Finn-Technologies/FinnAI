@@ -82,3 +82,37 @@ facts to manufacturer specifications/service manuals, and prohibits invented
 slot labels, layouts, screws, limits, or a universal two-slot assumption.
 General safety guidance includes electrostatic precautions and disconnecting
 external and internal power where appropriate.
+
+## Known gap: deterministic output for the tool-decision turn
+
+The search-decision turn and the device-action turn are routing decisions, not
+prose, and both parse JSON. The parser is deliberately forgiving (XML tool
+tags, bare objects, function-call syntax) because a 1.6B model formats output
+inconsistently; today the app filters and validates after the fact.
+
+Constraining that turn with a GBNF grammar — llama.cpp supports it, and the
+vendored sampler params already carry `GrammarConfig` — was attempted and
+**must not be shipped until both of the following are true**:
+
+1. **The binding must reject a failed grammar.** When `llama_sampler_init_grammar`
+   cannot compile a grammar it returns NULL, and
+   `third_party/llama_cpp_dart/lib/src/sampling/sampler_factory.dart`
+   (`_addGrammar`) adds it to the chain unchecked. The first sample then
+   dereferences NULL. Observed on device (release build, emulator
+   `sdk_gphone16k_arm64`, pinned llama.cpp `d6d0ce8`) as
+   `Fatal signal 11 (SIGSEGV) … SEGV_MAPERR, fault addr 0x0` with
+   `#01 libllama.so (llama_sampler_sample+1136)` and nothing on the Dart side —
+   no exception, no log, just a dead process mid-turn. The guard belongs in the
+   vendored package, which `AGENTS.md` routes through
+   `tool/llama_android_build.patch` + `tool/rebuild_llama_android_aar.sh`
+   rather than hand-editing.
+2. **The grammar must be provably valid before it reaches the device.** The
+   first attempt used a hand-built grammar; after it crashed, the retry used
+   the `str`/`ws` rules copied verbatim from the `json.gbnf` shipped with the
+   pinned commit (and no unreachable rules) and **still** crashed identically.
+   So the cause is not the obvious syntax differences, and there is no local
+   way to validate a grammar: the only parser is the native one, and
+   `flutter test` cannot load a model to run it.
+
+Until then the working invariant is: sampling is unconstrained, and the app
+handles malformed tool output by parsing, validating, and falling back.
