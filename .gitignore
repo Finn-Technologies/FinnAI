@@ -75,3 +75,6 @@ ohos/entry/src/main/resources/rawfile/flutter_assets/
 *.hsp
 *.har
 
+
+# Agent worktrees
+.worktrees/
