@@ -53,30 +53,28 @@ void main() {
   });
 
   group('ChatComposer touch targets and control states', () {
-    testWidgets('composer controls fill a 48dp touch target', (tester) async {
+    testWidgets('composer controls fill their 50dp touch target', (
+      tester,
+    ) async {
       _useMobileSize(tester);
-      await _pumpComposer(tester, voiceEnabled: true, browse: true);
+      await _pumpComposer(tester, voiceEnabled: true);
 
+      // The design's circles are 50dp.
       expect(
         tester.getSize(find.byKey(const ValueKey('add-attachment-button'))),
-        const Size(48, 48),
-      );
-      expect(
-        tester.getSize(find.byKey(const ValueKey('browse-toggle-surface'))),
-        const Size(48, 48),
+        const Size(50, 50),
       );
       expect(
         tester.getSize(find.byKey(const ValueKey('mic-button-surface'))),
-        const Size(48, 48),
+        const Size(50, 50),
       );
-      // The send glyph keeps its compact visual inside the enlarged target.
+
+      // The right-hand control becomes send as soon as there is a draft.
+      await tester.enterText(find.byType(TextField), 'Hello');
+      await tester.pump();
       expect(
         tester.getSize(find.byKey(const ValueKey('send-button-hit'))),
-        const Size(48, 48),
-      );
-      expect(
-        tester.getSize(find.byKey(const ValueKey('send-button-surface'))),
-        const Size(36, 36),
+        const Size(50, 50),
       );
     });
 
@@ -86,7 +84,7 @@ void main() {
     // field, because a 48dp field pushes the placeholder off the midline.
     testWidgets('the field band carries a 48dp target', (tester) async {
       _useMobileSize(tester);
-      await _pumpComposer(tester, voiceEnabled: true, browse: true);
+      await _pumpComposer(tester, voiceEnabled: true);
 
       final band = find.byKey(const ValueKey('composer-field-band'));
       expect(tester.getSize(band).height, greaterThanOrEqualTo(48));
@@ -104,7 +102,7 @@ void main() {
     // out from the top of whatever box it is given.
     testWidgets('the placeholder sits on the pill midline', (tester) async {
       _useMobileSize(tester);
-      await _pumpComposer(tester, voiceEnabled: true, browse: true);
+      await _pumpComposer(tester, voiceEnabled: true);
 
       final pill = find.byKey(const ValueKey('chat-composer-motion'));
       expect(
@@ -136,13 +134,13 @@ void main() {
         tester
             .getSize(find.byKey(const ValueKey('chat-composer-motion')))
             .height,
-        56,
+        50,
       );
     });
 
     testWidgets('tapping the band focuses the field', (tester) async {
       _useMobileSize(tester);
-      await _pumpComposer(tester, voiceEnabled: true, browse: true);
+      await _pumpComposer(tester, voiceEnabled: true);
 
       final band = find.byKey(const ValueKey('composer-field-band'));
       final rect = tester.getRect(band);
@@ -165,7 +163,7 @@ void main() {
       expect(find.byKey(const ValueKey('mic-button-surface')), findsNothing);
       expect(
         tester.getSize(find.byKey(const ValueKey('stop-button-surface'))),
-        const Size(48, 48),
+        const Size(50, 50),
       );
     });
 
@@ -237,7 +235,7 @@ void main() {
 
       expect(
         tester.getSize(find.byKey(const ValueKey('home-menu-button'))),
-        const Size(48, 48),
+        const Size(50, 50),
       );
 
       await tester.tap(find.byKey(const ValueKey('home-menu-button')));
@@ -252,7 +250,12 @@ void main() {
       expect(tester.getSize(tileBox.first).height, greaterThanOrEqualTo(48));
     });
 
-    testWidgets('reply actions meet the 48dp target', (tester) async {
+    // The design sets the reply glyphs on a 40dp pitch (25px artwork, 15px
+    // between neighbours), so the touch target follows that pitch rather than
+    // the usual 48dp: overlapping targets would steal each other's taps.
+    testWidgets('reply actions sit on the design\'s 40dp pitch', (
+      tester,
+    ) async {
       _useMobileSize(tester);
       store
         ..startNew()
@@ -264,10 +267,15 @@ void main() {
 
       final copy = find.byTooltip('Copy');
       expect(copy, findsWidgets);
-      expect(tester.getSize(copy.first), const Size(48, 48));
+      expect(tester.getSize(copy.first), const Size(40, 40));
       expect(
-        tester.getSize(find.byTooltip('Regenerate').first),
-        const Size(48, 48),
+        tester.getSize(find.byTooltip('Report').first),
+        const Size(40, 40),
+      );
+      // Regenerate moved into the overflow, which shares the same pitch.
+      expect(
+        tester.getSize(find.byTooltip('More actions').first),
+        const Size(40, 40),
       );
     });
 
@@ -300,19 +308,13 @@ void main() {
   });
 
   group('HomeShell token and copy adoption', () {
-    testWidgets('welcome suggestion chips use the disclosure token', (
-      tester,
-    ) async {
+    testWidgets('the empty slate carries no suggestion chips', (tester) async {
       _useMobileSize(tester);
       await _pumpShell(tester, store, generation);
       await tester.pump(const Duration(milliseconds: 300));
 
-      final chipFinder = find.byType(ActionChip).first;
-      final chip = tester.widget<ActionChip>(chipFinder);
-      expect(
-        chip.backgroundColor,
-        FluxColors.disclosureOf(tester.element(chipFinder)),
-      );
+      expect(find.byType(ActionChip), findsNothing);
+      expect(find.text("Hi, what's on your mind?"), findsOneWidget);
     });
 
     testWidgets('article photo counter is locale-neutral', (tester) async {
@@ -430,7 +432,6 @@ Future<void> _pumpComposer(
   bool blocked = false,
   bool busy = false,
   bool voiceEnabled = false,
-  bool browse = false,
   String? hintText,
   String text = '',
 }) async {
@@ -452,7 +453,6 @@ Future<void> _pumpComposer(
           onMic: () {},
           voiceEnabled: voiceEnabled,
           hintText: hintText,
-          onToggleBrowse: browse ? () {} : null,
         ),
       ),
     ),
@@ -460,14 +460,15 @@ Future<void> _pumpComposer(
   await tester.pump();
 }
 
-VoidCallback? _sendTap(WidgetTester tester) => tester
-    .widget<InkWell>(
-      find.descendant(
-        of: find.byKey(const ValueKey('send-button-hit')),
-        matching: find.byType(InkWell),
-      ),
-    )
-    .onTap;
+VoidCallback? _sendTap(WidgetTester tester) {
+  final hit = find.byKey(const ValueKey('send-button-hit'));
+  if (hit.evaluate().isEmpty) return null;
+  return tester
+      .widget<InkWell>(
+        find.descendant(of: hit, matching: find.byType(InkWell)),
+      )
+      .onTap;
+}
 
 Future<VoiceChatController> _pumpVoiceSheet(
   WidgetTester tester, {

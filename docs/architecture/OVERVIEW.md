@@ -11,7 +11,7 @@ one-time model download and optional, explicit web-search queries.
    lib/src/app/            bootstrap widget, global app state      (bootstrap.dart, app_state_store.dart)
             │
    lib/src/features/       one folder per user-facing feature
-            │   chat/ onboarding/ conversations/ search/ settings/ skills/ you/ creations/ voice/ reporting/
+            │   chat/ onboarding/ conversations/ search/ settings/ flows/ you/ creations/ voice/ reporting/
             │
    lib/src/inference/      app-facing engine surface  ────────┐
             │              (thin re-export shims)             │
@@ -45,7 +45,7 @@ and no DI container. The singletons are:
 | `AppStateStore` | onboarding-complete marker, "delete all data" orchestration |
 | `ConversationStore` | conversation list, active conversation, encryption key |
 | `ChatGenerationController` | the single in-flight generation job, stream subscription |
-| `YouProfileStore`, `SkillsStore`, `CreationStore`, `VoiceSettingsStore` | feature-local persisted state |
+| `YouProfileStore`, `FlowsStore`, `CreationStore`, `VoiceSettingsStore` | feature-local persisted state |
 
 UI state that is not shared lives in `State` objects — notably `_HomeShellState` in
 `features/chat/home_shell.dart`, which is the largest widget by far.
@@ -53,7 +53,7 @@ UI state that is not shared lives in `State` objects — notably `_HomeShellStat
 ## One message, end to end
 
 1. **Compose.** `HomeShell._send` (`features/chat/home_shell.dart`) normalizes the text, collects
-   attachments, builds the system context from `YouProfileStore` + `SkillsStore`, and — if the local
+   attachments, builds the system context from `YouProfileStore` + `FlowsStore`, and — if the local
    freshness policy (`WebSearchPolicy.shouldSearch`) says the query may need current facts — runs an
    upfront web search with a 3 s timeout.
 2. **Start.** `ChatGenerationController.start` creates a `ChatGenerationJob` and subscribes to

@@ -1778,7 +1778,7 @@ List<List<dynamic>> _iconFor(FinnCreation creation) =>
 List<List<dynamic>> _kindIcon(CreationKind kind) => switch (kind) {
       CreationKind.app => FluxIcons.canvas,
       CreationKind.widget => FluxIcons.chip,
-      CreationKind.presentation => FluxIcons.skills,
+      CreationKind.presentation => FluxIcons.flows,
     };
 
 String? _emojiFor(FinnCreation creation) {

@@ -17,11 +17,11 @@ when_to_use: Building a feature screen, adding a settings option, wiring navigat
 | Anything native/model related | `lib/src/engine/` — see the `finn-engine-seam` skill |
 
 Feature folders currently in use: `chat/`, `onboarding/`, `conversations/`, `search/`, `settings/`,
-`skills/`, `you/`, `creations/`, `voice/`, `reporting/`.
+`flows/`, `you/`, `creations/`, `voice/`, `reporting/`.
 
 ## Steps
 
-1. **Read a sibling first.** `lib/src/features/skills/skills_page.dart` is a good template: it shows
+1. **Read a sibling first.** `lib/src/features/flows/flows_page.dart` is a good template: it shows
    the header, scroll structure, loading/empty/error states, and dialog conventions.
 
 2. **Reuse the shared shell.** Use `FinnPageHeader` for the page title, and `FluxColors`,

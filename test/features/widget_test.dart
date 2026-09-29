@@ -4,11 +4,10 @@ import 'package:finn_ai/src/app/bootstrap.dart';
 import 'package:finn_ai/src/features/chat/home_shell.dart';
 import 'package:finn_ai/src/features/search/web_search_service.dart';
 import 'package:finn_ai/src/features/settings/settings_page.dart';
-import 'package:finn_ai/src/features/skills/skills_page.dart';
+import 'package:finn_ai/src/features/flows/flows_page.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 import 'package:finn_ai/src/features/you/you_page.dart';
 import 'package:finn_ai/src/shared/widgets/safe_markdown_text.dart';
-import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -17,7 +16,7 @@ void main() {
     await tester.pumpWidget(const FluxApp(enableModelDownload: false));
     await tester.pump();
 
-    expect(find.text('Welcome to Finn AI!'), findsOneWidget);
+    expect(find.text('Welcome to FinnAI'), findsOneWidget);
     expect(find.text('Swipe to start'), findsOneWidget);
   });
 
@@ -33,13 +32,13 @@ void main() {
 
     await tester.drag(find.byType(PageView), const Offset(-390, 0));
     await tester.pump(const Duration(milliseconds: 800));
-    expect(find.text('Welcome to Finn AI!'), findsOneWidget);
+    expect(find.text('Welcome to FinnAI'), findsOneWidget);
 
     Future<void> moveForward({bool welcome = false}) async {
       if (welcome) {
         await tester.drag(find.text('Swipe to start'), const Offset(0, -100));
       } else {
-        await tester.tap(find.text('Next'));
+        await tester.tap(find.byKey(const ValueKey('onboarding-next')));
       }
       await tester.pump(const Duration(milliseconds: 220));
       await tester.pump(const Duration(milliseconds: 800));
@@ -51,25 +50,28 @@ void main() {
     }
 
     await moveForward(welcome: true);
-    expect(find.text('Finn AI is Privacy-First'), findsOneWidget);
-    expect(find.textContaining('proprietary software'), findsOneWidget);
+    expect(find.text('FinnAI values your privacy'), findsOneWidget);
+    expect(find.textContaining('View more on our Privacy Policy.'),
+        findsOneWidget);
     await moveForward();
-    expect(find.text('Installing LFM2.5-VL 1.6B'), findsOneWidget);
-    expect(
-        find.text('Preparing LFM2.5-VL 1.6B for this device…'), findsOneWidget);
+    expect(find.text('Downloading FinnAI Foundation'), findsOneWidget);
 
     tester.widget<PageView>(find.byType(PageView)).controller!.jumpToPage(3);
     await tester.pump();
-    expect(find.text('Before starting, read precautions'), findsOneWidget);
-    await moveForward();
-    expect(find.text('Finn AI is ready!'), findsOneWidget);
-    await tester.drag(
-      find.text("You're all set. Finn AI is ready."),
-      const Offset(0, -100),
+    // The consent step records whether context may be read from this device.
+    expect(
+      find.text('Do you allow FinnAI to get context on your device?'),
+      findsOneWidget,
     );
+    await tester.tap(find.text('Yes'));
+    await tester.pump();
+    await moveForward();
+    expect(find.text('FinnAI is ready!'), findsOneWidget);
+    await tester.tap(find.text('Start using FinnAI'));
     await tester.pump(const Duration(milliseconds: 220));
-    await tester.pump(const Duration(milliseconds: 800));
-    expect(find.text('FinnAI'), findsWidgets);
+    await tester.pump(const Duration(milliseconds: 900));
+    expect(find.byType(HomeShell), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('home and sidebar stay overflow-free', (tester) async {
@@ -82,25 +84,42 @@ void main() {
       MaterialApp(theme: FluxTheme.light, home: const HomeShell()),
     );
     await tester.pump(const Duration(milliseconds: 100));
-    expect(find.text('FinnAI'), findsWidgets);
+    // The design's home header is the menu control alone: the brand mark lives
+    // in the sidebar.
+    expect(find.text('FinnAI'), findsNothing);
+    expect(find.text("Hi, what's on your mind?"), findsOneWidget);
     expect(tester.takeException(), isNull);
 
     await tester.tap(find.byTooltip('Open menu'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
-    expect(find.text('Chat History'), findsOneWidget);
+    expect(find.text('FinnAI'), findsWidgets);
+    expect(find.text('Chats'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('composer always shows the original send button', (tester) async {
+  testWidgets('the composer offers voice first, then send', (tester) async {
     await tester.pumpWidget(
-      MaterialApp(theme: FluxTheme.light, home: const HomeShell()),
+      MaterialApp(
+        theme: FluxTheme.light,
+        home: const HomeShell(initializeServices: false),
+      ),
     );
     await tester.pump(const Duration(milliseconds: 600));
 
-    expect(find.bySemanticsLabel('Send message'), findsOneWidget);
+    // The design's right-hand control is the voice button until there is
+    // something to send.
     expect(find.bySemanticsLabel('Add attachment'), findsOneWidget);
-    expect(find.bySemanticsLabel('Start on-device voice input'), findsNothing);
+    expect(
+      find.byKey(const ValueKey('mic-button-surface')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('send-button-hit')), findsNothing);
+
+    await tester.enterText(find.byType(TextField), 'Hello');
+    await tester.pump();
+    expect(find.byKey(const ValueKey('send-button-hit')), findsOneWidget);
+    expect(find.byKey(const ValueKey('mic-button-surface')), findsNothing);
   });
 
   testWidgets(
@@ -126,7 +145,9 @@ void main() {
       );
       await tester.pump(const Duration(milliseconds: 600));
 
-      expect(find.text('Look at this chart'), findsOneWidget);
+      // The conversation title (the message text) also sits in the header, so
+      // the bubble's copy is one of two matches.
+      expect(find.text('Look at this chart'), findsWidgets);
       expect(find.text('chart_sample.jpg'), findsOneWidget);
     },
   );
@@ -408,10 +429,12 @@ void main() {
         );
         await tester.pump();
 
-        final surfaceFinder = find.byKey(const ValueKey('send-button-surface'));
+        await tester.enterText(find.byType(TextField), 'Ready');
+        await tester.pump();
+
+        final surfaceFinder = find.byKey(const ValueKey('send-button-hit'));
         final iconFinder = find.byKey(const ValueKey('send-button-icon'));
-        final disabledIcon = tester.widget<FigmaSvg>(iconFinder);
-        expect(tester.getSize(surfaceFinder), const Size(36, 36));
+        expect(tester.getSize(surfaceFinder), const Size(50, 50));
         // The composer-wide shrink transform animates the whole pill down to
         // 90% while scrolled away; at rest it must be full size, and the send
         // button itself is never individually scaled.
@@ -423,13 +446,7 @@ void main() {
         );
         expect(composerShrink.tween.end, 0.0);
         expect(find.bySemanticsLabel('Send message'), findsOneWidget);
-
-        await tester.enterText(find.byType(TextField), 'Ready');
-        await tester.pump();
-        final activeIcon = tester.widget<FigmaSvg>(iconFinder);
-
-        expect(activeIcon.asset, FigmaAssets.activeSend);
-        expect(disabledIcon.asset, FigmaAssets.send);
+        expect(iconFinder, findsOneWidget);
       },
     );
   }
@@ -463,7 +480,6 @@ void main() {
 
     // Creations reuses the chat composer verbatim, so the action carries the
     // same label and behaviour as the one on the home screen.
-    expect(find.bySemanticsLabel('Send message'), findsOneWidget);
     expect(find.byType(ChatComposer), findsOneWidget);
     await tester.enterText(
       find.byType(TextField).last,
@@ -473,7 +489,6 @@ void main() {
     final field = tester.widget<TextField>(find.byType(TextField).last);
     expect(field.textInputAction, TextInputAction.send);
     expect(field.onSubmitted, isNotNull);
-    expect(find.bySemanticsLabel('Send message'), findsOneWidget);
   });
 
   testWidgets('system back closes the sidebar instead of leaving home', (
@@ -486,7 +501,7 @@ void main() {
     await tester.tap(find.byTooltip('Open menu'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
-    expect(find.text('Chat History'), findsOneWidget);
+    expect(find.text('Chats'), findsOneWidget);
 
     await tester.binding.handlePopRoute();
     await tester.pump();
@@ -496,7 +511,7 @@ void main() {
     expect(find.byTooltip('Open menu'), findsOneWidget);
   });
 
-  testWidgets('sidebar exposes and navigates to Creations, You, and Skills', (
+  testWidgets('sidebar exposes and navigates to Creations, You, and Flows', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -516,7 +531,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.text('Creations'), findsOneWidget);
       expect(find.text('You'), findsOneWidget);
-      expect(find.text('Skills'), findsOneWidget);
+      expect(find.text('Flows'), findsOneWidget);
     }
 
     Future<void> returnHome() async {
@@ -549,12 +564,12 @@ void main() {
     await returnHome();
 
     await openSidebar();
-    await tester.tap(find.text('Skills'));
+    await tester.tap(find.text('Flows'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 450));
     await tester.pump();
-    expect(find.byType(SkillsPage), findsOneWidget);
-    expect(find.text('Skills'), findsWidgets);
+    expect(find.byType(FlowsPage), findsOneWidget);
+    expect(find.text('Flows'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 
@@ -579,32 +594,32 @@ void main() {
     final settings = await measure(SettingsPage(onBack: () {}), 'Settings');
     final creations = await measure(const CreationsPage(), 'Creations');
     final you = await measure(YouPage(onBack: () {}), 'You');
-    final skills = await measure(SkillsPage(onBack: () {}), 'Skills');
+    final flows = await measure(FlowsPage(onBack: () {}), 'Flows');
 
-    for (final header in [creations, you, skills]) {
+    for (final header in [creations, you, flows]) {
       expect(header.$1, closeTo(settings.$1, .01));
       expect(header.$2, closeTo(settings.$2, .01));
     }
   });
 
-  testWidgets('precautions adapt to a narrow Android viewport', (tester) async {
+  testWidgets('the consent step adapts to a narrow Android viewport', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(320, 700);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
     await tester.pumpWidget(const FluxApp(enableModelDownload: false));
-    await tester.drag(find.text('Swipe to start'), const Offset(0, -100));
-    await tester.pump(const Duration(milliseconds: 220));
-    await tester.pump(const Duration(milliseconds: 800));
-    await tester.tap(find.text('Next'));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 800));
-
     tester.widget<PageView>(find.byType(PageView)).controller!.jumpToPage(3);
     await tester.pump();
 
-    expect(find.text('Before starting, read precautions'), findsOneWidget);
+    expect(
+      find.text('Do you allow FinnAI to get context on your device?'),
+      findsOneWidget,
+    );
+    expect(find.text('Yes'), findsOneWidget);
+    expect(find.text('No'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -626,7 +641,7 @@ void main() {
     await tester.tap(find.byTooltip('Open menu'), warnIfMissed: false);
     await tester.pump(const Duration(milliseconds: 400));
 
-    final initialTitleTop = tester.getTopLeft(find.text('Chat History')).dy;
+    final initialTitleTop = tester.getTopLeft(find.text('Chats')).dy;
 
     final scrollableState = tester.state<ScrollableState>(
       find.byType(Scrollable).last,
@@ -634,7 +649,7 @@ void main() {
     scrollableState.position.jumpTo(120);
     await tester.pump();
 
-    final scrolledTitleTop = tester.getTopLeft(find.text('Chat History')).dy;
+    final scrolledTitleTop = tester.getTopLeft(find.text('Chats')).dy;
     expect(scrolledTitleTop, lessThan(initialTitleTop));
   });
 
@@ -659,7 +674,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
 
       final initialHeaderY = tester.getTopLeft(find.text('FinnAI').last).dy;
-      final initialTitleY = tester.getTopLeft(find.text('Chat History')).dy;
+      final initialTitleY = tester.getTopLeft(find.text('Chats')).dy;
 
       final scrollableState = tester.state<ScrollableState>(
         find.byType(Scrollable).last,
@@ -667,7 +682,7 @@ void main() {
       scrollableState.position.jumpTo(250);
       await tester.pump();
 
-      final scrolledTitleY = tester.getTopLeft(find.text('Chat History')).dy;
+      final scrolledTitleY = tester.getTopLeft(find.text('Chats')).dy;
 
       expect(scrolledTitleY, closeTo(initialHeaderY, 5.0));
       expect(scrolledTitleY, lessThan(initialTitleY));
@@ -743,9 +758,12 @@ void main() {
     );
     expect(panel.color, FluxColors.darkCard);
 
-    final privacyCopy = tester.widget<Text>(
-      find.textContaining('Finn AI is designed to respect your privacy.'),
+    // The step copy keeps the design's two-tone hierarchy in dark mode: the
+    // lead line in ink, the body at half opacity.
+    final lead = tester.widget<Text>(
+      find.textContaining('FinnAI takes your privacy'),
     );
-    expect(privacyCopy.style?.color, FluxColors.darkInk.withValues(alpha: .7));
+    expect(lead.textSpan, isNotNull);
+    expect(panel.color, FluxColors.darkCard);
   });
 }

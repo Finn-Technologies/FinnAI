@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:finn_ai/src/inference/finn_inference.dart';
-import 'package:finn_ai/src/features/skills/skills_store.dart';
+import 'package:finn_ai/src/features/flows/flows_store.dart';
 import 'package:finn_ai/src/features/you/you_profile_store.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -29,7 +29,7 @@ void main() {
     });
 
     test(
-        'personalization and enabled skills are rendered as private context '
+        'personalization and enabled flows are rendered as private context '
         'without replacing safety instructions', () async {
       final directory = await Directory.systemTemp.createTemp(
         'finn_prompt_context_test_',
@@ -40,9 +40,9 @@ void main() {
         }
       });
       final profile = YouProfileStore(directoryProvider: () async => directory);
-      final skills = SkillsStore(directoryProvider: () async => directory);
+      final flows = FlowsStore(directoryProvider: () async => directory);
       await profile.initialize();
-      await skills.initialize();
+      await flows.initialize();
       await profile.save(
         const FinnUserProfile(
           preferredName: 'Ari',
@@ -51,8 +51,8 @@ void main() {
           responseStyle: FinnResponseStyle.concise,
         ),
       );
-      await skills.setEnabled('builtin-coding', true);
-      await skills.upsertCustom(
+      await flows.setEnabled('builtin-coding', true);
+      await flows.upsertCustom(
         name: 'Battery reviewer',
         description: 'Checks mobile efficiency',
         instructions: 'Call out battery and thermal trade-offs.',
@@ -60,7 +60,7 @@ void main() {
 
       final systemContext = [
         profile.promptContext,
-        skills.activePromptContext,
+        flows.activePromptContext,
       ].join('\n\n');
       final rendered = FinnInference.instance.renderPromptForTest(
         prompt: 'Review this Android implementation.',

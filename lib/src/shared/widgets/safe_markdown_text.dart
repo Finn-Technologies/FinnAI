@@ -109,10 +109,10 @@ class _SafeMarkdownTextState extends State<SafeMarkdownText> {
   Widget build(BuildContext context) {
     _disposeRecognizers();
     final isDark = FluxColors.isDark(context);
-    final fallback = const TextStyle(fontSize: 15, height: 1.45);
+    final fallback = const TextStyle(fontSize: 16, height: 1.25);
     final base = (Theme.of(context).textTheme.bodyLarge ?? fallback).copyWith(
-      fontSize: 15,
-      height: 1.48,
+      fontSize: 16,
+      height: 1.25,
       letterSpacing: -0.12,
       color: FluxColors.inkOf(context),
     );

@@ -39,7 +39,7 @@ FinnAI/
 │       │   ├── onboarding/       # first-run flow + upgrade screen
 │       │   ├── conversations/    # encrypted conversation persistence
 │       │   ├── search/           # web grounding + headless browser
-│       │   ├── settings/  skills/  you/  creations/  voice/  reporting/
+│       │   ├── settings/  flows/  you/  creations/  voice/  reporting/
 │       ├── engine/               # ⚡ the ONLY place llama_cpp_dart is imported
 │       ├── inference/            # public re-export surface of the engine (see below)
 │       ├── platform/             # OS-specific shims (OpenHarmony)

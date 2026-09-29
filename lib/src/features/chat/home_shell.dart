@@ -15,6 +15,7 @@ import 'package:finn_ai/src/features/conversations/conversation_timestamp.dart';
 import 'package:finn_ai/src/features/creations/creations_page.dart';
 import 'package:finn_ai/src/features/chat/chat_generation_controller.dart';
 import 'package:finn_ai/src/features/chat/tool_activity_indicator.dart';
+import 'package:finn_ai/src/features/onboarding/context_consent_store.dart';
 import 'package:finn_ai/src/inference/device_profile.dart';
 import 'package:finn_ai/src/inference/finn_inference.dart';
 import 'package:finn_ai/src/inference/residency_policy.dart';
@@ -26,15 +27,14 @@ import 'package:finn_ai/src/features/actions/device_action.dart';
 import 'package:finn_ai/src/features/actions/device_action_descriptions.dart';
 import 'package:finn_ai/src/features/actions/device_actions_page.dart';
 import 'package:finn_ai/src/features/settings/settings_page.dart';
-import 'package:finn_ai/src/features/skills/skills_page.dart';
-import 'package:finn_ai/src/features/skills/skills_store.dart';
+import 'package:finn_ai/src/features/flows/flows_page.dart';
+import 'package:finn_ai/src/features/flows/flows_store.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 import 'package:finn_ai/src/features/voice/voice_chat_controller.dart';
 import 'package:finn_ai/src/features/voice/voice_settings_store.dart';
 import 'package:finn_ai/src/features/voice/voice_sheet.dart';
 import 'package:finn_ai/src/features/you/you_page.dart';
 import 'package:finn_ai/src/features/you/you_profile_store.dart';
-import 'package:finn_ai/src/shared/widgets/ambient_background.dart';
 import 'package:finn_ai/src/shared/widgets/flux_context_menu.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
 import 'package:finn_ai/src/shared/widgets/safe_markdown_text.dart';
@@ -109,6 +109,11 @@ class _HomeShellState extends State<HomeShell>
   late final _deviceActions = widget.deviceActions ?? const ChatDeviceActions();
   late final _voice = widget.voiceController ?? VoiceChatController.instance;
   String? _voiceReplyGenerationId;
+
+  /// True while the composer is listening for voice input inline, and what it
+  /// has heard so far.
+  bool _voiceListening = false;
+  String _voiceDraft = '';
   Timer? _memoryReleaseTimer;
   static const MethodChannel _memoryPressureChannel = MethodChannel(
     'finn_ai/memory.pressure',
@@ -133,15 +138,10 @@ class _HomeShellState extends State<HomeShell>
   bool _historyUnavailable = false;
   bool _dismissedHistoryNotice = false;
 
-  /// True when the user asked Finn to browse the web for the next turn.
-  bool _browseEnabled = false;
-
   String? _attachedImagePath;
   Uint8List? _attachedImageBytes;
   bool _attachmentMenuOpen = false;
   late bool _storesReady = !widget.initializeServices;
-  static int _welcomeSession = 0;
-  late int _welcomeRotation;
   late final AnimationController _sidebarController = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 340),
@@ -163,6 +163,7 @@ class _HomeShellState extends State<HomeShell>
   }
 
   void _toggleAttachmentMenu() {
+    HapticFeedback.selectionClick();
     setState(() {
       _attachmentMenuOpen = !_attachmentMenuOpen;
     });
@@ -364,9 +365,6 @@ class _HomeShellState extends State<HomeShell>
         unawaited(_initializeStores());
       });
     }
-    // Each fresh home screen shows a different "Try asking" suggestion set so
-    // the welcome slate never feels stale across app re-opens.
-    _welcomeRotation = _welcomeSession++;
   }
 
   Future<void> _checkPendingProcessText() async {
@@ -467,8 +465,9 @@ class _HomeShellState extends State<HomeShell>
     await Future.wait([
       guard('conversations', _conversations.initialize),
       guard('you', YouProfileStore.instance.initialize),
-      guard('skills', SkillsStore.instance.initialize),
+      guard('flows', FlowsStore.instance.initialize),
       guard('voice', VoiceSettingsStore.instance.initialize),
+      guard('consent', ContextConsentStore.instance.initialize),
     ]);
     debugPrint(
       'FINN_STORES_READY ms=${DateTime.now().difference(started).inMilliseconds} '
@@ -710,6 +709,9 @@ class _HomeShellState extends State<HomeShell>
         );
       return;
     }
+    // The turn is committed at this point, so the tick belongs here rather
+    // than on the tap: a blocked or refused send stays silent.
+    HapticFeedback.lightImpact();
     final timing = _generation.createTtftTrace(
       _conversations.active?.id ?? 'new-conversation',
     );
@@ -724,7 +726,7 @@ class _HomeShellState extends State<HomeShell>
         final initialization = Future.wait([
           _conversations.initialize(),
           YouProfileStore.instance.initialize(),
-          SkillsStore.instance.initialize(),
+          FlowsStore.instance.initialize(),
         ]).timeout(
           const Duration(seconds: 12),
           onTimeout: () {
@@ -740,7 +742,7 @@ class _HomeShellState extends State<HomeShell>
       }
       final systemContext = [
         YouProfileStore.instance.promptContext,
-        SkillsStore.instance.promptContextFor(value),
+        FlowsStore.instance.promptContextFor(value),
       ].where((item) => item.trim().isNotEmpty).join('\n\n');
 
       // A device command is answered from the catalog, not the model: it is
@@ -840,13 +842,9 @@ class _HomeShellState extends State<HomeShell>
           _upfrontSearchFailed = false;
         });
       }
-      final forceBrowse = _browseEnabled;
-
       String upfrontGroundedContext = '';
       List<WebSource> upfrontSources = const [];
-      if (!forceBrowse &&
-          _webSearch.policy.shouldSearch(effectivePrompt) &&
-          attached == null) {
+      if (_webSearch.policy.shouldSearch(effectivePrompt) && attached == null) {
         // Recorded before generation so the reply carries the search it came
         // from: the policy path never reaches the model's tool loop, and
         // without this the turn would look like it answered from nowhere.
@@ -884,7 +882,6 @@ class _HomeShellState extends State<HomeShell>
         groundedContext: upfrontGroundedContext,
         sources: upfrontSources,
         trace: timing,
-        forceBrowse: forceBrowse,
       );
     } catch (e) {
       debugPrint('FINN_SEND error: $e');
@@ -930,7 +927,7 @@ class _HomeShellState extends State<HomeShell>
     ];
     final systemContext = [
       YouProfileStore.instance.promptContext,
-      SkillsStore.instance.promptContextFor(latestUser.text),
+      FlowsStore.instance.promptContextFor(latestUser.text),
     ].where((item) => item.trim().isNotEmpty).join('\n\n');
     // Continuations reuse the original turn's sources; the decision pass is
     // disabled for the continuation prompt itself.
@@ -985,7 +982,7 @@ class _HomeShellState extends State<HomeShell>
     ];
     final systemContext = [
       YouProfileStore.instance.promptContext,
-      SkillsStore.instance.promptContextFor(latestUser.text),
+      FlowsStore.instance.promptContextFor(latestUser.text),
     ].where((item) => item.trim().isNotEmpty).join('\n\n');
     if (mounted) setState(() => _dismissedSearchNotice = false);
     await _generation.regenerate(
@@ -1025,7 +1022,7 @@ class _HomeShellState extends State<HomeShell>
     ];
     final systemContext = [
       YouProfileStore.instance.promptContext,
-      SkillsStore.instance.promptContextFor(trimmed),
+      FlowsStore.instance.promptContextFor(trimmed),
     ].where((item) => item.trim().isNotEmpty).join('\n\n');
     if (mounted) setState(() => _dismissedSearchNotice = false);
     await _generation.replyToExisting(
@@ -1036,21 +1033,69 @@ class _HomeShellState extends State<HomeShell>
     );
   }
 
-  void _applySuggestion(String text) {
-    _composer.text = text;
-    _composer.selection = TextSelection.collapsed(offset: text.length);
-    _focusNode.requestFocus();
-  }
-
   Future<void> _openVoiceMode() async {
     if (!voiceSupportedOnPlatform || _busy) return;
     _voice.setSpokenResponses(VoiceSettingsStore.instance.spokenResponses);
+    _voice.onTranscript = _onInlineTranscript;
+    setState(() {
+      _voiceListening = true;
+      _voiceDraft = '';
+    });
+    await _voice.startListening();
+    if (!mounted) return;
+    if (_voice.error != VoiceChatError.none) {
+      _voice.onTranscript = null;
+      setState(() => _voiceListening = false);
+      _showVoiceFailure();
+    }
+  }
+
+  /// Mirrors what the microphone hears into the composer while listening, so
+  /// the draft is visible and editable before it is sent.
+  void _onInlineTranscript(String text) {
+    if (!mounted || !_voiceListening) return;
+    setState(() => _voiceDraft = text);
+    _composer.text = text;
+    _composer.selection = TextSelection.collapsed(offset: text.length);
+  }
+
+  /// Ends inline listening and sends what was heard.
+  Future<void> _endVoiceListening() async {
+    if (!_voiceListening) return;
+    setState(() => _voiceListening = false);
+    _voice.onTranscript = null;
+    await _voice.stopListening();
+    if (!mounted) return;
+    final heard = _voiceDraft.trim();
+    _voiceDraft = '';
+    if (heard.isEmpty) return;
+    await _sendVoiceTranscript(heard);
+  }
+
+  /// Hands the microphone over to the full-screen voice mode, which keeps the
+  /// orb and the spoken replies.
+  Future<void> _expandVoiceMode() async {
+    if (!_voiceListening) return;
+    setState(() => _voiceListening = false);
+    _voice.onTranscript = null;
+    await _voice.stopListening();
+    if (!mounted) return;
+    _voiceDraft = '';
     await openVoiceSheet(
       context: context,
       voice: _voice,
       onSendTranscript: _sendVoiceTranscript,
       onStopGeneration: _stopReply,
     );
+  }
+
+  void _showVoiceFailure() {
+    final message = _voice.error == VoiceChatError.micDenied
+        ? L10n.of(context).voiceMicDenied
+        : L10n.of(context).voiceUnavailable;
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _sendVoiceTranscript(String transcript) async {
@@ -1087,6 +1132,7 @@ class _HomeShellState extends State<HomeShell>
   }
 
   void _stopReply() {
+    HapticFeedback.mediumImpact();
     if (_preparing) {
       setState(() => _preparing = false);
       debugPrint('FINN_SEND cancelled during preparing');
@@ -1105,10 +1151,8 @@ class _HomeShellState extends State<HomeShell>
   void _newConversation() {
     unawaited(_generation.flushActive());
     // Compose just shows the blank slate — no conversation is created until
-    // the user actually sends a first message. Fresh suggestions each time so
-    // a new chat always starts with a new prompt set.
+    // the user actually sends a first message.
     _conversations.clearActive();
-    _welcomeRotation = _welcomeSession++;
     _setSidebar(false);
     setState(() {});
   }
@@ -1136,7 +1180,7 @@ class _HomeShellState extends State<HomeShell>
     if (!mounted) return;
     Navigator.of(context).push(
       FinnPageRoute<void>(
-        child: SkillsPage(onBack: () => Navigator.of(context).pop()),
+        child: FlowsPage(onBack: () => Navigator.of(context).pop()),
       ),
     );
   }
@@ -1171,6 +1215,7 @@ class _HomeShellState extends State<HomeShell>
 
   void _setSidebar(bool open) {
     if (_sidebar == open) return;
+    HapticFeedback.selectionClick();
     setState(() {
       _sidebar = open;
       if (open) _sidebarEverOpened = true;
@@ -1208,19 +1253,43 @@ class _HomeShellState extends State<HomeShell>
         resizeToAvoidBottomInset: true,
         body: LayoutBuilder(
           builder: (context, constraints) {
-            final sy = (constraints.maxHeight / 844).clamp(.72, 1.08);
+            final sy = (constraints.maxHeight / 912).clamp(.72, 1.2);
             final safeBottom = MediaQuery.viewPaddingOf(context).bottom;
-            final horizontalGutter = constraints.maxWidth < 380 ? 14.0 : 20.0;
+            final horizontalGutter = constraints.maxWidth < 380 ? 20.0 : 25.0;
             final contentWidth = math.min(
               760.0,
               constraints.maxWidth - horizontalGutter * 2,
             );
             final contentLeft = (constraints.maxWidth - contentWidth) / 2;
+            final activeConversation = _conversations.active;
+            final activeMessages =
+                activeConversation?.messages ?? const <ConversationMessage>[];
             final homeLayer = RepaintBoundary(
-              child: AmbientBackground(
-                intensity: 1,
+              child: ColoredBox(
+                color: FluxColors.tileOf(context),
                 child: Stack(
                   children: [
+                    // The ambient green wash is part of the empty state only:
+                    // once a conversation has messages the canvas is flat, as
+                    // in the design's chat screens.
+                    if (activeMessages.isEmpty)
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        height: constraints.maxHeight * 400 / 912,
+                        child: const IgnorePointer(
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [Color(0x00FFFFFF), Color(0x4092FF86)],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                     // 0. The scrolling chat list, full-bleed so content can
                     // slide beneath the glass regions at the very top and
                     // very bottom.
@@ -1230,8 +1299,8 @@ class _HomeShellState extends State<HomeShell>
                       top: 0,
                       bottom: 0,
                       child: _Conversation(
-                        messages: _conversations.active?.messages ?? const [],
-                        activeConversationId: _conversations.active?.id,
+                        messages: activeMessages,
+                        activeConversationId: activeConversation?.id,
                         generation: _generation,
                         conversations: _conversations,
                         onStop: _stopReply,
@@ -1241,15 +1310,15 @@ class _HomeShellState extends State<HomeShell>
                         onDismissAction: _dismissPendingAction,
                         onActions: _openDeviceActions,
                         onEdit: _editUserMessage,
-                        onSuggestion: _applySuggestion,
                         onOpenConversation: _activateConversation,
                         preparing: _preparing,
-                        welcomeRotation: _welcomeRotation,
+                        greeting: _voiceListening
+                            ? L10n.of(context).voiceGreeting
+                            : L10n.of(context).chatGreeting,
                         // First message starts below the header; newest
                         // message sits above the composer.
                         topInset: 125 * sy,
-                        bottomInset: safeBottom +
-                            (constraints.maxHeight < 650 ? 68 : 78),
+                        bottomInset: safeBottom + 65,
                         scrollController: _chatScrollController,
                         // The notice belongs to the turn that failed to reach
                         // the web, so it renders with that reply instead of
@@ -1271,8 +1340,18 @@ class _HomeShellState extends State<HomeShell>
                     // floated here — they belong to the reply that made them.
                     Positioned(
                       left: contentLeft,
-                      top: 71 * sy,
-                      child: _HomeHeader(onMenu: () => _setSidebar(true)),
+                      width: contentWidth,
+                      top: 70 * sy,
+                      child: _HomeHeader(
+                        onMenu: () => _setSidebar(true),
+                        // The design titles a conversation once it has
+                        // messages, and hides the title again while listening.
+                        title: activeMessages.isEmpty || _voiceListening
+                            ? null
+                            : activeConversation?.title,
+                        onNewChat:
+                            activeMessages.isEmpty ? null : _newConversation,
+                      ),
                     ),
                     if (_attachmentMenuOpen) ...[
                       Positioned.fill(
@@ -1287,19 +1366,18 @@ class _HomeShellState extends State<HomeShell>
                         builder: (context, scrolledAway, _) =>
                             AnimatedPositioned(
                           left: contentLeft,
-                          bottom: safeBottom +
-                              (scrolledAway
-                                  ? (constraints.maxHeight < 650 ? 10 : 20)
-                                  : (constraints.maxHeight < 650 ? 20 : 30)) +
-                              52,
+                          bottom: safeBottom + 63,
                           duration: MediaQuery.disableAnimationsOf(context)
                               ? Duration.zero
                               : const Duration(milliseconds: 220),
                           curve: Curves.easeOutCubic,
-                          child: _IMessageAttachmentMenu(
-                            onSelectCamera: _pickFromCamera,
-                            onSelectPhoto: _pickFromGallery,
-                            onSelectFile: _pickFromFileSystem,
+                          child: _FadeRise(
+                            rise: 8,
+                            child: _IMessageAttachmentMenu(
+                              onSelectCamera: _pickFromCamera,
+                              onSelectPhoto: _pickFromGallery,
+                              onSelectFile: _pickFromFileSystem,
+                            ),
                           ),
                         ),
                       ),
@@ -1309,13 +1387,11 @@ class _HomeShellState extends State<HomeShell>
                       valueListenable: _chatScrolledAway,
                       builder: (context, scrolledAway, _) => AnimatedPositioned(
                         left: contentLeft,
-                        // When scrolled away the pill condenses and sits a
-                        // touch lower on screen; full size is restored at the
-                        // bottom, so the resting position stays as-is.
-                        bottom: safeBottom +
-                            (scrolledAway
-                                ? (constraints.maxHeight < 650 ? 10 : 20)
-                                : (constraints.maxHeight < 650 ? 20 : 30)),
+                        // The design rests the composer just above the home
+                        // indicator; the safe-area inset already covers the
+                        // gesture bar, so only the design's own 3px of
+                        // breathing room is left over.
+                        bottom: safeBottom + 3,
                         duration: MediaQuery.disableAnimationsOf(context)
                             ? Duration.zero
                             : const Duration(milliseconds: 220),
@@ -1342,11 +1418,11 @@ class _HomeShellState extends State<HomeShell>
                           width: contentWidth,
                           onSend: _send,
                           onStop: _stopReply,
-                          browseEnabled: _browseEnabled,
-                          onToggleBrowse: () =>
-                              setState(() => _browseEnabled = !_browseEnabled),
                           voiceEnabled: voiceSupportedOnPlatform,
                           onMic: _openVoiceMode,
+                          voiceListening: _voiceListening,
+                          onVoiceToggle: _endVoiceListening,
+                          onVoiceExpand: _expandVoiceMode,
                         ),
                       ),
                     ),
@@ -1354,43 +1430,64 @@ class _HomeShellState extends State<HomeShell>
                 ),
               ),
             );
+            // The panel covers three quarters of the screen; the home screen
+            // stays visible beside it, rounded and lifted, as in the design.
+            final sidebarWidth = constraints.maxWidth * .76;
             final sidebarLayer = !_sidebarEverOpened
                 ? const SizedBox.shrink()
                 : RepaintBoundary(
-                    child: _Sidebar(
-                      onClose: () => _setSidebar(false),
-                      onNewConversation: _newConversation,
-                      onConversation: _activateConversation,
-                      conversations: _conversations.conversations,
-                      activeConversationId: _conversations.active?.id,
-                      onCreations: _openCreations,
-                      onYou: _openYou,
-                      onSkills: _openSkills,
-                      onActions: _openDeviceActionsFromSidebar,
-                      onSettings: _openSettings,
+                    child: SizedBox(
+                      width: sidebarWidth,
+                      child: _Sidebar(
+                        onClose: () => _setSidebar(false),
+                        onNewConversation: _newConversation,
+                        onConversation: _activateConversation,
+                        conversations: _conversations.conversations,
+                        activeConversationId: _conversations.active?.id,
+                        onCreations: _openCreations,
+                        onYou: _openYou,
+                        onFlows: _openSkills,
+                        onActions: _openDeviceActionsFromSidebar,
+                        onSettings: _openSettings,
+                      ),
                     ),
                   );
             return AnimatedBuilder(
               animation: _sidebarAnimation,
               builder: (context, _) {
                 final motion = _sidebarAnimation.value;
-                final scale = 1.0 - (.04 * motion);
+                final radius = BorderRadius.circular(50 * motion);
                 return Stack(
                   children: [
                     ExcludeSemantics(
                       excluding: _sidebar,
-                      child: Transform.translate(
-                        offset: Offset(constraints.maxWidth * .14 * motion, 0),
-                        child: Transform.scale(scale: scale, child: homeLayer),
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          borderRadius: radius,
+                          boxShadow: [
+                            if (motion > 0)
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: .10),
+                                blurRadius: 55,
+                                offset: const Offset(-10, 0),
+                              ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: radius,
+                          child: Transform.translate(
+                            offset: Offset(sidebarWidth * motion, 0),
+                            child: homeLayer,
+                          ),
+                        ),
                       ),
                     ),
                     IgnorePointer(
                       ignoring: !_sidebar,
                       child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
                         onTap: () => _setSidebar(false),
-                        child: ColoredBox(
-                          color: Colors.black.withValues(alpha: .18 * motion),
-                        ),
+                        child: const SizedBox.expand(),
                       ),
                     ),
                     IgnorePointer(
@@ -1414,52 +1511,110 @@ class _HomeShellState extends State<HomeShell>
   }
 }
 
+/// The screen's top row: the menu (and close) control on the left, the
+/// conversation title beside it, and the new-chat control on the right while a
+/// conversation is on screen — exactly the arrangement in the design.
 class _HomeHeader extends StatelessWidget {
-  const _HomeHeader({required this.onMenu});
+  const _HomeHeader({
+    required this.onMenu,
+    this.title,
+    this.onNewChat,
+  });
+
   final VoidCallback onMenu;
 
+  /// Conversation title; null on the empty screen and while listening.
+  final String? title;
+
+  /// Starts a new conversation; null hides the control.
+  final VoidCallback? onNewChat;
+
   @override
-  Widget build(BuildContext context) => SizedBox(
-        width: 172,
-        height: 48,
-        child: Row(
-          children: [
-            Tooltip(
-              message: L10n.of(context).chatOpenMenuTooltip,
-              child: SizedBox.square(
-                key: const ValueKey('home-menu-button'),
-                dimension: 48,
-                child: InkWell(
-                  onTap: onMenu,
-                  customBorder: const CircleBorder(),
-                  child: const Center(
-                    child: FigmaSvg(
-                      asset: FigmaAssets.menu,
-                      width: 34,
-                      height: 34,
+  Widget build(BuildContext context) {
+    final title = this.title;
+    return SizedBox(
+      height: 50,
+      child: Row(
+        children: [
+          Tooltip(
+            message: L10n.of(context).chatOpenMenuTooltip,
+            child: Semantics(
+              button: true,
+              label: L10n.of(context).chatOpenMenuTooltip,
+              onTap: onMenu,
+              excludeSemantics: true,
+              child: FluxPressScale(
+                child: Material(
+                  color: FluxColors.controlOf(context),
+                  shape: const CircleBorder(),
+                  child: SizedBox.square(
+                    key: const ValueKey('home-menu-button'),
+                    dimension: 50,
+                    child: InkWell(
+                      onTap: onMenu,
+                      customBorder: const CircleBorder(),
+                      child: const Center(
+                        child: FigmaSvg(
+                          asset: FigmaAssets.appMenu,
+                          width: 25,
+                          height: 25,
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
-            const SizedBox(width: 10),
-            SizedBox(
-              width: 114,
-              height: 24,
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  L10n.of(context).appBrandFinnAI,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w400),
+          ),
+          if (title != null && title.isNotEmpty) ...[
+            const SizedBox(width: 20),
+            Expanded(
+              child: Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontFamily: 'InstrumentSans',
+                  fontSize: 18,
+                  height: 1.2,
+                  fontWeight: FontWeight.w400,
                 ),
               ),
             ),
-          ],
-        ),
-      );
+          ] else
+            const Spacer(),
+          if (onNewChat != null)
+            Semantics(
+              button: true,
+              label: L10n.of(context).chatNewChat,
+              onTap: onNewChat,
+              excludeSemantics: true,
+              child: FluxPressScale(
+                child: Material(
+                  color: FluxColors.controlOf(context),
+                  shape: const CircleBorder(),
+                  child: SizedBox.square(
+                    key: const ValueKey('home-new-chat-button'),
+                    dimension: 50,
+                    child: InkWell(
+                      onTap: onNewChat,
+                      customBorder: const CircleBorder(),
+                      child: const Center(
+                        child: FigmaSvg(
+                          asset: FigmaAssets.appNewChat,
+                          width: 25,
+                          height: 25,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 }
 
 /// Height of the chat's top scroll-fade band, in logical pixels.
@@ -1471,9 +1626,9 @@ const double _chatTopFadeHeight = 210;
 /// Depth of the fully opaque stretch at the top of the fade band.
 ///
 /// The brand row must stay readable while messages scroll beneath it, so the
-/// fade is opaque wherever the header can sit. `_HomeHeader` is 48 tall at
+/// fade is opaque wherever the header can sit. `_HomeHeader` is 50 tall at
 /// `top: 71 * sy`, and `sy` is clamped to 1.08, so its bottom edge reaches
-/// (71 + 48) * 1.08 ≈ 128.5.
+/// (71 + 50) * 1.08 ≈ 130.7.
 const double _chatTopFadeOpaqueDepth = 134;
 
 /// A static soft-edge fade that sits over the scrolling chat list so messages
@@ -1538,112 +1693,25 @@ class _ChatEdgeFade extends StatelessWidget {
 }
 
 /// Cold-start welcome shown when the active conversation has no messages yet:
-/// a friendly intro plus tappable suggestions that pre-fill the composer.
-/// Clean canvas only — no gradient, no brand mark, no feature pills.
+/// the greeting alone, centred on the screen — no chips, no brand mark.
 class _ConversationEmpty extends StatelessWidget {
-  const _ConversationEmpty({
-    required this.onSuggestion,
-    required this.rotation,
-  });
+  const _ConversationEmpty({required this.greeting});
 
-  final ValueChanged<String> onSuggestion;
-
-  /// Advances each time the home screen opens so the "Try asking" chips
-  /// show a different set on every re-open.
-  final int rotation;
-
-  /// The localized suggestion pool, windowed by [rotation] so consecutive
-  /// opens share only a little overlap.
-  List<String> _suggestions(BuildContext context) {
-    final l10n = L10n.of(context);
-    final pool = [
-      l10n.suggestionSummarizeArticle,
-      l10n.suggestionExplainSimply,
-      l10n.suggestionPlanDay,
-      l10n.suggestionDraftEmail,
-      l10n.suggestionBrainstormNames,
-      l10n.suggestionIdeaToPlan,
-      l10n.suggestionDebugError,
-      l10n.suggestionGoodbyeNote,
-      l10n.suggestionCompareOptions,
-      l10n.suggestionFreshPerspective,
-    ];
-    final start = (rotation * 3) % pool.length;
-    return [for (var i = 0; i < 4; i++) pool[(start + i) % pool.length]];
-  }
+  /// The design greets a listening session differently from a typed one.
+  final String greeting;
 
   @override
-  Widget build(BuildContext context) => LayoutBuilder(
-        builder: (context, constraints) => SingleChildScrollView(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: constraints.maxHeight),
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 18),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      L10n.of(context).chatHiPrefix,
-                      textAlign: TextAlign.center,
-                      style: Theme.of(
-                        context,
-                      )
-                          .textTheme
-                          .titleLarge
-                          ?.copyWith(fontWeight: FontWeight.w500),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      L10n.of(context).chatAskAnything,
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: FluxColors.mutedOf(context),
-                            height: 1.45,
-                          ),
-                    ),
-                    const SizedBox(height: 30),
-                    Text(
-                      L10n.of(context).chatTryAsking,
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                            color: FluxColors.mutedOf(context),
-                            letterSpacing: .4,
-                          ),
-                    ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      alignment: WrapAlignment.center,
-                      children: [
-                        for (final suggestion in _suggestions(context))
-                          ActionChip(
-                            label: Text(suggestion),
-                            onPressed: () => onSuggestion(suggestion),
-                            backgroundColor: FluxColors.disclosureOf(context),
-                            side: BorderSide.none,
-                            labelStyle: Theme.of(context)
-                                .textTheme
-                                .labelMedium
-                                ?.copyWith(
-                                  color: FluxColors.inkOf(context),
-                                  fontWeight: FontWeight.w400,
-                                  letterSpacing: -0.1,
-                                ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 8,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius:
-                                  BorderRadius.circular(FluxRadius.pill),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
+  Widget build(BuildContext context) => Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 25),
+          child: Text(
+            greeting,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontFamily: 'InstrumentSans',
+              fontSize: 24,
+              height: 1.2,
+              fontWeight: FontWeight.w400,
             ),
           ),
         ),
@@ -1663,13 +1731,12 @@ class _Conversation extends StatefulWidget {
     required this.onDismissAction,
     required this.onActions,
     required this.onEdit,
-    required this.onSuggestion,
     required this.onOpenConversation,
     required this.preparing,
-    required this.welcomeRotation,
     required this.topInset,
     required this.bottomInset,
     required this.scrollController,
+    required this.greeting,
     this.searchFailed = false,
     this.onDismissSearchNotice,
     this.historyUnavailable = false,
@@ -1686,18 +1753,17 @@ class _Conversation extends StatefulWidget {
   final ValueChanged<ConversationMessage> onDismissAction;
   final VoidCallback onActions;
   final ValueChanged<ConversationMessage> onEdit;
-  final ValueChanged<String> onSuggestion;
   final ValueChanged<String> onOpenConversation;
   final bool preparing;
+
+  /// Greeting shown on the empty slate; the design greets a listening session
+  /// with a different line than a typed one.
+  final String greeting;
 
   /// True when the conversation store could not be opened, so the notice
   /// explaining that history is not being kept should be shown.
   final bool historyUnavailable;
   final VoidCallback? onDismissHistoryNotice;
-
-  /// Advances each time the home screen opens so the welcome slate shows a
-  /// fresh "Try asking" suggestion set.
-  final int welcomeRotation;
 
   /// Vertical insets so the first message clears the header and the newest
   /// message clears the composer, while the list still bleeds beneath both
@@ -1844,13 +1910,7 @@ class _ConversationState extends State<_Conversation> {
         activeJob == null &&
         visibleError == null &&
         !widget.preparing) {
-      return Padding(
-        padding: EdgeInsets.fromLTRB(0, widget.topInset, 0, widget.bottomInset),
-        child: _ConversationEmpty(
-          onSuggestion: widget.onSuggestion,
-          rotation: widget.welcomeRotation,
-        ),
-      );
+      return _FadeRise(child: _ConversationEmpty(greeting: widget.greeting));
     }
     final streamingMessageId =
         ownsGeneration ? activeJob.assistantMessageId : null;
@@ -2043,9 +2103,15 @@ class _Bubble extends StatelessWidget {
       modelTier: modelTier,
       onEdit: onEdit,
       childBuilder: (selecting) {
-        final style = Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: user ? FluxColors.inkOf(context) : null,
-            );
+        // 16px on a 1.25 line box, the size and rhythm of the design's
+        // messages in both bubbles.
+        final style = TextStyle(
+          fontFamily: 'InstrumentSans',
+          fontSize: 16,
+          height: 1.25,
+          fontWeight: FontWeight.w400,
+          color: user ? FluxColors.inkOf(context) : null,
+        );
         final hasImage = imagePath != null && imagePath!.isNotEmpty;
         bool imageExists = false;
         try {
@@ -2130,6 +2196,61 @@ class _Bubble extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+}
+
+/// A gentle entrance for a single element: fades in while rising a few pixels.
+///
+/// Where [_AnimatedIn] travels a fraction of the viewport — right for a message
+/// row — this moves a fixed handful of pixels, so the empty-state greeting and
+/// the reply action row settle in place rather than sliding.
+class _FadeRise extends StatefulWidget {
+  const _FadeRise({required this.child, this.rise = 10});
+
+  final Widget child;
+  final double rise;
+
+  @override
+  State<_FadeRise> createState() => _FadeRiseState();
+}
+
+class _FadeRiseState extends State<_FadeRise>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 380),
+  );
+  late final CurvedAnimation _curve = CurvedAnimation(
+    parent: _controller,
+    curve: Curves.easeOutCubic,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (MediaQuery.disableAnimationsOf(context)) return widget.child;
+    return AnimatedBuilder(
+      animation: _curve,
+      builder: (context, child) => Opacity(
+        opacity: _curve.value,
+        child: Transform.translate(
+          offset: Offset(0, widget.rise * (1 - _curve.value)),
+          child: child,
+        ),
+      ),
+      child: widget.child,
     );
   }
 }
@@ -2222,22 +2343,25 @@ class _MessageBubbleState extends State<_MessageBubble> {
 
   void _openContextMenu() {
     if (_selecting) return;
-    final isDark = FluxColors.isDark(context);
-    final borderRadius = BorderRadius.only(
-      topLeft: const Radius.circular(19),
-      topRight: const Radius.circular(19),
-      bottomLeft: Radius.circular(widget.user ? 19 : 5),
-      bottomRight: Radius.circular(widget.user ? 5 : 19),
-    );
+    final borderRadius = widget.user
+        ? BorderRadius.circular(FluxRadius.pill)
+        : BorderRadius.only(
+            topLeft: const Radius.circular(19),
+            topRight: const Radius.circular(19),
+            bottomLeft: const Radius.circular(19),
+            bottomRight: const Radius.circular(5),
+          );
 
     final preview = Container(
       constraints: BoxConstraints(
         maxWidth: math.min(MediaQuery.sizeOf(context).width * .82, 620),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: widget.user
+          ? const EdgeInsets.symmetric(horizontal: 20, vertical: 15)
+          : const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: widget.user
-            ? (isDark ? FluxColors.bubbleUserDark : FluxColors.bubbleUserLight)
+            ? FluxColors.controlOf(context)
             : FluxColors.cardOf(context),
         borderRadius: borderRadius,
         border: widget.user
@@ -2293,22 +2417,28 @@ class _MessageBubbleState extends State<_MessageBubble> {
   @override
   Widget build(BuildContext context) {
     final isDark = FluxColors.isDark(context);
-    final borderRadius = BorderRadius.only(
-      topLeft: const Radius.circular(19),
-      topRight: const Radius.circular(19),
-      bottomLeft: Radius.circular(widget.user ? 19 : 5),
-      bottomRight: Radius.circular(widget.user ? 5 : 19),
-    );
+    // A user message is a solid pill of its own; the assistant keeps the
+    // softly-cornered surface so an error or notice still reads as a card.
+    final borderRadius = widget.user
+        ? BorderRadius.circular(FluxRadius.pill)
+        : BorderRadius.only(
+            topLeft: const Radius.circular(19),
+            topRight: const Radius.circular(19),
+            bottomLeft: const Radius.circular(19),
+            bottomRight: const Radius.circular(5),
+          );
 
     final bubble = Container(
       key: _bubbleKey,
       constraints: BoxConstraints(
         maxWidth: math.min(MediaQuery.sizeOf(context).width * .82, 620),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: widget.user
+          ? const EdgeInsets.symmetric(horizontal: 20, vertical: 15)
+          : const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: widget.user
-            ? (isDark ? FluxColors.bubbleUserDark : FluxColors.bubbleUserLight)
+            ? FluxColors.controlOf(context)
             : FluxColors.cardOf(context),
         borderRadius: borderRadius,
         boxShadow: widget.user
@@ -2761,9 +2891,9 @@ class _CompleteReply extends StatelessWidget {
 }
 
 /// Compact, always-visible row of low-emphasis actions for a completed reply:
-/// copy, regenerate (when available), and report. Selection is handled
+/// copy, report, and an overflow that carries regenerate. Selection is handled
 /// natively on the text, so there is no separate "Select" action.
-class _ReplyActions extends StatelessWidget {
+class _ReplyActions extends StatefulWidget {
   const _ReplyActions({
     required this.text,
     required this.userPrompt,
@@ -2776,62 +2906,112 @@ class _ReplyActions extends StatelessWidget {
   final String modelTier;
   final VoidCallback? onRegenerate;
 
-  Future<void> _copy(BuildContext context) async {
-    await Clipboard.setData(ClipboardData(text: text));
-    if (!context.mounted) return;
+  @override
+  State<_ReplyActions> createState() => _ReplyActionsState();
+}
+
+class _ReplyActionsState extends State<_ReplyActions> {
+  final GlobalKey _overflowKey = GlobalKey();
+
+  Future<void> _copy() async {
+    await Clipboard.setData(ClipboardData(text: widget.text));
+    if (!mounted) return;
     ScaffoldMessenger.of(context)
       ..clearSnackBars()
       ..showSnackBar(
         SnackBar(
           content: Text(L10n.of(context).commonCopiedToClipboard),
-          duration: Duration(milliseconds: 900),
+          duration: const Duration(milliseconds: 900),
         ),
       );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final regenerate = onRegenerate;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _ReplyActionButton(
-          icon: FluxIcons.copy,
-          tooltip: L10n.of(context).chatCopy,
-          onTap: () => _copy(context),
+  void _openOverflow() {
+    final regenerate = widget.onRegenerate;
+    if (regenerate == null) return;
+    showFluxContextMenu<void>(
+      context: context,
+      targetKey: _overflowKey,
+      previewWidget: Container(
+        constraints: BoxConstraints(
+          maxWidth: math.min(MediaQuery.sizeOf(context).width * .82, 620),
         ),
-        if (regenerate != null) ...[
-          const SizedBox(width: 2),
-          _ReplyActionButton(
-            icon: FluxIcons.refresh,
-            tooltip: L10n.of(context).chatRegenerate,
-            onTap: regenerate,
-          ),
-        ],
-        const SizedBox(width: 2),
-        _ReplyActionButton(
-          icon: FluxIcons.flag,
-          tooltip: L10n.of(context).chatReportAction,
-          onTap: () => ReportDialog.show(
-            context,
-            assistantResponse: text,
-            userPrompt: userPrompt,
-            modelTier: modelTier,
-          ),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: FluxColors.cardOf(context),
+          borderRadius: BorderRadius.circular(FluxRadius.sm),
+        ),
+        child: Text(
+          widget.text,
+          maxLines: 3,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+      ),
+      items: <FluxContextMenuItem>[
+        FluxContextMenuItem(
+          icon: FluxIcons.refresh,
+          label: L10n.of(context).chatRegenerate,
+          onTap: regenerate,
         ),
       ],
     );
   }
+
+  @override
+  Widget build(BuildContext context) {
+    final regenerate = widget.onRegenerate;
+    // The row arrives with the finished reply, so it settles in rather than
+    // appearing under text that was already on screen.
+    return _FadeRise(
+      rise: 6,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _ReplyActionButton(
+            asset: FigmaAssets.replyCopy,
+            tooltip: L10n.of(context).chatCopy,
+            onTap: _copy,
+          ),
+          _ReplyActionButton(
+            asset: FigmaAssets.replyAlert,
+            tooltip: L10n.of(context).chatReportAction,
+            onTap: () => ReportDialog.show(
+              context,
+              assistantResponse: widget.text,
+              userPrompt: widget.userPrompt,
+              modelTier: widget.modelTier,
+            ),
+          ),
+          if (regenerate != null)
+            _ReplyActionButton(
+              key: _overflowKey,
+              asset: FigmaAssets.replyMore,
+              tooltip: L10n.of(context).chatMoreActions,
+              onTap: _openOverflow,
+            ),
+        ],
+      ),
+    );
+  }
 }
 
+/// One glyph of the row that sits under a reply: the design's 25px artwork on
+/// a 40px touch target.
 class _ReplyActionButton extends StatelessWidget {
   const _ReplyActionButton({
-    required this.icon,
+    super.key,
+    this.asset,
+    this.icon,
     required this.tooltip,
     required this.onTap,
-  });
+  }) : assert(asset != null || icon != null);
 
-  final List<List<dynamic>> icon;
+  /// The design's own artwork for the reply row.
+  final String? asset;
+
+  /// Glyph alternative used by the notices that share this touch target.
+  final List<List<dynamic>>? icon;
   final String tooltip;
   final VoidCallback onTap;
 
@@ -2839,16 +3019,21 @@ class _ReplyActionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Tooltip(
       message: tooltip,
-      child: SizedBox.square(
-        dimension: 48,
-        child: InkWell(
-          onTap: onTap,
-          customBorder: const CircleBorder(),
-          child: Center(
-            child: FluxIcon(
-              icon: icon,
-              size: 16,
-              color: FluxColors.mutedOf(context),
+      child: FluxPressScale(
+        scale: .9,
+        child: SizedBox.square(
+          dimension: 40,
+          child: InkWell(
+            onTap: onTap,
+            customBorder: const CircleBorder(),
+            child: Center(
+              child: asset != null
+                  ? FigmaSvg(asset: asset!, width: 25, height: 25)
+                  : FluxIcon(
+                      icon: icon!,
+                      size: 20,
+                      color: FluxColors.mutedOf(context),
+                    ),
             ),
           ),
         ),
@@ -3090,7 +3275,14 @@ class FinnPageRoute<T> extends PageRouteBuilder<T> {
                   begin: const Offset(.08, 0),
                   end: Offset.zero,
                 ).animate(curved),
-                child: page,
+                // A hair of scale gives the incoming page depth, so it reads
+                // as arriving from behind the current one instead of sliding
+                // flat over it. Anchored to the edge it slides from.
+                child: ScaleTransition(
+                  scale: Tween<double>(begin: .985, end: 1).animate(curved),
+                  alignment: Alignment.centerRight,
+                  child: page,
+                ),
               ),
             );
           },
@@ -3393,6 +3585,72 @@ class _IMessageAttachmentMenuState extends State<_IMessageAttachmentMenu>
   }
 }
 
+/// Swaps a single control when [swapKey] changes, replaying a short scale-pop.
+///
+/// A cross-fade would hold the outgoing control in the tree for the length of
+/// the transition — and, because a fully transparent child is dropped from the
+/// semantics tree, would briefly hide the incoming one from a screen reader.
+/// Animating one child keeps both the tree and the accessibility label honest:
+/// the previous control is gone the moment the state changes.
+class _ControlSwap extends StatefulWidget {
+  const _ControlSwap({required this.swapKey, required this.child});
+
+  /// Changing this replays the pop.
+  final Object swapKey;
+  final Widget child;
+
+  @override
+  State<_ControlSwap> createState() => _ControlSwapState();
+}
+
+class _ControlSwapState extends State<_ControlSwap>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 240),
+    value: 1,
+  );
+  late final Animation<double> _pop = CurvedAnimation(
+    parent: _controller,
+    curve: Curves.easeOutBack,
+  );
+  late final Animation<double> _fade = CurvedAnimation(
+    parent: _controller,
+    curve: Curves.easeOutCubic,
+  );
+
+  @override
+  void didUpdateWidget(covariant _ControlSwap oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.swapKey == widget.swapKey) return;
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _controller.value = 1;
+    } else {
+      _controller.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Never fully transparent: an opacity of zero is exactly what would drop
+    // the control's semantics while it animates in.
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) => Opacity(
+        opacity: .5 + .5 * _fade.value,
+        child: Transform.scale(scale: .82 + .18 * _pop.value, child: child),
+      ),
+      child: widget.child,
+    );
+  }
+}
+
 class ChatComposer extends StatefulWidget {
   const ChatComposer({
     super.key,
@@ -3412,8 +3670,9 @@ class ChatComposer extends StatefulWidget {
     this.onStop,
     this.voiceEnabled = false,
     this.onMic,
-    this.browseEnabled = false,
-    this.onToggleBrowse,
+    this.voiceListening = false,
+    this.onVoiceToggle,
+    this.onVoiceExpand,
     this.hintText,
     this.pickAttachmentSemanticLabel,
   });
@@ -3474,11 +3733,15 @@ class ChatComposer extends StatefulWidget {
   /// Invoked when the user taps the mic button to open voice mode.
   final VoidCallback? onMic;
 
-  /// True when the user has asked Finn to browse the web for this turn.
-  final bool browseEnabled;
+  /// True while the composer is listening for voice input. The pill takes the
+  /// listening wash and the trailing control becomes the mic being spoken to.
+  final bool voiceListening;
 
-  /// Invoked when the user toggles web browsing. Null hides the control.
-  final VoidCallback? onToggleBrowse;
+  /// Ends voice input — the shell sends whatever was heard.
+  final VoidCallback? onVoiceToggle;
+
+  /// Opens the full-screen voice mode from the inline listening state.
+  final VoidCallback? onVoiceExpand;
 
   @override
   State<ChatComposer> createState() => _ChatComposerState();
@@ -3520,19 +3783,300 @@ class _ChatComposerState extends State<ChatComposer> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = L10n.of(context);
     final hasAttachment =
         widget.attachmentPath != null && widget.attachmentPath!.isNotEmpty;
     final canSend =
         (_hasText || hasAttachment) && !widget.blocked && !widget.busy;
     final reducedMotion = MediaQuery.disableAnimationsOf(context);
-    // Frosted pill: white on light surfaces, dark glass in dark mode, with a
-    // light backdrop blur so content scrolling beneath it reads softly through
-    // the translucency. The blur sigma stays modest so low-end devices are not
-    // taxed.
-    // The whole pill condenses around its own center while scrolled away: it
+    final listening = widget.voiceListening;
+    final isDark = FluxColors.isDark(context);
+    // While listening the middle pill becomes the design's waveform indicator
+    // and the live transcript floats above the control row.
+    final transcript = listening ? widget.controller.text.trim() : '';
+    final hasDraft = _hasText || hasAttachment;
+
+    // One circular control of the composer row: 50dp, flat colour, glyph.
+    Widget circle({
+      required Key key,
+      required Color color,
+      required Widget child,
+      VoidCallback? onTap,
+      String? label,
+      bool dimmed = false,
+    }) =>
+        Semantics(
+          button: true,
+          enabled: onTap != null,
+          label: label,
+          onTap: onTap,
+          excludeSemantics: true,
+          child: FluxPressScale(
+            enabled: onTap != null,
+            child: Material(
+              color: color,
+              shape: const CircleBorder(),
+              child: SizedBox.square(
+                key: key,
+                dimension: 50,
+                child: InkWell(
+                  onTap: onTap,
+                  customBorder: const CircleBorder(),
+                  child: Center(
+                    child: Opacity(opacity: dimmed ? .38 : 1, child: child),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+
+    // Left: attachments, or the design's cancel cross while listening.
+    final leading = circle(
+      key: const ValueKey('add-attachment-button'),
+      color: FluxColors.controlOf(context),
+      label: listening
+          ? l10n.voiceCancelSemantic
+          : widget.pickAttachmentSemanticLabel ??
+              l10n.chatAddAttachmentSemantic,
+      onTap: listening
+          ? widget.onVoiceToggle
+          : (widget.blocked || widget.busy ? null : widget.onPickAttachment),
+      child: AnimatedRotation(
+        turns: (widget.isAttachmentMenuOpen || listening) ? .125 : 0.0,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        child: const FigmaSvg(
+          asset: FigmaAssets.composerAdd,
+          width: 25,
+          height: 25,
+        ),
+      ),
+    );
+
+    // Right: stop while generating, the mic while listening, send once there
+    // is something to send, and the design's voice button otherwise. The key
+    // below is what lets the swap between them animate instead of blinking.
+    final trailingMode = widget.busy
+        ? 'stop'
+        : listening
+            ? 'voice'
+            : hasDraft
+                ? 'send'
+                : 'mic';
+    final trailingControl = widget.busy
+        ? circle(
+            key: const ValueKey('stop-button-surface'),
+            color: FluxColors.actionOf(context),
+            label: l10n.chatStopGeneratingSemantic,
+            onTap: widget.onStop,
+            child: SizedBox.square(
+              dimension: 14,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: FluxColors.actionInkOf(context),
+                  borderRadius: const BorderRadius.all(Radius.circular(4)),
+                ),
+              ),
+            ),
+          )
+        : listening
+            ? circle(
+                key: const ValueKey('voice-toggle-surface'),
+                color: FluxColors.controlOf(context),
+                label: l10n.chatSendMessageSemantic,
+                onTap: widget.onVoiceToggle,
+                child: const FigmaSvg(
+                  asset: FigmaAssets.voiceMic,
+                  width: 25,
+                  height: 25,
+                ),
+              )
+            : hasDraft
+                ? circle(
+                    key: const ValueKey('send-button-hit'),
+                    color: FluxColors.actionOf(context),
+                    label: l10n.chatSendMessageSemantic,
+                    onTap: canSend ? widget.onSend : null,
+                    dimmed: !canSend,
+                    child: FluxIcon(
+                      key: const ValueKey('send-button-icon'),
+                      icon: FluxIcons.arrowUp02,
+                      size: 24,
+                      color: FluxColors.actionInkOf(context),
+                      strokeWidth: 2,
+                    ),
+                  )
+                : circle(
+                    key: const ValueKey('mic-button-surface'),
+                    color: FluxColors.actionOf(context),
+                    label: l10n.voiceMicSemantic,
+                    onTap: widget.voiceEnabled ? widget.onMic : null,
+                    child: const FigmaSvg(
+                      asset: FigmaAssets.composerVoice,
+                      width: 25,
+                      height: 25,
+                    ),
+                  );
+    // Mic → send → stop as the field fills and the turn runs: one control that
+    // pops when it changes, rather than two cross-fading over each other.
+    final trailing = _ControlSwap(
+      swapKey: trailingMode,
+      child: trailingControl,
+    );
+
+    // The middle pill: the input itself, or the listening gradient.
+    final pill = AnimatedContainer(
+      key: const ValueKey('chat-composer-motion'),
+      duration:
+          reducedMotion ? Duration.zero : const Duration(milliseconds: 180),
+      curve: Curves.easeOutCubic,
+      decoration: BoxDecoration(
+        color: listening ? null : FluxColors.controlOf(context),
+        gradient: listening ? FluxColors.voiceGradient : null,
+        borderRadius: BorderRadius.circular(
+          hasAttachment ? FluxRadius.sheet : FluxRadius.pill,
+        ),
+        boxShadow: listening
+            ? null
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
+                  blurRadius: isDark ? 20 : 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+      ),
+      constraints: const BoxConstraints(minHeight: 50, maxHeight: 220),
+      padding:
+          listening ? EdgeInsets.zero : const EdgeInsets.fromLTRB(17, 1, 4, 1),
+      child: listening
+          ? null
+          : Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (hasAttachment)
+                  Padding(
+                    padding: const EdgeInsets.only(
+                      bottom: 8,
+                      left: 6,
+                      right: 6,
+                      top: 2,
+                    ),
+                    child: Row(
+                      children: [
+                        _buildAttachmentPreview(
+                          context,
+                          widget.attachmentPath!,
+                        ),
+                      ],
+                    ),
+                  ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      // The pill reads as one big input, so the whole row
+                      // focuses the field: a bare single-line TextField is
+                      // only as tall as its text (measured on device: 20dp
+                      // inside a 56dp pill), which left most of the visible
+                      // field inert. The band carries the target and the
+                      // field keeps its natural height, centred inside it.
+                      child: Semantics(
+                        label: l10n.chatMessageToFinnSemantic,
+                        textField: true,
+                        child: GestureDetector(
+                          key: const ValueKey('composer-field-band'),
+                          behavior: HitTestBehavior.opaque,
+                          // The band is a touch target, not a second control:
+                          // the field keeps its own semantics, so a screen
+                          // reader still reads exactly one text field here.
+                          excludeFromSemantics: true,
+                          onTap: () => widget.focusNode.requestFocus(),
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(minHeight: 48),
+                            child: Center(
+                              child: TextField(
+                                controller: widget.controller,
+                                focusNode: widget.focusNode,
+                                inputFormatters: [
+                                  LengthLimitingTextInputFormatter(4000),
+                                ],
+                                enabled: !widget.blocked,
+                                minLines: 1,
+                                maxLines: 5,
+                                textAlignVertical: TextAlignVertical.center,
+                                keyboardType: TextInputType.multiline,
+                                textInputAction: TextInputAction.send,
+                                onSubmitted: (_) =>
+                                    canSend ? widget.onSend() : null,
+                                onTap: () => widget.onReturnToLatest?.call(),
+                                style: TextStyle(
+                                  fontFamily: 'InstrumentSans',
+                                  fontSize: 16,
+                                  height: 1.25,
+                                  fontWeight: FontWeight.w400,
+                                  color: FluxColors.inkOf(context),
+                                ),
+                                cursorColor: FluxColors.inkOf(context),
+                                decoration: InputDecoration.collapsed(
+                                  hintText: widget.hintText ??
+                                      (widget.preparing
+                                          ? l10n.chatFinnTyping
+                                          : l10n.chatAskAnythingHint),
+                                  // One line, always. A wrapped hint stretches
+                                  // the field — and with it the pill — on
+                                  // narrow screens and in longer locales.
+                                  hintMaxLines: 1,
+                                  hintStyle: TextStyle(
+                                    fontFamily: 'InstrumentSans',
+                                    fontSize: 16,
+                                    height: 1.25,
+                                    fontWeight: FontWeight.w400,
+                                    color: FluxColors.inkOf(context)
+                                        .withValues(alpha: .55),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+    );
+
+    // The design floats the live transcript above the controls while
+    // listening; the pill itself only carries the gradient.
+    final transcriptPill = transcript.isEmpty
+        ? null
+        : Container(
+            constraints: const BoxConstraints(minHeight: 50),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+            decoration: BoxDecoration(
+              color: FluxColors.controlOf(context),
+              borderRadius: BorderRadius.circular(FluxRadius.pill),
+            ),
+            child: Text(
+              transcript,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'InstrumentSans',
+                fontSize: 16,
+                height: 1.25,
+                fontWeight: FontWeight.w400,
+                color: FluxColors.inkOf(context),
+              ),
+            ),
+          );
+
+    // The control row condenses around its own centre while scrolled away: it
     // scales down uniformly to 85%, so the length shortens a bit while the
-    // items inside shrink proportionally — nothing gets stretched or squished.
-    // Full size is restored at the bottom.
+    // items inside shrink proportionally. Full size is restored at the bottom.
     return TweenAnimationBuilder<double>(
       tween: Tween<double>(end: widget.compact ? 1.0 : 0.0),
       duration:
@@ -3543,292 +4087,38 @@ class _ChatComposerState extends State<ChatComposer> {
         scale: 1 - 0.15 * shrink,
         child: child,
       ),
-      child: AnimatedContainer(
-        key: const ValueKey('chat-composer-motion'),
-        duration:
-            reducedMotion ? Duration.zero : const Duration(milliseconds: 180),
-        curve: Curves.easeOutCubic,
-        decoration: BoxDecoration(
-          color: FluxColors.isDark(context)
-              ? const Color(0xFF1E1E22)
-              : const Color(0xFFFFFFFF),
-          borderRadius: BorderRadius.circular(
-            hasAttachment ? FluxRadius.sheet : FluxRadius.pill,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(
-                alpha: FluxColors.isDark(context) ? 0.35 : 0.08,
-              ),
-              blurRadius: FluxColors.isDark(context) ? 20 : 16,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
+      child: SizedBox(
         width: widget.width,
-        constraints: const BoxConstraints(minHeight: 56, maxHeight: 220),
-        padding: const EdgeInsets.fromLTRB(8, 4, 6, 4),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (hasAttachment)
-              Padding(
-                padding: const EdgeInsets.only(
-                  bottom: 8,
-                  left: 6,
-                  right: 6,
-                  top: 2,
-                ),
-                child: Row(
-                  children: [
-                    _buildAttachmentPreview(context, widget.attachmentPath!),
-                  ],
-                ),
+            if (transcriptPill != null) ...[
+              Center(child: transcriptPill),
+              const SizedBox(height: 40),
+            ],
+            if (listening)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  leading,
+                  const SizedBox(width: 20),
+                  SizedBox(width: 100, height: 50, child: pill),
+                  const SizedBox(width: 20),
+                  trailing,
+                ],
+              )
+            else
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  leading,
+                  const SizedBox(width: 20),
+                  Expanded(child: pill),
+                  const SizedBox(width: 20),
+                  trailing,
+                ],
               ),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Semantics(
-                  button: true,
-                  label: widget.pickAttachmentSemanticLabel ??
-                      L10n.of(context).chatAddAttachmentSemantic,
-                  child: SizedBox.square(
-                    dimension: 48,
-                    child: InkWell(
-                      key: const ValueKey('add-attachment-button'),
-                      onTap: widget.blocked || widget.busy
-                          ? null
-                          : widget.onPickAttachment,
-                      customBorder: const CircleBorder(),
-                      child: Center(
-                        child: AnimatedRotation(
-                          turns: widget.isAttachmentMenuOpen ? 0.125 : 0.0,
-                          duration: const Duration(milliseconds: 220),
-                          curve: Curves.easeOutCubic,
-                          child: HugeIcon(
-                            icon: HugeIcons.strokeRoundedAdd01,
-                            size: 20,
-                            color: (widget.blocked || widget.busy)
-                                ? FluxColors.mutedOf(
-                                    context,
-                                  ).withValues(alpha: 0.35)
-                                : (widget.isAttachmentMenuOpen
-                                    ? FluxColors.inkOf(context)
-                                    : FluxColors.mutedOf(context)),
-                            strokeWidth: 2.0,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Expanded(
-                  // The pill reads as one big input, so the whole row focuses
-                  // the field: a bare single-line TextField is only as tall as
-                  // its text (measured on device: 20dp inside a 56dp pill),
-                  // which left most of the visible field inert. The band
-                  // carries the 48dp target and the field keeps its natural
-                  // height, centred inside it — stretched to the band, the
-                  // decorator lays the placeholder and the caret out from the
-                  // top of the box, measured 12dp above the pill's midline.
-                  child: Semantics(
-                    label: L10n.of(context).chatMessageToFinnSemantic,
-                    textField: true,
-                    child: GestureDetector(
-                      key: const ValueKey('composer-field-band'),
-                      behavior: HitTestBehavior.opaque,
-                      // The band is a touch target, not a second control: the
-                      // field keeps its own semantics, so a screen reader
-                      // still reads exactly one text field here.
-                      excludeFromSemantics: true,
-                      onTap: () => widget.focusNode.requestFocus(),
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(minHeight: 48),
-                        child: Center(
-                          child: TextField(
-                            controller: widget.controller,
-                            focusNode: widget.focusNode,
-                            inputFormatters: [
-                              LengthLimitingTextInputFormatter(4000)
-                            ],
-                            enabled: !widget.blocked,
-                            minLines: 1,
-                            maxLines: 5,
-                            textAlignVertical: TextAlignVertical.center,
-                            keyboardType: TextInputType.multiline,
-                            textInputAction: TextInputAction.send,
-                            onSubmitted: (_) =>
-                                canSend ? widget.onSend() : null,
-                            onTap: () => widget.onReturnToLatest?.call(),
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodyMedium
-                                ?.copyWith(color: FluxColors.inkOf(context)),
-                            cursorColor: FluxColors.inkOf(context),
-                            decoration: InputDecoration.collapsed(
-                              hintText: widget.hintText ??
-                                  (widget.preparing
-                                      ? L10n.of(context).chatFinnTyping
-                                      : L10n.of(context).chatAskAnythingHint),
-                              // One line, always. A wrapped hint stretches the
-                              // field — and with it the pill — on narrow
-                              // screens and in the longer locales.
-                              hintMaxLines: 1,
-                              hintStyle: Theme.of(context)
-                                  .textTheme
-                                  .bodyMedium
-                                  ?.copyWith(
-                                    color: FluxColors.mutedOf(context),
-                                  ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 6),
-                if (widget.onToggleBrowse != null && !widget.busy)
-                  Semantics(
-                    button: true,
-                    selected: widget.browseEnabled,
-                    label: widget.browseEnabled
-                        ? L10n.of(context).chatBrowseOnSemantic
-                        : L10n.of(context).chatBrowseOffSemantic,
-                    child: Tooltip(
-                      message: L10n.of(context).chatBrowseTooltip,
-                      child: SizedBox.square(
-                        key: const ValueKey('browse-toggle-surface'),
-                        dimension: 48,
-                        child: InkWell(
-                          onTap: widget.blocked ? null : widget.onToggleBrowse,
-                          customBorder: const CircleBorder(),
-                          child: Center(
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 180),
-                              curve: Curves.easeOutCubic,
-                              width: 30,
-                              height: 30,
-                              decoration: BoxDecoration(
-                                color: widget.browseEnabled
-                                    ? FluxColors.inkOf(context)
-                                    : Colors.transparent,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Center(
-                                child: FluxIcon(
-                                  icon: FluxIcons.internet,
-                                  size: 17,
-                                  color: widget.browseEnabled
-                                      ? FluxColors.canvasOf(context)
-                                      : FluxColors.mutedOf(context),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                if (widget.voiceEnabled && !widget.busy && !widget.blocked)
-                  Semantics(
-                    button: true,
-                    label: L10n.of(context).voiceMicSemantic,
-                    child: SizedBox.square(
-                      key: const ValueKey('mic-button-surface'),
-                      dimension: 48,
-                      child: InkWell(
-                        onTap: widget.onMic,
-                        customBorder: const CircleBorder(),
-                        child: Center(
-                          child: HugeIcon(
-                            icon: HugeIcons.strokeRoundedMic01,
-                            size: 20,
-                            color: FluxColors.mutedOf(context),
-                            strokeWidth: 2.0,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                if (widget.busy)
-                  Semantics(
-                    button: true,
-                    label: L10n.of(context).chatStopGeneratingSemantic,
-                    child: SizedBox.square(
-                      key: const ValueKey('stop-button-surface'),
-                      dimension: 48,
-                      child: InkWell(
-                        onTap: widget.onStop,
-                        customBorder: const CircleBorder(),
-                        child: Center(
-                          child: Container(
-                            width: 30,
-                            height: 30,
-                            decoration: BoxDecoration(
-                              color: FluxColors.isDark(context)
-                                  ? Colors.white
-                                  : Colors.black,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Center(
-                              child: SizedBox.square(
-                                dimension: 12,
-                                child: DecoratedBox(
-                                  decoration: BoxDecoration(
-                                    color: FluxColors.isDark(context)
-                                        ? Colors.black
-                                        : Colors.white,
-                                    borderRadius: const BorderRadius.all(
-                                      Radius.circular(3),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  )
-                else
-                  Semantics(
-                    button: true,
-                    enabled: canSend,
-                    label: L10n.of(context).chatSendMessageSemantic,
-                    child: SizedBox.square(
-                      // The visual surface stays compact inside a full-size
-                      // (48dp) hit area so the control meets the minimum
-                      // touch target without enlarging the glyph.
-                      key: const ValueKey('send-button-hit'),
-                      dimension: 48,
-                      child: InkWell(
-                        onTap: canSend ? widget.onSend : null,
-                        customBorder: const CircleBorder(),
-                        child: Center(
-                          child: SizedBox.square(
-                            key: const ValueKey('send-button-surface'),
-                            dimension: 36,
-                            child: Center(
-                              child: FigmaSvg(
-                                asset: canSend
-                                    ? FigmaAssets.activeSend
-                                    : FigmaAssets.send,
-                                key: const ValueKey('send-button-icon'),
-                                width: 30,
-                                height: 30,
-                                invertForDark: true,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
           ],
         ),
       ),
@@ -4017,7 +4307,7 @@ class _Sidebar extends StatefulWidget {
     required this.activeConversationId,
     required this.onCreations,
     required this.onYou,
-    required this.onSkills,
+    required this.onFlows,
     required this.onActions,
     required this.onSettings,
   });
@@ -4029,7 +4319,7 @@ class _Sidebar extends StatefulWidget {
   final String? activeConversationId;
   final VoidCallback onCreations;
   final VoidCallback onYou;
-  final VoidCallback onSkills;
+  final VoidCallback onFlows;
   final VoidCallback onActions;
   final VoidCallback onSettings;
 
@@ -4066,29 +4356,32 @@ class _SidebarState extends State<_Sidebar> {
     final double safeBottom = MediaQuery.paddingOf(context).bottom;
 
     return ColoredBox(
-      color: FluxColors.canvasOf(context),
+      color: FluxColors.controlOf(context),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final double sy = (constraints.maxHeight / 844).clamp(0.7, 1.3);
-          final double headerTop = 71 * sy;
-          final double headerHeight = 34;
-          final double gap1 = 14 * sy;
-          final double buttonsTop = headerTop + headerHeight + gap1;
-          final double navSize = ((constraints.maxWidth - 90) / 4).clamp(
-            48.0,
-            62.0,
+          final double sy = (constraints.maxHeight / 912).clamp(0.72, 1.3);
+          const double headerHeight = 50;
+          final double headerTop = 70 * sy;
+          // Three 70px destinations with the design's 30px gutters.
+          final double navSize = ((constraints.maxWidth - 50 - 60) / 3).clamp(
+            56.0,
+            80.0,
           );
-          final double buttonsHeight = navSize + 20;
-          final double buttonsBottom = buttonsTop + buttonsHeight;
-          final double initialTitleTop = buttonsBottom + 14 * sy;
-          final double pinnedTitleTop = headerTop;
+          final double navHeight = navSize + 22;
+          final double navTop = 139 * sy;
+          final double titleTop = 262 * sy;
           const double titleHeight = 24;
-          final double historyTopAtRest = initialTitleTop + titleHeight + 12;
-          final double titleTravelDistance = initialTitleTop - pinnedTitleTop;
+          final double historyTopAtRest = titleTop + titleHeight + 8;
+          final double pinnedTitleTop = headerTop + 14;
+          final double titleTravelDistance = math.max(
+            1.0,
+            titleTop - pinnedTitleTop,
+          );
+          final double bottomBarHeight = 50 + 20 + safeBottom;
 
           return Stack(
             children: [
-              // 1. Scrolling Chat History List in Background
+              // 1. Chat history, scrolling beneath the pinned header.
               Positioned.fill(
                 child: CustomScrollView(
                   controller: _scrollController,
@@ -4098,10 +4391,10 @@ class _SidebarState extends State<_Sidebar> {
                   slivers: [
                     SliverPadding(
                       padding: EdgeInsets.only(
-                        left: 20,
-                        right: 20,
+                        left: 25,
+                        right: 25,
                         top: historyTopAtRest,
-                        bottom: 30 + safeBottom,
+                        bottom: bottomBarHeight + 40,
                       ),
                       sliver: widget.conversations.isEmpty
                           ? SliverToBoxAdapter(
@@ -4132,20 +4425,38 @@ class _SidebarState extends State<_Sidebar> {
                                 ),
                               ),
                             )
-                          : SliverList.builder(
-                              itemCount: widget.conversations.length,
-                              itemBuilder: (context, index) {
-                                final conversation =
-                                    widget.conversations[index];
-                                return _SidebarConversationTile(
-                                  key: ValueKey(conversation.id),
-                                  conversation: conversation,
-                                  selected: conversation.id ==
-                                      widget.activeConversationId,
-                                  onTap: () =>
-                                      widget.onConversation(conversation.id),
-                                );
-                              },
+                          : SliverGrid(
+                              gridDelegate:
+                                  const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                mainAxisSpacing: 10,
+                                crossAxisSpacing: 10,
+                                mainAxisExtent: 100,
+                              ),
+                              delegate: SliverChildBuilderDelegate(
+                                (context, index) {
+                                  final conversation =
+                                      widget.conversations[index];
+                                  final card = _SidebarConversationTile(
+                                    key: ValueKey(conversation.id),
+                                    conversation: conversation,
+                                    selected: conversation.id ==
+                                        widget.activeConversationId,
+                                    onTap: () =>
+                                        widget.onConversation(conversation.id),
+                                  );
+                                  // The design's staggered grid: the right
+                                  // column starts half a card lower than the
+                                  // left one.
+                                  return index.isOdd
+                                      ? Transform.translate(
+                                          offset: const Offset(0, 55),
+                                          child: card,
+                                        )
+                                      : card;
+                                },
+                                childCount: widget.conversations.length,
+                              ),
                             ),
                     ),
                   ],
@@ -4164,7 +4475,7 @@ class _SidebarState extends State<_Sidebar> {
                   );
                   final double coverHeight = coverProgress <= 0
                       ? 0.0
-                      : (pinnedTitleTop + titleHeight + 14 * sy);
+                      : (pinnedTitleTop + titleHeight + 18 * sy);
 
                   return Positioned(
                     left: 0,
@@ -4175,7 +4486,7 @@ class _SidebarState extends State<_Sidebar> {
                       child: coverProgress <= 0
                           ? const SizedBox()
                           : ColoredBox(
-                              color: FluxColors.canvasOf(
+                              color: FluxColors.controlOf(
                                 context,
                               ).withValues(alpha: .96),
                             ),
@@ -4184,10 +4495,10 @@ class _SidebarState extends State<_Sidebar> {
                 },
               ),
 
-              // 3. Header (FinnAI title + actions) - fades out on scroll up as title replaces it, spring overscroll on pull down
+              // 3. Brand row with the close control.
               Positioned(
                 left: 25,
-                right: 20,
+                right: 25,
                 top: headerTop,
                 height: headerHeight,
                 child: ValueListenableBuilder<double>(
@@ -4215,9 +4526,7 @@ class _SidebarState extends State<_Sidebar> {
                   },
                   child: Row(
                     children: [
-                      SizedBox(
-                        width: 70,
-                        height: 34,
+                      Expanded(
                         child: Align(
                           alignment: Alignment.centerLeft,
                           child: Text(
@@ -4225,56 +4534,18 @@ class _SidebarState extends State<_Sidebar> {
                             style: Theme.of(context)
                                 .textTheme
                                 .titleLarge
-                                ?.copyWith(fontWeight: FontWeight.w400),
+                                ?.copyWith(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.w400,
+                                ),
                           ),
                         ),
                       ),
-                      const Spacer(),
-                      SizedBox(
-                        width: 78,
-                        height: 34,
-                        child: Stack(
-                          children: [
-                            // Underlying SVG showing both icons
-                            const FigmaSvg(
-                              asset: FigmaAssets.sidebarActions,
-                              width: 78,
-                              height: 34,
-                            ),
-                            // Left half → Settings
-                            Positioned(
-                              left: 0,
-                              top: 0,
-                              width: 39,
-                              bottom: 0,
-                              child: Tooltip(
-                                message: L10n.of(context).settingsTitle,
-                                child: InkWell(
-                                  onTap: widget.onSettings,
-                                  borderRadius: const BorderRadius.horizontal(
-                                    left: Radius.circular(17),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            // Right half → New Conversation
-                            Positioned(
-                              left: 39,
-                              top: 0,
-                              right: 0,
-                              bottom: 0,
-                              child: Tooltip(
-                                message: L10n.of(context).chatNewChat,
-                                child: InkWell(
-                                  onTap: widget.onNewConversation,
-                                  borderRadius: const BorderRadius.horizontal(
-                                    right: Radius.circular(17),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                      _SidebarCircleButton(
+                        asset: FigmaAssets.appClose,
+                        tooltip: L10n.of(context).commonClose,
+                        background: FluxColors.controlOf(context),
+                        onTap: widget.onClose,
                       ),
                     ],
                   ),
@@ -4285,8 +4556,8 @@ class _SidebarState extends State<_Sidebar> {
               Positioned(
                 left: 25,
                 right: 25,
-                top: buttonsTop,
-                height: buttonsHeight,
+                top: navTop,
+                height: navHeight,
                 child: ValueListenableBuilder<double>(
                   valueListenable: _scrollOffset,
                   builder: (context, offset, child) {
@@ -4313,39 +4584,36 @@ class _SidebarState extends State<_Sidebar> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _NavTile(
-                        asset: FigmaAssets.sidebarCreations,
+                      _SidebarCircleTile(
+                        asset: FigmaAssets.tileCreations,
                         label: L10n.of(context).creationsTitle,
                         onTap: widget.onCreations,
                         size: navSize,
                       ),
-                      _NavTile(
-                        asset: FigmaAssets.sidebarYou,
+                      _SidebarCircleTile(
+                        asset: FigmaAssets.tileFlows,
+                        label: L10n.of(context).flowsTitle,
+                        onTap: widget.onFlows,
+                        size: navSize,
+                      ),
+                      _SidebarCircleTile(
+                        asset: FigmaAssets.tileYou,
                         label: L10n.of(context).youTitle,
                         onTap: widget.onYou,
-                        size: navSize,
-                      ),
-                      _NavTile(
-                        asset: FigmaAssets.sidebarSkills,
-                        label: L10n.of(context).skillsTitle,
-                        onTap: widget.onSkills,
-                        size: navSize,
-                      ),
-                      _IconNavTile(
-                        icon: FluxIcons.magic,
-                        label: L10n.of(context).deviceActionsTitle,
-                        onTap: widget.onActions,
                         size: navSize,
                       ),
                     ],
                   ),
                 ),
               ),
-              // 5. Chat History Title - lifts up on scroll all the way to headerTop replacing content beneath, spring overscroll on pull down
+
+              // 5. Chat History Title - lifts up on scroll all the way to
+              // headerTop replacing content beneath, spring overscroll on pull
+              // down.
               Positioned(
                 left: 25,
                 right: 25,
-                top: initialTitleTop,
+                top: titleTop,
                 height: titleHeight,
                 child: ValueListenableBuilder<double>(
                   valueListenable: _scrollOffset,
@@ -4366,9 +4634,35 @@ class _SidebarState extends State<_Sidebar> {
                     alignment: Alignment.centerLeft,
                     child: Text(
                       L10n.of(context).chatHistory,
-                      style: Theme.of(context).textTheme.bodyMedium,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontSize: 18,
+                          ),
                     ),
                   ),
+                ),
+              ),
+
+              // 6. The two shortcuts that used to sit in the header.
+              Positioned(
+                left: 25,
+                bottom: safeBottom + 3,
+                height: 50,
+                child: Row(
+                  children: [
+                    _SidebarCircleButton(
+                      asset: FigmaAssets.appNewChat,
+                      tooltip: L10n.of(context).chatNewChat,
+                      background: FluxColors.tileOf(context),
+                      onTap: widget.onNewConversation,
+                    ),
+                    const SizedBox(width: 11),
+                    _SidebarCircleButton(
+                      asset: FigmaAssets.appSettings,
+                      tooltip: L10n.of(context).settingsTitle,
+                      background: FluxColors.tileOf(context),
+                      onTap: widget.onSettings,
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -4379,120 +4673,133 @@ class _SidebarState extends State<_Sidebar> {
   }
 }
 
-class _NavTile extends StatelessWidget {
-  const _NavTile({
-    required this.asset,
+/// A circular shortcut in the sidebar: the nav destinations and the bottom
+/// pair all share this shape.
+class _SidebarCircleTile extends StatelessWidget {
+  const _SidebarCircleTile({
     required this.label,
     required this.onTap,
-    this.size = 62,
-  });
-  final String asset;
+    this.icon,
+    this.asset,
+    this.size = 70,
+  }) : assert(icon != null || asset != null);
+
+  final List<List<dynamic>>? icon;
+  final String? asset;
   final String label;
   final VoidCallback onTap;
   final double size;
 
   @override
-  Widget build(BuildContext context) => Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(FluxRadius.sm),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(FluxRadius.sm),
-          child: Container(
-            width: size,
-            height: size + 20,
+  Widget build(BuildContext context) => Semantics(
+        button: true,
+        label: label,
+        onTap: onTap,
+        excludeSemantics: true,
+        child: FluxPressScale(
+          child: Material(
             color: Colors.transparent,
-            child: Column(
-              children: [
-                FigmaSvg(
-                    asset: asset, width: size, height: size, isNavTile: true),
-                const SizedBox(height: 5),
-                SizedBox(
-                  width: size,
-                  height: 15,
-                  child: Center(
-                    child: Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+            borderRadius: BorderRadius.circular(FluxRadius.sm),
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(FluxRadius.sm),
+              child: SizedBox(
+                width: size,
+                height: size + 22,
+                child: Column(
+                  children: [
+                    Container(
+                      width: size,
+                      height: size,
+                      decoration: BoxDecoration(
+                        color: FluxColors.tileOf(context),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: asset != null
+                            ? FigmaSvg(
+                                asset: asset!,
+                                width: size * .57,
+                                height: size * .57,
+                              )
+                            : FluxIcon(
+                                icon: icon!,
+                                size: size * 0.42,
+                                color: FluxColors.inkOf(context),
+                              ),
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    SizedBox(
+                      height: 17,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          label,
+                          maxLines: 1,
+                          style: TextStyle(
+                            fontFamily: 'InstrumentSans',
+                            fontSize: 14,
+                            height: 1.2,
+                            fontWeight: FontWeight.w400,
                             color: FluxColors.inkOf(context),
                           ),
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ),
       );
 }
 
-/// A destination tile drawn from an icon instead of a bespoke illustration.
-///
-/// The three established destinations ship their own Figma artwork; this keeps
-/// a new destination recognisable without inventing a fourth illustration that
-/// would not match the set.
-class _IconNavTile extends StatelessWidget {
-  const _IconNavTile({
-    required this.icon,
-    required this.label,
+/// A circular icon-only control, e.g. close, new chat or settings.
+class _SidebarCircleButton extends StatelessWidget {
+  const _SidebarCircleButton({
+    required this.tooltip,
+    required this.background,
     required this.onTap,
-    this.size = 62,
-  });
+    this.icon,
+    this.asset,
+  }) : assert(icon != null || asset != null);
 
-  final List<List<dynamic>> icon;
-  final String label;
+  final List<List<dynamic>>? icon;
+  final String? asset;
+  final String tooltip;
+  final Color background;
   final VoidCallback onTap;
-  final double size;
 
   @override
-  Widget build(BuildContext context) => Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(FluxRadius.sm),
-        child: InkWell(
+  Widget build(BuildContext context) => Tooltip(
+        message: tooltip,
+        child: Semantics(
+          button: true,
+          label: tooltip,
           onTap: onTap,
-          borderRadius: BorderRadius.circular(FluxRadius.sm),
-          child: Container(
-            width: size,
-            height: size + 20,
-            color: Colors.transparent,
-            child: Column(
-              children: [
-                Container(
-                  width: size,
-                  height: size,
-                  decoration: BoxDecoration(
-                    // The illustrated tiles are white artwork that a dark-mode
-                    // colour matrix inverts; this one has to match by adapting
-                    // on its own.
-                    color: FluxColors.cardOf(context),
-                    shape: BoxShape.circle,
-                  ),
+          excludeSemantics: true,
+          child: FluxPressScale(
+            child: Material(
+              color: background,
+              shape: const CircleBorder(),
+              child: SizedBox.square(
+                dimension: 50,
+                child: InkWell(
+                  onTap: onTap,
+                  customBorder: const CircleBorder(),
                   child: Center(
-                    child: FluxIcon(
-                      icon: icon,
-                      size: size * .42,
-                      color: FluxColors.inkOf(context),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 5),
-                SizedBox(
-                  width: size,
-                  height: 15,
-                  child: Center(
-                    child: Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    child: asset != null
+                        ? FigmaSvg(asset: asset!, width: 25, height: 25)
+                        : FluxIcon(
+                            icon: icon!,
+                            size: 22,
                             color: FluxColors.inkOf(context),
                           ),
-                    ),
                   ),
                 ),
-              ],
+              ),
             ),
           ),
         ),
@@ -4666,33 +4973,66 @@ class _SidebarConversationTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final key = _getTileKey();
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 7),
-      child: FluxSpringPressable(
-        onTap: onTap,
-        onLongPress: () => _showContextMenu(context),
-        child: Container(
-          key: key,
-          decoration: BoxDecoration(
-            color:
-                selected ? FluxColors.surfaceOf(context) : Colors.transparent,
-            borderRadius: BorderRadius.circular(FluxRadius.sm),
-          ),
-          // 14 + a 15px body line reaches the 48dp minimum touch target.
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  conversation.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
+    final foreground =
+        selected ? FluxColors.actionInkOf(context) : FluxColors.inkOf(context);
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: conversation.title,
+      onTap: onTap,
+      excludeSemantics: true,
+      child: FluxPressScale(
+        scale: .96,
+        child: Material(
+          color: selected
+              ? FluxColors.actionOf(context)
+              : FluxColors.tileOf(context),
+          borderRadius: BorderRadius.circular(FluxRadius.card),
+          child: InkWell(
+            key: key,
+            onTap: onTap,
+            onLongPress: () => _showContextMenu(context),
+            borderRadius: BorderRadius.circular(FluxRadius.card),
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Align(
+                    alignment: Alignment.topRight,
+                    child: Text(
+                      formatConversationTimestamp(
+                          context, conversation.updatedAt),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontFamily: 'InstrumentSans',
+                        fontSize: 14,
+                        height: 1.2,
+                        fontWeight: FontWeight.w400,
+                        color: selected
+                            ? FluxColors.actionInkOf(context)
+                                .withValues(alpha: .7)
+                            : FluxColors.timestampOf(context),
+                      ),
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    conversation.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: 'InstrumentSans',
+                      fontSize: 14,
+                      height: 1.2,
+                      fontWeight: FontWeight.w400,
+                      color: foreground,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
-              ConversationTimestamp(updatedAt: conversation.updatedAt),
-            ],
+            ),
           ),
         ),
       ),

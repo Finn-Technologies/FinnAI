@@ -5,7 +5,7 @@ import 'package:finn_ai/src/app/app_state_store.dart';
 import 'package:finn_ai/src/features/conversations/conversation_store.dart';
 import 'package:finn_ai/src/features/creations/creation_model.dart';
 import 'package:finn_ai/src/features/creations/creation_store.dart';
-import 'package:finn_ai/src/features/skills/skills_store.dart';
+import 'package:finn_ai/src/features/flows/flows_store.dart';
 import 'package:finn_ai/src/features/you/you_profile_store.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -108,7 +108,7 @@ void main() {
     );
 
     test(
-      'deleteAllData purges injected creations, personalization, and skills',
+      'deleteAllData purges injected creations, personalization, and flows',
       () async {
         final creationStore = CreationStore(
           directoryProvider: () async => tempDir,
@@ -116,7 +116,7 @@ void main() {
         final profileStore = YouProfileStore(
           directoryProvider: () async => tempDir,
         );
-        final skillsStore = SkillsStore(directoryProvider: () async => tempDir);
+        final flowsStore = FlowsStore(directoryProvider: () async => tempDir);
 
         await creationStore.save([
           FinnCreation(
@@ -138,9 +138,9 @@ void main() {
             customInstructions: 'Remember this locally.',
           ),
         );
-        await skillsStore.initialize();
-        await skillsStore.setEnabled('builtin-coding', true);
-        await skillsStore.upsertCustom(
+        await flowsStore.initialize();
+        await flowsStore.setEnabled('builtin-coding', true);
+        await flowsStore.upsertCustom(
           name: 'Private workflow',
           description: 'Local workflow',
           instructions: 'Use the private workflow.',
@@ -152,27 +152,27 @@ void main() {
           conversationStore: testConvStore,
           creationStore: creationStore,
           youProfileStore: profileStore,
-          skillsStore: skillsStore,
+          flowsStore: flowsStore,
         );
 
         expect(result.failedItems, isEmpty);
         expect(result.deletedItems, contains('Local creations'));
         expect(result.deletedItems, contains('Personalization'));
-        expect(result.deletedItems, contains('Skills'));
+        expect(result.deletedItems, contains('Flows'));
         expect(Directory('${tempDir.path}/creations').existsSync(), isFalse);
         expect(
           File('${tempDir.path}/user_personalization.json').existsSync(),
           isFalse,
         );
-        expect(File('${tempDir.path}/skills.json').existsSync(), isFalse);
+        expect(File('${tempDir.path}/flows.json').existsSync(), isFalse);
         expect(profileStore.profile.hasPersonalization, isFalse);
-        expect(skillsStore.enabledSkills, isEmpty);
-        expect(skillsStore.skills, hasLength(finnBuiltInSkills.length));
+        expect(flowsStore.enabledSkills, isEmpty);
+        expect(flowsStore.flows, hasLength(finnBuiltInFlows.length));
 
         final restoredProfile = YouProfileStore(
           directoryProvider: () async => tempDir,
         );
-        final restoredSkills = SkillsStore(
+        final restoredSkills = FlowsStore(
           directoryProvider: () async => tempDir,
         );
         await restoredProfile.initialize();

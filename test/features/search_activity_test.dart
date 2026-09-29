@@ -174,7 +174,7 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('finished turns collapse to a summary and stay expandable', (
+    testWidgets('finished turns list every step as a plain row', (
       tester,
     ) async {
       await pump(
@@ -183,24 +183,25 @@ void main() {
         busy: false,
       );
 
-      expect(find.text('Searched the web'), findsOneWidget);
-      expect(find.text('2 steps'), findsOneWidget);
+      // The design has no disclosure pill: each step is its own row, and the
+      // rows stay visible once the turn finishes.
       expect(
         find.text('Searched the web for “weather in Lisbon”'),
         findsOneWidget,
       );
-
-      await tester.tap(find.text('Searched the web'));
-      await tester.pumpAndSettle();
-
       expect(find.text('Read “Lisbon forecast”'), findsOneWidget);
+      expect(find.byType(FluxDisclosure), findsNothing);
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('renders nothing without browser work', (tester) async {
-      await pump(tester, activities: const [], busy: true);
-      expect(find.byType(FluxDisclosure), findsNothing);
+    testWidgets('an idle turn without browser work renders nothing', (
+      tester,
+    ) async {
+      await pump(tester, activities: const [], busy: false);
       expect(find.text('Searching the web…'), findsNothing);
+
+      await pump(tester, activities: const [], busy: true);
+      expect(find.text('Searching the web…'), findsOneWidget);
     });
   });
 }

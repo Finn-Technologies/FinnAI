@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:finn_ai/src/app/app_state_store.dart';
 import 'package:finn_ai/src/shared/config/legal_config.dart';
 import 'package:finn_ai/src/features/conversations/conversation_store.dart';
+import 'package:finn_ai/src/features/onboarding/context_consent_store.dart';
 import 'package:finn_ai/src/app/bootstrap.dart';
 import 'package:finn_ai/src/inference/finn_inference.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
@@ -668,6 +669,25 @@ class _SettingsPageState extends State<SettingsPage>
                                       radius: FluxRadius.card,
                                       child: Column(
                                         children: [
+                                          ListenableBuilder(
+                                            listenable:
+                                                ContextConsentStore.instance,
+                                            builder: (context, _) => _SwitchRow(
+                                              icon: FluxIcons.chip,
+                                              label: L10n.of(
+                                                context,
+                                              ).settingsContextTitle,
+                                              description: L10n.of(
+                                                context,
+                                              ).settingsContextSubtitle,
+                                              value: ContextConsentStore
+                                                  .instance.granted,
+                                              onChanged: (value) => unawaited(
+                                                ContextConsentStore.instance
+                                                    .setGranted(value),
+                                              ),
+                                            ),
+                                          ),
                                           _ActionRow(
                                             icon: FluxIcons.lock,
                                             label: L10n.of(

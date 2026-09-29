@@ -53,6 +53,35 @@ abstract final class FluxColors {
   static const disclosureLight = Color(0xFFEAEAEE);
   static const disclosureDark = Color(0xFF1E1E22);
 
+  // Chat shell controls: the circular surfaces the design uses for the menu,
+  // attachment, mic and close buttons, and the near-black it uses for primary
+  // actions such as send.
+  static const controlLight = Color(0xFFFFFFFF);
+  static const controlDark = Color(0xFF1E1E22);
+  static const actionLight = Color(0xFF414141);
+  static const actionDark = Color(0xFFF5F5F7);
+
+  // Flat tiles: sidebar chat cards and their circular shortcuts.
+  static const tileLight = Color(0xFFF5F5F5);
+  static const tileDark = Color(0xFF18181C);
+
+  // Secondary copy on a tile, e.g. a chat card's timestamp.
+  static const timestampLight = Color(0xFF848484);
+
+  /// Links inside body copy, e.g. the privacy policy line in onboarding.
+  static const link = Color(0xFF5D75FF);
+
+  // Listening pill behind the composer (design: Chat - Voice).
+  static const voiceStart = Color(0xFFC9E7A8);
+  static const voiceEnd = Color(0xFFA7E9E1);
+
+  /// Diagonal wash used while the composer is listening.
+  static const LinearGradient voiceGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [voiceStart, voiceEnd],
+  );
+
   // Rows inside a reveal pill
   static const disclosureRowLight = Color(0xFFF2F2F7);
   static const disclosureRowDark = Color(0xFF18181C);
@@ -95,6 +124,32 @@ abstract final class FluxColors {
       Theme.of(context).brightness == Brightness.dark
           ? accentGreenDark
           : accentGreen;
+
+  /// Circular button surface behind the menu, attachment, mic and close glyphs.
+  static Color controlOf(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+          ? controlDark
+          : controlLight;
+
+  /// Fill for primary actions, such as the round send button.
+  static Color actionOf(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+          ? actionDark
+          : actionLight;
+
+  /// Glyph drawn on top of [actionOf].
+  static Color actionInkOf(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark ? actionLight : card;
+
+  /// Flat tile surface used by the sidebar's chat cards.
+  static Color tileOf(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark ? tileDark : tileLight;
+
+  /// Secondary copy on a tile — deliberately lighter than [mutedOf].
+  static Color timestampOf(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+          ? darkMuted
+          : timestampLight;
 
   static bool isDark(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark;

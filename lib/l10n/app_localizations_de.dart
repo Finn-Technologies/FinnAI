@@ -27,6 +27,12 @@ class AppLocalizationsDe extends AppLocalizations {
   String get commonNext => 'Weiter';
 
   @override
+  String get commonYes => 'Ja';
+
+  @override
+  String get commonNo => 'Nein';
+
+  @override
   String get commonRetry => 'Erneut versuchen';
 
   @override
@@ -48,7 +54,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get commonResend => 'Erneut senden';
 
   @override
-  String get commonSaveSkill => 'Skill speichern';
+  String get commonSaveFlow => 'Flow speichern';
 
   @override
   String get commonKeepCreating => 'Weiter erstellen';
@@ -80,17 +86,25 @@ class AppLocalizationsDe extends AppLocalizations {
       'Finn AI benötigt mindestens 3 GB RAM und einen 64-Bit-ARM-Prozessor, um lokale Modelle zuverlässig auszuführen. Es wurde kein Modell heruntergeladen.';
 
   @override
-  String get onboardingWelcome => 'Willkommen bei Finn AI!';
+  String get onboardingWelcome => 'Willkommen bei FinnAI';
 
   @override
   String get onboardingSwipeToStart => 'Zum Starten wischen';
 
   @override
-  String get onboardingPrivacyTitle => 'Finn AI schützt deine Privatsphäre';
+  String get onboardingPrivacyTitle => 'FinnAI schützt deine Privatsphäre';
+
+  @override
+  String get onboardingPrivacyLead =>
+      'FinnAI nimmt den Schutz deiner Privatsphäre ernst.';
 
   @override
   String get onboardingPrivacyBody =>
-      'Finn AI wurde entwickelt, um deine Privatsphäre zu respektieren.\n\nDie KI-Verarbeitung und der Gesprächsverlauf bleiben auf diesem Gerät. Wenn eine Anfrage aktuelle Informationen benötigt, sendet Finn AI möglicherweise nur diese Anfrage als Websuchanfrage und zeigt die verwendeten Quellen an. Dein Verlauf und dein persönliches Profil werden niemals einbezogen.\n\nFinn AI ist proprietäre Software und nicht quelloffen.';
+      'Wir verfolgen und speichern deine Daten nicht, jede Anfrage wird lokal auf deinem Gerät verarbeitet. ';
+
+  @override
+  String get onboardingPrivacyLink =>
+      'Mehr dazu in unserer Datenschutzerklärung.';
 
   @override
   String get onboardingPrecautionsTitle =>
@@ -110,10 +124,24 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get onboardingInstallTitleInstalling =>
-      'LFM2.5-VL 1.6B wird installiert';
+      'FinnAI Foundation wird heruntergeladen';
 
   @override
-  String get onboardingInstallTitleReady => 'LFM2.5-VL 1.6B ist bereit';
+  String get onboardingInstallTitleReady => 'FinnAI Foundation bereit';
+
+  @override
+  String get onboardingDownloadLead => 'Der Kern wird heruntergeladen,';
+
+  @override
+  String get onboardingDownloadNote => 'bitte warten.';
+
+  @override
+  String onboardingProgressPercent(Object percent) {
+    return '$percent % fertig.';
+  }
+
+  @override
+  String get onboardingProgressEtaTail => 'Minuten verbleibend.';
 
   @override
   String get onboardingInstallPreparing =>
@@ -164,11 +192,25 @@ class AppLocalizationsDe extends AppLocalizations {
       'Finn AI verwendet jetzt ein neueres Modell auf dem Gerät. Lade es herunter, um weiter privat zu chatten.';
 
   @override
-  String get onboardingReadyTitle => 'Finn AI ist bereit!';
+  String get onboardingReadyTitle => 'FinnAI ist bereit!';
+
+  @override
+  String get onboardingReadyLead => 'FinnAI ist einsatzbereit!';
+
+  @override
+  String get onboardingReadyBody =>
+      'Du kannst FinnAI jetzt online und offline nutzen.\nWir hoffen, es gefällt dir!';
 
   @override
   String get onboardingReadySubtitle =>
       'Du bist startklar. Finn AI ist bereit.';
+
+  @override
+  String get onboardingConsentTitle =>
+      'Erlaubst du FinnAI, Kontext von deinem Gerät zu nutzen?';
+
+  @override
+  String get onboardingStartUsing => 'FinnAI jetzt nutzen';
 
   @override
   String get onboardingYouLabel => 'Du';
@@ -177,7 +219,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get chatNewChat => 'Neuer Chat';
 
   @override
-  String get chatHistory => 'Chatverlauf';
+  String get chatHistory => 'Chats';
 
   @override
   String get chatNoHistory => 'Kein Verlauf';
@@ -274,6 +316,13 @@ class AppLocalizationsDe extends AppLocalizations {
   String get settingsTitle => 'Einstellungen';
 
   @override
+  String get settingsContextTitle => 'Kontext auf dem Gerät';
+
+  @override
+  String get settingsContextSubtitle =>
+      'FinnAI darf Kontext von diesem Gerät nutzen';
+
+  @override
   String get settingsAiModel => 'KI-MODELL';
 
   @override
@@ -349,7 +398,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get settingsDeleteAllDataBody =>
-      'Dies löscht endgültig verschlüsselte Unterhaltungen und Schlüssel, heruntergeladene KI-Modelle, Kreationen, Profileinstellungen, Skills und den Onboarding-Zustand. FinnAI kehrt zu einem sauberen Erststart zurück.';
+      'Dies löscht endgültig verschlüsselte Unterhaltungen und Schlüssel, heruntergeladene KI-Modelle, Kreationen, Profileinstellungen, Flows und den Onboarding-Zustand. FinnAI kehrt zu einem sauberen Erststart zurück.';
 
   @override
   String get settingsDeleteAllDataDeleting =>
@@ -443,6 +492,12 @@ class AppLocalizationsDe extends AppLocalizations {
   String get voiceMicSemantic => 'Sprich mit Finn';
 
   @override
+  String get voiceCancelSemantic => 'Spracheingabe abbrechen';
+
+  @override
+  String get voiceExpandSemantic => 'Vollständigen Sprachmodus öffnen';
+
+  @override
   String get voiceListening => 'Hört zu…';
 
   @override
@@ -533,50 +588,41 @@ class AppLocalizationsDe extends AppLocalizations {
   String get youSaveFailed => 'Änderungen konnten nicht gespeichert werden.';
 
   @override
-  String get skillsTitle => 'Skills';
+  String get flowsTitle => 'Flows';
 
   @override
-  String skillsSubtitle(int count) {
-    return '$count verfügbar · Skills steuern relevante Antworten';
+  String flowsSubtitle(int count) {
+    return '$count verfügbar · Flows steuern relevante Antworten';
   }
 
   @override
-  String get skillsNewSkill => 'Neuer Skill';
+  String get flowsNewSkill => 'Neuer Flow';
 
   @override
-  String get skillsNoSkills =>
-      'Noch keine eigenen Skills. Erstelle einen für einen wiederkehrenden Ablauf.';
+  String get flowsNoSkills =>
+      'Noch keine eigenen Flows. Erstelle einen für einen wiederkehrenden Ablauf.';
 
   @override
-  String get skillsInstructionHint =>
+  String get flowsInstructionHint =>
       'Schreibe eine wiederverwendbare Anweisung, die Finn bei Bedarf anwendet.';
 
   @override
-  String get skillsDeleteTitle => 'Diesen Skill löschen?';
+  String get flowsDeleteTitle => 'Diesen Flow löschen?';
 
   @override
-  String skillsDeleteBody(String name) {
+  String flowsDeleteBody(String name) {
     return '„$name“ wird von diesem Gerät entfernt.';
   }
 
   @override
-  String get skillsLimitReached =>
-      'Skill-Limit erreicht (4). Lösche einen, um einen weiteren hinzuzufügen.';
+  String get flowsLimitReached =>
+      'Flow-Limit erreicht (4). Lösche einen, um einen weiteren hinzuzufügen.';
 
   @override
-  String get skillsNameLabel => 'Skill-Name';
+  String get flowsNameLabel => 'Flow-Name';
 
   @override
-  String get skillsInstructionLabel => 'Anweisung';
-
-  @override
-  String get chatBrowseTooltip => 'Für diese Nachricht im Web suchen';
-
-  @override
-  String get chatBrowseOnSemantic => 'Websuche aktiv';
-
-  @override
-  String get chatBrowseOffSemantic => 'Websuche aus';
+  String get flowsInstructionLabel => 'Anweisung';
 
   @override
   String get chatBrowsingTitle => 'Web wird durchsucht';
@@ -710,28 +756,27 @@ class AppLocalizationsDe extends AppLocalizations {
   String get creationsFilterPresentations => 'Präsentationen';
 
   @override
-  String get skillsSaveFailed =>
-      'Dieser Skill konnte nicht gespeichert werden.';
+  String get flowsSaveFailed => 'Dieser Flow konnte nicht gespeichert werden.';
 
   @override
-  String get skillsBuiltForFinn => 'Für Finn gebaut';
+  String get flowsBuiltForFinn => 'Für Finn gebaut';
 
   @override
-  String get skillsBuiltForFinnSubtitle =>
+  String get flowsBuiltForFinnSubtitle =>
       'Aktiviere nur, was du für jede Art von Arbeit brauchst.';
 
   @override
-  String get skillsYourSkills => 'Deine Skills';
+  String get flowsYourSkills => 'Deine Flows';
 
   @override
-  String get skillsYourSkillsSubtitle =>
+  String get flowsYourSkillsSubtitle =>
       'Erstelle wiederverwendbare Anweisungen für deine eigenen Workflows.';
 
   @override
-  String get skillsNoneActive => 'Keine Skills aktiv';
+  String get flowsNoneActive => 'Keine Flows aktiv';
 
   @override
-  String skillsActiveCount(int count) {
+  String flowsActiveCount(int count) {
     return '$count aktiv';
   }
 
@@ -940,6 +985,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get chatRegenerate => 'Neu generieren';
 
   @override
+  String get chatMoreActions => 'Weitere Aktionen';
+
+  @override
   String get chatHideSources => 'Quellen ausblenden';
 
   @override
@@ -950,6 +998,12 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get chatAskAnythingHint => 'Frag etwas';
+
+  @override
+  String get chatGreeting => 'Hi, was beschäftigt dich?';
+
+  @override
+  String get voiceGreeting => 'Was gibt\'s?';
 
   @override
   String get chatMessageToFinnSemantic => 'Nachricht an Finn';
@@ -1015,49 +1069,49 @@ class AppLocalizationsDe extends AppLocalizations {
   String get creationsDescribeHint => 'Beschreibe eine Kreation';
 
   @override
-  String get skillsActionsTooltip => 'Skill-Aktionen';
+  String get flowsActionsTooltip => 'Flow-Aktionen';
 
   @override
-  String skillsNameSemantic(String name) {
-    return '$name Skill';
+  String flowsNameSemantic(String name) {
+    return '$name Flow';
   }
 
   @override
-  String get skillsEditTitle => 'Skill bearbeiten';
+  String get flowsEditTitle => 'Flow bearbeiten';
 
   @override
-  String get skillsEditorName => 'Name';
+  String get flowsEditorName => 'Name';
 
   @override
-  String get skillsEditorNameHint => 'Was macht dieser Skill?';
+  String get flowsEditorNameHint => 'Was macht dieser Flow?';
 
   @override
-  String get skillsEditorDescription => 'Kurze Beschreibung';
+  String get flowsEditorDescription => 'Kurze Beschreibung';
 
   @override
-  String get skillsEditorDescriptionHint => 'Eine kurze Erinnerung für dich';
+  String get flowsEditorDescriptionHint => 'Eine kurze Erinnerung für dich';
 
   @override
-  String get skillsEditorInstructions => 'Anweisungen';
+  String get flowsEditorInstructions => 'Anweisungen';
 
   @override
-  String get skillsEditorInstructionsHint =>
+  String get flowsEditorInstructionsHint =>
       'Sag Finn, wie es diese Art von Aufgabe angehen soll';
 
   @override
-  String get skillsCategoryWriting => 'Schreiben';
+  String get flowsCategoryWriting => 'Schreiben';
 
   @override
-  String get skillsCategoryDevelopment => 'Entwicklung';
+  String get flowsCategoryDevelopment => 'Entwicklung';
 
   @override
-  String get skillsCategoryLearning => 'Lernen';
+  String get flowsCategoryLearning => 'Lernen';
 
   @override
-  String get skillsCategoryPlanning => 'Planung';
+  String get flowsCategoryPlanning => 'Planung';
 
   @override
-  String get skillsCategoryCustom => 'Benutzerdefiniert';
+  String get flowsCategoryCustom => 'Benutzerdefiniert';
 
   @override
   String get youNamePlaceholder => 'Gewünschter Name';

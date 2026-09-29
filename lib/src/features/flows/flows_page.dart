@@ -5,20 +5,20 @@ import 'package:finn_ai/l10n/l10n_helper.dart';
 import 'package:finn_ai/src/shared/widgets/ambient_background.dart';
 import 'package:finn_ai/src/shared/widgets/finn_page_header.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
-import 'package:finn_ai/src/features/skills/skills_store.dart';
+import 'package:finn_ai/src/features/flows/flows_store.dart';
 
-class SkillsPage extends StatefulWidget {
-  const SkillsPage({super.key, required this.onBack, this.store});
+class FlowsPage extends StatefulWidget {
+  const FlowsPage({super.key, required this.onBack, this.store});
 
   final VoidCallback onBack;
-  final SkillsStore? store;
+  final FlowsStore? store;
 
   @override
-  State<SkillsPage> createState() => _SkillsPageState();
+  State<FlowsPage> createState() => _SkillsPageState();
 }
 
-class _SkillsPageState extends State<SkillsPage> {
-  late final SkillsStore _store = widget.store ?? SkillsStore.instance;
+class _SkillsPageState extends State<FlowsPage> {
+  late final FlowsStore _store = widget.store ?? FlowsStore.instance;
   late final ScrollController _scrollController = ScrollController();
   final ValueNotifier<double> _scrollOffset = ValueNotifier(0);
 
@@ -43,21 +43,21 @@ class _SkillsPageState extends State<SkillsPage> {
     super.dispose();
   }
 
-  Future<void> _editSkill([FinnSkill? skill]) async {
+  Future<void> _editSkill([FinnFlow? flow]) async {
     final result = await showModalBottomSheet<_SkillDraft>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => _SkillEditor(skill: skill),
+      builder: (context) => _SkillEditor(flow: flow),
     );
     if (result == null) return;
     final saved = await _store.upsertCustom(
-      id: skill?.id,
+      id: flow?.id,
       name: result.name,
       description: result.description,
       instructions: result.instructions,
-      enabled: skill?.enabled ?? true,
+      enabled: flow?.enabled ?? true,
     );
     if (!saved && mounted) {
       ScaffoldMessenger.of(context)
@@ -67,7 +67,7 @@ class _SkillsPageState extends State<SkillsPage> {
             content: Text(
               _skillFailureMessage(
                 context,
-                _store.failure ?? SkillsFailure.save,
+                _store.failure ?? FlowsFailure.save,
               ),
             ),
             behavior: SnackBarBehavior.floating,
@@ -76,14 +76,14 @@ class _SkillsPageState extends State<SkillsPage> {
     }
   }
 
-  Future<void> _delete(FinnSkill skill) async {
+  Future<void> _delete(FinnFlow flow) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(FluxRadius.card)),
-        title: Text(L10n.of(context).skillsDeleteTitle),
-        content: Text(L10n.of(context).skillsDeleteBody(skill.name)),
+        title: Text(L10n.of(context).flowsDeleteTitle),
+        content: Text(L10n.of(context).flowsDeleteBody(flow.name)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -96,7 +96,7 @@ class _SkillsPageState extends State<SkillsPage> {
         ],
       ),
     );
-    if (confirmed == true) await _store.removeCustom(skill.id);
+    if (confirmed == true) await _store.removeCustom(flow.id);
   }
 
   @override
@@ -106,7 +106,7 @@ class _SkillsPageState extends State<SkillsPage> {
         listenable: _store,
         builder: (context, _) => _store.initialized
             ? FloatingActionButton.extended(
-                key: const Key('add-skill-button'),
+                key: const Key('add-flow-button'),
                 onPressed: _editSkill,
                 backgroundColor: FluxColors.inkOf(context),
                 foregroundColor: FluxColors.canvasOf(context),
@@ -117,7 +117,7 @@ class _SkillsPageState extends State<SkillsPage> {
                   size: 20,
                   color: FluxColors.canvasOf(context),
                 ),
-                label: Text(L10n.of(context).skillsNewSkill),
+                label: Text(L10n.of(context).flowsNewSkill),
               )
             : const SizedBox.shrink(),
       ),
@@ -142,12 +142,10 @@ class _SkillsPageState extends State<SkillsPage> {
                           ),
                         );
                       }
-                      final builtIns = _store.skills
-                          .where((skill) => skill.builtIn)
-                          .toList();
-                      final custom = _store.skills
-                          .where((skill) => !skill.builtIn)
-                          .toList();
+                      final builtIns =
+                          _store.flows.where((flow) => flow.builtIn).toList();
+                      final custom =
+                          _store.flows.where((flow) => !flow.builtIn).toList();
                       return ListView(
                         controller: _scrollController,
                         physics: const FluxBouncingScrollPhysics(),
@@ -166,50 +164,50 @@ class _SkillsPageState extends State<SkillsPage> {
                                 children: [
                                   _SkillsSummary(
                                     active: _store.enabledSkills.length,
-                                    total: _store.skills.length,
+                                    total: _store.flows.length,
                                   ),
                                   const SizedBox(height: 24),
                                   _SectionTitle(
-                                    title: L10n.of(context).skillsBuiltForFinn,
+                                    title: L10n.of(context).flowsBuiltForFinn,
                                     subtitle: L10n.of(
                                       context,
-                                    ).skillsBuiltForFinnSubtitle,
+                                    ).flowsBuiltForFinnSubtitle,
                                   ),
                                   const SizedBox(height: 10),
                                   ...builtIns.map(
-                                    (skill) => Padding(
+                                    (flow) => Padding(
                                       padding: const EdgeInsets.only(
                                         bottom: 10,
                                       ),
                                       child: _SkillCard(
-                                        skill: skill,
+                                        flow: flow,
                                         onToggle: (value) =>
-                                            _store.setEnabled(skill.id, value),
+                                            _store.setEnabled(flow.id, value),
                                       ),
                                     ),
                                   ),
                                   const SizedBox(height: 14),
                                   _SectionTitle(
-                                    title: L10n.of(context).skillsYourSkills,
+                                    title: L10n.of(context).flowsYourSkills,
                                     subtitle: L10n.of(
                                       context,
-                                    ).skillsYourSkillsSubtitle,
+                                    ).flowsYourSkillsSubtitle,
                                   ),
                                   const SizedBox(height: 10),
                                   if (custom.isEmpty)
                                     const _EmptyCustomSkills()
                                   else
                                     ...custom.map(
-                                      (skill) => Padding(
+                                      (flow) => Padding(
                                         padding: const EdgeInsets.only(
                                           bottom: 10,
                                         ),
                                         child: _SkillCard(
-                                          skill: skill,
-                                          onToggle: (value) => _store
-                                              .setEnabled(skill.id, value),
-                                          onEdit: () => _editSkill(skill),
-                                          onDelete: () => _delete(skill),
+                                          flow: flow,
+                                          onToggle: (value) =>
+                                              _store.setEnabled(flow.id, value),
+                                          onEdit: () => _editSkill(flow),
+                                          onDelete: () => _delete(flow),
                                         ),
                                       ),
                                     ),
@@ -241,7 +239,7 @@ class _SkillsPageState extends State<SkillsPage> {
                 ),
                 Positioned.fill(
                   child: FinnPageHeader(
-                    title: L10n.of(context).skillsTitle,
+                    title: L10n.of(context).flowsTitle,
                     onBack: widget.onBack,
                     metrics: metrics,
                     scrollOffset: _scrollOffset,
@@ -279,7 +277,7 @@ class _SkillsSummary extends StatelessWidget {
                 shape: BoxShape.circle,
                 color: FluxColors.surfaceOf(context),
               ),
-              child: Center(child: FluxIcon(icon: FluxIcons.skills, size: 23)),
+              child: Center(child: FluxIcon(icon: FluxIcons.flows, size: 23)),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -288,13 +286,13 @@ class _SkillsSummary extends StatelessWidget {
                 children: [
                   Text(
                     active == 0
-                        ? L10n.of(context).skillsNoneActive
-                        : L10n.of(context).skillsActiveCount(active),
+                        ? L10n.of(context).flowsNoneActive
+                        : L10n.of(context).flowsActiveCount(active),
                     style: Theme.of(context).textTheme.bodyLarge,
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    L10n.of(context).skillsSubtitle(total),
+                    L10n.of(context).flowsSubtitle(total),
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: FluxColors.mutedOf(context),
                         ),
@@ -332,13 +330,13 @@ class _SectionTitle extends StatelessWidget {
 
 class _SkillCard extends StatelessWidget {
   const _SkillCard({
-    required this.skill,
+    required this.flow,
     required this.onToggle,
     this.onEdit,
     this.onDelete,
   });
 
-  final FinnSkill skill;
+  final FinnFlow flow;
   final ValueChanged<bool> onToggle;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
@@ -376,7 +374,7 @@ class _SkillCard extends StatelessWidget {
                 ),
                 child: Center(
                   child: FluxIcon(
-                    icon: _iconFor(skill.category),
+                    icon: _iconFor(flow.category),
                     size: 20,
                     color: FluxColors.inkOf(context),
                   ),
@@ -391,16 +389,16 @@ class _SkillCard extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            skill.name,
+                            flow.name,
                             style:
                                 Theme.of(context).textTheme.bodyLarge?.copyWith(
                                       fontWeight: FontWeight.w600,
                                     ),
                           ),
                         ),
-                        if (!skill.builtIn)
+                        if (!flow.builtIn)
                           PopupMenuButton<String>(
-                            tooltip: L10n.of(context).skillsActionsTooltip,
+                            tooltip: L10n.of(context).flowsActionsTooltip,
                             padding: EdgeInsets.zero,
                             icon: const FluxIcon(
                               icon: FluxIcons.moreHorizontal,
@@ -421,10 +419,10 @@ class _SkillCard extends StatelessWidget {
                           ),
                       ],
                     ),
-                    if (skill.description.isNotEmpty) ...[
+                    if (flow.description.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       Text(
-                        skill.description,
+                        flow.description,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -447,7 +445,7 @@ class _SkillCard extends StatelessWidget {
                                 BorderRadius.circular(FluxRadius.pill),
                           ),
                           child: Text(
-                            _categoryLabel(context, skill.category),
+                            _categoryLabel(context, flow.category),
                             style: Theme.of(context)
                                 .textTheme
                                 .labelMedium
@@ -458,13 +456,12 @@ class _SkillCard extends StatelessWidget {
                         ),
                         const Spacer(),
                         Semantics(
-                          label:
-                              L10n.of(context).skillsNameSemantic(skill.name),
-                          toggled: skill.enabled,
+                          label: L10n.of(context).flowsNameSemantic(flow.name),
+                          toggled: flow.enabled,
                           child: ExcludeSemantics(
                             child: Switch.adaptive(
-                              key: Key('skill-toggle-${skill.id}'),
-                              value: skill.enabled,
+                              key: Key('flow-toggle-${flow.id}'),
+                              value: flow.enabled,
                               onChanged: onToggle,
                               activeTrackColor: FluxColors.inkOf(context),
                             ),
@@ -496,23 +493,23 @@ class _SkillCard extends StatelessWidget {
 /// The store reports a code rather than a message so this lookup can pick the
 /// active locale; reading and writing share the "could not be saved" sentence
 /// because there is no separate localized key for a read failure.
-String _skillFailureMessage(BuildContext context, SkillsFailure failure) {
+String _skillFailureMessage(BuildContext context, FlowsFailure failure) {
   final l10n = L10n.of(context);
   return switch (failure) {
-    SkillsFailure.limit => l10n.skillsLimitReached,
-    SkillsFailure.load || SkillsFailure.save => l10n.skillsSaveFailed,
+    FlowsFailure.limit => l10n.flowsLimitReached,
+    FlowsFailure.load || FlowsFailure.save => l10n.flowsSaveFailed,
   };
 }
 
-/// Localized label for a skill category. Unknown categories (e.g. user-entered
+/// Localized label for a flow category. Unknown categories (e.g. user-entered
 /// ones persisted by older builds) fall back to the raw value.
 String _categoryLabel(BuildContext context, String category) =>
     switch (category) {
-      'Writing' => L10n.of(context).skillsCategoryWriting,
-      'Development' => L10n.of(context).skillsCategoryDevelopment,
-      'Learning' => L10n.of(context).skillsCategoryLearning,
-      'Planning' => L10n.of(context).skillsCategoryPlanning,
-      'Custom' => L10n.of(context).skillsCategoryCustom,
+      'Writing' => L10n.of(context).flowsCategoryWriting,
+      'Development' => L10n.of(context).flowsCategoryDevelopment,
+      'Learning' => L10n.of(context).flowsCategoryLearning,
+      'Planning' => L10n.of(context).flowsCategoryPlanning,
+      'Custom' => L10n.of(context).flowsCategoryCustom,
       _ => category,
     };
 
@@ -528,7 +525,7 @@ class _EmptyCustomSkills extends StatelessWidget {
           border: Border.all(color: FluxColors.lineOf(context)),
         ),
         child: Text(
-          L10n.of(context).skillsNoSkills,
+          L10n.of(context).flowsNoSkills,
           textAlign: TextAlign.center,
           style: Theme.of(
             context,
@@ -550,20 +547,20 @@ class _SkillDraft {
 }
 
 class _SkillEditor extends StatefulWidget {
-  const _SkillEditor({this.skill});
-  final FinnSkill? skill;
+  const _SkillEditor({this.flow});
+  final FinnFlow? flow;
 
   @override
   State<_SkillEditor> createState() => _SkillEditorState();
 }
 
 class _SkillEditorState extends State<_SkillEditor> {
-  late final _name = TextEditingController(text: widget.skill?.name ?? '');
+  late final _name = TextEditingController(text: widget.flow?.name ?? '');
   late final _description = TextEditingController(
-    text: widget.skill?.description ?? '',
+    text: widget.flow?.description ?? '',
   );
   late final _instructions = TextEditingController(
-    text: widget.skill?.instructions ?? '',
+    text: widget.flow?.instructions ?? '',
   );
 
   bool get _valid =>
@@ -618,40 +615,40 @@ class _SkillEditorState extends State<_SkillEditor> {
                   ),
                   const SizedBox(height: 20),
                   Text(
-                    widget.skill == null
-                        ? L10n.of(context).skillsNewSkill
-                        : L10n.of(context).skillsEditTitle,
+                    widget.flow == null
+                        ? L10n.of(context).flowsNewSkill
+                        : L10n.of(context).flowsEditTitle,
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                   const SizedBox(height: 5),
                   Text(
-                    L10n.of(context).skillsInstructionHint,
+                    L10n.of(context).flowsInstructionHint,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: FluxColors.mutedOf(context),
                         ),
                   ),
                   const SizedBox(height: 18),
                   _EditorField(
-                    key: const Key('skill-name-field'),
+                    key: const Key('flow-name-field'),
                     controller: _name,
-                    label: L10n.of(context).skillsEditorName,
-                    hint: L10n.of(context).skillsEditorNameHint,
+                    label: L10n.of(context).flowsEditorName,
+                    hint: L10n.of(context).flowsEditorNameHint,
                     maxLength: 60,
                   ),
                   const SizedBox(height: 10),
                   _EditorField(
                     controller: _description,
-                    label: L10n.of(context).skillsEditorDescription,
-                    hint: L10n.of(context).skillsEditorDescriptionHint,
+                    label: L10n.of(context).flowsEditorDescription,
+                    hint: L10n.of(context).flowsEditorDescriptionHint,
                     maxLength: 140,
                     maxLines: 2,
                   ),
                   const SizedBox(height: 10),
                   _EditorField(
-                    key: const Key('skill-instructions-field'),
+                    key: const Key('flow-instructions-field'),
                     controller: _instructions,
-                    label: L10n.of(context).skillsEditorInstructions,
-                    hint: L10n.of(context).skillsEditorInstructionsHint,
+                    label: L10n.of(context).flowsEditorInstructions,
+                    hint: L10n.of(context).flowsEditorInstructionsHint,
                     maxLength: 500,
                     maxLines: 5,
                   ),
@@ -659,7 +656,7 @@ class _SkillEditorState extends State<_SkillEditor> {
                   SizedBox(
                     height: 48,
                     child: FilledButton(
-                      key: const Key('save-skill-button'),
+                      key: const Key('save-flow-button'),
                       onPressed: _valid
                           ? () => Navigator.pop(
                                 context,
@@ -676,7 +673,7 @@ class _SkillEditorState extends State<_SkillEditor> {
                         shape: const StadiumBorder(),
                         elevation: 0,
                       ),
-                      child: Text(L10n.of(context).commonSaveSkill),
+                      child: Text(L10n.of(context).commonSaveFlow),
                     ),
                   ),
                 ],

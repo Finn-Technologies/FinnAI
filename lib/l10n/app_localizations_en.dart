@@ -27,6 +27,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonNext => 'Next';
 
   @override
+  String get commonYes => 'Yes';
+
+  @override
+  String get commonNo => 'No';
+
+  @override
   String get commonRetry => 'Retry';
 
   @override
@@ -48,7 +54,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonResend => 'Resend';
 
   @override
-  String get commonSaveSkill => 'Save skill';
+  String get commonSaveFlow => 'Save flow';
 
   @override
   String get commonKeepCreating => 'Keep creating';
@@ -79,17 +85,23 @@ class AppLocalizationsEn extends AppLocalizations {
       'Finn AI requires at least 3 GB of RAM and a 64-bit ARM processor to run local models reliably. No model has been downloaded.';
 
   @override
-  String get onboardingWelcome => 'Welcome to Finn AI!';
+  String get onboardingWelcome => 'Welcome to FinnAI';
 
   @override
   String get onboardingSwipeToStart => 'Swipe to start';
 
   @override
-  String get onboardingPrivacyTitle => 'Finn AI is Privacy-First';
+  String get onboardingPrivacyTitle => 'FinnAI values your privacy';
+
+  @override
+  String get onboardingPrivacyLead => 'FinnAI takes your privacy at its core.';
 
   @override
   String get onboardingPrivacyBody =>
-      'Finn AI is designed to respect your privacy.\n\nAI processing and conversation history stay on this device. When a request needs fresh information, Finn AI may send only that request as a web search query and will show the sources it used. Your history and personal profile are never included.\n\nFinn AI is proprietary software and is not open source.';
+      'We do not track or store your data, every request is processed locally on your device. ';
+
+  @override
+  String get onboardingPrivacyLink => 'View more on our Privacy Policy.';
 
   @override
   String get onboardingPrecautionsTitle => 'Before starting, read precautions';
@@ -107,10 +119,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get onboardingPrecautionFour => 'Designed for battery efficiency';
 
   @override
-  String get onboardingInstallTitleInstalling => 'Installing LFM2.5-VL 1.6B';
+  String get onboardingInstallTitleInstalling =>
+      'Downloading FinnAI Foundation';
 
   @override
-  String get onboardingInstallTitleReady => 'LFM2.5-VL 1.6B ready';
+  String get onboardingInstallTitleReady => 'FinnAI Foundation ready';
+
+  @override
+  String get onboardingDownloadLead => 'Downloading the core,';
+
+  @override
+  String get onboardingDownloadNote => 'please standby.';
+
+  @override
+  String onboardingProgressPercent(Object percent) {
+    return '$percent% done.';
+  }
+
+  @override
+  String get onboardingProgressEtaTail => 'minutes remaining.';
 
   @override
   String get onboardingInstallPreparing =>
@@ -160,10 +187,24 @@ class AppLocalizationsEn extends AppLocalizations {
       'Finn AI now runs a newer on-device model. Download it to continue chatting privately.';
 
   @override
-  String get onboardingReadyTitle => 'Finn AI is ready!';
+  String get onboardingReadyTitle => 'FinnAI is ready!';
+
+  @override
+  String get onboardingReadyLead => 'FinnAI is ready for use!';
+
+  @override
+  String get onboardingReadyBody =>
+      'You can now use FinnAI, both online and offline.\nWe hope you enjoy using it!';
 
   @override
   String get onboardingReadySubtitle => 'You\'re all set. Finn AI is ready.';
+
+  @override
+  String get onboardingConsentTitle =>
+      'Do you allow FinnAI to get context on your device?';
+
+  @override
+  String get onboardingStartUsing => 'Start using FinnAI';
 
   @override
   String get onboardingYouLabel => 'You';
@@ -172,7 +213,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chatNewChat => 'New chat';
 
   @override
-  String get chatHistory => 'Chat History';
+  String get chatHistory => 'Chats';
 
   @override
   String get chatNoHistory => 'No history';
@@ -268,6 +309,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsTitle => 'Settings';
 
   @override
+  String get settingsContextTitle => 'On-device context';
+
+  @override
+  String get settingsContextSubtitle =>
+      'Let FinnAI use context from this device';
+
+  @override
   String get settingsAiModel => 'AI MODEL';
 
   @override
@@ -343,7 +391,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsDeleteAllDataBody =>
-      'This permanently deletes encrypted conversations and keys, downloaded AI models, creations, profile preferences, skills, and onboarding state. FinnAI will return to a clean first run.';
+      'This permanently deletes encrypted conversations and keys, downloaded AI models, creations, profile preferences, flows, and onboarding state. FinnAI will return to a clean first run.';
 
   @override
   String get settingsDeleteAllDataDeleting => 'Deleting All Local Data…';
@@ -435,6 +483,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get voiceMicSemantic => 'Talk to Finn';
 
   @override
+  String get voiceCancelSemantic => 'Cancel voice input';
+
+  @override
+  String get voiceExpandSemantic => 'Open full voice mode';
+
+  @override
   String get voiceListening => 'Listening…';
 
   @override
@@ -523,50 +577,41 @@ class AppLocalizationsEn extends AppLocalizations {
   String get youSaveFailed => 'Could not save changes.';
 
   @override
-  String get skillsTitle => 'Skills';
+  String get flowsTitle => 'Flows';
 
   @override
-  String skillsSubtitle(int count) {
-    return '$count available · skills guide relevant replies';
+  String flowsSubtitle(int count) {
+    return '$count available · flows guide relevant replies';
   }
 
   @override
-  String get skillsNewSkill => 'New skill';
+  String get flowsNewSkill => 'New flow';
 
   @override
-  String get skillsNoSkills =>
-      'No custom skills yet. Create one for a workflow you repeat.';
+  String get flowsNoSkills =>
+      'No custom flows yet. Create one for a workflow you repeat.';
 
   @override
-  String get skillsInstructionHint =>
+  String get flowsInstructionHint =>
       'Write a reusable instruction Finn should apply when relevant.';
 
   @override
-  String get skillsDeleteTitle => 'Delete this skill?';
+  String get flowsDeleteTitle => 'Delete this flow?';
 
   @override
-  String skillsDeleteBody(String name) {
+  String flowsDeleteBody(String name) {
     return '“$name” will be removed from this device.';
   }
 
   @override
-  String get skillsLimitReached =>
-      'Skill limit reached (4). Delete one to add another.';
+  String get flowsLimitReached =>
+      'Flow limit reached (4). Delete one to add another.';
 
   @override
-  String get skillsNameLabel => 'Skill name';
+  String get flowsNameLabel => 'Flow name';
 
   @override
-  String get skillsInstructionLabel => 'Instruction';
-
-  @override
-  String get chatBrowseTooltip => 'Browse the web for this message';
-
-  @override
-  String get chatBrowseOnSemantic => 'Web browsing on';
-
-  @override
-  String get chatBrowseOffSemantic => 'Web browsing off';
+  String get flowsInstructionLabel => 'Instruction';
 
   @override
   String get chatBrowsingTitle => 'Browsing the web';
@@ -699,27 +744,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get creationsFilterPresentations => 'Presentations';
 
   @override
-  String get skillsSaveFailed => 'That skill could not be saved.';
+  String get flowsSaveFailed => 'That flow could not be saved.';
 
   @override
-  String get skillsBuiltForFinn => 'Built for Finn';
+  String get flowsBuiltForFinn => 'Built for Finn';
 
   @override
-  String get skillsBuiltForFinnSubtitle =>
+  String get flowsBuiltForFinnSubtitle =>
       'Enable only what you need for each kind of work.';
 
   @override
-  String get skillsYourSkills => 'Your skills';
+  String get flowsYourSkills => 'Your flows';
 
   @override
-  String get skillsYourSkillsSubtitle =>
+  String get flowsYourSkillsSubtitle =>
       'Create reusable instructions for your own workflows.';
 
   @override
-  String get skillsNoneActive => 'No skills active';
+  String get flowsNoneActive => 'No flows active';
 
   @override
-  String skillsActiveCount(int count) {
+  String flowsActiveCount(int count) {
     return '$count active';
   }
 
@@ -924,6 +969,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chatRegenerate => 'Regenerate';
 
   @override
+  String get chatMoreActions => 'More actions';
+
+  @override
   String get chatHideSources => 'Hide sources';
 
   @override
@@ -934,6 +982,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get chatAskAnythingHint => 'Ask anything';
+
+  @override
+  String get chatGreeting => 'Hi, what\'s on your mind?';
+
+  @override
+  String get voiceGreeting => 'What\'s up?';
 
   @override
   String get chatMessageToFinnSemantic => 'Message to Finn';
@@ -999,49 +1053,49 @@ class AppLocalizationsEn extends AppLocalizations {
   String get creationsDescribeHint => 'Describe a creation';
 
   @override
-  String get skillsActionsTooltip => 'Skill actions';
+  String get flowsActionsTooltip => 'Flow actions';
 
   @override
-  String skillsNameSemantic(String name) {
-    return '$name skill';
+  String flowsNameSemantic(String name) {
+    return '$name flow';
   }
 
   @override
-  String get skillsEditTitle => 'Edit skill';
+  String get flowsEditTitle => 'Edit flow';
 
   @override
-  String get skillsEditorName => 'Name';
+  String get flowsEditorName => 'Name';
 
   @override
-  String get skillsEditorNameHint => 'What does this skill do?';
+  String get flowsEditorNameHint => 'What does this flow do?';
 
   @override
-  String get skillsEditorDescription => 'Short description';
+  String get flowsEditorDescription => 'Short description';
 
   @override
-  String get skillsEditorDescriptionHint => 'A quick reminder for you';
+  String get flowsEditorDescriptionHint => 'A quick reminder for you';
 
   @override
-  String get skillsEditorInstructions => 'Instructions';
+  String get flowsEditorInstructions => 'Instructions';
 
   @override
-  String get skillsEditorInstructionsHint =>
+  String get flowsEditorInstructionsHint =>
       'Tell Finn how to approach this kind of task';
 
   @override
-  String get skillsCategoryWriting => 'Writing';
+  String get flowsCategoryWriting => 'Writing';
 
   @override
-  String get skillsCategoryDevelopment => 'Development';
+  String get flowsCategoryDevelopment => 'Development';
 
   @override
-  String get skillsCategoryLearning => 'Learning';
+  String get flowsCategoryLearning => 'Learning';
 
   @override
-  String get skillsCategoryPlanning => 'Planning';
+  String get flowsCategoryPlanning => 'Planning';
 
   @override
-  String get skillsCategoryCustom => 'Custom';
+  String get flowsCategoryCustom => 'Custom';
 
   @override
   String get youNamePlaceholder => 'Preferred name';

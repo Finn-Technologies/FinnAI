@@ -84,7 +84,7 @@ See `docs/architecture/CREATIONS.md` for the spec DSL, the generation pipeline a
 | Onboarding pages, install progress, upgrade screen | `lib/src/features/onboarding/onboarding_flow.dart` |
 | Settings rows, delete-all-data, licence screen | `lib/src/features/settings/settings_page.dart` |
 | Global "delete all data" orchestration | `lib/src/app/app_state_store.dart` |
-| Skills | `lib/src/features/skills/{skills_page,skills_store}.dart` |
+| Skills | `lib/src/features/flows/{flows_page,flows_store}.dart` |
 | Personalization profile | `lib/src/features/you/{you_page,you_profile_store}.dart` |
 | Hands-free voice | `lib/src/features/voice/{voice_sheet,voice_chat_controller,voice_settings_store}.dart` |
 | Report-an-answer dialog + backend | `lib/src/features/reporting/` |

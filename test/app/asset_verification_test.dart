@@ -20,7 +20,7 @@ void main() {
       FigmaAssets.sidebarActions,
       FigmaAssets.sidebarCreations,
       FigmaAssets.sidebarYou,
-      FigmaAssets.sidebarSkills,
+      FigmaAssets.sidebarFlows,
       FigmaAssets.noHistory,
       FigmaAssets.creationBack,
       FigmaAssets.creationSend,

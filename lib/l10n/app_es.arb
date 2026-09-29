@@ -24,6 +24,8 @@
   "@commonNext": {
     "description": "Next button"
   },
+  "commonYes": "Sí",
+  "commonNo": "No",
   "commonRetry": "Reintentar",
   "@commonRetry": {
     "description": "Retry action"
@@ -52,9 +54,9 @@
   "@commonResend": {
     "description": "Resend action"
   },
-  "commonSaveSkill": "Guardar habilidad",
-  "@commonSaveSkill": {
-    "description": "Save skill button"
+  "commonSaveFlow": "Guardar habilidad",
+  "@commonSaveFlow": {
+    "description": "Save flow button"
   },
   "commonKeepCreating": "Seguir creando",
   "@commonKeepCreating": {
@@ -92,7 +94,7 @@
   "@unsupportedBody": {
     "description": "Unsupported device body"
   },
-  "onboardingWelcome": "¡Bienvenido a Finn AI!",
+  "onboardingWelcome": "Te damos la bienvenida a FinnAI",
   "@onboardingWelcome": {
     "description": "Welcome heading"
   },
@@ -100,13 +102,21 @@
   "@onboardingSwipeToStart": {
     "description": "Swipe to start hint"
   },
-  "onboardingPrivacyTitle": "Finn AI antepone la privacidad",
+  "onboardingPrivacyTitle": "FinnAI protege tu privacidad",
   "@onboardingPrivacyTitle": {
     "description": "Privacy page title"
   },
-  "onboardingPrivacyBody": "Finn AI está diseñado para respetar tu privacidad.\n\nEl procesamiento de la IA y el historial de conversaciones permanecen en este dispositivo. Cuando una solicitud necesita información actualizada, Finn AI puede enviar solo esa solicitud como consulta de búsqueda web y mostrará las fuentes utilizadas. Tu historial y tu perfil personal nunca se incluyen.\n\nFinn AI es software propietario y no es de código abierto.",
+  "onboardingPrivacyLead": "FinnAI cuida tu privacidad ante todo.",
+  "@onboardingPrivacyLead": {
+    "description": ""
+  },
+  "onboardingPrivacyBody": "No rastreamos ni almacenamos tus datos; cada solicitud se procesa localmente en tu dispositivo. ",
   "@onboardingPrivacyBody": {
     "description": "Privacy page body"
+  },
+  "onboardingPrivacyLink": "Más información en nuestra Política de privacidad.",
+  "@onboardingPrivacyLink": {
+    "description": ""
   },
   "onboardingPrecautionsTitle": "Antes de empezar, lee las precauciones",
   "@onboardingPrecautionsTitle": {
@@ -128,13 +138,29 @@
   "@onboardingPrecautionFour": {
     "description": "Precaution 4"
   },
-  "onboardingInstallTitleInstalling": "Instalando LFM2.5-VL 1.6B",
+  "onboardingInstallTitleInstalling": "Descargando FinnAI Foundation",
   "@onboardingInstallTitleInstalling": {
     "description": "Install title in progress"
   },
-  "onboardingInstallTitleReady": "LFM2.5-VL 1.6B listo",
+  "onboardingInstallTitleReady": "FinnAI Foundation lista",
   "@onboardingInstallTitleReady": {
     "description": "Install title ready"
+  },
+  "onboardingDownloadLead": "Descargando el núcleo,",
+  "@onboardingDownloadLead": {
+    "description": ""
+  },
+  "onboardingDownloadNote": "espera un momento.",
+  "@onboardingDownloadNote": {
+    "description": ""
+  },
+  "onboardingProgressPercent": "{percent}% completado.",
+  "@onboardingProgressPercent": {
+    "description": ""
+  },
+  "onboardingProgressEtaTail": "minutos restantes.",
+  "@onboardingProgressEtaTail": {
+    "description": ""
   },
   "onboardingInstallPreparing": "Preparando LFM2.5-VL 1.6B para este dispositivo…",
   "@onboardingInstallPreparing": {
@@ -213,14 +239,24 @@
   "@onboardingUpgradeBody": {
     "description": "Upgrade body"
   },
-  "onboardingReadyTitle": "¡Finn AI está listo!",
+  "onboardingReadyTitle": "¡FinnAI está listo!",
   "@onboardingReadyTitle": {
     "description": "Ready title"
+  },
+  "onboardingReadyLead": "¡FinnAI está listo para usarse!",
+  "@onboardingReadyLead": {
+    "description": ""
+  },
+  "onboardingReadyBody": "Ya puedes usar FinnAI, tanto en línea como sin conexión.\nEsperamos que lo disfrutes.",
+  "@onboardingReadyBody": {
+    "description": ""
   },
   "onboardingReadySubtitle": "Todo listo. Finn AI está preparado.",
   "@onboardingReadySubtitle": {
     "description": "Ready subtitle"
   },
+  "onboardingConsentTitle": "¿Permites que FinnAI use el contexto de tu dispositivo?",
+  "onboardingStartUsing": "Empezar a usar FinnAI",
   "onboardingYouLabel": "Tú",
   "@onboardingYouLabel": {
     "description": "You label on final page"
@@ -229,7 +265,7 @@
   "@chatNewChat": {
     "description": "New chat button"
   },
-  "chatHistory": "Historial de chats",
+  "chatHistory": "Chats",
   "@chatHistory": {
     "description": "Chat history header"
   },
@@ -356,6 +392,8 @@
   "@settingsTitle": {
     "description": "Settings title"
   },
+  "settingsContextTitle": "Contexto en el dispositivo",
+  "settingsContextSubtitle": "Permite que FinnAI use el contexto de este dispositivo",
   "settingsAiModel": "MODELO DE IA",
   "@settingsAiModel": {
     "description": "AI model section"
@@ -441,7 +479,7 @@
   "@settingsDeleteAllDataTitle": {
     "description": "Delete all title"
   },
-  "settingsDeleteAllDataBody": "Esto elimina definitivamente las conversaciones y claves cifradas, los modelos de IA descargados, las creaciones, las preferencias del perfil, las Skills y el estado de onboarding. FinnAI volverá a un primer inicio limpio.",
+  "settingsDeleteAllDataBody": "Esto elimina definitivamente las conversaciones y claves cifradas, los modelos de IA descargados, las creaciones, las preferencias del perfil, las Flows y el estado de onboarding. FinnAI volverá a un primer inicio limpio.",
   "@settingsDeleteAllDataBody": {
     "description": "Delete all body"
   },
@@ -567,6 +605,11 @@
   "@voiceMicSemantic": {
     "description": "Mic button semantics"
   },
+  "voiceCancelSemantic": "Cancelar la entrada de voz",
+  "@voiceCancelSemantic": {
+    "description": "Dismiss the inline voice session"
+  },
+  "voiceExpandSemantic": "Abrir el modo de voz completo",
   "voiceListening": "Escuchando…",
   "@voiceListening": {
     "description": "Voice sheet listening state"
@@ -682,37 +725,37 @@
   "@youSaveFailed": {
     "description": "Save failed"
   },
-  "skillsTitle": "Skills",
-  "@skillsTitle": {
-    "description": "Skills title"
+  "flowsTitle": "Flows",
+  "@flowsTitle": {
+    "description": "Flows title"
   },
-  "skillsSubtitle": "{count} disponibles · los Skills guían respuestas relevantes",
-  "@skillsSubtitle": {
-    "description": "Skills subtitle",
+  "flowsSubtitle": "{count} disponibles · los Flows guían respuestas relevantes",
+  "@flowsSubtitle": {
+    "description": "Flows subtitle",
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "skillsNewSkill": "Nueva skill",
-  "@skillsNewSkill": {
-    "description": "New skill"
+  "flowsNewSkill": "Nueva flow",
+  "@flowsNewSkill": {
+    "description": "New flow"
   },
-  "skillsNoSkills": "Aún no hay skills personalizadas. Crea una para un flujo de trabajo que repitas.",
-  "@skillsNoSkills": {
-    "description": "Empty skills"
+  "flowsNoSkills": "Aún no hay flows personalizadas. Crea una para un flujo de trabajo que repitas.",
+  "@flowsNoSkills": {
+    "description": "Empty flows"
   },
-  "skillsInstructionHint": "Escribe una instrucción reutilizable que Finn deba aplicar cuando sea relevante.",
-  "@skillsInstructionHint": {
+  "flowsInstructionHint": "Escribe una instrucción reutilizable que Finn deba aplicar cuando sea relevante.",
+  "@flowsInstructionHint": {
     "description": "Instruction hint"
   },
-  "skillsDeleteTitle": "¿Eliminar esta skill?",
-  "@skillsDeleteTitle": {
-    "description": "Delete skill title"
+  "flowsDeleteTitle": "¿Eliminar esta flow?",
+  "@flowsDeleteTitle": {
+    "description": "Delete flow title"
   },
-  "skillsDeleteBody": "Se eliminará «{name}» de este dispositivo.",
-  "@skillsDeleteBody": {
+  "flowsDeleteBody": "Se eliminará «{name}» de este dispositivo.",
+  "@flowsDeleteBody": {
     "description": "Delete body",
     "placeholders": {
       "name": {
@@ -720,29 +763,17 @@
       }
     }
   },
-  "skillsLimitReached": "Límite de skills alcanzado (4). Elimina una para añadir otra.",
-  "@skillsLimitReached": {
+  "flowsLimitReached": "Límite de flows alcanzado (4). Elimina una para añadir otra.",
+  "@flowsLimitReached": {
     "description": "Limit"
   },
-  "skillsNameLabel": "Nombre de la skill",
-  "@skillsNameLabel": {
+  "flowsNameLabel": "Nombre de la flow",
+  "@flowsNameLabel": {
     "description": "Name label"
   },
-  "skillsInstructionLabel": "Instrucción",
-  "@skillsInstructionLabel": {
+  "flowsInstructionLabel": "Instrucción",
+  "@flowsInstructionLabel": {
     "description": "Instruction label"
-  },
-  "chatBrowseTooltip": "Buscar en la web para este mensaje",
-  "@chatBrowseTooltip": {
-    "description": "Tooltip on the browse toggle in the composer"
-  },
-  "chatBrowseOnSemantic": "Búsqueda web activada",
-  "@chatBrowseOnSemantic": {
-    "description": "Accessibility label when browsing is enabled"
-  },
-  "chatBrowseOffSemantic": "Búsqueda web desactivada",
-  "@chatBrowseOffSemantic": {
-    "description": "Accessibility label when browsing is disabled"
   },
   "chatBrowsingTitle": "Explorando la web",
   "@chatBrowsingTitle": {
@@ -1045,10 +1076,16 @@
   "chatMessageActionsHint": "Mantén pulsado el mensaje para ver las acciones",
   "chatGeneratingInOtherChat": "Generando en otro chat",
   "chatRegenerate": "Regenerar",
+  "chatMoreActions": "Más acciones",
   "chatHideSources": "Ocultar fuentes",
   "chatShowSources": "Mostrar fuentes",
   "chatRewriteHint": "Reescribe tu mensaje",
   "chatAskAnythingHint": "Pregunta algo",
+  "chatGreeting": "Hola, ¿en qué estás pensando?",
+  "voiceGreeting": "¿Qué tal?",
+  "@voiceGreeting": {
+    "description": ""
+  },
   "chatMessageToFinnSemantic": "Mensaje para Finn",
   "chatStopGeneratingSemantic": "Detener la generación",
   "chatSendMessageSemantic": "Enviar mensaje",
@@ -1083,27 +1120,27 @@
     "description": "Plural filter chip: presentations"
   },
   "creationsKindPresentation": "Presentación",
-  "skillsSaveFailed": "No se pudo guardar esa Skill.",
-  "skillsBuiltForFinn": "Diseñado para Finn",
-  "skillsBuiltForFinnSubtitle": "Activa solo lo que necesites para cada tipo de trabajo.",
-  "skillsYourSkills": "Tus Skills",
-  "skillsYourSkillsSubtitle": "Crea instrucciones reutilizables para tus propios flujos de trabajo.",
-  "skillsNoneActive": "No hay Skills activas",
-  "skillsActiveCount": "{count} activas",
-  "skillsActionsTooltip": "Acciones de la Skill",
-  "skillsNameSemantic": "Skill {name}",
-  "skillsEditTitle": "Editar Skill",
-  "skillsEditorName": "Nombre",
-  "skillsEditorNameHint": "¿Qué hace esta Skill?",
-  "skillsEditorDescription": "Descripción breve",
-  "skillsEditorDescriptionHint": "Un recordatorio rápido para ti",
-  "skillsEditorInstructions": "Instrucciones",
-  "skillsEditorInstructionsHint": "Di a Finn cómo abordar este tipo de tarea",
-  "skillsCategoryWriting": "Escritura",
-  "skillsCategoryDevelopment": "Desarrollo",
-  "skillsCategoryLearning": "Aprendizaje",
-  "skillsCategoryPlanning": "Planificación",
-  "skillsCategoryCustom": "Personalizada",
+  "flowsSaveFailed": "No se pudo guardar esa Flow.",
+  "flowsBuiltForFinn": "Diseñado para Finn",
+  "flowsBuiltForFinnSubtitle": "Activa solo lo que necesites para cada tipo de trabajo.",
+  "flowsYourSkills": "Tus Flows",
+  "flowsYourSkillsSubtitle": "Crea instrucciones reutilizables para tus propios flujos de trabajo.",
+  "flowsNoneActive": "No hay Flows activas",
+  "flowsActiveCount": "{count} activas",
+  "flowsActionsTooltip": "Acciones de la Flow",
+  "flowsNameSemantic": "Flow {name}",
+  "flowsEditTitle": "Editar Flow",
+  "flowsEditorName": "Nombre",
+  "flowsEditorNameHint": "¿Qué hace esta Flow?",
+  "flowsEditorDescription": "Descripción breve",
+  "flowsEditorDescriptionHint": "Un recordatorio rápido para ti",
+  "flowsEditorInstructions": "Instrucciones",
+  "flowsEditorInstructionsHint": "Di a Finn cómo abordar este tipo de tarea",
+  "flowsCategoryWriting": "Escritura",
+  "flowsCategoryDevelopment": "Desarrollo",
+  "flowsCategoryLearning": "Aprendizaje",
+  "flowsCategoryPlanning": "Planificación",
+  "flowsCategoryCustom": "Personalizada",
   "youNamePlaceholder": "Nombre preferido",
   "youAboutQuestion": "¿Algo que Finn deba saber?",
   "youAboutPlaceholder": "Tu trabajo, intereses, metas o contexto",

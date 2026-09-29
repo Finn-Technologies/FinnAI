@@ -7,11 +7,10 @@ import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
 
 /// The browser work a turn did, told inline with the answer it belongs to.
 ///
-/// While the turn runs this is the "searching" signal — a spinner and the live
-/// steps as they land — and once it finishes it stays under the reply as the
-/// collapsed record of what was searched and read. The pill deliberately
-/// matches the sources disclosure so the two read as one cluster of evidence
-/// under the answer rather than two unrelated widgets.
+/// While the turn runs this is the "searching" signal and once it finishes it
+/// stays under the reply as the record of what was searched and read. The rows
+/// are the design's: a 24px mark and a muted 14px label, with no surface of
+/// their own, so they read as annotations of the answer above them.
 class ToolActivityIndicator extends StatelessWidget {
   const ToolActivityIndicator({
     super.key,
@@ -24,50 +23,29 @@ class ToolActivityIndicator extends StatelessWidget {
   /// True while the turn that produced [activities] is still running.
   final bool busy;
 
-  /// Rows revealed while collapsed are kept to the latest one so a long
-  /// research pass cannot push the answer off screen.
-  static const int collapsedRows = 1;
-
   @override
   Widget build(BuildContext context) {
-    if (activities.isEmpty) return const SizedBox.shrink();
+    if (activities.isEmpty && !busy) return const SizedBox.shrink();
 
-    final total = activities.length;
-    final canExpand = total > collapsedRows;
-
-    return FluxDisclosure(
-      leading: busy
-          ? const _ActivitySpinner()
-          : FluxIcon(
-              icon: FluxIcons.internet,
-              size: 14,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (final activity in activities)
+          _ActivityRow(
+            leading: FluxIcon(
+              icon: _iconFor(activity.kind),
+              size: 21,
               color: FluxColors.mutedOf(context),
             ),
-      label: busy
-          ? L10n.of(context).chatSearchingInline
-          : L10n.of(context).chatSearchedInline,
-      // While running, the count is still climbing, so it only appears once the
-      // turn is done and the number means something.
-      trailing:
-          busy || !canExpand ? null : L10n.of(context).chatBrowsingSteps(total),
-      expandLabel: L10n.of(context).chatShowSearchSteps,
-      collapseLabel: L10n.of(context).chatBrowsingHide,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (final activity in activities)
-            FluxDisclosureRow(
-              leading: FluxIcon(
-                icon: _iconFor(activity.kind),
-                size: 14,
-                color: FluxColors.mutedOf(context),
-              ),
-              title: labelFor(context, activity),
-              subtitle: activity.detail.isEmpty ? null : activity.detail,
-            ),
-        ],
-      ),
+            label: labelFor(context, activity),
+          ),
+        if (busy)
+          _ActivityRow(
+            leading: const _ActivitySpinner(),
+            label: L10n.of(context).chatSearchingInline,
+          ),
+      ],
     );
   }
 
@@ -87,6 +65,43 @@ class ToolActivityIndicator extends StatelessWidget {
         ToolActivityKind.find =>
           L10n.of(context).chatBrowsingFind(activity.label),
       };
+}
+
+/// One step row: the mark, then the muted label on the design's 15px rhythm.
+class _ActivityRow extends StatelessWidget {
+  const _ActivityRow({required this.leading, required this.label});
+
+  final Widget leading;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(bottom: 15),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            SizedBox.square(
+              dimension: 24,
+              child: Center(child: leading),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                label,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontFamily: 'InstrumentSans',
+                  fontSize: 14,
+                  height: 1.2,
+                  fontWeight: FontWeight.w400,
+                  color: FluxColors.inkOf(context).withValues(alpha: .55),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
 }
 
 /// The small turning mark that says "still working" next to the steps.

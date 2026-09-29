@@ -36,4 +36,42 @@ void main() {
       matchesGoldenFile('goldens/onboarding_model.png'),
     );
   });
+
+  testWidgets('context consent step matches onboarding baseline', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(const FluxApp(enableModelDownload: false));
+    tester.widget<PageView>(find.byType(PageView)).controller!.jumpToPage(3);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 900));
+
+    await expectLater(
+      find.byType(FluxApp),
+      matchesGoldenFile('goldens/onboarding_consent.png'),
+    );
+  });
+
+  testWidgets('setup finished step matches onboarding baseline', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(const FluxApp(enableModelDownload: false));
+    tester.widget<PageView>(find.byType(PageView)).controller!.jumpToPage(4);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 900));
+
+    await expectLater(
+      find.byType(FluxApp),
+      matchesGoldenFile('goldens/onboarding_finish.png'),
+    );
+  });
 }

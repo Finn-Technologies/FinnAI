@@ -33,54 +33,50 @@ void main() {
         );
         await tester.pump(const Duration(milliseconds: 300));
 
-        expect(find.text("Hi, I'm Finn."), findsOneWidget);
-        expect(find.text('Try asking'), findsOneWidget);
-        // The clean slate has no feature pills and no brand mark: just the
-        // intro, the suggestion chips, and the composer.
+        expect(find.text("Hi, what's on your mind?"), findsOneWidget);
+        // The design's empty slate is the greeting and the composer alone: no
+        // suggestion chips, no feature pills and no brand mark in the header.
+        expect(find.byType(ActionChip), findsNothing);
+        expect(find.text('Try asking'), findsNothing);
         expect(find.text('On-device'), findsNothing);
         expect(find.text('Offline'), findsNothing);
         expect(find.text('Private'), findsNothing);
-        expect(find.byType(ActionChip), findsNWidgets(4));
+        expect(find.text('FinnAI'), findsNothing);
         expect(tester.takeException(), isNull);
       },
     );
   }
 
-  testWidgets('suggestions rotate on every fresh home screen', (tester) async {
-    tester.view.physicalSize = const Size(390, 844);
+  testWidgets('the greeting sits in the middle of the empty canvas', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(420, 912);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    Future<Set<String>> chipsOnFreshHome(int key) async {
-      final conversations = ConversationStore();
-      addTearDown(conversations.dispose);
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: FluxTheme.light,
-          home: HomeShell(
-            key: ValueKey('fresh-home-$key'),
-            conversationStore: conversations,
-            initializeServices: false,
-          ),
-        ),
-      );
-      await tester.pump(const Duration(milliseconds: 300));
-      return tester
-          .widgetList<ActionChip>(find.byType(ActionChip))
-          .map((chip) => (chip.label as Text).data!)
-          .toSet();
-    }
+    final conversations = ConversationStore();
+    addTearDown(conversations.dispose);
 
-    final first = await chipsOnFreshHome(0);
-    final second = await chipsOnFreshHome(1);
-    expect(first, hasLength(4));
-    expect(second, hasLength(4));
-    expect(first.difference(second).length, greaterThanOrEqualTo(1));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: FluxTheme.light,
+        home: HomeShell(
+          conversationStore: conversations,
+          initializeServices: false,
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+
+    // The design centres the 24px greeting on the screen: 442..471 on a
+    // 420x912 canvas.
+    final greeting = tester.getRect(find.text("Hi, what's on your mind?"));
+    expect(greeting.center.dy, closeTo(456, 2));
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('welcome has no gradient and hides with a message', (
+  testWidgets('welcome has no gradient layer and hides with a message', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -102,16 +98,15 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 300));
 
-    // The gradient layer is gone permanently.
     expect(find.byKey(const ValueKey('welcome-gradient-fade')), findsNothing);
-    expect(find.text("Hi, I'm Finn."), findsOneWidget);
+    expect(find.text("Hi, what's on your mind?"), findsOneWidget);
 
     conversations
       ..startNew()
       ..add(ConversationRole.user, 'Hello');
     await tester.pump(const Duration(milliseconds: 300));
     await tester.pump(const Duration(milliseconds: 600));
-    expect(find.text("Hi, I'm Finn."), findsNothing);
+    expect(find.text("Hi, what's on your mind?"), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }

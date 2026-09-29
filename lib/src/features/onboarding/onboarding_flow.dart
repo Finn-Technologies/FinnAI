@@ -1,11 +1,17 @@
 import 'dart:async';
+import 'dart:math' as math;
+
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'package:finn_ai/src/features/chat/home_shell.dart';
+import 'package:finn_ai/src/features/onboarding/context_consent_store.dart';
 import 'package:finn_ai/src/inference/device_profile.dart';
 import 'package:finn_ai/src/inference/finn_inference.dart';
+import 'package:finn_ai/src/shared/config/legal_config.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
-import 'package:finn_ai/src/shared/widgets/ambient_background.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
 import 'package:finn_ai/l10n/l10n_helper.dart';
 
@@ -34,6 +40,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       _finish();
       return;
     }
+    HapticFeedback.selectionClick();
     final reduced = MediaQuery.disableAnimationsOf(context);
     _pageController.animateToPage(
       page,
@@ -83,7 +90,11 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                 begin: const Offset(0, .06),
                 end: Offset.zero,
               ).animate(curved),
-              child: page,
+              child: ScaleTransition(
+                scale: Tween<double>(begin: .985, end: 1).animate(curved),
+                alignment: Alignment.bottomCenter,
+                child: page,
+              ),
             ),
           );
         },
@@ -113,37 +124,15 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
           physics: const NeverScrollableScrollPhysics(),
           children: [
             _WelcomePage(onNext: () => _to(1)),
-            _DetailPage(
-              iconAsset: FigmaAssets.privacy,
-              title: L10n.of(context).onboardingPrivacyTitle,
-              onBack: () => _to(0),
-              onNext: () => _to(2),
-              child: Text(
-                L10n.of(context).onboardingPrivacyBody,
-                style: TextStyle(
-                  fontFamily: 'InstrumentSans',
-                  fontSize: 16,
-                  height: 1.2,
-                  fontWeight: FontWeight.w400,
-                  color: FluxColors.inkOf(context).withValues(alpha: .7),
-                ),
-              ),
-            ),
+            _PrivacyPage(onBack: () => _to(0), onNext: () => _to(2)),
             _AutomaticModelPage(
               key: _modelInstallerKey,
               startRequested: _modelInstallRequested,
               onBack: () => _to(1),
               onNext: () => _to(3),
             ),
-            _DetailPage(
-              iconAsset: FigmaAssets.security,
-              title: L10n.of(context).onboardingPrecautionsTitle,
-              contentTop: 93,
-              onBack: () => _to(2),
-              onNext: () => _to(4),
-              child: const _Precautions(),
-            ),
-            _FinishPage(onBack: () => _to(3), onDone: () => _to(5)),
+            _ConsentPage(onBack: () => _to(2), onNext: () => _to(4)),
+            _FinishPage(onDone: _finish),
           ],
         ),
       ),
@@ -158,41 +147,82 @@ class _WelcomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) => _SwipeAdvance(
         onAdvance: onNext,
-        child: AmbientBackground(
-          primaryColor: FluxColors.lime,
+        child: ColoredBox(
+          color: Colors.black,
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final sy = constraints.maxHeight / 844;
+              final sy = constraints.maxHeight / 912;
               return Stack(
                 children: [
+                  Positioned.fill(
+                    child: Image.asset(
+                      FigmaAssets.welcomeStars,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  // Brand bloom rising from the bottom edge: the blurred wash
+                  // first, then the sharp card the design draws on top of it.
                   Positioned(
-                    top: 415 * sy,
                     left: 0,
                     right: 0,
-                    child: Center(
-                      child: Text(
-                        L10n.of(context).onboardingWelcome,
-                        style: Theme.of(
-                          context,
-                        ).textTheme.titleMedium?.copyWith(fontSize: 21),
+                    top: 701 * sy,
+                    height: 276 * sy,
+                    child: Opacity(
+                      opacity: .7,
+                      child: Image.asset(
+                        FigmaAssets.welcomeGlow,
+                        fit: BoxFit.fill,
                       ),
                     ),
                   ),
                   Positioned(
-                    top: 655 * sy,
+                    left: 20,
+                    right: 20,
+                    top: 786 * sy,
+                    height: 106 * sy,
+                    child: Image.asset(
+                      FigmaAssets.welcomeGlowCard,
+                      fit: BoxFit.fill,
+                    ),
+                  ),
+                  Positioned(
+                    top: 441 * sy,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Text(
+                          L10n.of(context).onboardingWelcome,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontFamily: 'InstrumentSans',
+                            fontSize: 24,
+                            height: 1.2,
+                            fontWeight: FontWeight.w400,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 695 * sy,
                     left: 0,
                     right: 0,
                     child: Column(
                       children: [
-                        const _FloatingArrow(),
-                        const SizedBox(height: 12),
+                        const _FloatingArrow(color: Colors.white),
+                        const SizedBox(height: 15),
                         Text(
                           L10n.of(context).onboardingSwipeToStart,
-                          style:
-                              Theme.of(context).textTheme.labelMedium?.copyWith(
-                                    color: FluxColors.mutedOf(context),
-                                    fontSize: 16,
-                                  ),
+                          style: const TextStyle(
+                            fontFamily: 'InstrumentSans',
+                            fontSize: 18,
+                            height: 1.2,
+                            fontWeight: FontWeight.w400,
+                            color: Color(0x80FFFFFF),
+                          ),
                         ),
                       ],
                     ),
@@ -237,6 +267,7 @@ class _SwipeAdvanceState extends State<_SwipeAdvance> {
       _committing = shouldAdvance;
     });
     if (shouldAdvance) {
+      HapticFeedback.selectionClick();
       Future<void>.delayed(const Duration(milliseconds: 180), () {
         if (!mounted) return;
         widget.onAdvance();
@@ -273,7 +304,11 @@ class _SwipeAdvanceState extends State<_SwipeAdvance> {
 }
 
 class _FloatingArrow extends StatefulWidget {
-  const _FloatingArrow();
+  const _FloatingArrow({this.color});
+
+  /// Tint for the glyph. The asset ships black, so screens drawn on a dark
+  /// backdrop pass their own colour.
+  final Color? color;
 
   @override
   State<_FloatingArrow> createState() => _FloatingArrowState();
@@ -304,12 +339,14 @@ class _FloatingArrowState extends State<_FloatingArrow>
 
   @override
   Widget build(BuildContext context) {
+    final arrow = FigmaSvg(
+      asset: FigmaAssets.swipeUp,
+      width: 24,
+      height: 24,
+      color: widget.color,
+    );
     if (MediaQuery.disableAnimationsOf(context)) {
-      return const FigmaSvg(
-        asset: FigmaAssets.welcomeArrow,
-        width: 24,
-        height: 24,
-      );
+      return arrow;
     }
     return AnimatedBuilder(
       animation: _animation,
@@ -317,123 +354,421 @@ class _FloatingArrowState extends State<_FloatingArrow>
         offset: Offset(0, _animation.value),
         child: child,
       ),
-      child: const FigmaSvg(
-        asset: FigmaAssets.welcomeArrow,
-        width: 24,
-        height: 24,
-      ),
+      child: arrow,
     );
   }
 }
 
-class _DetailPage extends StatelessWidget {
-  const _DetailPage({
-    required this.iconAsset,
+/// One step of the onboarding flow: the artwork card, the step's copy and the
+/// bottom control bar (back, step progress, next) from the design.
+///
+/// Everything is placed on the design's 420x912 canvas: the vertical offsets
+/// scale with the device height so the control bar stays pinned to the bottom
+/// edge, while the card keeps the artwork's 380x660 aspect.
+class _StepPage extends StatelessWidget {
+  const _StepPage({
+    required this.artwork,
     required this.title,
-    required this.child,
-    required this.onBack,
-    required this.onNext,
-    this.contentTop = 79,
+    this.onBack,
+    this.twoLineTitle = false,
+    this.body,
+    this.bodyHeight = 100,
+    this.progress = 0,
     this.backEnabled = true,
+    this.onNext,
+    this.footer,
   });
 
-  final String iconAsset;
+  final String artwork;
   final String title;
-  final Widget child;
-  final VoidCallback onBack;
-  final VoidCallback? onNext;
-  final double contentTop;
+  final VoidCallback? onBack;
+
+  /// Titles that wrap to two lines sit a little lower in the design's card.
+  final bool twoLineTitle;
+
+  /// Copy or controls shown between the card and the bottom bar.
+  final Widget? body;
+
+  /// Height held for [body] when sizing the artwork card.
+  final double bodyHeight;
+
+  /// Filled quarters of the step bar (0 on the steps that carry no bar).
+  final int progress;
   final bool backEnabled;
+  final VoidCallback? onNext;
+
+  /// Replaces the whole control bar. The final step ends on a single
+  /// full-width action instead of step navigation.
+  final Widget? footer;
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
         builder: (context, constraints) {
-          final sy = constraints.maxHeight / 844;
-          return Stack(
-            children: [
-              Positioned(
-                left: 20,
-                top: 71 * sy,
-                child: IgnorePointer(
-                  ignoring: !backEnabled,
-                  child: AnimatedOpacity(
-                    opacity: backEnabled ? 1 : .38,
-                    duration: const Duration(milliseconds: 240),
-                    child: BackControl(onTap: onBack),
-                  ),
-                ),
-              ),
-              Positioned(
-                top: 210 * sy,
-                left: (constraints.maxWidth - 90) / 2,
-                child: _SoftIconEntrance(iconAsset: iconAsset),
-              ),
-              Positioned(
-                top: 415 * sy,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: ClipRRect(
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(FluxRadius.card),
-                  ),
-                  child: ColoredBox(
-                    color: FluxColors.cardOf(context),
-                    child: Stack(
-                      children: [
-                        Positioned(
-                          left: 25,
-                          right: 25,
-                          top: 40,
-                          height: 24,
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              title,
-                              maxLines: 1,
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          left: 25,
-                          right: 25,
-                          top: contentTop,
-                          height: 216,
-                          child: child,
-                        ),
-                        Positioned(
-                          right: 25,
-                          bottom: 79,
-                          child: FluxPillButton(
-                            label: L10n.of(context).commonNext,
-                            onTap: onNext,
-                            compact: true,
-                          ),
-                        ),
-                      ],
+          final sy = (constraints.maxHeight / 912).clamp(.6, 1.3);
+          final cardWidth = math.min(380.0, constraints.maxWidth - 40);
+          // The design's card is 380x660; on a shorter viewport it gives up
+          // height to the copy and the control bar instead of overflowing.
+          final reserved = 60 * sy + bodyHeight + 60;
+          final cardHeight = math.min(
+            cardWidth * 660 / 380,
+            math.max(160.0, constraints.maxHeight - reserved),
+          );
+          final body = this.body;
+          // The copy gets every pixel the card and the control bar leave over,
+          // sized up front rather than shared with the Spacer: as siblings of
+          // equal flex they used to split the leftover, and a paragraph that
+          // needed more than its half was clipped mid-sentence.
+          const controlsHeight = 60.0;
+          final bodyMax = math.max(
+            0.0,
+            constraints.maxHeight -
+                (20 * sy + cardHeight + 20 * sy + controlsHeight + 20 * sy),
+          );
+          return ColoredBox(
+            color: FluxColors.cardOf(context),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Column(
+                children: [
+                  SizedBox(height: 20 * sy),
+                  SizedBox(
+                    height: cardHeight,
+                    child: _ArtworkCard(
+                      artwork: artwork,
+                      title: title,
+                      twoLineTitle: twoLineTitle,
                     ),
                   ),
-                ),
+                  SizedBox(height: 20 * sy),
+                  if (body != null)
+                    SizedBox(
+                      height: bodyMax,
+                      child: Align(
+                        alignment: Alignment.topLeft,
+                        child: SingleChildScrollView(child: body),
+                      ),
+                    ),
+                  const Spacer(),
+                  footer ??
+                      _StepControls(
+                        progress: progress,
+                        backEnabled: backEnabled,
+                        onBack: onBack,
+                        onNext: onNext,
+                      ),
+                  SizedBox(height: 20 * sy),
+                ],
               ),
-            ],
+            ),
           );
         },
       );
 }
 
-class _SoftIconEntrance extends StatelessWidget {
-  const _SoftIconEntrance({required this.iconAsset});
+/// The step's photographic card: the artwork fills it, the title sits in the
+/// bottom-left corner over the artwork's own dark wash.
+class _ArtworkCard extends StatelessWidget {
+  const _ArtworkCard({
+    required this.artwork,
+    required this.title,
+    this.twoLineTitle = false,
+  });
 
-  final String iconAsset;
+  final String artwork;
+  final String title;
+  final bool twoLineTitle;
 
   @override
-  Widget build(BuildContext context) => SizedBox.square(
-        dimension: 90,
-        child: Center(child: FigmaSvg(asset: iconAsset, width: 90, height: 90)),
+  Widget build(BuildContext context) => ClipRRect(
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(25),
+          topRight: Radius.circular(25),
+          bottomLeft: Radius.circular(10),
+          bottomRight: Radius.circular(10),
+        ),
+        child: LayoutBuilder(
+          builder: (context, constraints) => Stack(
+            fit: StackFit.expand,
+            children: [
+              // The design's card photo: the source bitmap is already cropped to
+              // the card's crop region, so filling it reproduces the design's
+              // exact stretch rather than a BoxFit.cover re-crop.
+              Image.asset(
+                artwork,
+                fit: BoxFit.fill,
+                filterQuality: FilterQuality.medium,
+                excludeFromSemantics: true,
+              ),
+              // The design washes the photo with a 35% black-to-transparent
+              // gradient so the white title reads over any part of it.
+              const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.bottomCenter,
+                    end: Alignment.topCenter,
+                    colors: [Color(0x59000000), Color(0x00666666)],
+                  ),
+                ),
+              ),
+              Positioned(
+                left: 25,
+                right: 25,
+                bottom: twoLineTitle ? 21 : 30,
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontFamily: 'InstrumentSans',
+                    fontSize: 24,
+                    height: 1.2,
+                    fontWeight: FontWeight.w400,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       );
 }
+
+/// Back, step progress and next: the control bar every step shares.
+class _StepControls extends StatelessWidget {
+  const _StepControls({
+    required this.progress,
+    required this.backEnabled,
+    required this.onBack,
+    this.onNext,
+  });
+
+  final int progress;
+  final bool backEnabled;
+  final VoidCallback? onBack;
+  final VoidCallback? onNext;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        height: 60,
+        child: Row(
+          children: [
+            _CircleControl(
+              key: const ValueKey('onboarding-back'),
+              semanticLabel: L10n.of(context).commonBack,
+              onTap: backEnabled ? onBack : null,
+              background: FluxColors.tileOf(context),
+              foreground: FluxColors.inkOf(context),
+              mirrored: true,
+            ),
+            Expanded(
+              child: Center(
+                // The design's bar is a fixed 200px; on narrow phones it
+                // scales down rather than pushing the circles off the row.
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: _StepProgressBar(quarters: progress),
+                ),
+              ),
+            ),
+            _CircleControl(
+              key: const ValueKey('onboarding-next'),
+              semanticLabel: L10n.of(context).commonNext,
+              onTap: onNext,
+              background: FluxColors.actionOf(context),
+              foreground: FluxColors.actionInkOf(context),
+            ),
+          ],
+        ),
+      );
+}
+
+/// A single circular control from the design's bottom bar.
+class _CircleControl extends StatelessWidget {
+  const _CircleControl({
+    super.key,
+    required this.semanticLabel,
+    required this.onTap,
+    required this.background,
+    required this.foreground,
+    this.mirrored = false,
+  });
+
+  final String semanticLabel;
+  final VoidCallback? onTap;
+  final Color background;
+  final Color foreground;
+
+  /// Draws the arrow pointing left instead of right.
+  final bool mirrored;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onTap != null;
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      label: semanticLabel,
+      onTap: onTap,
+      excludeSemantics: true,
+      child: Opacity(
+        opacity: enabled ? 1 : .38,
+        child: FluxPressScale(
+          enabled: enabled,
+          child: Material(
+            color: background,
+            shape: const CircleBorder(),
+            child: InkWell(
+              onTap: onTap,
+              customBorder: const CircleBorder(),
+              child: SizedBox.square(
+                dimension: 60,
+                child: Center(
+                  child: Transform.rotate(
+                    angle: mirrored ? math.pi : 0,
+                    child: FigmaSvg(
+                      asset: FigmaAssets.stepNext,
+                      width: 36,
+                      height: 36,
+                      color: foreground,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Step progress: the filled span, an 8px gap, then the remaining track.
+class _StepProgressBar extends StatelessWidget {
+  const _StepProgressBar({required this.quarters});
+
+  /// Filled quarters of the 200px track, 1..4.
+  final int quarters;
+
+  static const double _track = 200;
+  static const double _gap = 8;
+
+  @override
+  Widget build(BuildContext context) {
+    // The design carves the gap out of the fill so each step lands on a
+    // quarter of the track: 46 / 96 / 146 px for steps one to three. The bar
+    // fills up to that point as each step appears, so the flow reads as
+    // progress rather than as a bar that is simply replaced.
+    final target = (_track * quarters / 4 - 4).clamp(0.0, _track);
+    final reduced = MediaQuery.disableAnimationsOf(context);
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0, end: target),
+      duration: reduced ? Duration.zero : const Duration(milliseconds: 520),
+      curve: Curves.easeOutCubic,
+      builder: (context, filled, _) {
+        final rest =
+            (_track - filled - (filled > 0 && filled < _track ? _gap : 0))
+                .clamp(0.0, _track);
+        Widget bar(Color color) => ClipRRect(
+              borderRadius: BorderRadius.circular(FluxRadius.pill),
+              child: ColoredBox(color: color),
+            );
+        return SizedBox(
+          width: _track,
+          height: 6,
+          child: Row(
+            // Stretch so the bars fill the track's height: a childless
+            // ColoredBox collapses to nothing under loose cross-axis
+            // constraints.
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (filled > 0)
+                SizedBox(width: filled, child: bar(FluxColors.inkOf(context))),
+              if (filled > 0 && rest > 0) const SizedBox(width: _gap),
+              if (rest > 0)
+                SizedBox(width: rest, child: bar(FluxColors.tileOf(context))),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Privacy: what leaves the device, and the link to the full policy.
+class _PrivacyPage extends StatelessWidget {
+  const _PrivacyPage({required this.onBack, required this.onNext});
+
+  final VoidCallback onBack;
+  final VoidCallback onNext;
+
+  @override
+  Widget build(BuildContext context) => _StepPage(
+        artwork: FigmaAssets.artworkPrivacy,
+        title: L10n.of(context).onboardingPrivacyTitle,
+        bodyHeight: 96,
+        progress: 1,
+        onBack: onBack,
+        onNext: onNext,
+        body: const _PrivacyBody(),
+      );
+}
+
+/// The privacy paragraph: lead line in ink, body in muted ink and the policy
+/// link in the design's blue, all flowing as one paragraph.
+class _PrivacyBody extends StatefulWidget {
+  const _PrivacyBody();
+
+  @override
+  State<_PrivacyBody> createState() => _PrivacyBodyState();
+}
+
+class _PrivacyBodyState extends State<_PrivacyBody> {
+  late final TapGestureRecognizer _policyTap = TapGestureRecognizer()
+    ..onTap = _openPolicy;
+
+  @override
+  void dispose() {
+    _policyTap.dispose();
+    super.dispose();
+  }
+
+  Future<void> _openPolicy() async {
+    if (!LegalConfig.hasPrivacyPolicyUrl) return;
+    final uri = Uri.parse(LegalConfig.privacyPolicyUrl);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = L10n.of(context);
+    final ink = FluxColors.inkOf(context);
+    return Text.rich(
+      TextSpan(
+        children: [
+          TextSpan(text: l10n.onboardingPrivacyLead, style: _bodyStyle(ink)),
+          TextSpan(
+            text: '\n${l10n.onboardingPrivacyBody}',
+            style: _bodyStyle(ink.withValues(alpha: .5)),
+          ),
+          TextSpan(
+            text: l10n.onboardingPrivacyLink,
+            style: _bodyStyle(FluxColors.link),
+            recognizer: _policyTap,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The step copy's typography: 20px Instrument Sans on a 1.2 line height.
+TextStyle _bodyStyle(Color color) => TextStyle(
+      fontFamily: 'InstrumentSans',
+      fontSize: 20,
+      height: 1.2,
+      fontWeight: FontWeight.w400,
+      color: color,
+    );
 
 class _AutomaticModelPage extends StatefulWidget {
   const _AutomaticModelPage({
@@ -552,31 +887,36 @@ class _AutomaticModelPageState extends State<_AutomaticModelPage> {
   }
 
   @override
-  Widget build(BuildContext context) => _DetailPage(
-        iconAsset: FigmaAssets.magic,
-        title: _ready
-            ? L10n.of(context).onboardingInstallTitleReady
-            : L10n.of(context).onboardingInstallTitleInstalling,
-        contentTop: 79,
-        onBack: widget.onBack,
-        backEnabled: _ready,
-        onNext: _ready ? widget.onNext : null,
-        child: _AutomaticInstallPanel(
-          models: _inference.requiredModels,
-          progress: _progress,
-          ready: _ready,
-          started: _started,
-          error: _error,
-          statusKey: _inference.statusKey,
-          status: _inference.status,
-          onRetry: start,
-        ),
-      );
+  Widget build(BuildContext context) {
+    final l10n = L10n.of(context);
+    return _StepPage(
+      artwork: FigmaAssets.artworkDownload,
+      title: _ready
+          ? l10n.onboardingInstallTitleReady
+          : l10n.onboardingInstallTitleInstalling,
+      twoLineTitle: !_ready,
+      bodyHeight: 83,
+      progress: 2,
+      onBack: widget.onBack,
+      backEnabled: _ready,
+      onNext: _ready ? widget.onNext : null,
+      body: _DownloadStatus(
+        progress: _progress,
+        ready: _ready,
+        started: _started,
+        error: _error,
+        statusKey: _inference.statusKey,
+        status: _inference.status,
+        onRetry: start,
+      ),
+    );
+  }
 }
 
-class _AutomaticInstallPanel extends StatelessWidget {
-  const _AutomaticInstallPanel({
-    required this.models,
+/// The download step's live status: the lead line, the progress ring and the
+/// transfer read-out (percent, speed, bytes, ETA) from the design.
+class _DownloadStatus extends StatelessWidget {
+  const _DownloadStatus({
     required this.progress,
     required this.ready,
     required this.started,
@@ -586,7 +926,6 @@ class _AutomaticInstallPanel extends StatelessWidget {
     required this.onRetry,
   });
 
-  final List<FinnModelSpec> models;
   final double progress;
   final bool ready;
   final bool started;
@@ -601,272 +940,179 @@ class _AutomaticInstallPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final model = models.last;
-    final reduced = MediaQuery.disableAnimationsOf(context);
-    final effectiveProgress = ready ? 1.0 : progress.clamp(.02, .98);
-    final isDark = FluxColors.isDark(context);
+    final l10n = L10n.of(context);
     final inference = FinnInference.instance;
-    final downloading =
-        !ready && started && inference.phase == InferencePhase.downloading;
-    // The whole install is one honest number: language model + multimodal
-    // component, downloaded bytes so far, and what is left.
-    final totalBytes = model.expectedBytes + finnMmproj.expectedBytes;
-    final receivedBytes = inference.installReceivedBytes;
-    final remainingBytes = inference.installRemainingBytes;
-    final transferMeta = [
-      if (downloading)
-        L10n.of(context).onboardingInstallBytesOf(
-          _formatBytes(receivedBytes),
-          _formatBytes(totalBytes),
-        ),
-      if (downloading && remainingBytes > 0)
-        L10n.of(
-          context,
-        ).onboardingInstallBytesLeft(_formatBytes(remainingBytes)),
-      if (downloading && inference.downloadSpeedLabel != null)
-        inference.downloadSpeedLabel!,
-      if (downloading && inference.downloadEtaLabel != null)
-        inference.downloadEtaLabel!,
-    ].join(' · ');
+    final ink = FluxColors.inkOf(context);
+    final muted = ink.withValues(alpha: .5);
 
-    // The download card sits on top of the detail page's card, so its own
-    // background is dropped in dark mode to avoid a nested dark slab. The
-    // content scrolls vertically on very short screens instead of overflowing.
-    return FluxGlass(
-      radius: FluxRadius.sheet,
-      color: isDark ? Colors.transparent : null,
-      borderColor: isDark ? Colors.transparent : null,
-      child: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+    if (error != null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            localizedEngineStatus(context, statusKey, status),
+            style: _bodyStyle(muted),
+          ),
+          const SizedBox(height: 16),
+          _RetryPill(onTap: onRetry),
+        ],
+      );
+    }
+
+    // The whole install is one honest number: language model plus multimodal
+    // component, bytes downloaded so far, and what is left.
+    final totalBytes = inference.requiredModels.fold<int>(
+          0,
+          (sum, model) => sum + model.expectedBytes,
+        ) +
+        finnMmproj.expectedBytes;
+    final downloading =
+        started && inference.phase == InferencePhase.downloading;
+    final percent = (ready ? 100 : (progress * 100).round()).clamp(0, 100);
+    final speed = inference.downloadSpeedLabel;
+    final meta = [
+      if (downloading && speed != null) speed,
+      if (downloading && totalBytes > 0)
+        '${_formatBytes(inference.installReceivedBytes)}/'
+            '${_formatBytes(totalBytes)}',
+    ].join('. ');
+    final eta = inference.downloadEta;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text.rich(
+          TextSpan(
             children: [
-              AnimatedSwitcher(
-                duration:
-                    reduced ? Duration.zero : const Duration(milliseconds: 360),
-                transitionBuilder: (child, animation) =>
-                    ScaleTransition(scale: animation, child: child),
-                child: FluxIcon(
-                  key: ValueKey('${ready}_icon'),
-                  icon: ready ? FluxIcons.check : FluxIcons.chip,
-                  size: 26,
+              // "please standby" is only true while there is something to
+              // wait for; at 100% the step says what is now available.
+              TextSpan(
+                text: ready
+                    ? l10n.onboardingInstallReadyForChat
+                    : l10n.onboardingDownloadLead,
+                style: _bodyStyle(ink),
+              ),
+              if (!ready)
+                TextSpan(
+                  text: ' ${l10n.onboardingDownloadNote}',
+                  style: _bodyStyle(muted),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(model.name, style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: 3),
-              Text(
-                ready
-                    ? L10n.of(context).onboardingInstallReadyForChat
-                    : L10n.of(context).onboardingInstallModelWithComponent(
-                        model.name,
-                        _formatBytes(totalBytes),
-                      ),
-                maxLines: 2,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: FluxColors.mutedOf(context),
-                    ),
-              ),
-              const SizedBox(height: 10),
-              AnimatedSwitcher(
-                duration:
-                    reduced ? Duration.zero : const Duration(milliseconds: 320),
-                switchInCurve: Curves.easeOutCubic,
-                child: error != null
-                    ? Column(
-                        key: const ValueKey('error'),
-                        children: [
-                          Text(
-                            localizedEngineStatus(context, statusKey, status),
-                            maxLines: 2,
-                            textAlign: TextAlign.center,
-                            style: Theme.of(context)
-                                .textTheme
-                                .labelMedium
-                                ?.copyWith(color: FluxColors.mutedOf(context)),
-                          ),
-                          const SizedBox(height: 10),
-                          Semantics(
-                            button: true,
-                            label: L10n.of(context).onboardingInstallRetryLabel,
-                            child: Material(
-                              color: FluxColors.surfaceOf(context),
-                              borderRadius: BorderRadius.circular(
-                                FluxRadius.pill,
-                              ),
-                              child: InkWell(
-                                onTap: onRetry,
-                                borderRadius: BorderRadius.circular(
-                                  FluxRadius.pill,
-                                ),
-                                child: ConstrainedBox(
-                                  constraints: const BoxConstraints(
-                                    minHeight: 48,
-                                  ),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 20,
-                                    ),
-                                    child: Center(
-                                      child: Text(
-                                        L10n.of(context).commonRetry,
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .labelMedium
-                                            ?.copyWith(
-                                              color: FluxColors.inkOf(context),
-                                            ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      )
-                    : Text(
-                        key: ValueKey(ready),
-                        ready
-                            ? L10n.of(context).onboardingInstallModelReady
-                            : started
-                                ? L10n.of(context)
-                                    .onboardingInstallProgressStatus(
-                                    localizedEngineStatus(
-                                      context,
-                                      statusKey,
-                                      status,
-                                    ),
-                                    (effectiveProgress * 100)
-                                        .round()
-                                        .toString(),
-                                  )
-                                : L10n.of(context).onboardingInstallPreparing,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
-                        style:
-                            Theme.of(context).textTheme.labelMedium?.copyWith(
-                                  color: FluxColors.mutedOf(context),
-                                  height: 1.3,
-                                ),
-                      ),
-              ),
-              if (!ready && started) ...[
-                const SizedBox(height: 12),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(FluxRadius.pill),
-                  child: LinearProgressIndicator(
-                    value: effectiveProgress,
-                    minHeight: 4,
-                    color: isDark ? FluxColors.darkInk : FluxColors.ink,
-                    backgroundColor: isDark
-                        ? Colors.white.withValues(alpha: .12)
-                        : Colors.black.withValues(alpha: .08),
-                  ),
-                ),
-                if (transferMeta.isNotEmpty) ...[
-                  const SizedBox(height: 6),
-                  AnimatedSwitcher(
-                    duration: reduced
-                        ? Duration.zero
-                        : const Duration(milliseconds: 220),
-                    child: Text(
-                      transferMeta,
-                      key: ValueKey(transferMeta),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                            color: FluxColors.mutedOf(context),
-                          ),
-                    ),
-                  ),
-                ],
-              ],
             ],
           ),
         ),
+        const SizedBox(height: 15),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _DownloadRing(value: ready ? 1 : progress),
+            const SizedBox(width: 16),
+            Expanded(
+              child: started
+                  ? Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(
+                            text: l10n.onboardingProgressPercent(
+                              percent.toString(),
+                            ),
+                            style: _readoutStyle(ink),
+                          ),
+                          if (meta.isNotEmpty)
+                            TextSpan(
+                              text: ' $meta',
+                              style: _readoutStyle(muted),
+                            ),
+                          if (eta != null) ...[
+                            TextSpan(
+                              text: '\n${_formatEta(eta)}',
+                              style: _readoutStyle(ink),
+                            ),
+                            TextSpan(
+                              text: ' ${l10n.onboardingProgressEtaTail}',
+                              style: _readoutStyle(muted),
+                            ),
+                          ],
+                        ],
+                      ),
+                    )
+                  : Text(
+                      localizedEngineStatus(context, statusKey, status),
+                      style: _readoutStyle(muted),
+                    ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// The design's download ring: a 44px donut with butt caps, drawn from the top
+/// of the circle.
+class _DownloadRing extends StatelessWidget {
+  const _DownloadRing({required this.value});
+
+  final double value;
+
+  @override
+  Widget build(BuildContext context) {
+    final ink = FluxColors.inkOf(context);
+    return SizedBox.square(
+      dimension: 44,
+      child: CircularProgressIndicator(
+        value: value.clamp(0.0, 1.0),
+        strokeWidth: 7.5,
+        strokeCap: StrokeCap.butt,
+        color: ink,
+        backgroundColor: ink.withValues(alpha: .1),
       ),
     );
   }
 }
 
-class _Precautions extends StatelessWidget {
-  const _Precautions();
+/// Dark pill used when a download failed and the user can start it again.
+class _RetryPill extends StatelessWidget {
+  const _RetryPill({required this.onTap});
+
+  final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
-    final items = [
-      L10n.of(context).onboardingPrecautionOne,
-      L10n.of(context).onboardingPrecautionTwo,
-      L10n.of(context).onboardingPrecautionThree,
-      L10n.of(context).onboardingPrecautionFour,
-    ];
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        const gap = 12.0;
-        final cardWidth = (constraints.maxWidth - gap) / 2;
-        return Stack(
-          children: List.generate(4, (i) {
-            final left = i.isOdd ? cardWidth + gap : 0.0;
-            final top = i > 1 ? 112.0 : 0.0;
-            return Positioned(
-              left: left,
-              top: top,
-              width: cardWidth,
-              height: 104,
-              child: FluxGlass(
-                radius: FluxRadius.sm,
-                color: FluxColors.surfaceOf(context).withValues(alpha: .82),
-                child: Stack(
-                  children: [
-                    Positioned(
-                      left: 10,
-                      top: 10,
-                      child: Container(
-                        width: 26,
-                        height: 26,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: FluxColors.inkOf(context),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Text(
-                          '${i + 1}',
-                          style:
-                              Theme.of(context).textTheme.labelMedium?.copyWith(
-                                    color: FluxColors.canvasOf(context),
-                                    fontSize: 13,
-                                  ),
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      left: 10,
-                      right: 10,
-                      top: 49,
-                      child: Text(
-                        items[i],
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(
-                          context,
-                        ).textTheme.labelMedium?.copyWith(fontSize: 13),
-                      ),
-                    ),
-                  ],
+  Widget build(BuildContext context) => Semantics(
+        button: true,
+        label: L10n.of(context).onboardingInstallRetryLabel,
+        onTap: onTap,
+        excludeSemantics: true,
+        child: Material(
+          color: FluxColors.actionOf(context),
+          borderRadius: BorderRadius.circular(FluxRadius.pill),
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(FluxRadius.pill),
+            child: SizedBox(
+              height: 48,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Center(
+                  child: Text(
+                    L10n.of(context).commonRetry,
+                    style: _readoutStyle(FluxColors.actionInkOf(context)),
+                  ),
                 ),
               ),
-            );
-          }),
-        );
-      },
-    );
-  }
+            ),
+          ),
+        ),
+      );
 }
+
+/// The transfer read-out's typography: 18px on the design's 22px line box.
+TextStyle _readoutStyle(Color color) => TextStyle(
+      fontFamily: 'InstrumentSans',
+      fontSize: 18,
+      height: 1.22,
+      fontWeight: FontWeight.w400,
+      color: color,
+    );
 
 class SoftwareUpgradeScreen extends StatefulWidget {
   const SoftwareUpgradeScreen({super.key});
@@ -946,17 +1192,7 @@ class _SoftwareUpgradeScreenState extends State<SoftwareUpgradeScreen> {
       });
       unawaited(_inference.prewarm());
       await Future<void>.delayed(const Duration(milliseconds: 450));
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          PageRouteBuilder<void>(
-            transitionDuration: const Duration(milliseconds: 350),
-            reverseTransitionDuration: const Duration(milliseconds: 280),
-            pageBuilder: (_, animation, __) => const HomeShell(),
-            transitionsBuilder: (context, animation, _, page) =>
-                FadeTransition(opacity: animation, child: page),
-          ),
-        );
-      }
+      if (mounted) _enterHome();
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -966,43 +1202,166 @@ class _SoftwareUpgradeScreenState extends State<SoftwareUpgradeScreen> {
     }
   }
 
+  void _enterHome() {
+    Navigator.of(context).pushReplacement(
+      PageRouteBuilder<void>(
+        transitionDuration: const Duration(milliseconds: 350),
+        reverseTransitionDuration: const Duration(milliseconds: 280),
+        pageBuilder: (_, animation, __) => const HomeShell(),
+        transitionsBuilder: (context, animation, _, page) =>
+            FadeTransition(opacity: animation, child: page),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
+    final l10n = L10n.of(context);
     return Scaffold(
-      body: AmbientBackground(
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    L10n.of(context).onboardingUpgradeTitle,
-                    textAlign: TextAlign.center,
-                    style: textTheme.titleLarge,
+      body: _StepPage(
+        artwork: FigmaAssets.artworkDownload,
+        title: _ready
+            ? l10n.onboardingInstallTitleReady
+            : l10n.onboardingInstallTitleInstalling,
+        twoLineTitle: !_ready,
+        progress: 2,
+        backEnabled: false,
+        onNext: _ready ? _enterHome : null,
+        body: _DownloadStatus(
+          progress: _progress,
+          ready: _ready,
+          started: _started,
+          error: _error,
+          statusKey: _inference.statusKey,
+          status: _inference.status,
+          onRetry: start,
+        ),
+      ),
+    );
+  }
+}
+
+/// Asks whether FinnAI may use context from this device and records the
+/// answer. The question is the card's title; the two answers are the step's
+/// body, with the flow's own Next control still doing the advancing.
+class _ConsentPage extends StatefulWidget {
+  const _ConsentPage({required this.onBack, required this.onNext});
+
+  final VoidCallback onBack;
+  final VoidCallback onNext;
+
+  @override
+  State<_ConsentPage> createState() => _ConsentPageState();
+}
+
+class _ConsentPageState extends State<_ConsentPage> {
+  final _consent = ContextConsentStore.instance;
+
+  /// Null until the user answers, so the step opens with neither card filled
+  /// in — as designed. Advancing without answering keeps the stored choice.
+  bool? _granted;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_consent.initialize());
+  }
+
+  Future<void> _answer(bool granted) async {
+    setState(() => _granted = granted);
+    await _consent.setGranted(granted);
+  }
+
+  @override
+  Widget build(BuildContext context) => _StepPage(
+        artwork: FigmaAssets.artworkConsent,
+        title: L10n.of(context).onboardingConsentTitle,
+        twoLineTitle: true,
+        bodyHeight: 112,
+        progress: 3,
+        onBack: widget.onBack,
+        onNext: widget.onNext,
+        body: Row(
+          children: [
+            Expanded(
+              child: _ConsentChoice(
+                label: L10n.of(context).commonYes,
+                selected: _granted == true,
+                cornerRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(10),
+                  topRight: Radius.circular(10),
+                  bottomLeft: Radius.circular(25),
+                  bottomRight: Radius.circular(10),
+                ),
+                onTap: () => _answer(true),
+              ),
+            ),
+            const SizedBox(width: 20),
+            Expanded(
+              child: _ConsentChoice(
+                label: L10n.of(context).commonNo,
+                selected: _granted == false,
+                cornerRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(10),
+                  topRight: Radius.circular(10),
+                  bottomLeft: Radius.circular(10),
+                  bottomRight: Radius.circular(25),
+                ),
+                onTap: () => _answer(false),
+              ),
+            ),
+          ],
+        ),
+      );
+}
+
+/// One of the two consent answers: a large tappable card that fills in once it
+/// is the recorded choice.
+class _ConsentChoice extends StatelessWidget {
+  const _ConsentChoice({
+    required this.label,
+    required this.selected,
+    required this.cornerRadius,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final BorderRadius cornerRadius;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final background =
+        selected ? FluxColors.actionOf(context) : FluxColors.tileOf(context);
+    final foreground =
+        selected ? FluxColors.actionInkOf(context) : FluxColors.inkOf(context);
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
+      onTap: onTap,
+      excludeSemantics: true,
+      child: FluxPressScale(
+        child: Material(
+          color: background,
+          borderRadius: cornerRadius,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: cornerRadius,
+            child: SizedBox(
+              height: 112,
+              child: Center(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontFamily: 'InstrumentSans',
+                    fontSize: 20,
+                    height: 1.2,
+                    fontWeight: FontWeight.w400,
+                    color: foreground,
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    L10n.of(context).onboardingUpgradeBody,
-                    textAlign: TextAlign.center,
-                    style: textTheme.bodyMedium?.copyWith(
-                      color: FluxColors.mutedOf(context),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  _AutomaticInstallPanel(
-                    models: _inference.requiredModels,
-                    progress: _progress,
-                    ready: _ready,
-                    started: _started,
-                    error: _error,
-                    statusKey: _inference.statusKey,
-                    status: _inference.status,
-                    onRetry: start,
-                  ),
-                ],
+                ),
               ),
             ),
           ),
@@ -1012,71 +1371,96 @@ class _SoftwareUpgradeScreenState extends State<SoftwareUpgradeScreen> {
   }
 }
 
-class _FinishPage extends StatelessWidget {
-  const _FinishPage({required this.onBack, required this.onDone});
-  final VoidCallback onBack;
-  final VoidCallback onDone;
+/// The single full-width action that ends the flow.
+class _PrimaryActionButton extends StatelessWidget {
+  const _PrimaryActionButton({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => _SwipeAdvance(
-        onAdvance: onDone,
-        child: AmbientBackground(
-          primaryColor: FluxColors.lime,
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final sy = constraints.maxHeight / 844;
-              return Stack(
-                children: [
-                  Positioned(
-                    left: 20,
-                    top: 71 * sy,
-                    child: BackControl(onTap: onBack),
-                  ),
-                  Positioned(
-                    top: 415 * sy,
-                    left: 0,
-                    right: 0,
-                    child: Center(
-                      child: Text(
-                        L10n.of(context).onboardingReadyTitle,
-                        style: Theme.of(
-                          context,
-                        ).textTheme.titleMedium?.copyWith(fontSize: 21),
-                      ),
+  Widget build(BuildContext context) => Semantics(
+        button: true,
+        label: label,
+        onTap: onTap,
+        excludeSemantics: true,
+        child: FluxPressScale(
+          child: Material(
+            color: FluxColors.actionOf(context),
+            borderRadius: BorderRadius.circular(60),
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(60),
+              child: SizedBox(
+                height: 60,
+                child: Center(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      fontFamily: 'InstrumentSans',
+                      fontSize: 18,
+                      height: 1.2,
+                      fontWeight: FontWeight.w400,
+                      color: FluxColors.actionInkOf(context),
                     ),
                   ),
-                  Positioned(
-                    top: 655 * sy,
-                    left: 0,
-                    right: 0,
-                    child: Column(
-                      children: [
-                        const _FloatingArrow(),
-                        const SizedBox(height: 12),
-                        Text(
-                          L10n.of(context).onboardingReadySubtitle,
-                          style:
-                              Theme.of(context).textTheme.labelMedium?.copyWith(
-                                    color: FluxColors.mutedOf(context),
-                                    fontSize: 16,
-                                  ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              );
-            },
+                ),
+              ),
+            ),
           ),
         ),
       );
 }
 
-/// Compact human-readable size used by the download card, e.g. "1.28 GB" or
-/// "668 MB".
+/// The final step: the artwork card, the ready copy and the single full-width
+/// action that ends the flow.
+class _FinishPage extends StatelessWidget {
+  const _FinishPage({required this.onDone});
+  final VoidCallback onDone;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = L10n.of(context);
+    final ink = FluxColors.inkOf(context);
+    return _StepPage(
+      artwork: FigmaAssets.artworkFinish,
+      title: l10n.onboardingReadyTitle,
+      bodyHeight: 96,
+      onBack: () {},
+      body: Text.rich(
+        TextSpan(
+          children: [
+            TextSpan(text: l10n.onboardingReadyLead, style: _bodyStyle(ink)),
+            TextSpan(
+              text: '\n${l10n.onboardingReadyBody}',
+              style: _bodyStyle(ink.withValues(alpha: .5)),
+            ),
+          ],
+        ),
+      ),
+      footer: _PrimaryActionButton(
+        label: l10n.onboardingStartUsing,
+        onTap: onDone,
+      ),
+    );
+  }
+}
+
+/// Compact human-readable size used by the download read-out, e.g. "1.28GB" or
+/// "668MB" — the design sets the numbers tight against the slash.
 String _formatBytes(int bytes) {
   if (bytes >= 1000 * 1000 * 1000) {
-    return '${(bytes / 1000 / 1000 / 1000).toStringAsFixed(2)} GB';
+    return '${(bytes / 1000 / 1000 / 1000).toStringAsFixed(2)}GB';
   }
-  return '${(bytes / 1000 / 1000).round()} MB';
+  return '${(bytes / 1000 / 1000).round()}MB';
+}
+
+/// Remaining download time in the design's clock form: "3:41", "1:05:12".
+String _formatEta(Duration eta) {
+  final seconds = (eta.inSeconds % 60).toString().padLeft(2, '0');
+  if (eta.inHours > 0) {
+    final minutes = (eta.inMinutes % 60).toString().padLeft(2, '0');
+    return '${eta.inHours}:$minutes:$seconds';
+  }
+  return '${eta.inMinutes}:$seconds';
 }

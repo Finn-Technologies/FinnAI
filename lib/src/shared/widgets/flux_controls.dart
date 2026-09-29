@@ -19,7 +19,7 @@ abstract final class FluxIcons {
   static const sad = HugeIcons.strokeRoundedSad02;
   static const canvas = HugeIcons.strokeRoundedCanvas;
   static const you = HugeIcons.strokeRoundedRelieved02;
-  static const skills = HugeIcons.strokeRoundedBookOpenText;
+  static const flows = HugeIcons.strokeRoundedBookOpenText;
   static const chip = HugeIcons.strokeRoundedChip;
   static const settings = HugeIcons.strokeRoundedSettings03;
   static const edit = HugeIcons.strokeRoundedPencilEdit02;
@@ -82,11 +82,42 @@ abstract final class FigmaAssets {
   static const sidebarActions = '$_root/icon_98_197.svg';
   static const sidebarCreations = '$_root/icon_98_202.svg';
   static const sidebarYou = '$_root/icon_101_181.svg';
-  static const sidebarSkills = '$_root/icon_101_193.svg';
+  static const sidebarFlows = '$_root/icon_101_193.svg';
   static const noHistory = '$_root/icon_114_151.svg';
   static const creationBack = '$_root/icon_178_212.svg';
   static const creationSend = '$_root/icon_178_220.svg';
   static const creationAdd = '$_root/icon_178_228.svg';
+
+  // App chrome, onboarding and chat, exported from the FinnAI App file.
+  static const appMenu = '$_root/icon_298_47.svg';
+  static const appNewChat = '$_root/icon_325_201.svg';
+  static const appSettings = '$_root/icon_308_199.svg';
+  static const appClose = '$_root/icon_298_70.svg';
+  static const composerAdd = '$_root/icon_298_38.svg';
+  static const composerVoice = '$_root/icon_298_43.svg';
+  static const voiceMic = '$_root/icon_325_215.svg';
+  static const replyCopy = '$_root/icon_308_265.svg';
+  static const replyAlert = '$_root/icon_308_261.svg';
+  static const replyMore = '$_root/icon_308_269.svg';
+  static const tileCreations = '$_root/icon_298_89.svg';
+  static const tileFlows = '$_root/icon_308_165.svg';
+  static const tileYou = '$_root/icon_308_172.svg';
+  static const toolMail = '$_root/icon_325_256.svg';
+  static const stepBack = '$_root/icon_255_202.svg';
+  static const stepNext = '$_root/icon_255_213.svg';
+  static const swipeUp = '$_root/icon_255_179.svg';
+
+  // Onboarding artwork and the welcome backdrop. The artwork is rasterised
+  // from the design's 380x660 card: the exported SVGs fill the card with a
+  // `<pattern>`, which flutter_svg does not implement, so the imagery has to
+  // ship as the cropped bitmap the design actually renders.
+  static const artworkPrivacy = '$_root/artwork_privacy.png';
+  static const artworkDownload = '$_root/artwork_download.png';
+  static const artworkConsent = '$_root/artwork_consent.png';
+  static const artworkFinish = '$_root/artwork_finish.png';
+  static const welcomeStars = '$_root/welcome_stars.png';
+  static const welcomeGlow = '$_root/welcome_glow.png';
+  static const welcomeGlowCard = '$_root/welcome_glow_card.png';
 }
 
 class FigmaSvg extends StatelessWidget {
@@ -100,11 +131,16 @@ class FigmaSvg extends StatelessWidget {
     this.isNavTile = false,
     this.invertForDark = false,
     this.preserveColors = false,
+    this.fit = BoxFit.contain,
   });
 
   final String asset;
   final double width;
   final double height;
+
+  /// How the artwork fills its box. Cards use [BoxFit.cover] so the design's
+  /// photographic artwork keeps filling them on shorter screens.
+  final BoxFit fit;
   final Color? color;
   final BlendMode colorBlendMode;
   final bool isNavTile;
@@ -181,7 +217,7 @@ class FigmaSvg extends StatelessWidget {
       asset,
       width: width,
       height: height,
-      fit: BoxFit.contain,
+      fit: fit,
       colorFilter: filter,
     );
   }
@@ -327,20 +363,88 @@ class FluxPillButton extends StatelessWidget {
 
     return ConstrainedBox(
       constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(FluxRadius.pill),
-        child: InkWell(
-          onTap: onTap,
+      child: FluxPressScale(
+        scale: .95,
+        enabled: onTap != null,
+        child: Material(
+          color: Colors.transparent,
           borderRadius: BorderRadius.circular(FluxRadius.pill),
-          child: Align(
-            widthFactor: 1,
-            heightFactor: 1,
-            alignment: Alignment.center,
-            child: painted,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(FluxRadius.pill),
+            child: Align(
+              widthFactor: 1,
+              heightFactor: 1,
+              alignment: Alignment.center,
+              child: painted,
+            ),
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Scales whatever it wraps down slightly while a finger is on it.
+///
+/// It observes pointers with a [Listener] rather than a gesture recogniser, so
+/// the wrapped control keeps its own tap handling and ink ripple — this only
+/// adds the press physics on top, the same "the button answers your thumb"
+/// feel the chat bubbles already have.
+class FluxPressScale extends StatefulWidget {
+  const FluxPressScale({
+    super.key,
+    required this.child,
+    this.scale = .94,
+    this.enabled = true,
+  });
+
+  final Widget child;
+  final double scale;
+  final bool enabled;
+
+  @override
+  State<FluxPressScale> createState() => _FluxPressScaleState();
+}
+
+class _FluxPressScaleState extends State<FluxPressScale>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 120),
+    reverseDuration: const Duration(milliseconds: 240),
+  );
+  late final Animation<double> _scale = Tween<double>(
+    begin: 1,
+    end: widget.scale,
+  ).animate(
+    CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOutCubic,
+      reverseCurve: Curves.easeOutBack,
+    ),
+  );
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _press() {
+    if (widget.enabled) _controller.forward();
+  }
+
+  void _release(PointerEvent _) => _controller.reverse();
+
+  @override
+  Widget build(BuildContext context) {
+    if (MediaQuery.disableAnimationsOf(context)) return widget.child;
+    return Listener(
+      onPointerDown: (_) => _press(),
+      onPointerUp: _release,
+      onPointerCancel: _release,
+      child: ScaleTransition(scale: _scale, child: widget.child),
     );
   }
 }

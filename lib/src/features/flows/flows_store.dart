@@ -6,25 +6,25 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
-/// Why a skill operation failed, resolved to a sentence by the page.
+/// Why a flow operation failed, resolved to a sentence by the page.
 ///
 /// The store holds a code rather than a message: a hardcoded English sentence
 /// here would override the page's `L10n` lookup and leak English into the other
 /// locales.
-enum SkillsFailure {
-  /// The persisted skills could not be read; built-ins are shown instead.
+enum FlowsFailure {
+  /// The persisted flows could not be read; built-ins are shown instead.
   load,
 
   /// A change could not be written.
   save,
 
-  /// The four-active-skills cap was reached.
+  /// The four-active-flows cap was reached.
   limit,
 }
 
 @immutable
-class FinnSkill {
-  const FinnSkill({
+class FinnFlow {
+  const FinnFlow({
     required this.id,
     required this.name,
     required this.description,
@@ -42,14 +42,14 @@ class FinnSkill {
   final bool enabled;
   final bool builtIn;
 
-  FinnSkill copyWith({
+  FinnFlow copyWith({
     String? name,
     String? description,
     String? instructions,
     String? category,
     bool? enabled,
   }) =>
-      FinnSkill(
+      FinnFlow(
         id: id,
         name: name ?? this.name,
         description: description ?? this.description,
@@ -69,7 +69,7 @@ class FinnSkill {
         'builtIn': builtIn,
       };
 
-  factory FinnSkill.fromJson(Map<String, Object?> json) => FinnSkill(
+  factory FinnFlow.fromJson(Map<String, Object?> json) => FinnFlow(
         id: json['id']?.toString() ?? '',
         name: json['name']?.toString() ?? '',
         description: json['description']?.toString() ?? '',
@@ -80,8 +80,8 @@ class FinnSkill {
       );
 }
 
-const List<FinnSkill> finnBuiltInSkills = [
-  FinnSkill(
+const List<FinnFlow> finnBuiltInFlows = [
+  FinnFlow(
     id: 'builtin-writing',
     name: 'Clear writing',
     description: 'Polish structure, clarity, tone, and grammar.',
@@ -90,7 +90,7 @@ const List<FinnSkill> finnBuiltInSkills = [
     category: 'Writing',
     builtIn: true,
   ),
-  FinnSkill(
+  FinnFlow(
     id: 'builtin-coding',
     name: 'Coding partner',
     description: 'Practical code with clear trade-offs and checks.',
@@ -99,7 +99,7 @@ const List<FinnSkill> finnBuiltInSkills = [
     category: 'Development',
     builtIn: true,
   ),
-  FinnSkill(
+  FinnFlow(
     id: 'builtin-learning',
     name: 'Study coach',
     description: 'Explain concepts progressively and test understanding.',
@@ -108,7 +108,7 @@ const List<FinnSkill> finnBuiltInSkills = [
     category: 'Learning',
     builtIn: true,
   ),
-  FinnSkill(
+  FinnFlow(
     id: 'builtin-planning',
     name: 'Thoughtful planner',
     description: 'Turn goals into realistic, ordered next steps.',
@@ -119,27 +119,27 @@ const List<FinnSkill> finnBuiltInSkills = [
   ),
 ];
 
-class SkillsStore extends ChangeNotifier {
-  SkillsStore({this.directoryProvider});
+class FlowsStore extends ChangeNotifier {
+  FlowsStore({this.directoryProvider});
 
-  static final instance = SkillsStore();
+  static final instance = FlowsStore();
 
   @visibleForTesting
   final Future<Directory> Function()? directoryProvider;
-  List<FinnSkill> _skills = List.of(finnBuiltInSkills);
+  List<FinnFlow> _skills = List.of(finnBuiltInFlows);
   bool _initialized = false;
   Future<void>? _initializeJob;
   bool _saving = false;
   Future<void> _writeQueue = Future<void>.value();
   int _pendingWrites = 0;
-  SkillsFailure? _failure;
+  FlowsFailure? _failure;
 
-  List<FinnSkill> get skills => List.unmodifiable(_skills);
-  List<FinnSkill> get enabledSkills =>
-      List.unmodifiable(_skills.where((skill) => skill.enabled));
+  List<FinnFlow> get flows => List.unmodifiable(_skills);
+  List<FinnFlow> get enabledSkills =>
+      List.unmodifiable(_skills.where((flow) => flow.enabled));
   bool get initialized => _initialized;
   bool get saving => _saving;
-  SkillsFailure? get failure => _failure;
+  FlowsFailure? get failure => _failure;
 
   Future<void> initialize() async {
     if (_initialized) return;
@@ -161,28 +161,28 @@ class SkillsStore extends ChangeNotifier {
         final decoded =
             (jsonDecode(await file.readAsString()) as Map<Object?, Object?>)
                 .cast<String, Object?>();
-        final stored = (decoded['skills'] as List<Object?>? ?? const [])
+        final stored = (decoded['flows'] as List<Object?>? ?? const [])
             .map(
-              (item) => FinnSkill.fromJson(
+              (item) => FinnFlow.fromJson(
                 (item as Map<Object?, Object?>).cast<String, Object?>(),
               ),
             )
-            .where((skill) => skill.id.isNotEmpty)
+            .where((flow) => flow.id.isNotEmpty)
             .toList();
-        final storedById = {for (final skill in stored) skill.id: skill};
+        final storedById = {for (final flow in stored) flow.id: flow};
         _skills = [
-          for (final builtIn in finnBuiltInSkills)
+          for (final builtIn in finnBuiltInFlows)
             builtIn.copyWith(
               enabled: storedById[builtIn.id]?.enabled ?? builtIn.enabled,
             ),
-          ...stored.where((skill) => !skill.builtIn),
+          ...stored.where((flow) => !flow.builtIn),
         ];
       }
       _failure = null;
     } catch (error) {
       debugPrint('FINN_SKILLS read failed: $error');
-      _failure = SkillsFailure.load;
-      _skills = List.of(finnBuiltInSkills);
+      _failure = FlowsFailure.load;
+      _skills = List.of(finnBuiltInFlows);
     } finally {
       _initialized = true;
       notifyListeners();
@@ -190,10 +190,10 @@ class SkillsStore extends ChangeNotifier {
   }
 
   Future<bool> setEnabled(String id, bool enabled) async {
-    final index = _skills.indexWhere((skill) => skill.id == id);
+    final index = _skills.indexWhere((flow) => flow.id == id);
     if (index < 0) return false;
     if (enabled && !_skills[index].enabled && enabledSkills.length >= 4) {
-      _failure = SkillsFailure.limit;
+      _failure = FlowsFailure.limit;
       notifyListeners();
       return false;
     }
@@ -216,14 +216,14 @@ class SkillsStore extends ChangeNotifier {
 
     final existingIndex = id == null
         ? -1
-        : _skills.indexWhere((skill) => skill.id == id && !skill.builtIn);
+        : _skills.indexWhere((flow) => flow.id == id && !flow.builtIn);
     final wasEnabled = existingIndex >= 0 && _skills[existingIndex].enabled;
     if (enabled && !wasEnabled && enabledSkills.length >= 4) {
-      _failure = SkillsFailure.limit;
+      _failure = FlowsFailure.limit;
       notifyListeners();
       return false;
     }
-    final skill = FinnSkill(
+    final flow = FinnFlow(
       id: existingIndex >= 0
           ? _skills[existingIndex].id
           : 'custom-${DateTime.now().microsecondsSinceEpoch}',
@@ -237,9 +237,9 @@ class SkillsStore extends ChangeNotifier {
       enabled: enabled,
     );
     if (existingIndex >= 0) {
-      _skills[existingIndex] = skill;
+      _skills[existingIndex] = flow;
     } else {
-      _skills.add(skill);
+      _skills.add(flow);
     }
     notifyListeners();
     return _persist();
@@ -247,7 +247,7 @@ class SkillsStore extends ChangeNotifier {
 
   Future<bool> removeCustom(String id) async {
     final before = _skills.length;
-    _skills.removeWhere((skill) => skill.id == id && !skill.builtIn);
+    _skills.removeWhere((flow) => flow.id == id && !flow.builtIn);
     if (_skills.length == before) return false;
     notifyListeners();
     return _persist();
@@ -257,7 +257,7 @@ class SkillsStore extends ChangeNotifier {
   Future<List<String>> deleteStorage() async {
     await _writeQueue;
     final failures = <String>[];
-    _skills = List.of(finnBuiltInSkills);
+    _skills = List.of(finnBuiltInFlows);
     _failure = null;
     try {
       final file = await _file();
@@ -265,7 +265,7 @@ class SkillsStore extends ChangeNotifier {
       if (await file.exists()) await file.delete();
       if (await temporary.exists()) await temporary.delete();
     } catch (error) {
-      failures.add('Skills ($error)');
+      failures.add('Flows ($error)');
     }
     _initialized = true;
     notifyListeners();
@@ -279,8 +279,8 @@ class SkillsStore extends ChangeNotifier {
 
   String promptContextFor(String prompt) {
     final value = prompt.toLowerCase();
-    final relevant = enabledSkills.where((skill) {
-      final signals = switch (skill.id) {
+    final relevant = enabledSkills.where((flow) {
+      final signals = switch (flow.id) {
         'builtin-writing' => const [
             'write',
             'rewrite',
@@ -315,9 +315,9 @@ class SkillsStore extends ChangeNotifier {
             'programma',
           ],
         _ => [
-            ...skill.name.toLowerCase().split(RegExp(r'\W+')),
-            ...skill.category.toLowerCase().split(RegExp(r'\W+')),
-            ...skill.description.toLowerCase().split(RegExp(r'\W+')),
+            ...flow.name.toLowerCase().split(RegExp(r'\W+')),
+            ...flow.category.toLowerCase().split(RegExp(r'\W+')),
+            ...flow.description.toLowerCase().split(RegExp(r'\W+')),
           ].where((word) => word.length >= 4),
       };
       return signals.any(value.contains);
@@ -325,14 +325,14 @@ class SkillsStore extends ChangeNotifier {
     return _promptContext(relevant);
   }
 
-  String _promptContext(Iterable<FinnSkill> active) {
+  String _promptContext(Iterable<FinnFlow> active) {
     final selected = active.toList(growable: false);
     if (selected.isEmpty) return '';
     final lines = <String>[
-      'Active user-selected skills:',
-      for (final skill in selected)
-        '- ${skill.name}: ${skill.instructions.trim().substring(0, math.min(500, skill.instructions.trim().length))}',
-      'Apply a skill only when it is relevant to the current request. Safety and explicit user requests take priority.',
+      'Active user-selected flows:',
+      for (final flow in selected)
+        '- ${flow.name}: ${flow.instructions.trim().substring(0, math.min(500, flow.instructions.trim().length))}',
+      'Apply a flow only when it is relevant to the current request. Safety and explicit user requests take priority.',
     ];
     return lines.join('\n');
   }
@@ -340,7 +340,7 @@ class SkillsStore extends ChangeNotifier {
   Future<bool> _persist() async {
     final data = {
       'version': 1,
-      'skills': _skills.map((skill) => skill.toJson()).toList(),
+      'flows': _skills.map((flow) => flow.toJson()).toList(),
     };
     final payload = jsonEncode(data);
     final result = Completer<bool>();
@@ -358,7 +358,7 @@ class SkillsStore extends ChangeNotifier {
         result.complete(true);
       } catch (error) {
         debugPrint('FINN_SKILLS save failed: $error');
-        _failure = SkillsFailure.save;
+        _failure = FlowsFailure.save;
         result.complete(false);
       } finally {
         _pendingWrites--;
@@ -374,6 +374,6 @@ class SkillsStore extends ChangeNotifier {
     final directory = directoryProvider != null
         ? await directoryProvider!()
         : await getApplicationSupportDirectory();
-    return File('${directory.path}${Platform.pathSeparator}skills.json');
+    return File('${directory.path}${Platform.pathSeparator}flows.json');
   }
 }

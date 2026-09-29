@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:finn_ai/src/features/skills/skills_store.dart';
+import 'package:finn_ai/src/features/flows/flows_store.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -14,8 +14,8 @@ void main() {
     if (await directory.exists()) await directory.delete(recursive: true);
   });
 
-  test('persists built-in state and custom skills', () async {
-    final store = SkillsStore(directoryProvider: () async => directory);
+  test('persists built-in state and custom flows', () async {
+    final store = FlowsStore(directoryProvider: () async => directory);
     await store.initialize();
 
     expect(store.activePromptContext, isEmpty);
@@ -29,7 +29,7 @@ void main() {
       isTrue,
     );
 
-    final restored = SkillsStore(directoryProvider: () async => directory);
+    final restored = FlowsStore(directoryProvider: () async => directory);
     await restored.initialize();
 
     expect(restored.enabledSkills, hasLength(2));
@@ -42,15 +42,15 @@ void main() {
   });
 
   test('built-ins cannot be removed', () async {
-    final store = SkillsStore(directoryProvider: () async => directory);
+    final store = FlowsStore(directoryProvider: () async => directory);
     await store.initialize();
 
     expect(await store.removeCustom('builtin-writing'), isFalse);
-    expect(store.skills.where((skill) => skill.builtIn), hasLength(4));
+    expect(store.flows.where((flow) => flow.builtIn), hasLength(4));
   });
 
-  test('prompt context includes only skills relevant to the request', () async {
-    final store = SkillsStore(directoryProvider: () async => directory);
+  test('prompt context includes only flows relevant to the request', () async {
+    final store = FlowsStore(directoryProvider: () async => directory);
     await store.initialize();
     await store.setEnabled('builtin-coding', true);
     await store.setEnabled('builtin-writing', true);
@@ -62,11 +62,11 @@ void main() {
     expect(store.promptContextFor('What time is sunset?'), isEmpty);
   });
 
-  test('custom skills respect the four-active limit and prompt cap', () async {
-    final store = SkillsStore(directoryProvider: () async => directory);
+  test('custom flows respect the four-active limit and prompt cap', () async {
+    final store = FlowsStore(directoryProvider: () async => directory);
     await store.initialize();
-    for (final skill in finnBuiltInSkills) {
-      expect(await store.setEnabled(skill.id, true), isTrue);
+    for (final flow in finnBuiltInFlows) {
+      expect(await store.setEnabled(flow.id, true), isTrue);
     }
 
     expect(
@@ -80,25 +80,25 @@ void main() {
     expect(store.enabledSkills, hasLength(4));
     // The store reports a code, not a user-facing sentence, so the page can
     // localize it.
-    expect(store.failure, SkillsFailure.limit);
+    expect(store.failure, FlowsFailure.limit);
   });
 
   test('a failed write is reported as a save failure', () async {
     // A file where the store expects its directory makes the write fail.
     final blocker = File('${directory.path}/blocker');
     await blocker.writeAsString('not a directory');
-    final store = SkillsStore(
+    final store = FlowsStore(
       directoryProvider: () async => Directory(blocker.path),
     );
     await store.initialize();
     expect(store.failure, isNull);
 
     expect(await store.setEnabled('builtin-coding', true), isFalse);
-    expect(store.failure, SkillsFailure.save);
+    expect(store.failure, FlowsFailure.save);
   });
 
-  test('deleteStorage resets skills and removes persisted state', () async {
-    final store = SkillsStore(directoryProvider: () async => directory);
+  test('deleteStorage resets flows and removes persisted state', () async {
+    final store = FlowsStore(directoryProvider: () async => directory);
     await store.initialize();
     await store.setEnabled('builtin-learning', true);
     await store.upsertCustom(
@@ -108,13 +108,13 @@ void main() {
     );
 
     expect(await store.deleteStorage(), isEmpty);
-    expect(store.skills, hasLength(finnBuiltInSkills.length));
+    expect(store.flows, hasLength(finnBuiltInFlows.length));
     expect(store.enabledSkills, isEmpty);
-    expect(File('${directory.path}/skills.json').existsSync(), isFalse);
+    expect(File('${directory.path}/flows.json').existsSync(), isFalse);
 
-    final restored = SkillsStore(directoryProvider: () async => directory);
+    final restored = FlowsStore(directoryProvider: () async => directory);
     await restored.initialize();
-    expect(restored.skills, hasLength(finnBuiltInSkills.length));
+    expect(restored.flows, hasLength(finnBuiltInFlows.length));
     expect(restored.enabledSkills, isEmpty);
   });
 }

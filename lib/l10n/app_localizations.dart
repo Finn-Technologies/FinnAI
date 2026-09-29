@@ -140,6 +140,18 @@ abstract class AppLocalizations {
   /// **'Next'**
   String get commonNext;
 
+  /// Affirmative consent answer
+  ///
+  /// In en, this message translates to:
+  /// **'Yes'**
+  String get commonYes;
+
+  /// Negative consent answer
+  ///
+  /// In en, this message translates to:
+  /// **'No'**
+  String get commonNo;
+
   /// Retry action
   ///
   /// In en, this message translates to:
@@ -182,11 +194,11 @@ abstract class AppLocalizations {
   /// **'Resend'**
   String get commonResend;
 
-  /// Save skill button
+  /// Save flow button
   ///
   /// In en, this message translates to:
-  /// **'Save skill'**
-  String get commonSaveSkill;
+  /// **'Save flow'**
+  String get commonSaveFlow;
 
   /// Keep creating action
   ///
@@ -245,7 +257,7 @@ abstract class AppLocalizations {
   /// Welcome heading
   ///
   /// In en, this message translates to:
-  /// **'Welcome to Finn AI!'**
+  /// **'Welcome to FinnAI'**
   String get onboardingWelcome;
 
   /// Swipe to start hint
@@ -257,14 +269,26 @@ abstract class AppLocalizations {
   /// Privacy page title
   ///
   /// In en, this message translates to:
-  /// **'Finn AI is Privacy-First'**
+  /// **'FinnAI values your privacy'**
   String get onboardingPrivacyTitle;
+
+  ///
+  ///
+  /// In en, this message translates to:
+  /// **'FinnAI takes your privacy at its core.'**
+  String get onboardingPrivacyLead;
 
   /// Privacy page body
   ///
   /// In en, this message translates to:
-  /// **'Finn AI is designed to respect your privacy.\n\nAI processing and conversation history stay on this device. When a request needs fresh information, Finn AI may send only that request as a web search query and will show the sources it used. Your history and personal profile are never included.\n\nFinn AI is proprietary software and is not open source.'**
+  /// **'We do not track or store your data, every request is processed locally on your device. '**
   String get onboardingPrivacyBody;
+
+  ///
+  ///
+  /// In en, this message translates to:
+  /// **'View more on our Privacy Policy.'**
+  String get onboardingPrivacyLink;
 
   /// Precautions title
   ///
@@ -299,14 +323,38 @@ abstract class AppLocalizations {
   /// Install title in progress
   ///
   /// In en, this message translates to:
-  /// **'Installing LFM2.5-VL 1.6B'**
+  /// **'Downloading FinnAI Foundation'**
   String get onboardingInstallTitleInstalling;
 
   /// Install title ready
   ///
   /// In en, this message translates to:
-  /// **'LFM2.5-VL 1.6B ready'**
+  /// **'FinnAI Foundation ready'**
   String get onboardingInstallTitleReady;
+
+  ///
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading the core,'**
+  String get onboardingDownloadLead;
+
+  ///
+  ///
+  /// In en, this message translates to:
+  /// **'please standby.'**
+  String get onboardingDownloadNote;
+
+  ///
+  ///
+  /// In en, this message translates to:
+  /// **'{percent}% done.'**
+  String onboardingProgressPercent(Object percent);
+
+  ///
+  ///
+  /// In en, this message translates to:
+  /// **'minutes remaining.'**
+  String get onboardingProgressEtaTail;
 
   /// Preparing message
   ///
@@ -383,14 +431,38 @@ abstract class AppLocalizations {
   /// Ready title
   ///
   /// In en, this message translates to:
-  /// **'Finn AI is ready!'**
+  /// **'FinnAI is ready!'**
   String get onboardingReadyTitle;
+
+  ///
+  ///
+  /// In en, this message translates to:
+  /// **'FinnAI is ready for use!'**
+  String get onboardingReadyLead;
+
+  ///
+  ///
+  /// In en, this message translates to:
+  /// **'You can now use FinnAI, both online and offline.\nWe hope you enjoy using it!'**
+  String get onboardingReadyBody;
 
   /// Ready subtitle
   ///
   /// In en, this message translates to:
   /// **'You\'re all set. Finn AI is ready.'**
   String get onboardingReadySubtitle;
+
+  /// Consent step question
+  ///
+  /// In en, this message translates to:
+  /// **'Do you allow FinnAI to get context on your device?'**
+  String get onboardingConsentTitle;
+
+  /// Final onboarding button
+  ///
+  /// In en, this message translates to:
+  /// **'Start using FinnAI'**
+  String get onboardingStartUsing;
 
   /// You label on final page
   ///
@@ -407,7 +479,7 @@ abstract class AppLocalizations {
   /// Chat history header
   ///
   /// In en, this message translates to:
-  /// **'Chat History'**
+  /// **'Chats'**
   String get chatHistory;
 
   /// Empty history
@@ -572,6 +644,18 @@ abstract class AppLocalizations {
   /// **'Settings'**
   String get settingsTitle;
 
+  /// Settings row title for on-device context
+  ///
+  /// In en, this message translates to:
+  /// **'On-device context'**
+  String get settingsContextTitle;
+
+  /// Settings row subtitle for on-device context
+  ///
+  /// In en, this message translates to:
+  /// **'Let FinnAI use context from this device'**
+  String get settingsContextSubtitle;
+
   /// AI model section
   ///
   /// In en, this message translates to:
@@ -695,7 +779,7 @@ abstract class AppLocalizations {
   /// Delete all body
   ///
   /// In en, this message translates to:
-  /// **'This permanently deletes encrypted conversations and keys, downloaded AI models, creations, profile preferences, skills, and onboarding state. FinnAI will return to a clean first run.'**
+  /// **'This permanently deletes encrypted conversations and keys, downloaded AI models, creations, profile preferences, flows, and onboarding state. FinnAI will return to a clean first run.'**
   String get settingsDeleteAllDataBody;
 
   /// Deleting progress
@@ -847,6 +931,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Talk to Finn'**
   String get voiceMicSemantic;
+
+  /// Dismiss the inline voice session
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel voice input'**
+  String get voiceCancelSemantic;
+
+  /// Accessibility label for expanding inline voice
+  ///
+  /// In en, this message translates to:
+  /// **'Open full voice mode'**
+  String get voiceExpandSemantic;
 
   /// Voice sheet listening state
   ///
@@ -1016,83 +1112,65 @@ abstract class AppLocalizations {
   /// **'Could not save changes.'**
   String get youSaveFailed;
 
-  /// Skills title
+  /// Flows title
   ///
   /// In en, this message translates to:
-  /// **'Skills'**
-  String get skillsTitle;
+  /// **'Flows'**
+  String get flowsTitle;
 
-  /// Skills subtitle
+  /// Flows subtitle
   ///
   /// In en, this message translates to:
-  /// **'{count} available · skills guide relevant replies'**
-  String skillsSubtitle(int count);
+  /// **'{count} available · flows guide relevant replies'**
+  String flowsSubtitle(int count);
 
-  /// New skill
+  /// New flow
   ///
   /// In en, this message translates to:
-  /// **'New skill'**
-  String get skillsNewSkill;
+  /// **'New flow'**
+  String get flowsNewSkill;
 
-  /// Empty skills
+  /// Empty flows
   ///
   /// In en, this message translates to:
-  /// **'No custom skills yet. Create one for a workflow you repeat.'**
-  String get skillsNoSkills;
+  /// **'No custom flows yet. Create one for a workflow you repeat.'**
+  String get flowsNoSkills;
 
   /// Instruction hint
   ///
   /// In en, this message translates to:
   /// **'Write a reusable instruction Finn should apply when relevant.'**
-  String get skillsInstructionHint;
+  String get flowsInstructionHint;
 
-  /// Delete skill title
+  /// Delete flow title
   ///
   /// In en, this message translates to:
-  /// **'Delete this skill?'**
-  String get skillsDeleteTitle;
+  /// **'Delete this flow?'**
+  String get flowsDeleteTitle;
 
   /// Delete body
   ///
   /// In en, this message translates to:
   /// **'“{name}” will be removed from this device.'**
-  String skillsDeleteBody(String name);
+  String flowsDeleteBody(String name);
 
   /// Limit
   ///
   /// In en, this message translates to:
-  /// **'Skill limit reached (4). Delete one to add another.'**
-  String get skillsLimitReached;
+  /// **'Flow limit reached (4). Delete one to add another.'**
+  String get flowsLimitReached;
 
   /// Name label
   ///
   /// In en, this message translates to:
-  /// **'Skill name'**
-  String get skillsNameLabel;
+  /// **'Flow name'**
+  String get flowsNameLabel;
 
   /// Instruction label
   ///
   /// In en, this message translates to:
   /// **'Instruction'**
-  String get skillsInstructionLabel;
-
-  /// Tooltip on the browse toggle in the composer
-  ///
-  /// In en, this message translates to:
-  /// **'Browse the web for this message'**
-  String get chatBrowseTooltip;
-
-  /// Accessibility label when browsing is enabled
-  ///
-  /// In en, this message translates to:
-  /// **'Web browsing on'**
-  String get chatBrowseOnSemantic;
-
-  /// Accessibility label when browsing is disabled
-  ///
-  /// In en, this message translates to:
-  /// **'Web browsing off'**
-  String get chatBrowseOffSemantic;
+  String get flowsInstructionLabel;
 
   /// Header of the live browser activity panel
   ///
@@ -1316,47 +1394,47 @@ abstract class AppLocalizations {
   /// **'Presentations'**
   String get creationsFilterPresentations;
 
-  /// No description provided for @skillsSaveFailed.
+  /// No description provided for @flowsSaveFailed.
   ///
   /// In en, this message translates to:
-  /// **'That skill could not be saved.'**
-  String get skillsSaveFailed;
+  /// **'That flow could not be saved.'**
+  String get flowsSaveFailed;
 
-  /// No description provided for @skillsBuiltForFinn.
+  /// No description provided for @flowsBuiltForFinn.
   ///
   /// In en, this message translates to:
   /// **'Built for Finn'**
-  String get skillsBuiltForFinn;
+  String get flowsBuiltForFinn;
 
-  /// No description provided for @skillsBuiltForFinnSubtitle.
+  /// No description provided for @flowsBuiltForFinnSubtitle.
   ///
   /// In en, this message translates to:
   /// **'Enable only what you need for each kind of work.'**
-  String get skillsBuiltForFinnSubtitle;
+  String get flowsBuiltForFinnSubtitle;
 
-  /// No description provided for @skillsYourSkills.
+  /// No description provided for @flowsYourSkills.
   ///
   /// In en, this message translates to:
-  /// **'Your skills'**
-  String get skillsYourSkills;
+  /// **'Your flows'**
+  String get flowsYourSkills;
 
-  /// No description provided for @skillsYourSkillsSubtitle.
+  /// No description provided for @flowsYourSkillsSubtitle.
   ///
   /// In en, this message translates to:
   /// **'Create reusable instructions for your own workflows.'**
-  String get skillsYourSkillsSubtitle;
+  String get flowsYourSkillsSubtitle;
 
-  /// No description provided for @skillsNoneActive.
+  /// No description provided for @flowsNoneActive.
   ///
   /// In en, this message translates to:
-  /// **'No skills active'**
-  String get skillsNoneActive;
+  /// **'No flows active'**
+  String get flowsNoneActive;
 
   /// Summary active count
   ///
   /// In en, this message translates to:
   /// **'{count} active'**
-  String skillsActiveCount(int count);
+  String flowsActiveCount(int count);
 
   /// Confirmation when the export was handed to the share sheet
   ///
@@ -1712,6 +1790,12 @@ abstract class AppLocalizations {
   /// **'Regenerate'**
   String get chatRegenerate;
 
+  /// Tooltip for the reply overflow menu
+  ///
+  /// In en, this message translates to:
+  /// **'More actions'**
+  String get chatMoreActions;
+
   /// Sources list semantics collapsed
   ///
   /// In en, this message translates to:
@@ -1735,6 +1819,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Ask anything'**
   String get chatAskAnythingHint;
+
+  /// Empty chat greeting
+  ///
+  /// In en, this message translates to:
+  /// **'Hi, what\'s on your mind?'**
+  String get chatGreeting;
+
+  ///
+  ///
+  /// In en, this message translates to:
+  /// **'What\'s up?'**
+  String get voiceGreeting;
 
   /// Composer field semantics
   ///
@@ -1850,89 +1946,89 @@ abstract class AppLocalizations {
   /// **'Describe a creation'**
   String get creationsDescribeHint;
 
-  /// Skill card menu tooltip
+  /// Flow card menu tooltip
   ///
   /// In en, this message translates to:
-  /// **'Skill actions'**
-  String get skillsActionsTooltip;
+  /// **'Flow actions'**
+  String get flowsActionsTooltip;
 
-  /// Skill toggle semantics
+  /// Flow toggle semantics
   ///
   /// In en, this message translates to:
-  /// **'{name} skill'**
-  String skillsNameSemantic(String name);
+  /// **'{name} flow'**
+  String flowsNameSemantic(String name);
 
-  /// Editor title for an existing skill
+  /// Editor title for an existing flow
   ///
   /// In en, this message translates to:
-  /// **'Edit skill'**
-  String get skillsEditTitle;
+  /// **'Edit flow'**
+  String get flowsEditTitle;
 
   /// Editor field label
   ///
   /// In en, this message translates to:
   /// **'Name'**
-  String get skillsEditorName;
+  String get flowsEditorName;
 
   /// Editor field hint
   ///
   /// In en, this message translates to:
-  /// **'What does this skill do?'**
-  String get skillsEditorNameHint;
+  /// **'What does this flow do?'**
+  String get flowsEditorNameHint;
 
   /// Editor field label
   ///
   /// In en, this message translates to:
   /// **'Short description'**
-  String get skillsEditorDescription;
+  String get flowsEditorDescription;
 
   /// Editor field hint
   ///
   /// In en, this message translates to:
   /// **'A quick reminder for you'**
-  String get skillsEditorDescriptionHint;
+  String get flowsEditorDescriptionHint;
 
   /// Editor field label
   ///
   /// In en, this message translates to:
   /// **'Instructions'**
-  String get skillsEditorInstructions;
+  String get flowsEditorInstructions;
 
   /// Editor field hint
   ///
   /// In en, this message translates to:
   /// **'Tell Finn how to approach this kind of task'**
-  String get skillsEditorInstructionsHint;
+  String get flowsEditorInstructionsHint;
 
-  /// Skill category label
+  /// Flow category label
   ///
   /// In en, this message translates to:
   /// **'Writing'**
-  String get skillsCategoryWriting;
+  String get flowsCategoryWriting;
 
-  /// Skill category label
+  /// Flow category label
   ///
   /// In en, this message translates to:
   /// **'Development'**
-  String get skillsCategoryDevelopment;
+  String get flowsCategoryDevelopment;
 
-  /// Skill category label
+  /// Flow category label
   ///
   /// In en, this message translates to:
   /// **'Learning'**
-  String get skillsCategoryLearning;
+  String get flowsCategoryLearning;
 
-  /// Skill category label
+  /// Flow category label
   ///
   /// In en, this message translates to:
   /// **'Planning'**
-  String get skillsCategoryPlanning;
+  String get flowsCategoryPlanning;
 
-  /// Skill category label
+  /// Flow category label
   ///
   /// In en, this message translates to:
   /// **'Custom'**
-  String get skillsCategoryCustom;
+  String get flowsCategoryCustom;
 
   /// Name field hint
   ///

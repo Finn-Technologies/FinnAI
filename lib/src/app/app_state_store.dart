@@ -6,7 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:finn_ai/src/features/conversations/conversation_store.dart';
 import 'package:finn_ai/src/features/creations/creation_store.dart';
 import 'package:finn_ai/src/inference/finn_inference.dart';
-import 'package:finn_ai/src/features/skills/skills_store.dart';
+import 'package:finn_ai/src/features/flows/flows_store.dart';
 import 'package:finn_ai/src/features/voice/voice_settings_store.dart';
 import 'package:finn_ai/src/features/you/you_profile_store.dart';
 
@@ -58,7 +58,7 @@ class AppStateStore extends ChangeNotifier {
     FinnInference? qwenInference,
     CreationStore? creationStore,
     YouProfileStore? youProfileStore,
-    SkillsStore? skillsStore,
+    FlowsStore? flowsStore,
     VoiceSettingsStore? voiceSettingsStore,
   }) async {
     final deleted = <String>[];
@@ -132,15 +132,15 @@ class AppStateStore extends ChangeNotifier {
       failed.addAll(profileFailures);
     }
 
-    final skillTarget = skillsStore ??
+    final flowTarget = flowsStore ??
         (_directoryProvider == null
-            ? SkillsStore.instance
-            : SkillsStore(directoryProvider: _directoryProvider));
-    final skillFailures = await skillTarget.deleteStorage();
-    if (skillFailures.isEmpty) {
-      deleted.add('Skills');
+            ? FlowsStore.instance
+            : FlowsStore(directoryProvider: _directoryProvider));
+    final flowFailures = await flowTarget.deleteStorage();
+    if (flowFailures.isEmpty) {
+      deleted.add('Flows');
     } else {
-      failed.addAll(skillFailures);
+      failed.addAll(flowFailures);
     }
 
     final voiceTarget = voiceSettingsStore ??

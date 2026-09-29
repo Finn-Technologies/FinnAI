@@ -52,16 +52,18 @@ const Map<String, String> _identicalAllowlist = {
   'settingsActionsRow': 'cognate (fr)',
   'attachmentPhotos': 'cognate (fr)',
   'chatSources': 'cognate (fr)',
-  'skillsEditorInstructions': 'cognate (fr)',
-  'skillsEditorName': 'cognate (de)',
-  'skillsInstructionLabel': 'cognate (fr)',
+  'flowsEditorInstructions': 'cognate (fr)',
+  'flowsEditorName': 'cognate (de)',
+  'flowsInstructionLabel': 'cognate (fr)',
   'youNameLabel': 'cognate (de)',
-  'skillsTitle': 'feature name loanword',
+  'flowsTitle': 'feature name loanword',
+  'chatHistory': 'loanword (de/es/fr/it)',
   'creationsKindApp': 'loanword',
   'creationsKindWidget': 'loanword',
   'creationsFilterApps': 'loanword',
   'creationsFilterWidgets': 'loanword',
   'onboardingInstallProgressStatus': 'placeholder-only template',
+  'commonNo': 'cognate (es/it)',
 };
 
 void main() {

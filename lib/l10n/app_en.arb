@@ -24,6 +24,14 @@
   "@commonNext": {
     "description": "Next button"
   },
+  "commonYes": "Yes",
+  "@commonYes": {
+    "description": "Affirmative consent answer"
+  },
+  "commonNo": "No",
+  "@commonNo": {
+    "description": "Negative consent answer"
+  },
   "commonRetry": "Retry",
   "@commonRetry": {
     "description": "Retry action"
@@ -52,9 +60,9 @@
   "@commonResend": {
     "description": "Resend action"
   },
-  "commonSaveSkill": "Save skill",
-  "@commonSaveSkill": {
-    "description": "Save skill button"
+  "commonSaveFlow": "Save flow",
+  "@commonSaveFlow": {
+    "description": "Save flow button"
   },
   "commonKeepCreating": "Keep creating",
   "@commonKeepCreating": {
@@ -92,7 +100,7 @@
   "@unsupportedBody": {
     "description": "Unsupported device body"
   },
-  "onboardingWelcome": "Welcome to Finn AI!",
+  "onboardingWelcome": "Welcome to FinnAI",
   "@onboardingWelcome": {
     "description": "Welcome heading"
   },
@@ -100,13 +108,21 @@
   "@onboardingSwipeToStart": {
     "description": "Swipe to start hint"
   },
-  "onboardingPrivacyTitle": "Finn AI is Privacy-First",
+  "onboardingPrivacyTitle": "FinnAI values your privacy",
   "@onboardingPrivacyTitle": {
     "description": "Privacy page title"
   },
-  "onboardingPrivacyBody": "Finn AI is designed to respect your privacy.\n\nAI processing and conversation history stay on this device. When a request needs fresh information, Finn AI may send only that request as a web search query and will show the sources it used. Your history and personal profile are never included.\n\nFinn AI is proprietary software and is not open source.",
+  "onboardingPrivacyLead": "FinnAI takes your privacy at its core.",
+  "@onboardingPrivacyLead": {
+    "description": ""
+  },
+  "onboardingPrivacyBody": "We do not track or store your data, every request is processed locally on your device. ",
   "@onboardingPrivacyBody": {
     "description": "Privacy page body"
+  },
+  "onboardingPrivacyLink": "View more on our Privacy Policy.",
+  "@onboardingPrivacyLink": {
+    "description": ""
   },
   "onboardingPrecautionsTitle": "Before starting, read precautions",
   "@onboardingPrecautionsTitle": {
@@ -128,13 +144,29 @@
   "@onboardingPrecautionFour": {
     "description": "Precaution 4"
   },
-  "onboardingInstallTitleInstalling": "Installing LFM2.5-VL 1.6B",
+  "onboardingInstallTitleInstalling": "Downloading FinnAI Foundation",
   "@onboardingInstallTitleInstalling": {
     "description": "Install title in progress"
   },
-  "onboardingInstallTitleReady": "LFM2.5-VL 1.6B ready",
+  "onboardingInstallTitleReady": "FinnAI Foundation ready",
   "@onboardingInstallTitleReady": {
     "description": "Install title ready"
+  },
+  "onboardingDownloadLead": "Downloading the core,",
+  "@onboardingDownloadLead": {
+    "description": ""
+  },
+  "onboardingDownloadNote": "please standby.",
+  "@onboardingDownloadNote": {
+    "description": ""
+  },
+  "onboardingProgressPercent": "{percent}% done.",
+  "@onboardingProgressPercent": {
+    "description": ""
+  },
+  "onboardingProgressEtaTail": "minutes remaining.",
+  "@onboardingProgressEtaTail": {
+    "description": ""
   },
   "onboardingInstallPreparing": "Preparing LFM2.5-VL 1.6B for this device…",
   "@onboardingInstallPreparing": {
@@ -213,13 +245,29 @@
   "@onboardingUpgradeBody": {
     "description": "Upgrade body"
   },
-  "onboardingReadyTitle": "Finn AI is ready!",
+  "onboardingReadyTitle": "FinnAI is ready!",
   "@onboardingReadyTitle": {
     "description": "Ready title"
+  },
+  "onboardingReadyLead": "FinnAI is ready for use!",
+  "@onboardingReadyLead": {
+    "description": ""
+  },
+  "onboardingReadyBody": "You can now use FinnAI, both online and offline.\nWe hope you enjoy using it!",
+  "@onboardingReadyBody": {
+    "description": ""
   },
   "onboardingReadySubtitle": "You're all set. Finn AI is ready.",
   "@onboardingReadySubtitle": {
     "description": "Ready subtitle"
+  },
+  "onboardingConsentTitle": "Do you allow FinnAI to get context on your device?",
+  "@onboardingConsentTitle": {
+    "description": "Consent step question"
+  },
+  "onboardingStartUsing": "Start using FinnAI",
+  "@onboardingStartUsing": {
+    "description": "Final onboarding button"
   },
   "onboardingYouLabel": "You",
   "@onboardingYouLabel": {
@@ -229,7 +277,7 @@
   "@chatNewChat": {
     "description": "New chat button"
   },
-  "chatHistory": "Chat History",
+  "chatHistory": "Chats",
   "@chatHistory": {
     "description": "Chat history header"
   },
@@ -356,6 +404,14 @@
   "@settingsTitle": {
     "description": "Settings title"
   },
+  "settingsContextTitle": "On-device context",
+  "@settingsContextTitle": {
+    "description": "Settings row title for on-device context"
+  },
+  "settingsContextSubtitle": "Let FinnAI use context from this device",
+  "@settingsContextSubtitle": {
+    "description": "Settings row subtitle for on-device context"
+  },
   "settingsAiModel": "AI MODEL",
   "@settingsAiModel": {
     "description": "AI model section"
@@ -441,7 +497,7 @@
   "@settingsDeleteAllDataTitle": {
     "description": "Delete all title"
   },
-  "settingsDeleteAllDataBody": "This permanently deletes encrypted conversations and keys, downloaded AI models, creations, profile preferences, skills, and onboarding state. FinnAI will return to a clean first run.",
+  "settingsDeleteAllDataBody": "This permanently deletes encrypted conversations and keys, downloaded AI models, creations, profile preferences, flows, and onboarding state. FinnAI will return to a clean first run.",
   "@settingsDeleteAllDataBody": {
     "description": "Delete all body"
   },
@@ -570,6 +626,14 @@
   "@voiceMicSemantic": {
     "description": "Mic button semantics"
   },
+  "voiceCancelSemantic": "Cancel voice input",
+  "@voiceCancelSemantic": {
+    "description": "Dismiss the inline voice session"
+  },
+  "voiceExpandSemantic": "Open full voice mode",
+  "@voiceExpandSemantic": {
+    "description": "Accessibility label for expanding inline voice"
+  },
   "voiceListening": "Listening…",
   "@voiceListening": {
     "description": "Voice sheet listening state"
@@ -682,37 +746,37 @@
   "@youSaveFailed": {
     "description": "Save failed"
   },
-  "skillsTitle": "Skills",
-  "@skillsTitle": {
-    "description": "Skills title"
+  "flowsTitle": "Flows",
+  "@flowsTitle": {
+    "description": "Flows title"
   },
-  "skillsSubtitle": "{count} available · skills guide relevant replies",
-  "@skillsSubtitle": {
-    "description": "Skills subtitle",
+  "flowsSubtitle": "{count} available · flows guide relevant replies",
+  "@flowsSubtitle": {
+    "description": "Flows subtitle",
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "skillsNewSkill": "New skill",
-  "@skillsNewSkill": {
-    "description": "New skill"
+  "flowsNewSkill": "New flow",
+  "@flowsNewSkill": {
+    "description": "New flow"
   },
-  "skillsNoSkills": "No custom skills yet. Create one for a workflow you repeat.",
-  "@skillsNoSkills": {
-    "description": "Empty skills"
+  "flowsNoSkills": "No custom flows yet. Create one for a workflow you repeat.",
+  "@flowsNoSkills": {
+    "description": "Empty flows"
   },
-  "skillsInstructionHint": "Write a reusable instruction Finn should apply when relevant.",
-  "@skillsInstructionHint": {
+  "flowsInstructionHint": "Write a reusable instruction Finn should apply when relevant.",
+  "@flowsInstructionHint": {
     "description": "Instruction hint"
   },
-  "skillsDeleteTitle": "Delete this skill?",
-  "@skillsDeleteTitle": {
-    "description": "Delete skill title"
+  "flowsDeleteTitle": "Delete this flow?",
+  "@flowsDeleteTitle": {
+    "description": "Delete flow title"
   },
-  "skillsDeleteBody": "“{name}” will be removed from this device.",
-  "@skillsDeleteBody": {
+  "flowsDeleteBody": "“{name}” will be removed from this device.",
+  "@flowsDeleteBody": {
     "description": "Delete body",
     "placeholders": {
       "name": {
@@ -720,29 +784,17 @@
       }
     }
   },
-  "skillsLimitReached": "Skill limit reached (4). Delete one to add another.",
-  "@skillsLimitReached": {
+  "flowsLimitReached": "Flow limit reached (4). Delete one to add another.",
+  "@flowsLimitReached": {
     "description": "Limit"
   },
-  "skillsNameLabel": "Skill name",
-  "@skillsNameLabel": {
+  "flowsNameLabel": "Flow name",
+  "@flowsNameLabel": {
     "description": "Name label"
   },
-  "skillsInstructionLabel": "Instruction",
-  "@skillsInstructionLabel": {
+  "flowsInstructionLabel": "Instruction",
+  "@flowsInstructionLabel": {
     "description": "Instruction label"
-  },
-  "chatBrowseTooltip": "Browse the web for this message",
-  "@chatBrowseTooltip": {
-    "description": "Tooltip on the browse toggle in the composer"
-  },
-  "chatBrowseOnSemantic": "Web browsing on",
-  "@chatBrowseOnSemantic": {
-    "description": "Accessibility label when browsing is enabled"
-  },
-  "chatBrowseOffSemantic": "Web browsing off",
-  "@chatBrowseOffSemantic": {
-    "description": "Accessibility label when browsing is disabled"
   },
   "chatBrowsingTitle": "Browsing the web",
   "@chatBrowsingTitle": {
@@ -883,14 +935,14 @@
   "creationsFilterApps": "Apps",
   "creationsFilterWidgets": "Widgets",
   "creationsFilterPresentations": "Presentations",
-  "skillsSaveFailed": "That skill could not be saved.",
-  "skillsBuiltForFinn": "Built for Finn",
-  "skillsBuiltForFinnSubtitle": "Enable only what you need for each kind of work.",
-  "skillsYourSkills": "Your skills",
-  "skillsYourSkillsSubtitle": "Create reusable instructions for your own workflows.",
-  "skillsNoneActive": "No skills active",
-  "skillsActiveCount": "{count} active",
-  "@skillsActiveCount": {
+  "flowsSaveFailed": "That flow could not be saved.",
+  "flowsBuiltForFinn": "Built for Finn",
+  "flowsBuiltForFinnSubtitle": "Enable only what you need for each kind of work.",
+  "flowsYourSkills": "Your flows",
+  "flowsYourSkillsSubtitle": "Create reusable instructions for your own workflows.",
+  "flowsNoneActive": "No flows active",
+  "flowsActiveCount": "{count} active",
+  "@flowsActiveCount": {
     "description": "Summary active count",
     "placeholders": {
       "count": {
@@ -1162,6 +1214,10 @@
   "@chatRegenerate": {
     "description": "Reply action tooltip"
   },
+  "chatMoreActions": "More actions",
+  "@chatMoreActions": {
+    "description": "Tooltip for the reply overflow menu"
+  },
   "chatHideSources": "Hide sources",
   "@chatHideSources": {
     "description": "Sources list semantics collapsed"
@@ -1177,6 +1233,14 @@
   "chatAskAnythingHint": "Ask anything",
   "@chatAskAnythingHint": {
     "description": "Composer hint"
+  },
+  "chatGreeting": "Hi, what's on your mind?",
+  "@chatGreeting": {
+    "description": "Empty chat greeting"
+  },
+  "voiceGreeting": "What's up?",
+  "@voiceGreeting": {
+    "description": ""
   },
   "chatMessageToFinnSemantic": "Message to Finn",
   "@chatMessageToFinnSemantic": {
@@ -1259,66 +1323,66 @@
   "@creationsDescribeHint": {
     "description": "Composer hint"
   },
-  "skillsActionsTooltip": "Skill actions",
-  "@skillsActionsTooltip": {
-    "description": "Skill card menu tooltip"
+  "flowsActionsTooltip": "Flow actions",
+  "@flowsActionsTooltip": {
+    "description": "Flow card menu tooltip"
   },
-  "skillsNameSemantic": "{name} skill",
-  "@skillsNameSemantic": {
-    "description": "Skill toggle semantics",
+  "flowsNameSemantic": "{name} flow",
+  "@flowsNameSemantic": {
+    "description": "Flow toggle semantics",
     "placeholders": {
       "name": {
         "type": "String"
       }
     }
   },
-  "skillsEditTitle": "Edit skill",
-  "@skillsEditTitle": {
-    "description": "Editor title for an existing skill"
+  "flowsEditTitle": "Edit flow",
+  "@flowsEditTitle": {
+    "description": "Editor title for an existing flow"
   },
-  "skillsEditorName": "Name",
-  "@skillsEditorName": {
+  "flowsEditorName": "Name",
+  "@flowsEditorName": {
     "description": "Editor field label"
   },
-  "skillsEditorNameHint": "What does this skill do?",
-  "@skillsEditorNameHint": {
+  "flowsEditorNameHint": "What does this flow do?",
+  "@flowsEditorNameHint": {
     "description": "Editor field hint"
   },
-  "skillsEditorDescription": "Short description",
-  "@skillsEditorDescription": {
+  "flowsEditorDescription": "Short description",
+  "@flowsEditorDescription": {
     "description": "Editor field label"
   },
-  "skillsEditorDescriptionHint": "A quick reminder for you",
-  "@skillsEditorDescriptionHint": {
+  "flowsEditorDescriptionHint": "A quick reminder for you",
+  "@flowsEditorDescriptionHint": {
     "description": "Editor field hint"
   },
-  "skillsEditorInstructions": "Instructions",
-  "@skillsEditorInstructions": {
+  "flowsEditorInstructions": "Instructions",
+  "@flowsEditorInstructions": {
     "description": "Editor field label"
   },
-  "skillsEditorInstructionsHint": "Tell Finn how to approach this kind of task",
-  "@skillsEditorInstructionsHint": {
+  "flowsEditorInstructionsHint": "Tell Finn how to approach this kind of task",
+  "@flowsEditorInstructionsHint": {
     "description": "Editor field hint"
   },
-  "skillsCategoryWriting": "Writing",
-  "@skillsCategoryWriting": {
-    "description": "Skill category label"
+  "flowsCategoryWriting": "Writing",
+  "@flowsCategoryWriting": {
+    "description": "Flow category label"
   },
-  "skillsCategoryDevelopment": "Development",
-  "@skillsCategoryDevelopment": {
-    "description": "Skill category label"
+  "flowsCategoryDevelopment": "Development",
+  "@flowsCategoryDevelopment": {
+    "description": "Flow category label"
   },
-  "skillsCategoryLearning": "Learning",
-  "@skillsCategoryLearning": {
-    "description": "Skill category label"
+  "flowsCategoryLearning": "Learning",
+  "@flowsCategoryLearning": {
+    "description": "Flow category label"
   },
-  "skillsCategoryPlanning": "Planning",
-  "@skillsCategoryPlanning": {
-    "description": "Skill category label"
+  "flowsCategoryPlanning": "Planning",
+  "@flowsCategoryPlanning": {
+    "description": "Flow category label"
   },
-  "skillsCategoryCustom": "Custom",
-  "@skillsCategoryCustom": {
-    "description": "Skill category label"
+  "flowsCategoryCustom": "Custom",
+  "@flowsCategoryCustom": {
+    "description": "Flow category label"
   },
   "youNamePlaceholder": "Preferred name",
   "@youNamePlaceholder": {
