@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'package:finn_ai/src/features/actions/action_audit_store.dart';
 import 'package:finn_ai/src/features/conversations/conversation_store.dart';
 import 'package:finn_ai/src/features/creations/creation_store.dart';
 import 'package:finn_ai/src/inference/finn_inference.dart';
@@ -60,6 +61,7 @@ class AppStateStore extends ChangeNotifier {
     YouProfileStore? youProfileStore,
     FlowsStore? flowsStore,
     VoiceSettingsStore? voiceSettingsStore,
+    ActionAuditStore? actionAuditStore,
   }) async {
     final deleted = <String>[];
     final nonExistent = <String>[];
@@ -153,6 +155,15 @@ class AppStateStore extends ChangeNotifier {
     } else {
       failed.addAll(voiceFailures);
     }
+
+    // The audit log names what the app did on the phone; it goes with the rest.
+    // `deleteAll` swallows its own IO errors, so there is no failure to report.
+    await (actionAuditStore ??
+            (_directoryProvider == null
+                ? ActionAuditStore.instance
+                : ActionAuditStore(directoryProvider: _directoryProvider)))
+        .deleteAll();
+    deleted.add('Action log');
 
     notifyListeners();
 

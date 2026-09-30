@@ -22,6 +22,7 @@ import 'package:finn_ai/src/inference/residency_policy.dart';
 import 'package:finn_ai/src/features/reporting/report_dialog.dart';
 import 'package:finn_ai/src/features/search/search_agent.dart';
 import 'package:finn_ai/src/features/search/web_search_service.dart';
+import 'package:finn_ai/src/features/actions/action_audit_store.dart';
 import 'package:finn_ai/src/features/actions/chat_device_actions.dart';
 import 'package:finn_ai/src/features/actions/device_action.dart';
 import 'package:finn_ai/src/features/actions/device_action_descriptions.dart';
@@ -691,6 +692,12 @@ class _HomeShellState extends State<HomeShell>
     final conversation = _conversations.active;
     if (invocation == null || conversation == null) return;
     final result = await _deviceActions.run(invocation);
+    // The audit entry is written whatever happened: an action that failed is
+    // exactly as much a fact about the phone as one that worked, and the log
+    // is the only place that fact outlives the message.
+    unawaited(
+      ActionAuditStore.instance.recordRan(invocation, result, source: 'chat'),
+    );
     if (!mounted) return;
     _conversations.updateMessageInConversation(
       conversation.id,
@@ -705,6 +712,15 @@ class _HomeShellState extends State<HomeShell>
   void _dismissPendingAction(ConversationMessage message) {
     final conversation = _conversations.active;
     if (conversation == null) return;
+    // A refusal is recorded too, and it is the more important half of the
+    // log: an action the user declined is exactly the one they would want to
+    // know about later.
+    final refused = message.pendingAction;
+    if (refused != null) {
+      unawaited(
+        ActionAuditStore.instance.recordRefused(refused, source: 'chat'),
+      );
+    }
     _conversations.updateMessageInConversation(
       conversation.id,
       message.id,
