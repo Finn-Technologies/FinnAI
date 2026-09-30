@@ -203,7 +203,7 @@ Verified: `dart format` clean, engine seam OK, boundaries OK, `flutter analyze -
 **834 tests**. Device: three eval runs on the Xiaomi (see RESULTS v2).
 
 Known gaps to carry forward: searching turns cost 8-12 s TTFT; an empty reply after the retry
-still deletes the bubble silently (the target is an explicit retry state); check pass rate is
+now shows an error bubble with Retry (host-tested; not seen on a device); check pass rate is
 65-75% (verbosity); the voice and Flows device runs are still unverified.
 
 ### 2026-09-30 — Milestones 4-8: Phases 1, 2, 3, 4, 5 merged; Phase 6 started

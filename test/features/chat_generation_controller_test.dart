@@ -86,6 +86,34 @@ void main() {
   });
 
   test(
+      'a reply that finishes with nothing is an error with a retry, not a '
+      'silent deletion', () async {
+    final conversation = store.startNew();
+    await controller.start(
+      conversationId: conversation.id,
+      prompt: 'Hello!',
+      history: const [],
+      systemContext: '',
+    );
+    await runtime.finish(GenerationFinishReason.eos);
+    await _waitUntil(() => !controller.busy);
+
+    expect(controller.job?.state, ChatGenerationState.error);
+    expect(
+      controller.job?.errorMessage,
+      ChatGenerationController.emptyReplyError,
+    );
+    // The bubble is not left behind empty: only the user's own message remains.
+    expect(
+      store
+          .conversationById(conversation.id)!
+          .messages
+          .where((m) => m.role == ConversationRole.assistant),
+      isEmpty,
+    );
+  });
+
+  test(
     'Stop invalidates late tokens, preserves partial text, and is idempotent',
     () async {
       final conversation = store.startNew();

@@ -9,7 +9,7 @@ feature settings -> onboarding
 feature settings -> voice
 size lib/src/engine/adaptive/adaptive.dart 660
 size lib/src/engine/eval/eval_baseline.dart 617
-size lib/src/features/chat/chat_generation_controller.dart 1088
+size lib/src/features/chat/chat_generation_controller.dart 919
 size lib/src/features/chat/widgets/composer.dart 648
 size lib/src/features/conversations/conversation_store.dart 1731
 size lib/src/features/creations/creations_page.dart 1832

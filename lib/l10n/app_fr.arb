@@ -369,6 +369,7 @@
   "@chatCouldNotPrepare": {
     "description": "Prepare error"
   },
+  "chatEmptyReply": "Finn n’a pas trouvé de réponse cette fois. Touchez « Réessayer » pour reposer la question.",
   "chatGeneratingIn": "Génération dans {title}",
   "@chatGeneratingIn": {
     "description": "Generating in creation",

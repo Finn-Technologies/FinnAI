@@ -8,195 +8,18 @@ import 'package:finn_ai/src/inference/prompt_intent.dart';
 import 'package:finn_ai/src/inference/ttft_metrics.dart';
 import 'package:finn_ai/src/features/search/web_search_service.dart';
 
-enum ChatGenerationState { preparing, generating, stopping, complete, error }
+import 'package:finn_ai/src/features/chat/chat_generation_job.dart';
+import 'package:finn_ai/src/features/chat/chat_inference_runtime.dart';
 
-@immutable
-class ChatGenerationJob {
-  const ChatGenerationJob({
-    required this.generationId,
-    required this.conversationId,
-    required this.assistantMessageId,
-    required this.originalPrompt,
-    required this.modelName,
-    required this.state,
-    required this.responseText,
-    required this.startedAt,
-    required this.cancellationRequested,
-    required this.continuationCount,
-    required this.epoch,
-    this.finishReason,
-    this.errorMessage,
-    this.sources = const [],
-    this.toolActivities = const [],
-  });
-
-  final String generationId;
-  final String conversationId;
-  final String assistantMessageId;
-  final String originalPrompt;
-  final String modelName;
-  final ChatGenerationState state;
-  final String responseText;
-  final GenerationFinishReason? finishReason;
-  final DateTime startedAt;
-  final bool cancellationRequested;
-  final int continuationCount;
-  final int epoch;
-  final List<WebSource> sources;
-
-  /// The browser steps this turn took, in order.
-  final List<ToolActivity> toolActivities;
-  final String? errorMessage;
-
-  bool get busy =>
-      state == ChatGenerationState.preparing ||
-      state == ChatGenerationState.generating ||
-      state == ChatGenerationState.stopping;
-
-  ChatGenerationJob copyWith({
-    String? modelName,
-    ChatGenerationState? state,
-    String? responseText,
-    GenerationFinishReason? finishReason,
-    bool? cancellationRequested,
-    String? errorMessage,
-    List<WebSource>? sources,
-    List<ToolActivity>? toolActivities,
-  }) =>
-      ChatGenerationJob(
-        generationId: generationId,
-        conversationId: conversationId,
-        assistantMessageId: assistantMessageId,
-        originalPrompt: originalPrompt,
-        modelName: modelName ?? this.modelName,
-        state: state ?? this.state,
-        responseText: responseText ?? this.responseText,
-        finishReason: finishReason ?? this.finishReason,
-        startedAt: startedAt,
-        cancellationRequested:
-            cancellationRequested ?? this.cancellationRequested,
-        continuationCount: continuationCount,
-        epoch: epoch,
-        sources: sources ?? this.sources,
-        toolActivities: toolActivities ?? this.toolActivities,
-        errorMessage: errorMessage ?? this.errorMessage,
-      );
-}
-
-@immutable
-class CancellationMetrics {
-  const CancellationMetrics({
-    required this.nativeAcknowledgement,
-    required this.composerUnblocked,
-    required this.lateTokenCount,
-    required this.engineResetRequired,
-  });
-
-  final Duration nativeAcknowledgement;
-  final Duration composerUnblocked;
-  final int lateTokenCount;
-  final bool engineResetRequired;
-}
-
-abstract interface class ChatInferenceRuntime implements Listenable {
-  InferencePhase get phase;
-  String get status;
-  String get selectedModelName;
-  String get lastGeneratingModelName;
-  GenerationReport? get lastGenerationReport;
-
-  Stream<String> generateReply(
-    String prompt, {
-    required String conversationId,
-    required List<LocalChatTurn> history,
-    required String systemContext,
-    PromptAnalysis? promptAnalysis,
-    TtftTrace? trace,
-  });
-
-  Future<void> stopGeneration();
-  Future<void> resetAfterCancellationTimeout();
-}
-
-class FinnChatInferenceRuntime implements ChatInferenceRuntime {
-  FinnChatInferenceRuntime(this.inference);
-
-  final FinnInference inference;
-
-  @override
-  InferencePhase get phase => switch (inference.phase) {
-        InferencePhase.idle => InferencePhase.idle,
-        InferencePhase.downloading => InferencePhase.downloading,
-        InferencePhase.loading => InferencePhase.loading,
-        InferencePhase.generating => InferencePhase.generating,
-        InferencePhase.error => InferencePhase.error,
-      };
-  @override
-  String get status => inference.status;
-  @override
-  String get selectedModelName => inference.selected.name;
-  @override
-  String get lastGeneratingModelName => inference.lastGeneratingModel.name;
-  @override
-  GenerationReport? get lastGenerationReport => inference.lastGenerationReport;
-  List<WebSource> get lastSources => inference.lastSources;
-  int get tokenPaintIntervalMs => inference.plan?.tokenPaintIntervalMs ?? 50;
-
-  @override
-  void addListener(VoidCallback listener) => inference.addListener(listener);
-  @override
-  void removeListener(VoidCallback listener) =>
-      inference.removeListener(listener);
-
-  @override
-  Stream<String> generateReply(
-    String prompt, {
-    required String conversationId,
-    required List<LocalChatTurn> history,
-    required String systemContext,
-    PromptAnalysis? promptAnalysis,
-    TtftTrace? trace,
-  }) =>
-      generateReplyWithContext(
-        prompt,
-        conversationId: conversationId,
-        history: history,
-        systemContext: systemContext,
-        promptAnalysis: promptAnalysis,
-        trace: trace,
-      );
-
-  Stream<String> generateReplyWithContext(
-    String prompt, {
-    required String conversationId,
-    required List<LocalChatTurn> history,
-    required String systemContext,
-    String groundedContext = '',
-    List<WebSource> sources = const [],
-    PromptAnalysis? promptAnalysis,
-    TtftTrace? trace,
-  }) =>
-      inference.generateReplyQueued(
-        prompt,
-        conversationId: conversationId,
-        history: history,
-        systemContext: systemContext,
-        groundedContext: groundedContext,
-        sources: sources,
-        promptAnalysis: promptAnalysis,
-        trace: trace,
-      );
-
-  @override
-  Future<void> stopGeneration() => inference.stopGeneration();
-
-  @override
-  Future<void> resetAfterCancellationTimeout() =>
-      inference.resetAfterCancellationTimeout();
-}
+export 'package:finn_ai/src/features/chat/chat_generation_job.dart';
+export 'package:finn_ai/src/features/chat/chat_inference_runtime.dart';
 
 /// Owns the single native chat generation independently of visible navigation.
 class ChatGenerationController extends ChangeNotifier {
+  /// The [ChatGenerationJob.errorMessage] of a turn that finished with no
+  /// text. A marker, not a sentence: the screen swaps in the localised copy.
+  static const String emptyReplyError = 'empty_reply';
+
   ChatGenerationController({
     required this.conversations,
     required this.runtime,
@@ -755,11 +578,19 @@ class ChatGenerationController extends ChangeNotifier {
             responseSuffix.isNotEmpty
         ? '${_materialize().trimRight()}$responseSuffix'
         : _materialize();
+    // A reply that finished with nothing in it is not a finished answer. It
+    // used to delete the assistant bubble and leave the user's message with no
+    // reply and no explanation; it is now an error the chat can show with a
+    // Retry button (the localised text is picked by [emptyReplyError]).
+    final producedNothing = completedText.trim().isEmpty &&
+        (reason == GenerationFinishReason.eos ||
+            reason == GenerationFinishReason.tokenLimit);
     await _finishPersisted(
       current.copyWith(
-        state: reason == GenerationFinishReason.error
+        state: reason == GenerationFinishReason.error || producedNothing
             ? ChatGenerationState.error
             : ChatGenerationState.complete,
+        errorMessage: producedNothing ? emptyReplyError : null,
         finishReason: reason,
         responseText: completedText,
         // Continuations carry pre-supplied sources on the job; the runtime's

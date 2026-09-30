@@ -264,7 +264,10 @@ class _ConversationState extends State<_Conversation> {
                   else if (visibleError != null)
                     _ErrorReply(
                       key: const ValueKey('error'),
-                      text: visibleError,
+                      text: visibleError ==
+                              ChatGenerationController.emptyReplyError
+                          ? L10n.of(context).chatEmptyReply
+                          : visibleError,
                       onRetry: failedTurn == null
                           ? null
                           : () => widget.onRegenerate(failedTurn),

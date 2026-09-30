@@ -313,6 +313,10 @@ class AppLocalizationsDe extends AppLocalizations {
       'Chat konnte nicht vorbereitet werden. Prüfe Modell und Speicher und versuche es erneut.';
 
   @override
+  String get chatEmptyReply =>
+      'Finn hatte diesmal keine Antwort. Tippe auf „Erneut versuchen“, um es noch einmal zu fragen.';
+
+  @override
   String chatGeneratingIn(String title) {
     return 'Wird in $title generiert';
   }

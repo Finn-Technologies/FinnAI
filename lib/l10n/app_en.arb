@@ -387,6 +387,10 @@
   "@chatCouldNotPrepare": {
     "description": "Prepare error"
   },
+  "chatEmptyReply": "Finn didn't come up with an answer that time. Tap Retry to ask again.",
+  "@chatEmptyReply": {
+    "description": "Shown when the model produced no answer, next to a Retry button"
+  },
   "chatGeneratingIn": "Generating in {title}",
   "@chatGeneratingIn": {
     "description": "Generating in creation",

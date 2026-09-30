@@ -626,6 +626,12 @@ abstract class AppLocalizations {
   /// **'Could not prepare chat. Check the model and storage, then try again.'**
   String get chatCouldNotPrepare;
 
+  /// Shown when the model produced no answer, next to a Retry button
+  ///
+  /// In en, this message translates to:
+  /// **'Finn didn\'t come up with an answer that time. Tap Retry to ask again.'**
+  String get chatEmptyReply;
+
   /// Generating in creation
   ///
   /// In en, this message translates to:
