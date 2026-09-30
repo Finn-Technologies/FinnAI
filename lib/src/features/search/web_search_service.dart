@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
+import 'package:finn_ai/src/features/search/shared_http_client.dart';
+
 @immutable
 class WebSource {
   const WebSource({
@@ -386,9 +388,14 @@ class WebSearchService {
     this.policy = const WebSearchPolicy(),
     this.timeout = const Duration(milliseconds: 2500),
     this.endpoint,
-  }) : _client = client ?? http.Client();
+  })  : _client = client ?? SharedHttpClient.instance.client,
+        _ownsClient = client != null;
 
   final http.Client _client;
+
+  /// Whether [close] may close [client]. False for the shared process-wide
+  /// pool, which outlives any one service.
+  final bool _ownsClient;
   final WebSearchPolicy policy;
   final Duration timeout;
   final Uri? endpoint;
@@ -644,7 +651,17 @@ class WebSearchService {
     }
   }
 
-  void close() => _client.close();
+  /// Closes the underlying client.
+  ///
+  /// A no-op for the default shared client, and that is deliberate. The chat
+  /// shell closes its search service when the widget is disposed, and with a
+  /// process-wide pool behind it that would close the client out from under
+  /// every other component using it — the next search of the session would
+  /// fail against a closed client. Only a caller that supplied its own client
+  /// owns it, and only then is it closed.
+  void close() {
+    if (_ownsClient) _client.close();
+  }
 
   @visibleForTesting
   http.Client get client => _client;

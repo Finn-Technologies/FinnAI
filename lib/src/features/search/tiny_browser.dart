@@ -6,6 +6,7 @@ import 'package:html/dom.dart' as dom;
 import 'package:html/parser.dart' as html_parser;
 import 'package:http/http.dart' as http;
 
+import 'package:finn_ai/src/features/search/shared_http_client.dart';
 import 'package:finn_ai/src/features/search/web_search_service.dart'
     show WebSource;
 
@@ -86,9 +87,25 @@ class TinyBrowser {
   TinyBrowser({
     http.Client? client,
     this.onBrowserAction,
-  }) : _client = client ?? http.Client();
+  })  : _client = client ?? SharedHttpClient.instance.client,
+        _ownsClient = client != null;
 
+  /// The client every search component shares.
+  ///
+  /// This used to be `http.Client()`, and `WebSearchService` created its own,
+  /// so one turn opened two connection pools and neither reused the other's
+  /// TLS session. On a phone that is two cold handshakes for what is one
+  /// conversation with a website. It is also never closed, which is why a
+  /// per-continuation `SearchAgent` in the chat shell was leaking a pool each
+  /// time the user hit "continue".
   final http.Client _client;
+
+  /// Whether [close] may close [client]. False for the shared process-wide
+  /// pool, which outlives any one browser.
+  final bool _ownsClient;
+
+  @visibleForTesting
+  http.Client get client => _client;
 
   /// Called with a short human-readable description of each action, so the UI
   /// can show what the agent is doing while it browses.
@@ -97,11 +114,35 @@ class TinyBrowser {
   /// Longest history retained, oldest entries dropped first.
   static const int maxHistory = 20;
 
-  final Map<String, BrowserPage> _pageCache = {};
-  final Map<String, List<BrowserSearchResult>> _searchCache = {};
+  /// Cache bounds.
+  ///
+  /// Both caches used to be unbounded maps with no expiry, so a long session
+  /// that browsed a lot accumulated every page body it had ever fetched. A
+  /// page is a truncated excerpt, but a few hundred of them is tens of
+  /// megabytes of Dart heap on a device that has 7GiB in total and the model
+  /// holding 1.6GB of it.
+  static const int maxPageCacheEntries = 24;
+  static const int maxSearchCacheEntries = 24;
+  static const Duration cacheTtl = Duration(minutes: 15);
+
+  final Map<String, ({BrowserPage page, DateTime at})> _pageCache = {};
+  final Map<String, ({List<BrowserSearchResult> results, DateTime at})>
+      _searchCache = {};
 
   final List<BrowserPage> _history = [];
   int _historyIndex = -1;
+
+  /// Evicts the oldest entries once a cache is full.
+  ///
+  /// Insertion-ordered, so the first key in the map is the least recently
+  /// added; re-inserting on read would be true LRU, but these caches are read
+  /// a handful of times per turn and a turn is seconds long, so recency within
+  /// a turn buys nothing over insertion order.
+  static void _evictTo<T>(Map<String, T> cache, int limit) {
+    while (cache.length > limit) {
+      cache.remove(cache.keys.first);
+    }
+  }
 
   BrowserPage? get currentPage =>
       _historyIndex >= 0 && _historyIndex < _history.length
@@ -116,8 +157,14 @@ class TinyBrowser {
   bool get canGoForward =>
       _historyIndex >= 0 && _historyIndex < _history.length - 1;
 
+  /// Releases the client, if this instance owns it.
+  ///
+  /// The default client is the process-wide pool and is not closed here: the
+  /// chat shell disposes a browser per continuation, and closing the shared
+  /// pool would break the next search in the session. Only an injected client
+  /// belongs to this instance.
   void close() {
-    _client.close();
+    if (_ownsClient) _client.close();
   }
 
   /// Empties the history without touching the caches.
@@ -168,7 +215,10 @@ class TinyBrowser {
     final searchParam = cleanSearchQuery(cleanQ);
     final cacheKey = searchParam.toLowerCase();
     final cached = _searchCache[cacheKey];
-    if (cached != null) return cached;
+    if (cached != null && DateTime.now().difference(cached.at) < cacheTtl) {
+      return cached.results;
+    }
+    _searchCache.remove(cacheKey);
 
     onBrowserAction?.call('Searching the web for "$searchParam"');
 
@@ -193,7 +243,8 @@ class TinyBrowser {
       }
 
       final bounded = allResults.take(maxResults).toList();
-      _searchCache[cacheKey] = bounded;
+      _searchCache[cacheKey] = (results: bounded, at: DateTime.now());
+      _evictTo(_searchCache, maxSearchCacheEntries);
       return bounded;
     } catch (e) {
       debugPrint('TinyBrowser search error: $e');
@@ -215,10 +266,11 @@ class TinyBrowser {
 
     final cacheKey = uri.toString();
     final cached = _pageCache[cacheKey];
-    if (cached != null) {
-      _record(cached);
-      return cached;
+    if (cached != null && DateTime.now().difference(cached.at) < cacheTtl) {
+      _record(cached.page);
+      return cached.page;
     }
+    _pageCache.remove(cacheKey);
 
     final host = uri.host.replaceFirst(RegExp(r'^www\.'), '');
     onBrowserAction?.call('Reading $host');
@@ -242,7 +294,8 @@ class TinyBrowser {
         maxChars: maxChars,
         openedAt: DateTime.now(),
       );
-      _pageCache[cacheKey] = page;
+      _pageCache[cacheKey] = (page: page, at: DateTime.now());
+      _evictTo(_pageCache, maxPageCacheEntries);
       _record(page);
       return page;
     } catch (e) {
@@ -254,7 +307,7 @@ class TinyBrowser {
   /// Searches within the currently active page (or a specified URL) for matching
   /// text passages.
   String? find(String keyword, {String? url}) {
-    final page = url != null ? _pageCache[url] : currentPage;
+    final page = url != null ? _pageCache[url]?.page : currentPage;
     if (page == null) return null;
 
     final q = keyword.toLowerCase().trim();
