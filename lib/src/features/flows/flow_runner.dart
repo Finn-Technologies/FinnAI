@@ -62,6 +62,10 @@ class FlowRunner {
   /// Supplies run ids. Injected so a test can make them deterministic.
   final String Function()? idFactory;
 
+  /// The most tokens one prompt step may write. A brief is a few bullet points;
+  /// 320 is room for that and not for a runaway.
+  static const int maxAnswerTokens = 320;
+
   bool _running = false;
 
   bool get isRunning => _running;
@@ -119,6 +123,7 @@ class FlowRunner {
                 ? (String prompt) => model!.answer(
                       prompt,
                       groundedContext: _joinContext(pendingContext),
+                      maxTokens: maxAnswerTokens,
                     )
                 : ask;
             if (generate == null) {

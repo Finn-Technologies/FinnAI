@@ -37,7 +37,11 @@ class EngineFlowModel implements FlowModel {
   final FinnInference _inference;
 
   @override
-  Future<String> answer(String prompt, {String groundedContext = ''}) async {
+  Future<String> answer(
+    String prompt, {
+    String groundedContext = '',
+    int? maxTokens,
+  }) async {
     final output = StringBuffer();
     await for (final token in _inference.generateReplyQueued(
       prompt,
@@ -45,6 +49,7 @@ class EngineFlowModel implements FlowModel {
       // session (the session cache holds one entry per conversation id).
       conversationId: 'flow-${DateTime.now().microsecondsSinceEpoch}',
       groundedContext: groundedContext,
+      maxOutputTokens: maxTokens,
       // A brief is factual and short: the quick-question sampler, not the
       // creative one.
       samplerProfile: PromptIntentPolicy.sampler(PromptIntent.quickQuestion),
@@ -71,6 +76,20 @@ class SearchTurnFlowSearch implements FlowSearch {
         : (provider: match.group(1), query: match.group(2)!.trim());
   }
 
+  /// Sources as a short numbered list under the marker the prompt builders key
+  /// on. Excerpts are capped so a full day of headlines stays under ~200 tokens.
+  static String compactContext(List<WebSource> sources) {
+    if (sources.isEmpty) return '';
+    final buffer = StringBuffer('${PromptFormatter.groundedContextMarker}:');
+    for (var i = 0; i < sources.length; i++) {
+      final snippet = sources[i].snippet.length <= 220
+          ? sources[i].snippet
+          : '${sources[i].snippet.substring(0, 220)}…';
+      buffer.write('\n[${i + 1}] $snippet');
+    }
+    return buffer.toString();
+  }
+
   @override
   Future<FlowSearchResult> search(String query) async {
     final routed = route(query);
@@ -82,9 +101,11 @@ class SearchTurnFlowSearch implements FlowSearch {
       ),
     );
     // The "no results" note is for chat's prompt; a flow's prompt is told there
-    // was nothing by an empty context instead.
+    // was nothing by an empty context instead. And a flow's own prompt carries
+    // the instructions, so it gets the sources without chat's long answer-shape
+    // rules: a two-search brief was a 1,500-token prompt and 15 s to first word.
     return FlowSearchResult(
-      groundedContext: result.failed ? '' : result.groundedContext,
+      groundedContext: result.failed ? '' : compactContext(result.sources),
       sources: result.sources,
       failed: result.failed,
     );

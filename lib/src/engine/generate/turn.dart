@@ -13,6 +13,7 @@ extension FinnAcceleratorTurn on FinnAccelerator {
     String? modelPath,
     TtftTrace? trace,
     IntentSamplerProfile? samplerProfile,
+    int? maxOutputTokens,
   }) {
     late StreamController<String> output;
     var nativeFinished = false;
@@ -25,7 +26,11 @@ extension FinnAcceleratorTurn on FinnAccelerator {
         var emittedTokens = 0;
         final promptAnalysis =
             analysis ?? const PromptIntentClassifier().classify(prompt);
-        final outputBudget = _outputBudget(promptAnalysis);
+        // A caller that knows how long its answer should be (a flow's brief)
+        // can only *lower* the intent's budget, never raise it.
+        final outputBudget = maxOutputTokens == null
+            ? _outputBudget(promptAnalysis)
+            : math.min(_outputBudget(promptAnalysis), maxOutputTokens);
         _lastGenerationReport = GenerationReport(
           model: model,
           intent: promptAnalysis.intent,

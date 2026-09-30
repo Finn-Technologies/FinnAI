@@ -12,7 +12,14 @@ import 'package:finn_ai/src/features/flows/flow_model.dart';
 abstract interface class FlowModel {
   /// [groundedContext] is web material already formatted for the prompt, or
   /// empty when the step had none.
-  Future<String> answer(String prompt, {String groundedContext = ''});
+  ///
+  /// [maxTokens] bounds the answer. A flow's result is a few lines, and an
+  /// unbounded turn once ran for 86 seconds on a phone.
+  Future<String> answer(
+    String prompt, {
+    String groundedContext = '',
+    int? maxTokens,
+  });
 }
 
 /// What one bounded search returned.

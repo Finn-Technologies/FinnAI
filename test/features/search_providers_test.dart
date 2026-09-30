@@ -203,6 +203,18 @@ void main() {
       expect(result.failed, isTrue);
     });
 
+    test('a flow gets a compact, numbered source list', () {
+      final sources =
+          NewsProvider.parse(_rss, now: DateTime.utc(2026, 9, 30, 8));
+      final context = SearchTurnFlowSearch.compactContext(sources);
+      expect(context, startsWith('RETRIEVED WEB RESULTS:'));
+      expect(
+          context, contains('[1] City Times, 2 hours ago: Council approves'));
+      expect(context, isNot(contains('Rules:')), reason: 'chat-only rules');
+      expect(context.length, lessThan(600));
+      expect(SearchTurnFlowSearch.compactContext(const []), isEmpty);
+    });
+
     test('a flow step routes by its prefix', () {
       expect(SearchTurnFlowSearch.route('news: local football'),
           (provider: 'news', query: 'local football'));

@@ -14,8 +14,14 @@ import 'package:finn_ai/src/shared/slots/slots.dart';
 class _Model implements FlowModel {
   final prompts = <String>[];
   final contexts = <String>[];
+  final limits = <int?>[];
   @override
-  Future<String> answer(String prompt, {String groundedContext = ''}) async {
+  Future<String> answer(
+    String prompt, {
+    String groundedContext = '',
+    int? maxTokens,
+  }) async {
+    limits.add(maxTokens);
     prompts.add(prompt);
     contexts.add(groundedContext);
     return '- first point\n- second point';
@@ -157,6 +163,8 @@ void main() {
       expect(run.outcome, FlowRunOutcome.completed);
       expect(search.queries, ['news: football', 'weather: Rome']);
       expect(model.prompts, hasLength(1));
+      expect(model.limits.single, FlowRunner.maxAnswerTokens,
+          reason: 'a brief is bounded');
       expect(model.contexts.single, contains('news: football'));
       expect(model.contexts.single, contains('weather: Rome'));
       expect(notifier.sent.single.$1, 'Morning brief');

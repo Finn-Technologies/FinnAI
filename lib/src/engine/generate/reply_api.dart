@@ -11,6 +11,7 @@ extension FinnAcceleratorReplies on FinnAccelerator {
     PromptAnalysis? promptAnalysis,
     TtftTrace? trace,
     IntentSamplerProfile? samplerProfile,
+    int? maxOutputTokens,
   }) async* {
     if (_replyInFlight) {
       throw StateError('Finn is already generating a response.');
@@ -28,6 +29,7 @@ extension FinnAcceleratorReplies on FinnAccelerator {
         promptAnalysis: promptAnalysis,
         trace: trace,
         samplerProfile: samplerProfile,
+        maxOutputTokens: maxOutputTokens,
       );
     } finally {
       _replyInFlight = false;
@@ -46,6 +48,7 @@ extension FinnAcceleratorReplies on FinnAccelerator {
     PromptAnalysis? promptAnalysis,
     TtftTrace? trace,
     IntentSamplerProfile? samplerProfile,
+    int? maxOutputTokens,
   }) async* {
     if (_replyInFlight) {
       final turn = replyGate.waitTurn();
@@ -67,6 +70,7 @@ extension FinnAcceleratorReplies on FinnAccelerator {
       promptAnalysis: promptAnalysis,
       trace: trace,
       samplerProfile: samplerProfile,
+      maxOutputTokens: maxOutputTokens,
     );
   }
 
@@ -131,6 +135,7 @@ extension FinnAcceleratorReplies on FinnAccelerator {
     PromptAnalysis? promptAnalysis,
     TtftTrace? trace,
     IntentSamplerProfile? samplerProfile,
+    int? maxOutputTokens,
   }) async* {
     final analysis =
         promptAnalysis ?? const PromptIntentClassifier().classify(prompt);
@@ -158,6 +163,7 @@ extension FinnAcceleratorReplies on FinnAccelerator {
         analysis: analysis,
         trace: trace,
         samplerProfile: samplerProfile,
+        maxOutputTokens: maxOutputTokens,
       ),
       trace: trace,
     );
