@@ -72,7 +72,7 @@ Use this before grepping. Paths are relative to the repository root.
 | What a flow may reach outside itself (model, search, sink, notifier) | `lib/src/features/flows/flow_ports.dart` |
 | The real implementations of those ports (engine, search, conversations) | `lib/src/features/chat/flow_wiring.dart` |
 | Morning brief / web check / reminder | `lib/src/features/flows/flow_templates.dart` |
-| When a scheduled flow next runs | `lib/src/features/flows/flow_schedule.dart` (mirrored in `android/.../FlowScheduler.kt`) |
+| When a scheduled flow next runs | `lib/src/features/flows/flow_schedule.dart` (mirrored in `android/app/src/main/kotlin/com/abhiflex/finnai/FlowScheduler.kt`) |
 | Arming alarms, notification permission | `lib/src/features/flows/flow_scheduler.dart` + `android/app/src/main/kotlin/com/abhiflex/finnai/FlowScheduler.kt` |
 | Tap-a-notification-to-run, alarm sync at startup | `lib/src/features/chat/shell/flows.dart` |
 | The Flows screen, template sheet, schedule editor | `lib/src/features/flows/flows_page.dart` + `parts/automations.dart` |
