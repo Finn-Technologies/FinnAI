@@ -1,5 +1,4 @@
 import 'package:finn_ai/src/features/search/shared_http_client.dart';
-import 'package:finn_ai/src/features/search/tiny_browser.dart';
 import 'package:finn_ai/src/features/search/web_search_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -17,14 +16,10 @@ import 'package:http/http.dart' as http;
 /// search of the session.
 void main() {
   group('one client is shared by default', () {
-    test('the search service and the browser default to the same client', () {
+    test('the search service defaults to the shared client', () {
       final service = WebSearchService();
-      final browser = TinyBrowser();
       addTearDown(service.close);
-      addTearDown(browser.close);
-
       expect(service.client, same(SharedHttpClient.instance.client));
-      expect(browser.client, same(SharedHttpClient.instance.client));
     });
 
     test('two search services share one client', () {
@@ -47,11 +42,6 @@ void main() {
       expect(await _probe(SharedHttpClient.instance.client), isTrue);
     });
 
-    test('closing a default browser leaves the shared client open', () async {
-      TinyBrowser().close();
-      expect(await _probe(SharedHttpClient.instance.client), isTrue);
-    });
-
     test('closing a service with an injected client does close it', () {
       var closed = false;
       final injected = _CloseTrackingClient(() => closed = true);
@@ -59,23 +49,6 @@ void main() {
       expect(closed, isTrue,
           reason: 'an injected client is the caller\'s to '
               'release, so release it');
-    });
-
-    test('closing a browser with an injected client does close it', () {
-      var closed = false;
-      TinyBrowser(client: _CloseTrackingClient(() => closed = true)).close();
-      expect(closed, isTrue);
-    });
-  });
-
-  group('the browser caches are bounded', () {
-    test('page and search caches evict rather than growing without limit', () {
-      // These were unbounded maps with no expiry: a long session that browsed
-      // a lot kept every page excerpt it had ever fetched, on a device whose
-      // 7GiB is mostly the model.
-      expect(TinyBrowser.maxPageCacheEntries, lessThanOrEqualTo(64));
-      expect(TinyBrowser.maxSearchCacheEntries, lessThanOrEqualTo(64));
-      expect(TinyBrowser.cacheTtl, greaterThan(Duration.zero));
     });
   });
 }

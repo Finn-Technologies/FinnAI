@@ -1,6 +1,5 @@
 import 'package:finn_ai/src/engine/finn_engine_types.dart';
 import 'package:finn_ai/src/engine/prompt/prompt_formatter.dart';
-import 'package:finn_ai/src/engine/prompt/prompt_intent.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -48,36 +47,6 @@ void main() {
         primed: true,
         prompt: 'What is the date today?',
         history: const <LocalChatTurn>[],
-        now: fixed,
-      );
-      expectSingleBlockBeforeFinalUserTurn(rendered);
-    });
-  });
-
-  group('renderDecisionPromptText carries the date block', () {
-    test('unprimed', () {
-      final rendered = PromptFormatter.renderDecisionPromptText(
-        primed: false,
-        basePrefixReady: false,
-        includeTaskInstruction: true,
-        analysis: const PromptIntentClassifier().classify('What is today?'),
-        prompt: 'What is today?',
-        history: const <LocalChatTurn>[],
-        directive: 'Decide whether to call a tool.',
-        now: fixed,
-      );
-      expectSingleBlockBeforeFinalUserTurn(rendered);
-    });
-
-    test('primed', () {
-      final rendered = PromptFormatter.renderDecisionPromptText(
-        primed: true,
-        basePrefixReady: true,
-        includeTaskInstruction: true,
-        analysis: const PromptIntentClassifier().classify('What is today?'),
-        prompt: 'What is today?',
-        history: const <LocalChatTurn>[],
-        directive: 'Decide whether to call a tool.',
         now: fixed,
       );
       expectSingleBlockBeforeFinalUserTurn(rendered);

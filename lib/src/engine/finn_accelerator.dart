@@ -19,8 +19,7 @@ import 'package:finn_ai/src/engine/policy/residency_policy.dart';
 import 'package:finn_ai/src/engine/adaptive/adaptive.dart';
 import 'package:finn_ai/src/engine/finn_engine_types.dart';
 import 'package:finn_ai/src/engine/prompt/prompt_intent.dart';
-import 'package:finn_ai/src/features/search/search_agent.dart';
-import 'package:finn_ai/src/features/search/web_search_service.dart';
+import 'package:finn_ai/src/engine/api/web_source.dart';
 
 export 'package:finn_ai/src/engine/finn_engine_types.dart';
 
@@ -98,56 +97,20 @@ class FinnAccelerator extends ChangeNotifier {
     'finn_ai/model_download',
   );
 
-  FinnAccelerator._({SearchAgent? searchAgent})
-      : _searchAgent = searchAgent ?? SearchAgent();
+  FinnAccelerator._();
 
   static final FinnAccelerator instance = FinnAccelerator._();
-
-  /// Model-driven web search orchestration. Injected for tests.
-  final SearchAgent _searchAgent;
-
-  /// True when a web-search decision pass ran for the current/last turn and
-  /// reached the search step. Used by the controller/UI to show status.
-  bool searchRanForCurrentTurn = false;
-
-  /// True when the last turn's web search was requested by the model but no
-  /// results could be retrieved (offline/unavailable). The answer then used
-  /// the knowledge fallback.
-  bool _lastSearchFailed = false;
-  bool get lastSearchFailed => _lastSearchFailed;
 
   /// Sources attached to the last completed answer (from web search), or
   /// empty when the answer did not use the web.
   List<WebSource> _lastSources = const [];
   List<WebSource> get lastSources => _lastSources;
 
-  /// Browser tool calls made during the current/last turn, in order.
-  List<ToolActivity> _lastToolActivities = const [];
-  List<ToolActivity> get lastToolActivities => _lastToolActivities;
-
-  /// Notified as each browser tool call happens, so the UI can narrate the
-  /// agent's browsing while the answer is still streaming.
-  void Function(ToolActivity activity)? onToolActivity;
-
-  /// Most browser tool rounds one turn may run. A small model will happily keep
-  /// calling tools, and every round costs a full decision pass.
-  static const int maxToolRounds = 3;
-
-  /// Wall-clock ceiling across all tool rounds of one turn. Research should not
-  /// be able to stall a reply indefinitely on a slow connection.
-  ///
-  /// Halved from 12s. The device measurement behind that: the 21-prompt batch
-  /// spent a 3s routing pass and then a multi-round agentic loop on questions
-  /// that needed no retrieval at all, and a 2-token answer took 5-9.6s of TTFT
-  /// for it. Most turns that need retrieval need exactly one round, which costs
-  /// ~2-3s; a turn that has not produced a usable answer by 6s was not going to.
-  static const Duration maxToolBudget = Duration(seconds: 6);
-
   static const continuationPrompt =
       'Continue exactly where the previous response stopped. Do not repeat '
       'the introduction or completed sections. Finish the requested answer '
       'in the same language and format.';
-  static const systemPromptVersion = 11;
+  static const systemPromptVersion = 12;
   static const chatTemplateVersion = 2;
   static const _persistentPrefixCacheEnabled = bool.fromEnvironment(
     'FINN_PREFIX_CACHE',
@@ -908,10 +871,6 @@ class FinnAccelerator extends ChangeNotifier {
   /// the prompt's classified intent. Secondary callers such as the creation
   /// pipeline use it to ask for near-deterministic decoding when the output has
   /// to parse as JSON; chat passes `null` and is unaffected.
-  ///
-  /// [forceBrowse] runs the browser tool loop even when the prompt would not
-  /// normally qualify, for a turn where the user explicitly asked Finn to look
-  /// something up.
   Stream<String> generateReply(
     String prompt, {
     required String conversationId,
@@ -921,8 +880,6 @@ class FinnAccelerator extends ChangeNotifier {
     List<WebSource> sources = const [],
     PromptAnalysis? promptAnalysis,
     TtftTrace? trace,
-    bool enableSearchDecision = true,
-    bool forceBrowse = false,
     IntentSamplerProfile? samplerProfile,
   }) async* {
     if (_replyInFlight) {
@@ -930,8 +887,6 @@ class FinnAccelerator extends ChangeNotifier {
     }
     _replyInFlight = true;
     _lastSources = sources;
-    _lastSearchFailed = false;
-    searchRanForCurrentTurn = false;
     try {
       yield* _generateReplyUnlocked(
         prompt,
@@ -942,8 +897,6 @@ class FinnAccelerator extends ChangeNotifier {
         sources: sources,
         promptAnalysis: promptAnalysis,
         trace: trace,
-        enableSearchDecision: enableSearchDecision,
-        forceBrowse: forceBrowse,
         samplerProfile: samplerProfile,
       );
     } finally {
@@ -972,8 +925,6 @@ class FinnAccelerator extends ChangeNotifier {
     List<WebSource> sources = const [],
     PromptAnalysis? promptAnalysis,
     TtftTrace? trace,
-    bool enableSearchDecision = true,
-    bool forceBrowse = false,
     IntentSamplerProfile? samplerProfile,
   }) async* {
     if (_replyInFlight) {
@@ -995,8 +946,6 @@ class FinnAccelerator extends ChangeNotifier {
       groundedContext: groundedContext,
       promptAnalysis: promptAnalysis,
       trace: trace,
-      enableSearchDecision: enableSearchDecision,
-      forceBrowse: forceBrowse,
       samplerProfile: samplerProfile,
     );
   }
@@ -1055,7 +1004,6 @@ class FinnAccelerator extends ChangeNotifier {
           trace: trace,
           // The evaluation harness measures the raw model answer; it must not
           // trigger the model-driven web-search decision pass.
-          enableSearchDecision: false,
         ),
       );
     } finally {
@@ -1072,8 +1020,6 @@ class FinnAccelerator extends ChangeNotifier {
     List<WebSource> sources = const [],
     PromptAnalysis? promptAnalysis,
     TtftTrace? trace,
-    bool enableSearchDecision = true,
-    bool forceBrowse = false,
     IntentSamplerProfile? samplerProfile,
   }) async* {
     final analysis =
@@ -1101,8 +1047,6 @@ class FinnAccelerator extends ChangeNotifier {
         sources: sources,
         analysis: analysis,
         trace: trace,
-        enableSearchDecision: enableSearchDecision,
-        forceBrowse: forceBrowse,
         samplerProfile: samplerProfile,
       ),
       trace: trace,
@@ -1180,188 +1124,6 @@ class FinnAccelerator extends ChangeNotifier {
     }
   }
 
-  /// Runs the model-driven tool-calling pass. The AI model itself evaluates
-  /// whether to call the browser_search tool. When a tool call is emitted,
-  /// the browser search is executed and returned with toolCallMade: true.
-  Future<
-      ({
-        String groundedContext,
-        List<WebSource> sources,
-        bool toolCallMade,
-        ToolActivity? activity,
-        SearchDecision? decision,
-      })> _runSearchDecision(
-    EngineSession session,
-    String prompt,
-    PromptAnalysis analysis,
-    int generationEpoch, {
-    required List<LocalChatTurn> history,
-    required bool primed,
-    required bool basePrefixReady,
-    required bool includeTaskInstruction,
-    TtftTrace? trace,
-    String priorToolContext = '',
-    bool requireToolCall = false,
-  }) async {
-    if (analysis.intent == PromptIntent.greeting) {
-      return (
-        groundedContext: '',
-        sources: const <WebSource>[],
-        toolCallMade: false,
-        activity: null,
-        decision: null,
-      );
-    }
-    final directive = PromptIntentPolicy.searchDecisionDirectiveFor(
-      analysis.language,
-      requireToolCall: requireToolCall,
-    );
-    final decisionPrompt = _renderDecisionPromptText(
-      primed: primed,
-      basePrefixReady: basePrefixReady,
-      includeTaskInstruction: includeTaskInstruction,
-      analysis: analysis,
-      prompt: prompt,
-      history: history,
-      directive: directive,
-      priorToolContext: priorToolContext,
-    );
-    _setStatus(
-      InferencePhase.generating,
-      'Checking web...',
-      key: FinnStatusKey.checkingWeb,
-    );
-    trace?.mark(TtftPhase.decisionPass);
-    final decisionText = StringBuffer();
-    await for (final event in session.generate(
-      prompt: decisionPrompt,
-      addSpecial: !primed && !basePrefixReady,
-      parseSpecial: true,
-      // Fast bounded budget to decode the decision or the tool call. The call
-      // is grammar-constrained, so it is one compact object rather than a
-      // paragraph with JSON inside it, but a long query still needs headroom
-      // over the old 40-token prose budget.
-      maxTokens: 64,
-      sampler: PromptIntentPolicy.searchDecisionSampler(
-        requireToolCall: requireToolCall,
-      ).params.copyWith(
-            seed: _nextGenerationSeed(),
-          ),
-    )) {
-      if (generationEpoch != _generationEpoch) {
-        throw const _GenerationCancelled();
-      }
-      if (event case TokenEvent(:final text)) {
-        decisionText.write(text);
-        final current = decisionText.toString();
-        // Break early as soon as the decision or tool call is terminated
-        if (current.contains('ANSWER') || current.contains('</tool_call>')) {
-          break;
-        }
-      }
-    }
-    _throwIfGenerationCancelled(generationEpoch);
-    final decision = const SearchDecisionParser().parse(
-      decisionText.toString(),
-    );
-    if (decision.kind == SearchDecisionKind.answerFromKnowledge) {
-      return (
-        groundedContext: '',
-        sources: const <WebSource>[],
-        toolCallMade: false,
-        activity: null,
-        decision: null,
-      );
-    }
-    searchRanForCurrentTurn = true;
-    _setStatus(
-      InferencePhase.generating,
-      decision.kind == SearchDecisionKind.open
-          ? 'Reading page...'
-          : 'Searching browser...',
-      key: FinnStatusKey.searchingBrowser,
-    );
-    final toolResult = await _searchAgent.executeToolCall(decision);
-    _throwIfGenerationCancelled(generationEpoch);
-
-    // If browser tool search didn't yield any discovered sources, fall back to searchAndFetch
-    if (toolResult.discoveredSources.isEmpty &&
-        decision.kind == SearchDecisionKind.search &&
-        (decision.query?.isNotEmpty ?? false)) {
-      final fallback = await _searchAndFetch(decision.query!);
-      _throwIfGenerationCancelled(generationEpoch);
-      return (
-        groundedContext: fallback.groundedContext,
-        sources: fallback.sources,
-        toolCallMade: true,
-        activity: toolResult.activity,
-        decision: decision,
-      );
-    }
-
-    return (
-      groundedContext: toolResult.toolResponse,
-      sources: toolResult.discoveredSources,
-      toolCallMade: true,
-      activity: toolResult.activity,
-      decision: decision,
-    );
-  }
-
-  /// Appends [additions] to [existing], dropping duplicate URLs so several
-  /// browsing rounds do not repeat the same source in the citation list.
-  static List<WebSource> _mergeSources(
-    List<WebSource> existing,
-    List<WebSource> additions,
-  ) {
-    if (additions.isEmpty) return existing;
-    final merged = [...existing];
-    final seen = {for (final source in existing) source.url.toString()};
-    for (final source in additions) {
-      if (seen.add(source.url.toString())) merged.add(source);
-    }
-    return merged;
-  }
-
-  /// Searches the browser and fetches content, returning the grounded result
-  /// or the offline fallback note when retrieval fails.
-  Future<({String groundedContext, List<WebSource> sources})> _searchAndFetch(
-    String query, {
-    bool markFailure = true,
-  }) async {
-    _setStatus(
-      InferencePhase.generating,
-      'Searching browser...',
-      key: FinnStatusKey.searchingBrowser,
-    );
-    try {
-      final grounded = await _searchAgent
-          .searchAndFetch(query)
-          .timeout(const Duration(milliseconds: 3000), onTimeout: () => null);
-      if (grounded == null) {
-        if (markFailure) _lastSearchFailed = true;
-        return (
-          groundedContext:
-              'Note: browser search was requested for "$query" but no results were available (offline or unavailable). Answer carefully from general knowledge, state uncertainty for time-sensitive claims, and do not invent sources.',
-          sources: const <WebSource>[],
-        );
-      }
-      return (
-        groundedContext: grounded.groundedContext,
-        sources: grounded.search.sources,
-      );
-    } on _GenerationCancelled {
-      rethrow;
-    } on Object {
-      if (markFailure) _lastSearchFailed = true;
-      return (
-        groundedContext:
-            'Note: browser search was requested for "$query" but no results were available (offline or unavailable). Answer carefully from general knowledge, state uncertainty for time-sensitive claims, and do not invent sources.',
-        sources: const <WebSource>[],
-      );
-    }
-  }
-
   Stream<String> _generateForModel(
     FinnModelSpec model,
     String prompt, {
@@ -1373,8 +1135,6 @@ class FinnAccelerator extends ChangeNotifier {
     PromptAnalysis? analysis,
     String? modelPath,
     TtftTrace? trace,
-    bool enableSearchDecision = true,
-    bool forceBrowse = false,
     IntentSamplerProfile? samplerProfile,
   }) {
     late StreamController<String> output;
@@ -1621,144 +1381,6 @@ class FinnAccelerator extends ChangeNotifier {
             ..flashAttention = plan?.flashAttention == true ? 'on' : 'off'
             ..mark(TtftPhase.promptRendered);
 
-          // Model-driven browser browsing: the model decides whether to call a
-          // browser tool, we run it, feed the result back, and let it decide
-          // again. Bounded in both rounds and wall-clock so a research turn
-          // cannot stall a reply. Skipped entirely when an image is attached.
-          var effectiveGroundedContext = groundedContext;
-          var effectiveSources = sources;
-          final toolActivities = <ToolActivity>[];
-          final hasDocAttachment =
-              attachedDocContext != null && attachedDocContext.isNotEmpty;
-          // A forced browse bypasses the "is this prompt advanced?" gate: the
-          // user explicitly asked for the web this turn.
-          final decisionEnabled = enableSearchDecision &&
-              // An attachment — image or document — is answered from the
-              // attachment. Letting the research pass run for a document spent
-              // the turn's budget on a tool call, and the reply became the
-              // tool-call machinery instead of the file's contents.
-              !hasAttachedImage &&
-              !hasDocAttachment &&
-              effectiveGroundedContext.isEmpty &&
-              (forceBrowse ||
-                  PromptIntentPolicy.needsSearchDecision(promptAnalysis));
-          if (decisionEnabled) {
-            final seenDecisions = <SearchDecision>{};
-            final toolWatch = Stopwatch()..start();
-            final toolResponses = <String>[];
-            var toolCallMade = false;
-            var budgetExhausted = false;
-
-            while (toolActivities.length < maxToolRounds) {
-              if (toolWatch.elapsed >= maxToolBudget) {
-                budgetExhausted = true;
-                break;
-              }
-              final result = await _runSearchDecision(
-                session,
-                prompt,
-                promptAnalysis,
-                generationEpoch,
-                history: history,
-                primed: entry.primed,
-                basePrefixReady: entry.basePrefixReady,
-                includeTaskInstruction: includeTaskInstruction,
-                trace: trace,
-                // Feed back what the browser already returned so a repeat round
-                // asks something new instead of re-running the same call.
-                priorToolContext: toolResponses.join('\n\n'),
-                // Only the first round is forced; later rounds are the model's
-                // own call.
-                requireToolCall: forceBrowse && !toolCallMade,
-              );
-              _throwIfGenerationCancelled(generationEpoch);
-              if (!result.toolCallMade) break;
-              // A 1.6B model will repeat a call it has already made; treat that
-              // as the end of the research rather than paying for it again.
-              final call = result.decision;
-              if (call != null && !seenDecisions.add(call)) {
-                debugPrint('FINN_TOOL loop stopped: repeated tool call');
-                break;
-              }
-              toolCallMade = true;
-              final activity = result.activity;
-              if (activity != null) {
-                toolActivities.add(activity);
-                onToolActivity?.call(activity);
-              }
-              if (result.groundedContext.isNotEmpty) {
-                toolResponses.add(result.groundedContext);
-              }
-              effectiveGroundedContext = toolResponses.join('\n\n');
-              effectiveSources =
-                  _mergeSources(effectiveSources, result.sources);
-            }
-
-            if (toolActivities.length > 1) {
-              debugPrint(
-                'FINN_TOOL completed ${toolActivities.length} browser round(s)'
-                '${budgetExhausted ? ' (budget reached)' : ''}',
-              );
-            }
-            _lastToolActivities = List.unmodifiable(toolActivities);
-
-            if (toolCallMade) {
-              final continuation = StringBuffer()..write('<|im_end|>\n');
-              if (!entry.primed && systemContext.trim().isNotEmpty) {
-                PromptFormatter.writePrivateContext(
-                    continuation, systemContext);
-              }
-              if (effectiveGroundedContext.isNotEmpty) {
-                continuation.write(
-                  '<|im_start|>tool\n'
-                  '<tool_response>\n'
-                  '$effectiveGroundedContext\n'
-                  '</tool_response>\n'
-                  '<|im_end|>\n',
-                );
-              }
-              // The decision pass leaves the TinyBrowser tool advertisement in
-              // the cached session, and a 1.6B model will keep emitting tool
-              // calls into the answer turn. When it drops the <tool_call>
-              // wrapper the engine cannot parse the call, so the raw JSON used
-              // to reach the user verbatim (sometimes thousands of tokens of
-              // it). Close the tool phase explicitly before answering.
-              continuation.write(
-                '<|im_start|>system\n'
-                'Stop using tools now. Answer the user\'s question in plain '
-                'prose using the information above. Do not output JSON, a '
-                'tool_call block, or the names browser_search, browser_open '
-                'or browser_find.\n'
-                '<|im_end|>\n',
-              );
-              continuation.write(
-                '<|im_start|>assistant\n<think>\n\n</think>\n\n',
-              );
-              renderedPrompt = continuation.toString();
-            } else {
-              // The search decision concluded with ANSWER. Reset the session
-              // so the main answer generation starts cleanly from the user's
-              // actual prompt rather than appending to the temporary decision tokens.
-              await session.clear();
-              entry.primed = false;
-              entry.basePrefixReady = false;
-              renderedPrompt = _renderPrompt(
-                entry,
-                prompt,
-                history,
-                systemContext: systemContext,
-                groundedContext: groundedContext,
-                analysis: promptAnalysis,
-                includeTaskInstruction: includeTaskInstruction,
-                primeEmptyThinking: primeEmptyThinking,
-                includeMediaMarker: useMediaMarker,
-                mediaCount: useMediaMarker ? effectiveMediaList.length : 0,
-                attachedDocContext: attachedDocContext,
-              );
-            }
-          } else {
-            _lastToolActivities = const [];
-          }
           // If multimodal not loaded but user attached image, surface fallback
           if (hasAttachedImage && !runtime.engine.multimodalLoaded) {
             debugPrint(
@@ -1910,7 +1532,7 @@ class FinnAccelerator extends ChangeNotifier {
               if (identical(_activeOutput, output)) {
                 _activeOutput = null;
               }
-              _lastSources = effectiveSources;
+              _lastSources = sources;
               entry.primed = true;
               entry.lastTaskInstruction = taskInstruction;
               entry.messageCount = history.length + 2;
@@ -3801,36 +3423,6 @@ class FinnAccelerator extends ChangeNotifier {
       includeMediaMarker: includeMediaMarker,
       mediaCount: mediaCount,
       attachedDocContext: attachedDocContext,
-    );
-  }
-
-  /// Renders the prompt for the search-decision pass: the same structure as
-  /// [_renderPromptText] but with the decision directive as an extra system
-  /// message and no think-block priming (the model must emit a plain
-  /// sentence). The generated decision tokens stay in the session KV cache;
-  /// the answer generation continues after them.
-  String _renderDecisionPromptText({
-    required bool primed,
-    required bool basePrefixReady,
-    required bool includeTaskInstruction,
-    required PromptAnalysis analysis,
-    required String prompt,
-    required List<LocalChatTurn> history,
-    required String directive,
-    String priorToolContext = '',
-  }) {
-    return PromptFormatter.renderDecisionPromptText(
-      primed: primed,
-      basePrefixReady: basePrefixReady,
-      includeTaskInstruction: includeTaskInstruction,
-      analysis: analysis,
-      prompt: prompt,
-      history: history,
-      directive: directive,
-      priorToolContext: priorToolContext,
-      // Same source of truth as [renderPromptText]: history trimming has to
-      // match the context the engine will actually run with.
-      contextTokens: _plan?.contextSize ?? 2048,
     );
   }
 

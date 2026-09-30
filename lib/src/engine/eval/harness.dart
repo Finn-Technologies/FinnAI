@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
+import 'package:finn_ai/src/engine/api/web_source.dart';
 import 'package:finn_ai/src/engine/eval/eval_baseline.dart';
 import 'package:finn_ai/src/engine/eval/eval_prompts.dart';
 import 'package:finn_ai/src/engine/eval/evaluation.dart';
@@ -21,6 +22,29 @@ typedef EvalGeneration = Stream<String> Function(
   required List<LocalChatTurn> history,
   TtftTrace? trace,
 });
+
+/// What the app's search step produced for one eval turn.
+@immutable
+class EvalGrounding {
+  const EvalGrounding({
+    this.groundedContext = '',
+    this.sources = const [],
+    this.searched = false,
+  });
+
+  static const EvalGrounding none = EvalGrounding();
+
+  final String groundedContext;
+  final List<WebSource> sources;
+  final bool searched;
+}
+
+/// Runs the app's search decision for an eval prompt. Injected so `engine/`
+/// does not depend on `features/`.
+typedef EvalGrounder = Future<EvalGrounding> Function(
+  String prompt,
+  List<LocalChatTurn> history,
+);
 
 /// The bits of the engine the harness reads back after a turn.
 @immutable
@@ -317,7 +341,7 @@ Set<EvalSuite> parseSuites(String specification) {
 /// - `FINN_EVAL_BASELINE` names a committed baseline to gate against.
 /// - `FINN_EVAL_WRITE_BASELINE` writes the run out as a new baseline.
 /// - `FINN_EVAL_MAX_CASES` caps the run, for a quick smoke pass.
-Future<void> runEvalHarness() async {
+Future<void> runEvalHarness({EvalGrounder? grounder}) async {
   const suiteSpec = String.fromEnvironment('FINN_EVAL_SUITES');
   const promptFile = String.fromEnvironment('FINN_EVAL_PROMPT_FILE');
   const baselinePath = String.fromEnvironment('FINN_EVAL_BASELINE');
@@ -377,23 +401,34 @@ Future<void> runEvalHarness() async {
     // ignore: avoid_print
     print('FINN_EVAL_WARN prewarm failed, first turn carries the load: $error');
   }
+  // The app grounds a turn before the engine sees it (ADR 0001), so the eval
+  // must too: measuring the engine alone reported browse recall 0.0 for a run
+  // in which the app would have searched.
+  var searchedThisTurn = false;
   final harness = EvalHarness(
     generate: (
       prompt, {
       required conversationId,
       required history,
       trace,
-    }) =>
-        engine.generateReply(
-      prompt,
-      conversationId: conversationId,
-      history: history,
-      trace: trace,
-    ),
+    }) async* {
+      final grounding = grounder == null
+          ? EvalGrounding.none
+          : await grounder(prompt, history);
+      searchedThisTurn = grounding.searched;
+      yield* engine.generateReply(
+        prompt,
+        conversationId: conversationId,
+        history: history,
+        groundedContext: grounding.groundedContext,
+        sources: grounding.sources,
+        trace: trace,
+      );
+    },
     readEngine: () {
       final report = engine.lastGenerationReport;
       return EvalEngineView(
-        searched: engine.searchRanForCurrentTurn,
+        searched: searchedThisTurn,
         intent: report?.intent.toString(),
         route: report?.route.name,
         finishReason: report?.finishReason.name,

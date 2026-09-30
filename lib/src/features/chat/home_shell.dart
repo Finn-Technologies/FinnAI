@@ -21,6 +21,7 @@ import 'package:finn_ai/src/inference/finn_inference.dart';
 import 'package:finn_ai/src/inference/residency_policy.dart';
 import 'package:finn_ai/src/features/reporting/report_dialog.dart';
 import 'package:finn_ai/src/features/search/search_agent.dart';
+import 'package:finn_ai/src/features/search/search_turn.dart';
 import 'package:finn_ai/src/features/search/web_search_service.dart';
 import 'package:finn_ai/src/features/actions/action_audit_store.dart';
 import 'package:finn_ai/src/features/actions/chat_device_actions.dart';
@@ -107,6 +108,9 @@ class _HomeShellState extends State<HomeShell>
   late final _generation =
       widget.generationController ?? ChatGenerationController.instance;
   late final _webSearch = widget.webSearch ?? WebSearchService();
+  final _searchPlanner = const SearchPlanner();
+  late final _searchTurn =
+      SearchTurn(agent: SearchAgent(searchService: _webSearch));
   late final _deviceActions = widget.deviceActions ?? const ChatDeviceActions();
   late final _voice = widget.voiceController ?? VoiceChatController.instance;
   String? _voiceReplyGenerationId;
@@ -128,9 +132,7 @@ class _HomeShellState extends State<HomeShell>
   bool _preparing = false;
   bool _dismissedSearchNotice = false;
 
-  /// True when this turn's policy-driven search could not reach the web.
-  /// The engine reports the model-driven equivalent through
-  /// [FinnInference.lastSearchFailed]; the notice is shown for either.
+  /// True when this turn's one search got no answer, so the notice shows.
   bool _upfrontSearchFailed = false;
 
   /// True when the conversation store could not be opened, so replies only
@@ -353,11 +355,6 @@ class _HomeShellState extends State<HomeShell>
       }
       return null;
     });
-    // Narrate browsing live: the engine reports each tool call as it happens.
-    _inference.onToolActivity = (activity) {
-      if (!mounted) return;
-      _generation.noteToolActivity(activity);
-    };
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(_checkPendingProcessText());
     });
@@ -542,7 +539,6 @@ class _HomeShellState extends State<HomeShell>
     _sidebarController.dispose();
     unawaited(_generation.flushActive());
     if (widget.webSearch == null) _webSearch.close();
-    _inference.onToolActivity = null;
     _composer.dispose();
     _focusNode.dispose();
     super.dispose();
@@ -879,34 +875,10 @@ class _HomeShellState extends State<HomeShell>
           _upfrontSearchFailed = false;
         });
       }
-      String upfrontGroundedContext = '';
-      List<WebSource> upfrontSources = const [];
-      if (_webSearch.policy.shouldSearch(effectivePrompt) && attached == null) {
-        // Recorded before generation so the reply carries the search it came
-        // from: the policy path never reaches the model's tool loop, and
-        // without this the turn would look like it answered from nowhere.
-        _generation.noteToolActivity(
-          ToolActivity(kind: ToolActivityKind.search, label: effectivePrompt),
-        );
-        try {
-          final agent = SearchAgent(searchService: _webSearch);
-          final grounded = await agent.searchAndFetch(effectivePrompt).timeout(
-                const Duration(milliseconds: 3000),
-                onTimeout: () => null,
-              );
-          if (grounded != null) {
-            upfrontGroundedContext = grounded.groundedContext;
-            upfrontSources = grounded.search.sources;
-          } else {
-            // The model-driven path marks this in the engine; the policy path
-            // has to mark it here so an unreachable web is reported the same
-            // way whichever path asked for it.
-            _upfrontSearchFailed = true;
-          }
-        } catch (e) {
-          debugPrint('FINN_UPFRONT_SEARCH error: $e');
-        }
-      }
+      final grounding = await _groundTurn(
+        effectivePrompt,
+        hasAttachment: attached != null,
+      );
 
       // Pass imagePath for persistence (store), but also ensure the history
       // carries bytes when present so the engine can use imageBytes without file I/O.
@@ -916,8 +888,8 @@ class _HomeShellState extends State<HomeShell>
         imagePath: attached,
         history: attachedBytes != null ? sendHistory : history,
         systemContext: systemContext,
-        groundedContext: upfrontGroundedContext,
-        sources: upfrontSources,
+        groundedContext: grounding.groundedContext,
+        sources: grounding.sources,
         trace: timing,
       );
     } catch (e) {
@@ -936,6 +908,28 @@ class _HomeShellState extends State<HomeShell>
       if (mounted) setState(() => _preparing = false);
       debugPrint('FINN_SEND preparing cleared');
     }
+  }
+
+  /// Decides, and if needed runs, the one web search this turn gets.
+  ///
+  /// The model never decides to search (ADR 0001): [SearchPlanner] is a pure
+  /// function of the prompt, and [SearchTurn] runs at most one time-boxed
+  /// round. The step is recorded before the search so the reply carries what
+  /// it came from, and an unreachable web is flagged for the offline notice.
+  Future<SearchTurnResult> _groundTurn(
+    String prompt, {
+    bool hasAttachment = false,
+  }) async {
+    final plan = _searchPlanner.plan(prompt, hasAttachment: hasAttachment);
+    if (!plan.search) return SearchTurnResult.none;
+    _generation.noteToolActivity(
+      ToolActivity(kind: ToolActivityKind.search, label: plan.query),
+    );
+    final result = await _searchTurn.run(plan);
+    if (result.failed && mounted) {
+      setState(() => _upfrontSearchFailed = true);
+    }
+    return result;
   }
 
   Future<void> _continueReply(ConversationMessage assistant) async {
@@ -966,23 +960,19 @@ class _HomeShellState extends State<HomeShell>
       YouProfileStore.instance.promptContext,
       FlowsStore.instance.promptContextFor(latestUser.text),
     ].where((item) => item.trim().isNotEmpty).join('\n\n');
-    // Continuations reuse the original turn's sources; the decision pass is
-    // disabled for the continuation prompt itself.
-    GroundedSearchResult? continuationGrounded;
-    if (assistant.sources.isNotEmpty &&
-        _webSearch.policy.shouldSearch(latestUser.text)) {
-      continuationGrounded = await SearchAgent(searchService: _webSearch)
-          .searchAndFetch(latestUser.text)
-          .timeout(const Duration(seconds: 8), onTimeout: () => null);
-    }
-    // Keep continuations grounded even when the original model-driven search
-    // was not triggered by the deterministic freshness policy. Persisted
-    // source excerpts are enough to continue offline; a fresh lookup is only
-    // attempted for requests that clearly need current information.
-    final continuationSources =
-        continuationGrounded?.search.sources ?? assistant.sources;
-    final groundedContext = continuationGrounded?.groundedContext ??
+    // A continuation reuses the sources the reply was written from, so it
+    // stays grounded offline. A fresh lookup happens only when the original
+    // turn searched and the prompt still calls for one.
+    var continuationSources = assistant.sources;
+    var groundedContext =
         SearchAgent.groundedContextForSources(continuationSources);
+    if (assistant.sources.isNotEmpty) {
+      final refreshed = await _groundTurn(latestUser.text);
+      if (refreshed.sources.isNotEmpty) {
+        continuationSources = refreshed.sources;
+        groundedContext = refreshed.groundedContext;
+      }
+    }
     await _generation.continueResponse(
       conversationId: conversation.id,
       assistantMessageId: assistant.id,
@@ -1022,12 +1012,15 @@ class _HomeShellState extends State<HomeShell>
       FlowsStore.instance.promptContextFor(latestUser.text),
     ].where((item) => item.trim().isNotEmpty).join('\n\n');
     if (mounted) setState(() => _dismissedSearchNotice = false);
+    final grounding = await _groundTurn(latestUser.text);
     await _generation.regenerate(
       conversationId: conversation.id,
       assistantMessageId: assistant.id,
       originalPrompt: latestUser.text,
       history: history,
       systemContext: systemContext,
+      groundedContext: grounding.groundedContext,
+      sources: grounding.sources,
     );
   }
 
@@ -1062,11 +1055,14 @@ class _HomeShellState extends State<HomeShell>
       FlowsStore.instance.promptContextFor(trimmed),
     ].where((item) => item.trim().isNotEmpty).join('\n\n');
     if (mounted) setState(() => _dismissedSearchNotice = false);
+    final grounding = await _groundTurn(trimmed);
     await _generation.replyToExisting(
       conversationId: conversation.id,
       prompt: trimmed,
       history: history,
       systemContext: systemContext,
+      groundedContext: grounding.groundedContext,
+      sources: grounding.sources,
     );
   }
 
@@ -1360,8 +1356,7 @@ class _HomeShellState extends State<HomeShell>
                         // The notice belongs to the turn that failed to reach
                         // the web, so it renders with that reply instead of
                         // floating over the whole conversation.
-                        searchFailed: (_inference.lastSearchFailed ||
-                                _upfrontSearchFailed) &&
+                        searchFailed: _upfrontSearchFailed &&
                             !_dismissedSearchNotice &&
                             !_generation.busy,
                         onDismissSearchNotice: () =>

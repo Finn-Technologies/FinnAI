@@ -45,15 +45,12 @@ Use this before grepping. Paths are relative to the repository root.
 
 | To change… | Edit |
 |---|---|
-| When a query triggers a search | `lib/src/features/search/web_search_service.dart` (`WebSearchPolicy.shouldSearch`) |
-| How a query is cleaned / which endpoints are used | `web_search_service.dart` (`_cleanSearchQuery`, `search`) |
-| The browser the agent drives (parsing, history, links) | `lib/src/features/search/tiny_browser.dart` (`parsePage`, `open`, `back`/`forward`, `findLinks`) |
-| Which tools the model may call and how calls are parsed | `lib/src/features/search/search_agent.dart` (`SearchDecisionParser`, `executeToolCall`) |
-| How many tool rounds run, and the wall-clock budget | `finn_accelerator.dart` (`maxToolRounds`, `maxToolBudget`, the loop in `_generateForModel`) |
-| The tool contract the model is shown | `lib/src/engine/prompt/prompt_intent.dart` (`searchDecisionDirectiveFor`) |
-| How earlier findings are replayed into a later round | `lib/src/engine/prompt/prompt_formatter.dart` (`writePriorToolContext`) |
-| The "Browse" toggle and the live activity panel | `lib/src/features/chat/home_shell.dart` (`_browseEnabled`, `_BrowserActivityPanel`) |
-| Turning search results into prompt context | `search_agent.dart` (`groundedContextForSources`) |
+| When a query triggers a search (and why) | `lib/src/features/search/search_policy.dart` (`WebSearchPolicy.reasonFor`, `SearchPlanReason`) and `search_turn.dart` (`SearchPlanner.plan`) |
+| How a query is cleaned / which endpoints are used | `lib/src/features/search/web_search_service.dart` (`_cleanSearchQuery`, `search`) |
+| The one search a turn gets (budget, failure note) | `lib/src/features/search/search_turn.dart` (`SearchTurn.run`, `defaultBudget`) |
+| Where chat runs the search for send / continue / regenerate / edit | `lib/src/features/chat/home_shell.dart` (`_groundTurn`) |
+| Turning search results into prompt context | `lib/src/features/search/search_agent.dart` (`groundedContextForSources`, `searchAndFetch`) |
+| The search step the eval applies before the engine | `lib/main.dart` (`_groundEvalTurn`) → `engine/eval/harness.dart` (`EvalGrounder`) |
 
 ## Creations
 

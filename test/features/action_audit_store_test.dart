@@ -30,9 +30,12 @@ void main() {
       source: 'chat',
     );
     final raw = await (await store.fileForTest()).readAsString();
-    expect(raw, isNot(contains('555')));
-    expect(raw, isNot(contains('Contacts')));
     final entry = (jsonDecode(raw) as List).single as Map;
+    // The id is a timestamp, so assert on the shape, not on a digit string.
+    expect(entry.keys.toSet(),
+        {'id', 'action', 'tier', 'outcome', 'source', 'at'});
+    expect(raw, isNot(contains('+1 555 0100')));
+    expect(raw, isNot(contains('Contacts')));
     expect(entry['action'], DeviceActionCatalog.dial.name);
     expect(entry['outcome'], 'performed');
     expect(entry['source'], 'chat');

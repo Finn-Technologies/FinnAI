@@ -175,8 +175,6 @@ class FinnChatInferenceRuntime implements ChatInferenceRuntime {
     List<WebSource> sources = const [],
     PromptAnalysis? promptAnalysis,
     TtftTrace? trace,
-    bool enableSearchDecision = true,
-    bool forceBrowse = false,
   }) =>
       inference.generateReplyQueued(
         prompt,
@@ -187,8 +185,6 @@ class FinnChatInferenceRuntime implements ChatInferenceRuntime {
         sources: sources,
         promptAnalysis: promptAnalysis,
         trace: trace,
-        enableSearchDecision: enableSearchDecision,
-        forceBrowse: forceBrowse,
       );
 
   @override
@@ -333,7 +329,6 @@ class ChatGenerationController extends ChangeNotifier {
     String responseSuffix = '',
     List<WebSource> sources = const [],
     TtftTrace? trace,
-    bool forceBrowse = false,
   }) async {
     if (busy) return null;
     final timing = trace ?? createTtftTrace(conversationId);
@@ -374,7 +369,6 @@ class ChatGenerationController extends ChangeNotifier {
       initialText: '',
       continuationCount: 0,
       trace: timing,
-      forceBrowse: forceBrowse,
     );
   }
 
@@ -420,7 +414,6 @@ class ChatGenerationController extends ChangeNotifier {
       // Continuations reuse the original turn's search decision + sources
       // (computed in the UI); the continuation prompt itself must not re-trigger
       // the decision pass.
-      enableSearchDecision: false,
     );
   }
 
@@ -523,8 +516,6 @@ class ChatGenerationController extends ChangeNotifier {
     List<WebSource> sources = const [],
     required PromptAnalysis analysis,
     required TtftTrace trace,
-    required bool enableSearchDecision,
-    bool forceBrowse = false,
   }) {
     final current = runtime;
     if (current is FinnChatInferenceRuntime) {
@@ -537,8 +528,6 @@ class ChatGenerationController extends ChangeNotifier {
         sources: sources,
         promptAnalysis: analysis,
         trace: trace,
-        enableSearchDecision: enableSearchDecision,
-        forceBrowse: forceBrowse,
       );
     }
     return current.generateReply(
@@ -566,8 +555,6 @@ class ChatGenerationController extends ChangeNotifier {
     required String initialText,
     required int continuationCount,
     required TtftTrace trace,
-    bool enableSearchDecision = true,
-    bool forceBrowse = false,
   }) {
     final epoch = ++_epoch;
     _lateTokenCount = 0;
@@ -622,8 +609,6 @@ class ChatGenerationController extends ChangeNotifier {
       sources: sources,
       analysis: analysis,
       trace: trace,
-      enableSearchDecision: enableSearchDecision,
-      forceBrowse: forceBrowse,
     ).listen(
       (token) => _token(generationId, epoch, token),
       onError: (Object error, StackTrace stack) {

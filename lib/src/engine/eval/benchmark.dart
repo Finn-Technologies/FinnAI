@@ -72,8 +72,6 @@ Future<void> runDeviceBenchmark() async {
           (override('prewarm') as String).isNotEmpty
       ? override('prewarm') as String
       : prewarm;
-  const noSearchDefine = bool.fromEnvironment('FINN_BENCH_NO_SEARCH');
-  final noSearch = override('noSearch') == true || noSearchDefine;
   if (override('noPrefixCache') == true ||
       const bool.fromEnvironment('FINN_BENCH_NO_PREFIX')) {
     FinnAccelerator.debugDisablePrefixCache = true;
@@ -151,7 +149,6 @@ Future<void> runDeviceBenchmark() async {
               conversationId: conversationId,
               history: history,
               trace: trace,
-              enableSearchDecision: !noSearch,
             )
           : inference.generateEvaluationReply(
               input,

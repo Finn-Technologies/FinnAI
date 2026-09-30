@@ -169,7 +169,6 @@ class FinnCreationGenerator
       conversationId: _conversationId,
       // The shared system prompt advertises browser tools; a creation turn must
       // never spend its budget on a search decision pass.
-      enableSearchDecision: false,
       samplerProfile: sampler,
     )) {
       output.write(token);

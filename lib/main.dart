@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:finn_ai/src/app/bootstrap.dart';
 import 'package:finn_ai/src/engine/eval/benchmark.dart';
 import 'package:finn_ai/src/engine/eval/harness.dart';
+import 'package:finn_ai/src/features/search/search_turn.dart';
 import 'package:finn_ai/src/inference/finn_inference.dart';
 import 'package:finn_ai/src/shared/config/licenses.dart';
 import 'package:finn_ai/src/platform/openharmony_path_provider.dart';
@@ -60,7 +61,9 @@ Future<void> main() async {
       final candidateRun =
           const String.fromEnvironment('FINN_EVAL_MODELS').trim().isNotEmpty;
       unawaited(
-        candidateRun ? runCandidateModelEvaluation() : runEvalHarness(),
+        candidateRun
+            ? runCandidateModelEvaluation()
+            : runEvalHarness(grounder: _groundEvalTurn),
       );
     });
   }
@@ -79,4 +82,22 @@ class _BareBenchmarkApp extends StatelessWidget {
       home: const Scaffold(body: Center(child: Text('benchmark'))),
     );
   }
+}
+
+final _evalSearch = SearchTurn();
+
+/// The app's own search step, applied to an eval prompt, so the harness
+/// measures the path a user's message takes and not the engine alone.
+Future<EvalGrounding> _groundEvalTurn(
+  String prompt,
+  List<LocalChatTurn> history,
+) async {
+  final plan = const SearchPlanner().plan(prompt);
+  if (!plan.search) return EvalGrounding.none;
+  final result = await _evalSearch.run(plan);
+  return EvalGrounding(
+    groundedContext: result.groundedContext,
+    sources: result.sources,
+    searched: result.searched,
+  );
 }

@@ -54,8 +54,9 @@ UI state that is not shared lives in `State` objects — notably `_HomeShellStat
 
 1. **Compose.** `HomeShell._send` (`features/chat/home_shell.dart`) normalizes the text, collects
    attachments, builds the system context from `YouProfileStore` + `FlowsStore`, and — if the local
-   freshness policy (`WebSearchPolicy.shouldSearch`) says the query may need current facts — runs an
-   upfront web search with a 3 s timeout.
+   search planner (`SearchPlanner`, `features/search/search_turn.dart`) says the query may need
+   current facts — runs exactly one web search (`SearchTurn`, 5 s budget). The model never decides
+   to search and is never shown tool syntax in chat (ADR 0001).
 2. **Start.** `ChatGenerationController.start` creates a `ChatGenerationJob` and subscribes to
    `FinnInference.generateReplyQueued`.
 3. **Prepare.** The engine (`engine/finn_accelerator.dart`) ensures the model file exists, loads the
