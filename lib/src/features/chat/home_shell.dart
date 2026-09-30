@@ -393,6 +393,14 @@ class _HomeShellState extends State<HomeShell>
       PaintingBinding.instance.imageCache.clear();
       PaintingBinding.instance.imageCache.clearLiveImages();
     }
+    // `inactive` is a phone call or a notification shade, not a real
+    // backgrounding, and stopping the mic there would be wrong: the user is
+    // still looking at the screen.
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached ||
+        state == AppLifecycleState.hidden) {
+      _stopVoiceForLifecycle();
+    }
     final residencyAction = residencyActionFor(switch (state) {
       AppLifecycleState.detached => ResidencyLifecycleEvent.detached,
       AppLifecycleState.paused => ResidencyLifecycleEvent.paused,
@@ -425,6 +433,19 @@ class _HomeShellState extends State<HomeShell>
       _memoryReleaseTimer?.cancel();
       _schedulePrewarm();
     }
+  }
+
+  /// Voice is foreground-only, and the lifecycle is what enforces it.
+  ///
+  /// Without this the microphone stayed hot when the app was backgrounded:
+  /// Android's recognition service kept recording, TTS kept speaking into the
+  /// background, and the controller sat in `listening` with the orb frozen
+  /// mid-animation — so on return the sheet looked stuck. There is no
+  /// background mic service by design; this is the boundary that makes that
+  /// true.
+  void _stopVoiceForLifecycle() {
+    if (!_voice.active) return;
+    unawaited(_voice.reset());
   }
 
   @override

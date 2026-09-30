@@ -6,11 +6,27 @@ import 'package:speech_to_text/speech_recognition_error.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
+import 'package:finn_ai/src/features/voice/speakable_text.dart';
+
 enum VoiceChatState { idle, listening, thinking, speaking }
 
 enum VoiceChatError { none, micDenied, unavailable }
 
 const double voiceSpeechRate = 0.45;
+
+/// Whether the last listen session heard anything.
+///
+/// This is a state the UI can show, not an error: the recogniser finished
+/// cleanly and there was nothing in the microphone. Without it, "the mic
+/// worked but caught nothing" and "the user cancelled" were the same screen —
+/// the status line simply reverted to "tap to speak", which is why
+/// `voiceDidNotCatch` had been translated into five languages and never
+/// displayed. The sheet shows it and offers a retry.
+enum VoiceListenOutcome { none, heardNothing }
+
+extension VoiceListenOutcomeX on VoiceListenOutcome {
+  bool get didCatchNothing => this == VoiceListenOutcome.heardNothing;
+}
 
 abstract class SpeechBackend {
   Future<bool> initialize({
@@ -63,8 +79,18 @@ class SpeechToTextBackend implements SpeechBackend {
       _speech.listen(
         onResult: onResult,
         onSoundLevelChange: onSoundLevelChange,
-        listenOptions:
-            preferOnDevice ? SpeechListenOptions(onDevice: true) : null,
+        listenOptions: SpeechListenOptions(
+          onDevice: preferOnDevice,
+          // Explicit rather than plugin defaults. The defaults are 60s and 3s,
+          // and the 60s is a long time to hold the microphone open in a
+          // foreground-only feature while the user thinks; 30s is past any
+          // question anyone asks out loud. `pauseFor` is how long the engine
+          // waits after a pause before finalising, so 1.2s stops it cutting
+          // a speaker off mid-thought and still ends the turn promptly.
+          listenFor: const Duration(seconds: 30),
+          pauseFor: const Duration(milliseconds: 1200),
+          partialResults: true,
+        ),
       );
 
   @override
@@ -177,12 +203,20 @@ class VoiceChatController extends ChangeNotifier {
   bool _replyCancelled = false;
   int _queuedUtterances = 0;
 
+  /// What the last listen session produced. Cleared when a new session starts,
+  /// so the "didn't catch that" line disappears the moment the user tries
+  /// again rather than lingering over a successful attempt.
+  VoiceListenOutcome _lastListenOutcome = VoiceListenOutcome.none;
+
   VoiceChatState get state => _state;
   VoiceChatError get error => _error;
   String get transcript => _transcript;
   double get soundLevel => _soundLevel;
   bool get spokenResponses => _spokenResponses;
   bool get active => _state != VoiceChatState.idle;
+
+  /// True when the last listen finished without catching anything.
+  bool get didNotCatchAnything => _lastListenOutcome.didCatchNothing;
 
   void Function(String text)? onTranscript;
 
@@ -245,6 +279,10 @@ class VoiceChatController extends ChangeNotifier {
     _transcript = '';
     _suppressNextFinal = false;
     _onDeviceOnly = true;
+    // A fresh attempt clears the previous "didn't catch that", so the message
+    // is about the last try rather than sticking to the user.
+    _lastListenOutcome = VoiceListenOutcome.none;
+    _lastSoundLevelAt = null;
     await _beginListening(preferOnDevice: true);
   }
 
@@ -257,10 +295,7 @@ class VoiceChatController extends ChangeNotifier {
       await _speech.listen(
         preferOnDevice: preferOnDevice,
         onResult: _onSpeechResult,
-        onSoundLevelChange: (level) {
-          _soundLevel = level.clamp(0.0, 1.0);
-          notifyListeners();
-        },
+        onSoundLevelChange: _onSoundLevel,
       );
     } catch (_) {
       _error = VoiceChatError.unavailable;
@@ -272,6 +307,29 @@ class VoiceChatController extends ChangeNotifier {
     _listenWatchdog = Timer(const Duration(seconds: 60), () {
       if (_state == VoiceChatState.listening) stopListening();
     });
+  }
+
+  /// The sound level that drives the orb's breathing animation.
+  ///
+  /// `speech_to_text` reports an amplitude on every audio buffer — tens of
+  /// times a second — and every one of those was a `notifyListeners()`. The
+  /// sheet's `ListenableBuilder` wraps the whole page, so each frame rebuilt
+  /// two nested `LayoutBuilder`s, a scroll view and three `AnimatedContainer`s,
+  /// each restarting its own tween before it could finish. The visible result
+  /// was a stutter, not a breath.
+  ///
+  /// Publishing at a frame-ish rate is enough: an animation cannot show more
+  /// than the display can, and the sheet costs a full rebuild per publish.
+  static const Duration _soundLevelInterval = Duration(milliseconds: 60);
+  DateTime? _lastSoundLevelAt;
+
+  void _onSoundLevel(double level) {
+    final now = DateTime.now();
+    final last = _lastSoundLevelAt;
+    if (last != null && now.difference(last) < _soundLevelInterval) return;
+    _lastSoundLevelAt = now;
+    _soundLevel = level.clamp(0.0, 1.0);
+    notifyListeners();
   }
 
   Future<void> stopListening() async {
@@ -345,11 +403,19 @@ class VoiceChatController extends ChangeNotifier {
     } catch (_) {}
   }
 
+  /// Returns the controller to a clean slate.
+  ///
+  /// Called when the app is backgrounded (voice is foreground-only) and when
+  /// the sheet is dismissed. Everything that could keep the microphone or the
+  /// speaker busy is torn down here, because a partial reset is what left the
+  /// orb frozen mid-animation on resume.
   Future<void> reset() async {
     _listenWatchdog?.cancel();
     _listenWatchdog = null;
     _replyStreamOpen = false;
     _onDeviceOnly = false;
+    _lastListenOutcome = VoiceListenOutcome.none;
+    _lastSoundLevelAt = null;
     try {
       if (_speech.isListening) await _speech.cancel();
     } catch (_) {}
@@ -383,6 +449,10 @@ class VoiceChatController extends ChangeNotifier {
     _listenWatchdog?.cancel();
     _listenWatchdog = null;
     if (_transcript.trim().isEmpty) {
+      // The recogniser finished and heard nothing. Say so, rather than
+      // reverting silently to "tap to speak" and leaving the user to guess
+      // whether the mic is broken.
+      _lastListenOutcome = VoiceListenOutcome.heardNothing;
       _setState(VoiceChatState.idle);
       return;
     }
@@ -427,6 +497,10 @@ class VoiceChatController extends ChangeNotifier {
         _setState(VoiceChatState.thinking);
         onTranscript?.call(_transcript.trim());
       } else {
+        // A `no_match` or a pause that became a timeout is the recogniser
+        // working correctly and hearing nothing, so it is the same "didn't
+        // catch that" as a clean empty result.
+        _lastListenOutcome = VoiceListenOutcome.heardNothing;
         _setState(VoiceChatState.idle);
       }
       return;
@@ -441,6 +515,7 @@ class VoiceChatController extends ChangeNotifier {
   void _onSpeechStatus(String status) {
     if (status == 'done' || status == 'notListening') {
       if (_state == VoiceChatState.listening && _transcript.trim().isEmpty) {
+        _lastListenOutcome = VoiceListenOutcome.heardNothing;
         _setState(VoiceChatState.idle);
       }
     }
@@ -470,15 +545,24 @@ class VoiceChatController extends ChangeNotifier {
     final fresh = text.substring(_spokenUpTo.length);
     final boundary = _lastSentenceBoundary(fresh);
     if (boundary == null) return null;
-    final chunk = fresh.substring(0, boundary).trim();
-    if (chunk.isEmpty) return null;
+    // Sanitize *before* deciding there is nothing to say, so a chunk that is
+    // only markup is dropped rather than read aloud character by character.
+    // A fence is not a sentence boundary, so a code block used to accumulate
+    // until the whole reply had finished and then be spoken in one go.
+    final chunk = SpeakableText.flatten(fresh.substring(0, boundary));
     _spokenUpTo += fresh.substring(0, boundary);
+    if (chunk.isEmpty) return null;
     return chunk;
   }
 
   String _unspeakableRemainder(String fullText) {
     if (fullText.length <= _spokenUpTo.length) return '';
-    return fullText.substring(_spokenUpTo.length);
+    // The tail of a streaming reply can be half a word, or a dangling tag from
+    // the chat template. Speaking that is worse than not speaking it.
+    final tail = fullText.substring(_spokenUpTo.length);
+    final cleaned = SpeakableText.flatten(tail);
+    if (cleaned.isEmpty) return '';
+    return SpeakableText.stripTrailingFragment(cleaned) ?? '';
   }
 
   int? _lastSentenceBoundary(String text) {
@@ -503,13 +587,26 @@ class VoiceChatController extends ChangeNotifier {
     try {
       await _tts.speak(text);
     } catch (_) {
+      // A failed utterance still has to retire its slot, and if that was the
+      // last one the state has to come down with it. Decrementing the counter
+      // without doing the second part is how the controller could sit in
+      // `speaking` forever with nothing speaking — a spinner that never stops.
       if (_queuedUtterances > 0) _queuedUtterances--;
+      if (_queuedUtterances == 0 && !_replyStreamOpen) {
+        _setState(VoiceChatState.idle);
+      }
     }
   }
 
   @override
   void dispose() {
     _listenWatchdog?.cancel();
+    // Cancelling the watchdog is not enough: a disposed controller must not
+    // leave the microphone open or an utterance playing, and the singleton is
+    // never disposed by the app, so this is the last line of defence rather
+    // than the main one.
+    unawaited(_speech.isListening ? _speech.cancel() : Future<void>.value());
+    unawaited(stopSpeaking());
     super.dispose();
   }
 }

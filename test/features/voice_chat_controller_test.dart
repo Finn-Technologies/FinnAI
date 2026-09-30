@@ -386,6 +386,128 @@ void main() {
       expect(controller.state, VoiceChatState.idle);
     });
 
+    group('a reply is sanitised before it is spoken', () {
+      test('a code block is announced, not recited', () async {
+        final tts = FakeTtsBackend();
+        final controller = makeController(tts: tts);
+        await controller.ensureReady();
+
+        controller.beginThinking();
+        controller
+            .speakReplyChunk('Here it is:\n\n```dart\nfinal x = 1;\n```\n');
+        controller.finishReply(
+          'Here it is:\n\n```dart\nfinal x = 1;\n```\nThat is all.',
+        );
+
+        final spoken = tts.spoken.join(' ');
+        expect(spoken, contains('Here it is'));
+        expect(spoken, contains('That is all'));
+        expect(spoken, isNot(contains('final x')),
+            reason: 'reading code aloud character by character is the failure '
+                'this exists to prevent');
+        expect(spoken, isNot(contains('```')));
+      });
+
+      test('a markup-only chunk is silent rather than read as symbols',
+          () async {
+        final tts = FakeTtsBackend();
+        final controller = makeController(tts: tts);
+        await controller.ensureReady();
+
+        controller.beginThinking();
+        // A line that is only bold markers, then a real sentence.
+        controller.speakReplyChunk('**\nReal sentence here.');
+        controller.finishReply('**\nReal sentence here.');
+
+        expect(tts.spoken, isNotEmpty);
+        for (final chunk in tts.spoken) {
+          expect(chunk.trim(), isNot('**'));
+        }
+        expect(tts.spoken.join(' '), contains('Real sentence here'));
+      });
+    });
+
+    group('"did not catch that" is a real state', () {
+      test('a clean empty result reports it', () async {
+        final speech = FakeSpeechBackend();
+        final controller = makeController(speech: speech);
+        await controller.ensureReady();
+        expect(controller.didNotCatchAnything, isFalse);
+
+        await controller.startListening();
+        speech.emitResult('   ', finalResult: true);
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+
+        expect(controller.didNotCatchAnything, isTrue);
+        expect(controller.state, VoiceChatState.idle);
+      });
+
+      test('a no-match error reports it', () async {
+        final speech = FakeSpeechBackend();
+        final controller = makeController(speech: speech);
+        await controller.ensureReady();
+        await controller.startListening();
+        expect(controller.didNotCatchAnything, isFalse);
+
+        speech.onError?.call(SpeechRecognitionError('error_no_match', false));
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+
+        expect(controller.didNotCatchAnything, isTrue);
+      });
+
+      test('a done status with nothing heard reports it', () async {
+        final speech = FakeSpeechBackend();
+        final controller = makeController(speech: speech);
+        await controller.ensureReady();
+        await controller.startListening();
+
+        speech.onStatus?.call('done');
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+
+        expect(controller.didNotCatchAnything, isTrue);
+      });
+
+      test('a successful listen clears it', () async {
+        final speech = FakeSpeechBackend();
+        final controller = makeController(speech: speech);
+        await controller.ensureReady();
+        await controller.startListening();
+        speech.emitResult('', finalResult: true);
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        expect(controller.didNotCatchAnything, isTrue);
+
+        // Trying again must clear it, or the message sticks to the user
+        // through a successful attempt.
+        await controller.startListening();
+        expect(controller.didNotCatchAnything, isFalse);
+      });
+
+      test('a heard transcript does not set it', () async {
+        final speech = FakeSpeechBackend();
+        final controller = makeController(speech: speech);
+        await controller.ensureReady();
+        await controller.startListening();
+
+        speech.emitResult('what is the weather', finalResult: true);
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+
+        expect(controller.didNotCatchAnything, isFalse);
+        expect(controller.state, VoiceChatState.thinking);
+      });
+
+      test('reset clears it', () async {
+        final speech = FakeSpeechBackend();
+        final controller = makeController(speech: speech);
+        await controller.ensureReady();
+        await controller.startListening();
+        speech.emitResult('', finalResult: true);
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+
+        await controller.reset();
+        expect(controller.didNotCatchAnything, isFalse);
+      });
+    });
+
     test('finishReply after interrupt stays silent', () async {
       final tts = FakeTtsBackend();
       final controller = makeController(tts: tts);

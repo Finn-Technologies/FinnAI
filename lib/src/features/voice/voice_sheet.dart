@@ -286,7 +286,12 @@ class _VoiceSheetState extends State<VoiceSheet> {
       case VoiceChatState.speaking:
         return L10n.of(context).voiceSpeaking;
       case VoiceChatState.idle:
-        return L10n.of(context).voiceTapToSpeak;
+        // The recogniser worked and heard nothing. Saying so is the
+        // difference between "the mic is fine, try again" and "is this thing
+        // broken?" — and it is what `voiceDidNotCatch` was translated for.
+        return voice.didNotCatchAnything
+            ? L10n.of(context).voiceDidNotCatch
+            : L10n.of(context).voiceTapToSpeak;
     }
   }
 }
