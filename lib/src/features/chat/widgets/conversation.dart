@@ -1,0 +1,363 @@
+part of '../home_shell.dart';
+
+class _Conversation extends StatefulWidget {
+  const _Conversation({
+    required this.messages,
+    required this.activeConversationId,
+    required this.generation,
+    required this.conversations,
+    required this.onStop,
+    required this.onContinue,
+    required this.onRegenerate,
+    required this.onRunAction,
+    required this.onDismissAction,
+    required this.onActions,
+    required this.onEdit,
+    required this.onOpenConversation,
+    required this.preparing,
+    required this.topInset,
+    required this.bottomInset,
+    required this.scrollController,
+    required this.greeting,
+    this.searchFailed = false,
+    this.onDismissSearchNotice,
+    this.historyUnavailable = false,
+    this.onDismissHistoryNotice,
+  });
+  final List<ConversationMessage> messages;
+  final String? activeConversationId;
+  final ChatGenerationController generation;
+  final ConversationStore conversations;
+  final VoidCallback onStop;
+  final ValueChanged<ConversationMessage> onContinue;
+  final ValueChanged<ConversationMessage> onRegenerate;
+  final ValueChanged<ConversationMessage> onRunAction;
+  final ValueChanged<ConversationMessage> onDismissAction;
+  final VoidCallback onActions;
+  final ValueChanged<ConversationMessage> onEdit;
+  final ValueChanged<String> onOpenConversation;
+  final bool preparing;
+
+  /// Greeting shown on the empty slate; the design greets a listening session
+  /// with a different line than a typed one.
+  final String greeting;
+
+  /// True when the conversation store could not be opened, so the notice
+  /// explaining that history is not being kept should be shown.
+  final bool historyUnavailable;
+  final VoidCallback? onDismissHistoryNotice;
+
+  /// Vertical insets so the first message clears the header and the newest
+  /// message clears the composer, while the list still bleeds beneath both
+  /// for the soft edge fade.
+  final double topInset;
+  final double bottomInset;
+
+  /// Scroll controller owned by the shell so it can observe the scroll
+  /// position (to collapse the composer) and jump back to the latest message.
+  final ScrollController scrollController;
+
+  /// True when the last turn wanted the web and could not reach it. Rendered
+  /// with the reply that failed rather than as a banner over the app.
+  final bool searchFailed;
+
+  /// Dismisses [searchFailed] for the rest of this turn.
+  final VoidCallback? onDismissSearchNotice;
+
+  @override
+  State<_Conversation> createState() => _ConversationState();
+}
+
+class _ConversationState extends State<_Conversation> {
+  Timer? _scrollSettleTimer;
+
+  /// (conversationId, messageCount, jobId, responseLength, state, preparing)
+  /// — the layout-relevant generation inputs. A change that only moves the
+  /// response length is a token event: the streaming bubble repaints itself
+  /// and the list only re-anchors the scroll, without a full rebuild.
+  late (String, int, String?, int, String?, bool) _contentSignature;
+
+  @override
+  void initState() {
+    super.initState();
+    _contentSignature = _signature();
+    widget.generation.addListener(_generationChanged);
+  }
+
+  @override
+  void didUpdateWidget(covariant _Conversation oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _syncSignature(rebuild: false);
+  }
+
+  (String, int, String?, int, String?, bool) _signature() {
+    final active = widget.generation.activeJob;
+    return (
+      widget.activeConversationId ?? '',
+      widget.messages.length,
+      active?.conversationId,
+      active?.responseText.length ?? 0,
+      active?.state.name,
+      widget.preparing,
+    );
+  }
+
+  void _generationChanged() {
+    if (!mounted) return;
+    _syncSignature(rebuild: true);
+  }
+
+  void _syncSignature({required bool rebuild}) {
+    final nextSignature = _signature();
+    if (nextSignature == _contentSignature) return;
+    final previous = _contentSignature;
+    _contentSignature = nextSignature;
+    final textOnlyGrew = previous.$1 == nextSignature.$1 &&
+        previous.$2 == nextSignature.$2 &&
+        previous.$3 == nextSignature.$3 &&
+        previous.$5 == nextSignature.$5 &&
+        previous.$6 == nextSignature.$6;
+    if (rebuild && !textOnlyGrew) {
+      setState(() {});
+    }
+    _queueLatestAlignment();
+  }
+
+  void _queueLatestAlignment() {
+    _scrollSettleTimer?.cancel();
+    _scrollSettleTimer = Timer(const Duration(milliseconds: 70), () {
+      if (!mounted || !widget.scrollController.hasClients) return;
+      final position = widget.scrollController.position;
+      // Reverse lists place the latest response at offset zero. Follow new
+      // output only while the user is already near it; never pull someone
+      // away from an older message they are reading.
+      if (position.pixels > 140 || position.pixels <= .5) return;
+      if (MediaQuery.disableAnimationsOf(context)) {
+        widget.scrollController.jumpTo(0);
+      } else {
+        unawaited(
+          widget.scrollController.animateTo(
+            0,
+            duration: const Duration(milliseconds: 320),
+            curve: Curves.easeOutQuart,
+          ),
+        );
+      }
+    });
+  }
+
+  /// Counter-balances the reverse list's bottom anchor while a sources list
+  /// grows: expanding the message pushes the content above it up by [delta],
+  /// so the scroll position is nudged by the same amount to keep the answer
+  /// anchored while the actions below the sources slide down.
+  void _compensateSourcesGrowth(double delta) {
+    if (!widget.scrollController.hasClients || delta == 0) return;
+    final position = widget.scrollController.position;
+    final target = (position.pixels + delta).clamp(
+      0.0,
+      position.maxScrollExtent,
+    );
+    if (target != position.pixels) {
+      widget.scrollController.jumpTo(target);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.generation.removeListener(_generationChanged);
+    _scrollSettleTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final activeJob = widget.generation.activeJob;
+    final ownsGeneration = activeJob != null &&
+        activeJob.conversationId == widget.activeConversationId;
+    final terminalJob = widget.generation.job;
+    final visibleError =
+        terminalJob?.conversationId == widget.activeConversationId &&
+                terminalJob?.state == ChatGenerationState.error
+            ? terminalJob?.errorMessage
+            : null;
+    // A turn that failed before emitting any token is persisted with empty
+    // text, so it never reaches the message list and its Regenerate action is
+    // unreachable. Surface a retry on the error bubble itself.
+    final failedTurn = visibleError == null
+        ? null
+        : widget.messages
+            .where((message) => message.id == terminalJob?.assistantMessageId)
+            .firstOrNull;
+    if (widget.messages.isEmpty &&
+        activeJob == null &&
+        visibleError == null &&
+        !widget.preparing) {
+      return _FadeRise(child: _ConversationEmpty(greeting: widget.greeting));
+    }
+    final streamingMessageId =
+        ownsGeneration ? activeJob.assistantMessageId : null;
+    final visibleMessages = widget.messages
+        .where(
+          (message) =>
+              message.text.isNotEmpty && message.id != streamingMessageId,
+        )
+        .toList(growable: false);
+    return Stack(
+      key: const ValueKey('chat-edge-fade'),
+      children: [
+        ListView.builder(
+          key: const ValueKey('chat-scroll-view'),
+          controller: widget.scrollController,
+          reverse: true,
+          // Content bleeds into the soft edge fades so messages fade out as
+          // they reach the top edge and fade into the bottom screen edge
+          // beneath the composer. The top inset parks the oldest message below
+          // the header instead of against the status bar; the bottom inset
+          // keeps the newest message close above the composer.
+          padding: EdgeInsets.fromLTRB(
+            0,
+            widget.topInset,
+            0,
+            widget.bottomInset + 20,
+          ),
+          // ignore: deprecated_member_use (OHOS fork 3.27 lacks scrollCacheExtent)
+          cacheExtent: 700.0,
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          physics: const FluxBouncingScrollPhysics(
+            parent: AlwaysScrollableScrollPhysics(),
+          ),
+          itemCount: visibleMessages.length + 1,
+          itemBuilder: (context, index) {
+            if (index == 0) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (widget.searchFailed) ...[
+                    _OfflineSearchNotice(
+                      onDismiss: widget.onDismissSearchNotice,
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+                  if (widget.historyUnavailable) ...[
+                    _HistoryUnavailableNotice(
+                      onDismiss: widget.onDismissHistoryNotice,
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+                  if (ownsGeneration)
+                    _StreamingReply(
+                      generation: widget.generation,
+                      text: activeJob.responseText,
+                    )
+                  else if (widget.preparing)
+                    _StreamingReply(generation: widget.generation, text: '')
+                  else if (activeJob != null)
+                    OtherChatGenerationNotice(
+                      title: widget.conversations
+                              .conversationById(activeJob.conversationId)
+                              ?.title ??
+                          L10n.of(context).chatAnotherChatFallback,
+                      onOpen: () =>
+                          widget.onOpenConversation(activeJob.conversationId),
+                      onStop: widget.onStop,
+                    )
+                  else if (visibleError != null)
+                    _ErrorReply(
+                      key: const ValueKey('error'),
+                      text: visibleError,
+                      onRetry: failedTurn == null
+                          ? null
+                          : () => widget.onRegenerate(failedTurn),
+                    ),
+                  if (visibleMessages.isNotEmpty) const SizedBox(height: 14),
+                ],
+              );
+            }
+            final message = visibleMessages[visibleMessages.length - index];
+            return Padding(
+              key: ValueKey('chat-message-${message.id}'),
+              padding: const EdgeInsets.only(bottom: 14),
+              child: _AnimatedIn(
+                child: message.role == ConversationRole.user
+                    ? Align(
+                        alignment: Alignment.centerRight,
+                        child: _Bubble(
+                          text: message.text,
+                          imagePath: message.imagePath,
+                          user: true,
+                          modelTier: 'User message',
+                          onEdit: () => widget.onEdit(message),
+                        ),
+                      )
+                    : _CompleteReply(
+                        text: message.text,
+                        userPrompt: (visibleMessages.length - index - 1 >= 0 &&
+                                visibleMessages[
+                                            visibleMessages.length - index - 1]
+                                        .role ==
+                                    ConversationRole.user)
+                            ? visibleMessages[
+                                    visibleMessages.length - index - 1]
+                                .text
+                            : null,
+                        modelTier: message.modelTier,
+                        status: message.status,
+                        sources: message.sources,
+                        toolActivities: message.toolActivities,
+                        pendingAction: message.pendingAction,
+                        onRunAction: message.pendingAction == null
+                            ? null
+                            : () => widget.onRunAction(message),
+                        onDismissAction: message.pendingAction == null
+                            ? null
+                            : () => widget.onDismissAction(message),
+                        onSourcesHeightDelta: _compensateSourcesGrowth,
+                        showActions: true,
+                        onContinue: message.status ==
+                                    ConversationMessageStatus.tokenLimited &&
+                                message.continuationCount < 1
+                            ? () => widget.onContinue(message)
+                            : null,
+                        onRegenerate:
+                            message.id == widget.messages.lastOrNull?.id
+                                ? () => widget.onRegenerate(message)
+                                : null,
+                      ),
+              ),
+            );
+          },
+        ),
+        // Fixed overlay bands (Positioned, not Align) so they are anchored to
+        // the real top and bottom edges of the viewport. The top band is tall
+        // enough to hide the header completely and still ramp out below it; the
+        // bottom band fades content into the very bottom edge of the screen and
+        // completes exactly at the composer's top edge, so messages stay crisp
+        // right up to the input.
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          height: _chatTopFadeHeight,
+          child: IgnorePointer(
+            child: const _ChatEdgeFade(
+              key: ValueKey('chat-fade-top'),
+              top: true,
+            ),
+          ),
+        ),
+        Positioned(
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: widget.bottomInset,
+          child: IgnorePointer(
+            child: const _ChatEdgeFade(
+              key: ValueKey('chat-fade-bottom'),
+              top: false,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}

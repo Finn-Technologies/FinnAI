@@ -48,11 +48,11 @@ and no DI container. The singletons are:
 | `YouProfileStore`, `FlowsStore`, `CreationStore`, `VoiceSettingsStore` | feature-local persisted state |
 
 UI state that is not shared lives in `State` objects — notably `_HomeShellState` in
-`features/chat/home_shell.dart`, which is the largest widget by far.
+`features/chat/home_shell.dart` (behaviour split across `chat/shell/`, widgets in `chat/widgets/`).
 
 ## One message, end to end
 
-1. **Compose.** `HomeShell._send` (`features/chat/home_shell.dart`) normalizes the text, collects
+1. **Compose.** `HomeShell._send` (`features/chat/shell/send.dart`) normalizes the text, collects
    attachments, builds the system context from `YouProfileStore` + `FlowsStore`, and — if the local
    search planner (`SearchPlanner`, `features/search/search_turn.dart`) says the query may need
    current facts — runs exactly one web search (`SearchTurn`, 5 s budget). The model never decides

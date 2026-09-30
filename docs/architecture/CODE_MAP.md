@@ -40,12 +40,15 @@ Use this before grepping. Paths are relative to the repository root.
 
 | To change… | Edit |
 |---|---|
-| Chat screen, sidebar, composer, message bubbles | `lib/src/features/chat/home_shell.dart` |
-| Send / stop / regenerate / continue behaviour | `home_shell.dart` (`_send`, `_stopReply`, `_regenerateReply`, `_continueReply`) + `chat_generation_controller.dart` |
+| Chat screen state and `build` | `lib/src/features/chat/home_shell.dart` |
+| Message bubbles, replies, sources, dialogs | `lib/src/features/chat/widgets/` (`bubbles.dart`, `replies.dart`, `sources.dart`, `dialogs.dart`, `conversation.dart`) |
+| Composer | `lib/src/features/chat/widgets/composer.dart` |
+| Sidebar | `lib/src/features/chat/widgets/sidebar.dart`, `sidebar_tiles.dart` |
+| Send / stop / regenerate / continue behaviour | `lib/src/features/chat/shell/send.dart` (`_send`, `_regenerateReply`, `_continueReply`), `shell/navigation.dart` (`_stopReply`) + `chat_generation_controller.dart` |
 | Streaming, cancellation, persistence of a turn | `lib/src/features/chat/chat_generation_controller.dart` |
 | Conversation storage format / encryption / history limits | `lib/src/features/conversations/conversation_store.dart` |
-| Attachment picking (camera / photos / files) | `home_shell.dart` (`_pickCamera`, `_pickGallery`, `_pickFile`) |
-| Selected-text share ("Ask Finn AI") | `android/…/MainActivity.kt` + `home_shell.dart` (`selectedTextPrompt`, `_handleIncomingProcessText`) |
+| Attachment picking (camera / photos / files) | `lib/src/features/chat/shell/attachments.dart` (`_pickFromCamera`, `_pickFromGallery`, `_pickFromFileSystem`) |
+| Selected-text share ("Ask Finn AI") | `android/…/MainActivity.kt` + `lib/src/features/chat/shell/selected_text.dart` (`selectedTextPrompt`), `shell/lifecycle.dart` (`_handleIncomingProcessText`) |
 | Markdown rendering of replies | `lib/src/shared/widgets/safe_markdown_text.dart` |
 
 ## Web grounding
@@ -55,7 +58,7 @@ Use this before grepping. Paths are relative to the repository root.
 | When a query triggers a search (and why) | `lib/src/features/search/search_policy.dart` (`WebSearchPolicy.reasonFor`, `SearchPlanReason`) and `search_turn.dart` (`SearchPlanner.plan`) |
 | How a query is cleaned / which endpoints are used | `lib/src/features/search/web_search_service.dart` (`_cleanSearchQuery`, `search`) |
 | The one search a turn gets (budget, failure note) | `lib/src/features/search/search_turn.dart` (`SearchTurn.run`, `defaultBudget`) |
-| Where chat runs the search for send / continue / regenerate / edit | `lib/src/features/chat/home_shell.dart` (`_groundTurn`) |
+| Where chat runs the search for send / continue / regenerate / edit | `lib/src/features/chat/shell/send.dart` (`_groundTurn`) |
 | Turning search results into prompt context | `lib/src/features/search/search_agent.dart` (`groundedContextForSources`, `searchAndFetch`) |
 | The search step the eval applies before the engine | `lib/main.dart` (`_groundEvalTurn`) → `engine/eval/harness.dart` (`EvalGrounder`) |
 
@@ -112,7 +115,7 @@ See `docs/architecture/CREATIONS.md` for the spec DSL, the generation pipeline a
 | Android host + method channels | `android/app/src/main/kotlin/com/abhiflex/finnai/MainActivity.kt` |
 | Android home-screen widget + share bridge | `android/…/FinnHomeScreenBridge.kt` (+ the manifest receiver/provider and `proguard-rules.pro`) |
 | OpenHarmony path handling | `lib/src/platform/openharmony_path_provider.dart` |
-| Page transition used by every sub-page | `lib/src/features/chat/home_shell.dart` (`FinnPageRoute`) |
+| Page transition used by every sub-page | `lib/src/features/chat/widgets/sources.dart` (`FinnPageRoute`) |
 | Engine-seam CI gate | `tool/verify_engine_seam.sh` |
 | Release verification | `tool/verify_release.sh`, `tool/build_play_release.sh` |
 | CI pipeline | `.github/workflows/ci.yml`, `.github/workflows/release.yml` |
