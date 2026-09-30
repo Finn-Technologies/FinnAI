@@ -1,0 +1,256 @@
+import 'dart:io';
+import 'dart:math';
+
+import 'package:flutter_test/flutter_test.dart';
+
+import 'package:finn_ai/src/engine/api/web_source.dart';
+import 'package:finn_ai/src/features/flows/flow_ports.dart';
+import 'package:finn_ai/src/features/flows/flow_runner.dart';
+import 'package:finn_ai/src/features/flows/flow_schedule.dart';
+import 'package:finn_ai/src/features/flows/flow_templates.dart';
+import 'package:finn_ai/src/features/flows/flows_store.dart';
+import 'package:finn_ai/src/shared/slots/slots.dart';
+
+class _Model implements FlowModel {
+  final prompts = <String>[];
+  final contexts = <String>[];
+  @override
+  Future<String> answer(String prompt, {String groundedContext = ''}) async {
+    prompts.add(prompt);
+    contexts.add(groundedContext);
+    return '- first point\n- second point';
+  }
+}
+
+class _Search implements FlowSearch {
+  _Search({this.offline = false});
+  final bool offline;
+  final queries = <String>[];
+  @override
+  Future<FlowSearchResult> search(String query) async {
+    queries.add(query);
+    if (offline) return const FlowSearchResult(failed: true);
+    return FlowSearchResult(
+      groundedContext: 'RETRIEVED WEB RESULTS:\n[1] $query',
+      sources: [
+        WebSource(
+          title: query,
+          url: Uri.parse('https://example.com/${queries.length}'),
+          snippet: 's',
+        ),
+      ],
+    );
+  }
+}
+
+class _Sink implements FlowOutputSink {
+  final delivered = <(String, String, int)>[];
+  @override
+  Future<void> deliver(
+      FinnFlow flow, String text, List<WebSource> sources) async {
+    delivered.add((flow.name, text, sources.length));
+  }
+}
+
+class _Notifier implements FlowNotifier {
+  final sent = <(String, String)>[];
+  @override
+  Future<void> notify({
+    required String flowId,
+    required String title,
+    required String body,
+  }) async {
+    sent.add((title, body));
+  }
+}
+
+void main() {
+  late Directory directory;
+  late FlowsStore store;
+
+  setUp(() async {
+    directory = await Directory.systemTemp.createTemp('finn-flow-tpl');
+    store = FlowsStore(directoryProvider: () async => directory);
+    await store.initialize();
+  });
+  tearDown(() => directory.deleteSync(recursive: true));
+
+  group('templates build valid flows', () {
+    for (final template in FlowTemplates.all) {
+      test('${template.id}: fallbacks and 200 rounds of hostile input', () {
+        final random = Random(template.id.hashCode);
+        for (var round = 0; round < 200; round++) {
+          final raw = <String, Object?>{
+            for (final slot in template.slots)
+              if (random.nextInt(4) != 0)
+                slot.key: [
+                  null,
+                  '',
+                  'x' * random.nextInt(400),
+                  '{input}{date} \u0007 ${random.nextInt(99)}',
+                  random.nextInt(1000),
+                ][random.nextInt(5)],
+          };
+          final values = SlotSanitizer.sanitize(template.slots, raw);
+          final flow = template.build('f', values);
+          final validation = FlowsStore.validate(flow);
+          expect(validation.isValid, isTrue, reason: '$raw');
+          expect(validation.hasDeviceAction, isFalse);
+          expect(FlowSchedule.nextRun(flow.trigger, DateTime(2026, 9, 30, 12)),
+              isNotNull);
+        }
+      });
+    }
+
+    test('a slot value cannot smuggle a placeholder into a step', () {
+      final template = FlowTemplates.byId('web_check')!;
+      final values = SlotSanitizer.sanitize(
+          template.slots, {'topic': 'cats {input} and {date}'});
+      final flow = template.build('f', values);
+      final query = flow.steps.first.text;
+      // Only the template's own {date} survives.
+      expect('{date}'.allMatches(query).length, 1);
+      expect(query.contains('{input}'), isFalse);
+    });
+  });
+
+  group('running a template', () {
+    test(
+        'morning brief: two searches, one grounded prompt, a notification, '
+        'and the result delivered', () async {
+      final template = FlowTemplates.byId('morning_brief')!;
+      final flow = template.build(
+        'brief',
+        SlotSanitizer.sanitize(
+            template.slots, {'topics': 'football', 'city': 'Rome'}),
+      );
+      final model = _Model();
+      final search = _Search();
+      final sink = _Sink();
+      final notifier = _Notifier();
+      final run = await FlowRunner(
+        store: store,
+        model: model,
+        search: search,
+        sink: sink,
+        notifier: notifier,
+        clock: () => DateTime(2026, 9, 30, 7, 30),
+      ).run(flow, triggeredBy: 'schedule');
+
+      expect(run.outcome, FlowRunOutcome.completed);
+      expect(search.queries, [
+        'top news about football today 2026-09-30',
+        'weather forecast Rome today',
+      ]);
+      expect(model.prompts, hasLength(1));
+      expect(model.contexts.single, contains('top news about football'));
+      expect(model.contexts.single, contains('weather forecast Rome'));
+      expect(notifier.sent.single.$1, 'Morning brief');
+      expect(notifier.sent.single.$2, contains('first point'));
+      expect(sink.delivered.single.$3, 2, reason: 'both sources delivered');
+      expect(run.steps.map((s) => s.outcome),
+          everyElement(FlowRunOutcome.completed));
+    });
+
+    test('offline: the brief still runs, told there were no results', () async {
+      final template = FlowTemplates.byId('web_check')!;
+      final flow = template.build(
+          'c', SlotSanitizer.sanitize(template.slots, {'topic': 'cats'}));
+      final model = _Model();
+      final run = await FlowRunner(
+        store: store,
+        model: model,
+        search: _Search(offline: true),
+        notifier: _Notifier(),
+      ).run(flow);
+      expect(run.outcome, FlowRunOutcome.completed);
+      expect(run.steps.first.detail, 'offline');
+      expect(model.contexts.single, isEmpty);
+    });
+
+    test('a reminder needs no model and no network', () async {
+      final template = FlowTemplates.byId('reminder')!;
+      final flow = template.build('r',
+          SlotSanitizer.sanitize(template.slots, {'message': 'Drink water'}));
+      final notifier = _Notifier();
+      final sink = _Sink();
+      final run = await FlowRunner(
+        store: store,
+        notifier: notifier,
+        sink: sink,
+      ).run(flow, triggeredBy: 'schedule');
+      expect(run.outcome, FlowRunOutcome.completed);
+      expect(notifier.sent.single, ('Reminder', 'Drink water'));
+      expect(sink.delivered, isEmpty, reason: 'nothing written, nothing saved');
+    });
+
+    test('a run that fails delivers nothing and notifies nobody', () async {
+      final template = FlowTemplates.byId('web_check')!;
+      final flow = template.build(
+          'c', SlotSanitizer.sanitize(template.slots, {'topic': 'cats'}));
+      final notifier = _Notifier();
+      final sink = _Sink();
+      final run = await FlowRunner(
+        store: store,
+        // No model: the prompt step fails, so the notify step must not run.
+        search: _Search(),
+        notifier: notifier,
+        sink: sink,
+      ).run(flow);
+      expect(run.outcome, FlowRunOutcome.failed);
+      expect(notifier.sent, isEmpty);
+      expect(sink.delivered, isEmpty);
+    });
+
+    test('the log still holds no model text', () async {
+      final template = FlowTemplates.byId('web_check')!;
+      final flow = template.build(
+          'c', SlotSanitizer.sanitize(template.slots, {'topic': 'cats'}));
+      await FlowRunner(
+        store: store,
+        model: _Model(),
+        search: _Search(),
+        notifier: _Notifier(),
+      ).run(flow);
+      final raw = directory
+          .listSync(recursive: true)
+          .whereType<File>()
+          .map((f) => f.readAsStringSync())
+          .join();
+      expect(raw.contains('first point'), isFalse);
+    });
+  });
+
+  group('next run', () {
+    final wed = DateTime(2026, 9, 30, 12); // a Wednesday
+    test('a daily flow later today runs today', () {
+      expect(FlowSchedule.nextRun(const FlowTrigger.daily(18, 0), wed),
+          DateTime(2026, 9, 30, 18));
+    });
+    test('a daily flow already past runs tomorrow', () {
+      expect(FlowSchedule.nextRun(const FlowTrigger.daily(7, 30), wed),
+          DateTime(2026, 10, 1, 7, 30));
+    });
+    test('exactly now is not "next"', () {
+      expect(FlowSchedule.nextRun(const FlowTrigger.daily(12, 0), wed),
+          DateTime(2026, 10, 1, 12));
+    });
+    test('a weekly flow picks the next matching weekday', () {
+      // Monday and Friday; today is Wednesday -> Friday 2 Oct.
+      expect(
+        FlowSchedule.nextRun(const FlowTrigger.weekly(9, 0, {1, 5}), wed),
+        DateTime(2026, 10, 2, 9),
+      );
+    });
+    test('a manual flow has no next run', () {
+      expect(FlowSchedule.nextRun(const FlowTrigger.manual(), wed), isNull);
+    });
+    test('month and year boundaries roll over', () {
+      expect(
+        FlowSchedule.nextRun(
+            const FlowTrigger.daily(6, 0), DateTime(2026, 12, 31, 23)),
+        DateTime(2027, 1, 1, 6),
+      );
+    });
+  });
+}

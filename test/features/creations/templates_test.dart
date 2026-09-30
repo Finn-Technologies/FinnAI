@@ -8,7 +8,7 @@ import 'package:finn_ai/src/features/creations/spec/deck_theme.dart';
 import 'package:finn_ai/src/features/creations/spec/mini_app_spec.dart';
 import 'package:finn_ai/src/features/creations/spec/spec_validator.dart';
 import 'package:finn_ai/src/features/creations/templates/template_catalog.dart';
-import 'package:finn_ai/src/features/creations/templates/template_slots.dart';
+import 'package:finn_ai/src/shared/slots/slots.dart';
 
 Map<String, Object?> _fuzz(Random random, List<TemplateSlot> slots) {
   Object? junk() => switch (random.nextInt(9)) {

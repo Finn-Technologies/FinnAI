@@ -9,7 +9,7 @@ import 'package:finn_ai/src/features/creations/spec/spec_validator.dart';
 import 'package:finn_ai/src/features/creations/templates/creation_template.dart';
 import 'package:finn_ai/src/features/creations/templates/slot_prompt.dart';
 import 'package:finn_ai/src/features/creations/templates/template_catalog.dart';
-import 'package:finn_ai/src/features/creations/templates/template_slots.dart';
+import 'package:finn_ai/src/shared/slots/slots.dart';
 import 'package:finn_ai/src/inference/finn_inference.dart';
 import 'package:finn_ai/src/inference/prompt_intent.dart';
 

@@ -1,7 +1,8 @@
 import 'package:finn_ai/src/features/creations/creation_model.dart';
 import 'package:finn_ai/src/features/creations/spec/mini_app_spec.dart';
+import 'package:finn_ai/src/features/creations/spec/spec_limits.dart';
 import 'package:finn_ai/src/features/creations/templates/creation_template.dart';
-import 'package:finn_ai/src/features/creations/templates/template_slots.dart';
+import 'package:finn_ai/src/shared/slots/slots.dart';
 
 const _titleSlot = TemplateSlot(
   'title',
@@ -14,7 +15,8 @@ const _titleSlot = TemplateSlot(
 
 const _accentSlot = TemplateSlot(
   'accent',
-  SlotKind.accent,
+  SlotKind.choice,
+  options: SpecLimits.accentList,
   fallback: 'mint',
   example: 'sky',
   description: 'one colour word: mint, blue, lime, amber, rose, violet or sky',

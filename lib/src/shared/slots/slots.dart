@@ -1,11 +1,11 @@
 import 'package:flutter/foundation.dart';
 
-import 'package:finn_ai/src/features/creations/spec/mini_app_spec.dart';
-
 /// What kind of value a template slot holds.
-enum SlotKind { text, integer, list, emoji, accent, choice }
+enum SlotKind { text, integer, list, emoji, choice }
 
-/// One fillable field of a [CreationTemplate].
+/// One fillable field of a template (a creation or a flow).
+///
+/// Shared so the two features never import each other.
 ///
 /// A slot is deliberately tiny: a name, a kind, a limit and a fallback. The
 /// model only ever has to produce these values, never a layout, and every value
@@ -59,8 +59,6 @@ class SlotValues {
   int integer(String key) => _values[key] as int? ?? 0;
   List<String> list(String key) =>
       (_values[key] as List<Object?>? ?? const []).cast<String>();
-  MiniAppAccent accent(String key) =>
-      MiniAppAccent.parse(_values[key] as String? ?? 'mint');
 
   Map<String, Object?> toJson() => Map.unmodifiable(_values);
 }
@@ -87,7 +85,6 @@ abstract final class SlotSanitizer {
     for (final slot in slots) {
       if (raw[slot.key] == null) continue;
       if (_one(slot, raw[slot.key]) != _one(slot, null) ||
-          slot.kind == SlotKind.accent ||
           slot.kind == SlotKind.choice) {
         count++;
       }
@@ -130,13 +127,6 @@ abstract final class SlotSanitizer {
         final runes = value.trim().runes.where((r) => r > 0x2000).toList();
         if (runes.isEmpty) return slot.fallback;
         return String.fromCharCodes(runes.take(2));
-      case SlotKind.accent:
-        try {
-          final parsed = MiniAppAccent.parse((value ?? '').toString());
-          return parsed.name;
-        } on FormatException {
-          return slot.fallback;
-        }
       case SlotKind.choice:
         final wanted = (value ?? '').toString().trim().toLowerCase();
         for (final option in slot.options) {

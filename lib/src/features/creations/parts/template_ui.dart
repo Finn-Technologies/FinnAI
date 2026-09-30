@@ -178,7 +178,7 @@ class _SlotEditorSheetState extends State<_SlotEditorSheet> {
           _controllers[slot.key] = TextEditingController(
             text: ((_values[slot.key] as List?) ?? const []).join('\n'),
           );
-        case SlotKind.accent || SlotKind.choice:
+        case SlotKind.choice:
           break;
       }
     }
@@ -261,7 +261,7 @@ class _SlotEditorSheetState extends State<_SlotEditorSheet> {
     final l10n = L10n.of(context);
     final label = _slotLabel(context, slot.key);
     switch (slot.kind) {
-      case SlotKind.accent:
+      case SlotKind.choice:
         final selected = MiniAppAccent.parse(
           '${_values[slot.key] ?? slot.fallback}',
         );
@@ -307,8 +307,6 @@ class _SlotEditorSheetState extends State<_SlotEditorSheet> {
             ),
           ],
         );
-      case SlotKind.choice:
-        return const SizedBox.shrink();
       default:
         final isList = slot.kind == SlotKind.list;
         return TextField(

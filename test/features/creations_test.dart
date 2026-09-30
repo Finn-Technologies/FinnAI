@@ -6,7 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:finn_ai/src/features/creations/creation_fallbacks.dart';
 import 'package:finn_ai/src/features/creations/templates/template_catalog.dart';
-import 'package:finn_ai/src/features/creations/templates/template_slots.dart';
+import 'package:finn_ai/src/shared/slots/slots.dart';
 import 'package:finn_ai/src/features/creations/creation_generator.dart';
 import 'package:finn_ai/src/features/creations/creation_model.dart';
 import 'package:finn_ai/src/features/creations/creation_store.dart';

@@ -73,7 +73,7 @@ See `docs/architecture/CREATIONS.md` for the spec DSL, the generation pipeline a
 | The size caps enforced on every spec | `lib/src/features/creations/spec/spec_limits.dart` |
 | Which template a brief gets, and the template list | `lib/src/features/creations/templates/template_catalog.dart` |
 | A template's layout and slots (apps / widgets) | `lib/src/features/creations/templates/app_templates.dart`, `widget_templates.dart` |
-| Slot limits and sanitising | `lib/src/features/creations/templates/template_slots.dart` |
+| Slot limits and sanitising | `lib/src/shared/slots/slots.dart` |
 | What the model is told to produce (slots / decks) | `lib/src/features/creations/templates/slot_prompt.dart`, `creation_prompts.dart` (decks) |
 | Deck themes and layouts | `lib/src/features/creations/spec/deck_theme.dart`, `deck/slide_card.dart`, `deck/pptx_writer.dart` |
 | Template chips and the slot editor UI | `lib/src/features/creations/parts/template_ui.dart` |

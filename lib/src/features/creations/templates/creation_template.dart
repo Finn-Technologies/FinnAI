@@ -1,5 +1,5 @@
 import 'package:finn_ai/src/features/creations/creation_model.dart';
-import 'package:finn_ai/src/features/creations/templates/template_slots.dart';
+import 'package:finn_ai/src/shared/slots/slots.dart';
 
 /// A curated, valid-by-construction creation with named slots (ADR 0003).
 ///

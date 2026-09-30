@@ -14,15 +14,28 @@ import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
     private var pendingProcessText: String? = null
+    private var pendingFlowId: String? = null
+    private var pendingNotificationResult: MethodChannel.Result? = null
 
     override fun onCreate(savedInstanceState: android.os.Bundle?) {
         super.onCreate(savedInstanceState)
         extractProcessText(intent)
+        extractFlowId(intent)
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        val flowId = extractFlowId(intent)
+        if (flowId != null) {
+            flutterEngine?.let { engine ->
+                try {
+                    MethodChannel(engine.dartExecutor.binaryMessenger, "finn_ai/flow_schedule")
+                        .invokeMethod("onFlowDue", mapOf("flowId" to flowId))
+                } catch (_: Exception) {
+                }
+            }
+        }
         val text = extractProcessText(intent)
         if (!text.isNullOrBlank()) {
             flutterEngine?.let { engine ->
@@ -32,6 +45,31 @@ class MainActivity : FlutterActivity() {
                 } catch (_: Exception) {
                 }
             }
+        }
+    }
+
+    /** A tap on a "flow is due" notification carries the flow's id. */
+    private fun extractFlowId(intent: Intent?): String? {
+        if (intent?.action != FlowScheduler.ACTION_RUN_FLOW) return null
+        val id = intent.getStringExtra(FlowScheduler.EXTRA_FLOW_ID)
+        if (!id.isNullOrBlank()) {
+            pendingFlowId = id
+            return id
+        }
+        return null
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray,
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQUEST_NOTIFICATIONS) {
+            pendingNotificationResult?.success(
+                grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED,
+            )
+            pendingNotificationResult = null
         }
     }
 
@@ -90,6 +128,73 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            "finn_ai/flow_schedule",
+        ).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "notificationsAllowed" -> result.success(FlowScheduler.notificationsAllowed(this))
+                "requestNotifications" -> {
+                    if (FlowScheduler.notificationsAllowed(this)) {
+                        result.success(true)
+                    } else if (pendingNotificationResult != null) {
+                        result.success(false)
+                    } else {
+                        pendingNotificationResult = result
+                        requestPermissions(
+                            arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                            REQUEST_NOTIFICATIONS,
+                        )
+                    }
+                }
+                "schedule" -> {
+                    val args = call.arguments as? Map<*, *>
+                    val id = args?.get("flowId") as? String
+                    if (id == null) {
+                        result.error("bad_args", "flowId is required", null)
+                    } else {
+                        FlowScheduler.schedule(
+                            this,
+                            FlowScheduler.Spec(
+                                id = id,
+                                name = (args["name"] as? String) ?: "Flow",
+                                hour = (args["hour"] as? Number)?.toInt() ?: 0,
+                                minute = (args["minute"] as? Number)?.toInt() ?: 0,
+                                days = (args["days"] as? List<*>)
+                                    ?.mapNotNull { (it as? Number)?.toInt() } ?: emptyList(),
+                            ),
+                        )
+                        result.success(null)
+                    }
+                }
+                "cancel" -> {
+                    (call.arguments as? Map<*, *>)?.get("flowId")?.let {
+                        FlowScheduler.cancel(this, it as String)
+                    }
+                    result.success(null)
+                }
+                "cancelAll" -> {
+                    FlowScheduler.cancelAll(this)
+                    result.success(null)
+                }
+                "notify" -> {
+                    val args = call.arguments as? Map<*, *>
+                    FlowScheduler.notifyDue(
+                        this,
+                        (args?.get("flowId") as? String) ?: "flow",
+                        (args?.get("title") as? String) ?: "Flow",
+                        (args?.get("body") as? String) ?: "",
+                    )
+                    result.success(null)
+                }
+                "takePendingFlow" -> {
+                    val id = pendingFlowId
+                    pendingFlowId = null
+                    result.success(id)
+                }
+                else -> result.notImplemented()
+            }
+        }
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             "finn_ai/device_profile",
@@ -245,5 +350,9 @@ class MainActivity : FlutterActivity() {
 
         // Device actions: alarms, timers, media transport, settings screens.
         FinnDeviceActionsBridge.register(flutterEngine, this)
+    }
+
+    companion object {
+        private const val REQUEST_NOTIFICATIONS = 7301
     }
 }

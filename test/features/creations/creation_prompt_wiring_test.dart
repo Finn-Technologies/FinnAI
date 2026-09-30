@@ -5,7 +5,7 @@ import 'package:finn_ai/src/features/creations/spec/deck_theme.dart';
 import 'package:finn_ai/src/features/creations/spec/spec_limits.dart';
 import 'package:finn_ai/src/features/creations/templates/slot_prompt.dart';
 import 'package:finn_ai/src/features/creations/templates/template_catalog.dart';
-import 'package:finn_ai/src/features/creations/templates/template_slots.dart';
+import 'package:finn_ai/src/shared/slots/slots.dart';
 
 /// A rule the model was never told is a rule it can only fail by accident, so
 /// every limit the sanitiser or validator enforces has to be in the prompt.

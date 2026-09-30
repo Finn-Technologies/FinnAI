@@ -4,7 +4,7 @@ import 'package:finn_ai/src/features/creations/creation_generator.dart';
 import 'package:finn_ai/src/features/creations/creation_model.dart';
 import 'package:finn_ai/src/features/creations/creation_store.dart';
 import 'package:finn_ai/src/features/creations/templates/template_catalog.dart';
-import 'package:finn_ai/src/features/creations/templates/template_slots.dart';
+import 'package:finn_ai/src/shared/slots/slots.dart';
 
 /// The outcome of one creation attempt, as the page needs to present it.
 @immutable

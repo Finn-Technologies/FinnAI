@@ -1,11 +1,13 @@
 import 'package:finn_ai/src/features/creations/creation_model.dart';
 import 'package:finn_ai/src/features/creations/spec/widget_spec.dart';
+import 'package:finn_ai/src/features/creations/spec/spec_limits.dart';
 import 'package:finn_ai/src/features/creations/templates/creation_template.dart';
-import 'package:finn_ai/src/features/creations/templates/template_slots.dart';
+import 'package:finn_ai/src/shared/slots/slots.dart';
 
 const _accent = TemplateSlot(
   'accent',
-  SlotKind.accent,
+  SlotKind.choice,
+  options: SpecLimits.accentList,
   fallback: 'sky',
   example: 'mint',
   description: 'one colour word: mint, blue, lime, amber, rose, violet or sky',

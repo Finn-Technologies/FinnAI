@@ -21,7 +21,7 @@ import 'package:finn_ai/src/features/creations/spec/mini_app_spec.dart';
 import 'package:finn_ai/src/features/creations/spec/widget_spec.dart';
 import 'package:finn_ai/src/features/creations/templates/creation_template.dart';
 import 'package:finn_ai/src/features/creations/templates/template_catalog.dart';
-import 'package:finn_ai/src/features/creations/templates/template_slots.dart';
+import 'package:finn_ai/src/shared/slots/slots.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 import 'package:finn_ai/src/shared/widgets/ambient_background.dart';
 import 'package:finn_ai/src/shared/widgets/finn_page_header.dart';

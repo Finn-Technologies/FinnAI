@@ -23,6 +23,8 @@
 -keep class com.abhiflex.finnai.MainActivity { <init>(); }
 -keep class com.abhiflex.finnai.ModelDownloadService { <init>(); }
 -keep class com.abhiflex.finnai.FinnHomeWidgetProvider { <init>(); }
+-keep class com.abhiflex.finnai.FlowAlarmReceiver { <init>(); }
+-keep class com.abhiflex.finnai.FlowBootReceiver { <init>(); }
 
 # JNI & Native methods
 -keepclasseswithmembernames,includedescriptorclasses class * {

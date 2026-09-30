@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:finn_ai/src/features/creations/templates/creation_template.dart';
-import 'package:finn_ai/src/features/creations/templates/template_slots.dart';
+import 'package:finn_ai/src/shared/slots/slots.dart';
 
 /// The prompt that asks the model to fill a template's slots.
 ///

@@ -3,14 +3,15 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
-import 'package:cryptography/cryptography.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'package:finn_ai/src/features/actions/device_action.dart';
+import 'package:finn_ai/src/features/conversations/conversation_crypto.dart';
 import 'package:finn_ai/src/features/search/search_agent.dart';
 import 'package:finn_ai/src/features/search/web_search_service.dart';
+
+export 'package:finn_ai/src/features/conversations/conversation_crypto.dart';
 
 enum ConversationRole { user, assistant }
 
@@ -246,135 +247,6 @@ class FinnConversation {
             )
             .toList(),
       );
-}
-
-/// AES-256-GCM cipher using the maintained `cryptography` package.
-class ConversationCipher {
-  static final AesGcm _algorithm = AesGcm.with256bits();
-
-  /// Encrypts plaintext string using AES-256-GCM.
-  static Future<Map<String, String>> encrypt(
-    Uint8List keyBytes,
-    String plaintext, {
-    List<int>? customNonce,
-  }) async {
-    if (keyBytes.length != 32) {
-      throw ArgumentError('AES-256-GCM requires a 32-byte (256-bit) key.');
-    }
-    final secretKey = SecretKey(keyBytes);
-    final nonce = customNonce ?? _algorithm.newNonce();
-    final secretBox = await _algorithm.encrypt(
-      utf8.encode(plaintext),
-      secretKey: secretKey,
-      nonce: nonce,
-    );
-
-    return {
-      'version': '2',
-      'algorithm': 'AES-256-GCM',
-      'nonce': base64Encode(secretBox.nonce),
-      'ciphertext': base64Encode(secretBox.cipherText),
-      'mac': base64Encode(secretBox.mac.bytes),
-    };
-  }
-
-  /// Decrypts envelope using AES-256-GCM.
-  static Future<String> decrypt(
-    Uint8List keyBytes,
-    Map<String, Object?> envelope,
-  ) async {
-    if (keyBytes.length != 32) {
-      throw ArgumentError('AES-256-GCM requires a 32-byte (256-bit) key.');
-    }
-    final version = envelope['version']?.toString();
-    if (version != '2' || envelope['algorithm'] != 'AES-256-GCM') {
-      throw const FormatException('Unsupported or legacy cipher version');
-    }
-
-    final nonce = base64Decode(envelope['nonce'] as String);
-    final cipherText = base64Decode(envelope['ciphertext'] as String);
-    final macBytes = base64Decode(envelope['mac'] as String);
-
-    final secretKey = SecretKey(keyBytes);
-    final secretBox = SecretBox(cipherText, nonce: nonce, mac: Mac(macBytes));
-
-    final decryptedBytes = await _algorithm.decrypt(
-      secretBox,
-      secretKey: secretKey,
-    );
-    return utf8.decode(decryptedBytes);
-  }
-}
-
-/// Payload for off-main-isolate AES-GCM encryption (must be sendable).
-class _CipherEncryptPayload {
-  const _CipherEncryptPayload(this.keyBytes, this.plaintext, this.customNonce);
-  final Uint8List keyBytes;
-  final String plaintext;
-  final List<int>? customNonce;
-}
-
-Future<Map<String, String>> _encryptPayloadOnIsolate(_CipherEncryptPayload p) =>
-    ConversationCipher.encrypt(p.keyBytes, p.plaintext,
-        customNonce: p.customNonce);
-
-class _CipherDecryptPayload {
-  const _CipherDecryptPayload(this.keyBytes, this.envelope);
-  final Uint8List keyBytes;
-  final Map<String, Object?> envelope;
-}
-
-Future<String> _decryptPayloadOnIsolate(_CipherDecryptPayload p) =>
-    ConversationCipher.decrypt(p.keyBytes, p.envelope);
-
-Future<Map<String, String>> _encryptOffMain(Uint8List key, String plaintext) {
-  try {
-    return compute(
-        _encryptPayloadOnIsolate, _CipherEncryptPayload(key, plaintext, null));
-  } catch (_) {
-    return ConversationCipher.encrypt(key, plaintext);
-  }
-}
-
-Future<String> _decryptOffMain(Uint8List key, Map<String, Object?> envelope) {
-  try {
-    return compute(
-        _decryptPayloadOnIsolate, _CipherDecryptPayload(key, envelope));
-  } catch (_) {
-    return ConversationCipher.decrypt(key, envelope);
-  }
-}
-
-/// Abstract key storage interface for secure key persistence and unit test injection.
-abstract class SecureKeyStorage {
-  Future<Uint8List?> readKey(String alias);
-  Future<void> writeKey(String alias, Uint8List key);
-  Future<void> deleteKey(String alias);
-}
-
-/// Default implementation backed by FlutterSecureStorage with encryptedSharedPreferences.
-class DefaultFlutterSecureKeyStorage implements SecureKeyStorage {
-  const DefaultFlutterSecureKeyStorage();
-
-  static const _secureStorage = FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
-  );
-
-  @override
-  Future<Uint8List?> readKey(String alias) async {
-    final b64 = await _secureStorage.read(key: alias);
-    return (b64 != null && b64.isNotEmpty) ? base64Decode(b64) : null;
-  }
-
-  @override
-  Future<void> writeKey(String alias, Uint8List key) async {
-    await _secureStorage.write(key: alias, value: base64Encode(key));
-  }
-
-  @override
-  Future<void> deleteKey(String alias) async {
-    await _secureStorage.delete(key: alias);
-  }
 }
 
 class ConversationStore extends ChangeNotifier {
@@ -682,7 +554,7 @@ class ConversationStore extends ChangeNotifier {
           final rawEnvelopeStr = await encFile.readAsString();
           final envelope = (jsonDecode(rawEnvelopeStr) as Map<Object?, Object?>)
               .cast<String, Object?>();
-          final decryptedJsonStr = await _decryptOffMain(
+          final decryptedJsonStr = await decryptOffMain(
             existingKey,
             envelope,
           );
@@ -809,14 +681,14 @@ class ConversationStore extends ChangeNotifier {
       }
 
       // Step 2: Write encrypted data to temporary file
-      final envelope = await _encryptOffMain(key, plaintextStr);
+      final envelope = await encryptOffMain(key, plaintextStr);
       await tempFile.writeAsString(jsonEncode(envelope), flush: true);
 
       // Step 3: Read and decrypt temporary file while it is still temporary
       final tmpStr = await tempFile.readAsString();
       final tmpEnv =
           (jsonDecode(tmpStr) as Map<Object?, Object?>).cast<String, Object?>();
-      final tmpDecrypted = await _decryptOffMain(key, tmpEnv);
+      final tmpDecrypted = await decryptOffMain(key, tmpEnv);
 
       // Step 4: Verify decrypted content equals source plaintext
       if (tmpDecrypted != plaintextStr) {
@@ -830,7 +702,7 @@ class ConversationStore extends ChangeNotifier {
       final finalStr = await encFile.readAsString();
       final finalEnv = (jsonDecode(finalStr) as Map<Object?, Object?>)
           .cast<String, Object?>();
-      final finalDecrypted = await _decryptOffMain(key, finalEnv);
+      final finalDecrypted = await decryptOffMain(key, finalEnv);
 
       if (finalDecrypted != plaintextStr) {
         throw StateError('Final file decryption verification failed.');
@@ -874,6 +746,41 @@ class ConversationStore extends ChangeNotifier {
     );
     _conversations.insert(0, conversation);
     _activeId = conversation.id;
+    _evictIfNeeded();
+    _changed();
+    return conversation;
+  }
+
+  /// Adds a finished, assistant-only conversation without touching the one the
+  /// user has open.
+  ///
+  /// Used for results nobody asked for in the moment: a scheduled flow's brief.
+  /// [startNew] would make it the active conversation and pull the user out of
+  /// whatever they were reading.
+  FinnConversation addStandaloneReply({
+    required String title,
+    required String text,
+    List<WebSource> sources = const [],
+    String modelTier = 'FinnAI',
+  }) {
+    final now = DateTime.now();
+    final conversation = FinnConversation(
+      id: now.microsecondsSinceEpoch.toString(),
+      title: title,
+      createdAt: now,
+      updatedAt: now,
+      messages: [
+        ConversationMessage(
+          id: (now.microsecondsSinceEpoch + 1).toString(),
+          role: ConversationRole.assistant,
+          text: text,
+          createdAt: now,
+          modelTier: modelTier,
+          sources: sources,
+        ),
+      ],
+    );
+    _conversations.insert(0, conversation);
     _evictIfNeeded();
     _changed();
     return conversation;
@@ -1403,7 +1310,7 @@ class ConversationStore extends ChangeNotifier {
         return;
       }
       final file = await _file(filename: 'conversations.v2.enc');
-      final envelope = await _encryptOffMain(key, plaintext);
+      final envelope = await encryptOffMain(key, plaintext);
       final payload = jsonEncode(envelope);
 
       // One retry with a fresh temp file absorbs a lost rename race (see
@@ -1563,7 +1470,7 @@ class ConversationStore extends ChangeNotifier {
       final key = await _getOrCreateMasterKey();
       if (key == null) return false;
       final file = await _archiveFile(conversation.id);
-      final envelope = await _encryptOffMain(
+      final envelope = await encryptOffMain(
         key,
         jsonEncode(conversation.toJson()),
       );
@@ -1600,7 +1507,7 @@ class ConversationStore extends ChangeNotifier {
     final envelope =
         (jsonDecode(await file.readAsString()) as Map<Object?, Object?>)
             .cast<String, Object?>();
-    final decrypted = await _decryptOffMain(key, envelope);
+    final decrypted = await decryptOffMain(key, envelope);
     return FinnConversation.fromJson(
       (jsonDecode(decrypted) as Map<Object?, Object?>).cast<String, Object?>(),
     );

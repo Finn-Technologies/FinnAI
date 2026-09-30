@@ -5,7 +5,9 @@ import 'package:flutter/foundation.dart';
 import 'package:finn_ai/src/features/actions/action_catalog.dart';
 import 'package:finn_ai/src/features/actions/device_action.dart';
 import 'package:finn_ai/src/features/actions/device_action_executor.dart';
+import 'package:finn_ai/src/features/flows/flow_ports.dart';
 import 'package:finn_ai/src/features/flows/flows_store.dart';
+import 'package:finn_ai/src/engine/api/web_source.dart';
 
 /// Runs a flow's steps, in order, and records what happened.
 ///
@@ -23,6 +25,10 @@ class FlowRunner {
   FlowRunner({
     FlowsStore? store,
     this.ask,
+    this.model,
+    this.search,
+    this.sink,
+    this.notifier,
     this.executor = const PlatformDeviceActionExecutor(),
     this.clock = DateTime.now,
     this.idFactory,
@@ -36,6 +42,19 @@ class FlowRunner {
   /// [ask] can still execute an automation, which is what makes the safety
   /// tests cheap and what keeps a prompt step from being a hidden chat turn.
   final Future<String> Function(String prompt)? ask;
+
+  /// Richer than [ask]: also receives web material for the step. Preferred when
+  /// both are given.
+  final FlowModel? model;
+
+  /// Runs a `browse` step. Without it a browse step fails, and the flow stops.
+  final FlowSearch? search;
+
+  /// Receives the written result at the end of a successful run.
+  final FlowOutputSink? sink;
+
+  /// Posts the `notify` step.
+  final FlowNotifier? notifier;
 
   final DeviceActionExecutor executor;
   final DateTime Function() clock;
@@ -70,6 +89,10 @@ class FlowRunner {
     final results = <FlowStepResult>[];
     var outcome = FlowRunOutcome.completed;
     var lastAnswer = '';
+    // Web material gathered by browse steps, consumed by the next prompt step.
+    final pendingContext = <String>[];
+    final allSources = <WebSource>[];
+    var produced = false;
     try {
       final validation = FlowsStore.validate(flow);
       if (!validation.isValid) {
@@ -90,7 +113,12 @@ class FlowRunner {
         final step = flow.steps[index];
         switch (step.kind) {
           case FlowStepKind.prompt:
-            final generate = ask;
+            final generate = model != null
+                ? (String prompt) => model!.answer(
+                      prompt,
+                      groundedContext: _joinContext(pendingContext),
+                    )
+                : ask;
             if (generate == null) {
               results.add(FlowStepResult(
                 index: index,
@@ -99,11 +127,13 @@ class FlowRunner {
                 detail: 'no model available',
               ));
               outcome = FlowRunOutcome.failed;
-              continue;
+              break;
             }
             try {
               lastAnswer =
-                  (await generate(_withInput(step.text, lastAnswer))).trim();
+                  (await generate(_expand(step.text, lastAnswer))).trim();
+              pendingContext.clear();
+              produced = produced || lastAnswer.isNotEmpty;
               results.add(FlowStepResult(
                 index: index,
                 kind: step.kind,
@@ -121,23 +151,70 @@ class FlowRunner {
             }
 
           case FlowStepKind.browse:
-            // Retrieval is a model concern, not a runner one: a browse step is
-            // a prompt step that asks the model to check the web. Treating it
-            // as a separate step kind would imply a second grounding path,
-            // which is the dual-stack the plan set out to remove.
-            results.add(FlowStepResult(
-              index: index,
-              kind: step.kind,
-              outcome: FlowRunOutcome.failed,
-              detail: 'unsupported step kind',
-            ));
-            outcome = FlowRunOutcome.failed;
+            final searcher = search;
+            if (searcher == null) {
+              results.add(FlowStepResult(
+                index: index,
+                kind: step.kind,
+                outcome: FlowRunOutcome.failed,
+                detail: 'no search available',
+              ));
+              outcome = FlowRunOutcome.failed;
+              break;
+            }
+            try {
+              final found =
+                  await searcher.search(_expand(step.text, lastAnswer));
+              if (found.groundedContext.isNotEmpty) {
+                pendingContext.add(found.groundedContext);
+              }
+              for (final source in found.sources) {
+                if (!allSources.any((s) => s.url == source.url)) {
+                  allSources.add(source);
+                }
+              }
+              // An offline search is a fact about the world, not a flow
+              // failure: the next prompt is told there were no results.
+              results.add(FlowStepResult(
+                index: index,
+                kind: step.kind,
+                outcome: FlowRunOutcome.completed,
+                detail: found.failed
+                    ? 'offline'
+                    : '${found.sources.length} sources',
+              ));
+            } catch (error) {
+              results.add(FlowStepResult(
+                index: index,
+                kind: step.kind,
+                outcome: FlowRunOutcome.failed,
+                detail: error.runtimeType.toString(),
+              ));
+              outcome = FlowRunOutcome.failed;
+            }
 
           case FlowStepKind.notify:
+            var notified = 'no notifier';
+            final tell = notifier;
+            if (tell != null) {
+              try {
+                await tell.notify(
+                  flowId: flow.id,
+                  title: flow.name,
+                  body: _notificationBody(
+                    lastAnswer.isEmpty ? _expand(step.text, '') : lastAnswer,
+                  ),
+                );
+                notified = 'sent';
+              } catch (error) {
+                notified = error.runtimeType.toString();
+              }
+            }
             results.add(FlowStepResult(
               index: index,
               kind: step.kind,
               outcome: FlowRunOutcome.completed,
+              detail: notified,
             ));
 
           case FlowStepKind.deviceAction:
@@ -149,7 +226,7 @@ class FlowRunner {
                 outcome: FlowRunOutcome.needsGrant,
               ));
               outcome = FlowRunOutcome.needsGrant;
-              continue;
+              break;
             }
             final executed = await _execute(step);
             results.add(executed);
@@ -157,13 +234,48 @@ class FlowRunner {
               outcome = FlowRunOutcome.failed;
             }
         }
-        if (outcome == FlowRunOutcome.failed) break;
+        // A failed step, a refused grant or a declined confirmation all end the
+        // run: later steps may depend on this one, and a notification or a
+        // device action after a failure is the wrong thing to do next.
+        if (outcome != FlowRunOutcome.completed) break;
+      }
+      if (outcome == FlowRunOutcome.completed && produced && sink != null) {
+        try {
+          await sink!.deliver(flow, lastAnswer, allSources);
+        } catch (error) {
+          debugPrint('FINN_FLOW deliver failed: ${error.runtimeType}');
+        }
       }
       return _record(flow, outcome, results, triggeredBy: triggeredBy);
     } finally {
       _running = false;
     }
   }
+
+  static String _joinContext(List<String> parts) {
+    final joined = parts.join('\n\n');
+    // A bounded prompt is a fast prompt on a small phone.
+    return joined.length <= 4000 ? joined : joined.substring(0, 4000);
+  }
+
+  /// One short paragraph for a notification body.
+  static String _notificationBody(String text) {
+    final flat = text
+        .replaceAll(RegExp(r'[*_#`>]'), '')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    return flat.length <= 240 ? flat : '${flat.substring(0, 240).trimRight()}…';
+  }
+
+  /// Fills `{input}` (the previous answer) and `{date}` (today, ISO) in a step.
+  String _expand(String text, String previous) => text
+      .replaceAll('{input}', previous)
+      .replaceAll('{date}', _isoDate(clock()));
+
+  static String _isoDate(DateTime time) =>
+      '${time.year.toString().padLeft(4, '0')}-'
+      '${time.month.toString().padLeft(2, '0')}-'
+      '${time.day.toString().padLeft(2, '0')}';
 
   /// Runs every flow whose trigger is due at [now].
   ///
@@ -189,16 +301,6 @@ class FlowRunner {
       runs.add(await run(flow, triggeredBy: 'schedule'));
     }
     return runs;
-  }
-
-  /// Substitutes the previous answer into a prompt step's `{input}`.
-  ///
-  /// Without this a flow is a list of unrelated questions; with it, step 2 can
-  /// act on step 1's answer, which is what makes a multi-step flow more than a
-  /// sequence of model calls.
-  String _withInput(String text, String previous) {
-    if (!text.contains('{input}')) return text;
-    return text.replaceAll('{input}', previous);
   }
 
   Future<FlowStepResult> _execute(FlowStep step) async {
