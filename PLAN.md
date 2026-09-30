@@ -194,13 +194,15 @@ templates, minimum device 4 GB. Commits `69b5c31`…`4864cde` on `main`.
 | Shell split | **done** (mechanical) | `home_shell.dart` 5,073 → 578 + `shell/` and `widgets/`; `composer.dart` (648) is the one baselined file |
 | Lite tier (D3) | **partly done, device-verified on the Lite *policy*** | text-only load, projector on first image; image case passes; not measured on a real 4 GB phone |
 | Empty-reply retry (D2) | **done, host-tested only** | retry decision is a tested pure function; the native hiccup it guards cannot be forced |
-| Flows scheduler (D4) | **not started** | the model and runner exist; nothing fires a schedule (`isDueAt` has no caller) |
+| Flows v1 (D4) | **done for the notify-and-tap path; device-verified except the alarm firing** | templates (morning brief / web check / reminder), real steps, schedule editor, AlarmManager + notification, result saved as a chat; ran on the Xiaomi: Google News RSS (5 sources) + Open-Meteo + model, 14 s; alarm seen armed in `dumpsys alarm`. **Not verified:** the alarm actually firing and the notification tap. **Not built:** background run on capable devices (owner chose "both"); this is notify-and-tap on every device for now |
 | Creations remake (D5) | **done**, host-tested; not device-run | 4 app templates, 2 widget templates, deck themes/layouts, slot editor; every template fuzz-tested; `append` with `{field}` + `clear` |
 | Motion system (D6) | **not started** | |
 | Real `FinnEngine` interface (D2) | **not started** | the parts still share private state |
 
 Verified: `dart format` clean, engine seam OK, boundaries OK, `flutter analyze --no-pub` clean,
-**834 tests**. Device: three eval runs on the Xiaomi (see RESULTS v2).
+**942 tests**. Device: three eval runs on the Xiaomi (see RESULTS v2).
+
+**Correction to the earlier "Phase 4 done" claim.** Flows were not usable: the page built its runner with no model, `browse` steps failed as "unsupported", `notify` did nothing, nothing created steps or a schedule, and `runDueScheduledFlows` had no caller. The 23 tests passed because they injected every dependency. That is now fixed and exercised on the phone. Also found on the phone: general keyless search cannot answer news or weather questions (a Wikipedia search returns articles *about* news), so two keyless providers were added (ADR 0002 amendment), and a brief with no sources made the model invent them, so such a run now fails instead.
 
 Known gaps to carry forward: searching turns cost 8-12 s TTFT; an empty reply after the retry
 now shows an error bubble with Retry (host-tested; not seen on a device); check pass rate is
