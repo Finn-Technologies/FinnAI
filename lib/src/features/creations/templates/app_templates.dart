@@ -195,7 +195,6 @@ class ChecklistTemplate extends CreationTemplate {
       titleFor(v),
       v.text('accent'),
       [
-        {'type': 'text', 'value': titleFor(v), 'style': 'title'},
         for (var i = 0; i < items.length; i++)
           {'type': 'toggle', 'key': 'item${i + 1}', 'label': items[i]},
         {
@@ -275,7 +274,6 @@ class ListTemplate extends CreationTemplate {
         titleFor(v),
         v.text('accent'),
         [
-          {'type': 'text', 'value': titleFor(v), 'style': 'title'},
           {'type': 'field', 'key': 'draft', 'hint': v.text('hint')},
           {
             'type': 'button',
@@ -358,7 +356,6 @@ class ScoreboardTemplate extends CreationTemplate {
         titleFor(v),
         v.text('accent'),
         [
-          {'type': 'text', 'value': titleFor(v), 'style': 'title'},
           {
             'type': 'row',
             'children': [

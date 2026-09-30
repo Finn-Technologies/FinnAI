@@ -118,17 +118,26 @@ class _TemplateChip extends StatelessWidget {
           child: InkWell(
             onTap: onTap,
             borderRadius: BorderRadius.circular(FluxRadius.pill),
-            child: Container(
+            // A Container with `alignment` would fill the row; the Row sizes
+            // the chip to its label so the chips wrap side by side.
+            child: ConstrainedBox(
               constraints: const BoxConstraints(minHeight: 48),
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              alignment: Alignment.center,
-              child: Text(
-                label,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: selected
-                          ? FluxColors.canvasOf(context)
-                          : FluxColors.inkOf(context),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      label,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: selected
+                                ? FluxColors.canvasOf(context)
+                                : FluxColors.inkOf(context),
+                          ),
                     ),
+                  ],
+                ),
               ),
             ),
           ),

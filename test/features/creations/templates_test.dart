@@ -105,7 +105,7 @@ void main() {
       ) as MiniAppArtifact)
           .spec;
       final listState = MiniAppState(listSpec)..setValue('draft', 'bread');
-      listState.dispatch((listSpec.nodes[2] as ButtonNode).action);
+      listState.dispatch((listSpec.nodes[1] as ButtonNode).action);
       expect(listState.valueOf('items'), ['bread']);
     });
   });
