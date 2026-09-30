@@ -13,6 +13,7 @@ import 'package:finn_ai/src/engine/prompt/tool_tag_filter.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'package:finn_ai/src/engine/profiler/device_profile.dart';
+import 'package:finn_ai/src/engine/metrics/perf_logging.dart';
 import 'package:finn_ai/src/engine/metrics/ttft_metrics.dart';
 import 'package:finn_ai/src/engine/policy/residency_policy.dart';
 import 'package:finn_ai/src/engine/adaptive/adaptive.dart';
@@ -177,6 +178,15 @@ class FinnAccelerator extends ChangeNotifier {
     '4524b3f997f0f06444e568d1f26e2efd69effa3218c7ad3047432fb171e42168',
     '284a335aa3fb2ced3b1b01fcb40b08aa783e3b70832767f0dd2e3fdfa134bd54',
   };
+
+  /// Suffixes that belong to an installed model file and must go when it does.
+  ///
+  /// `''` is the GGUF itself, `.part` an interrupted download, and
+  /// `.finn_repack` the repacked-weight disk cache the vendored native build
+  /// writes next to the model (see `tool/llama_android_native.patch`). The
+  /// repack cache is worth ~693MB on the 1.6B — leaving it behind meant
+  /// "Delete All Local Data" left a third of a gigabyte on the device.
+  static const modelFileSuffixes = <String>['', '.part', '.finn_repack'];
 
   FinnModelSpec _selected = finnModels.single;
   FinnModelSpec get selected => _selected;
@@ -813,22 +823,14 @@ class FinnAccelerator extends ChangeNotifier {
     await _unloadModel(model.tier);
     try {
       final file = await _modelFile(model);
-      if (await file.exists()) await file.delete();
+      final removed = await removeModelArtifactFiles(file);
+      if (removed.isEmpty) {
+        debugPrint('No model artifacts to remove for ${file.path}');
+      }
     } catch (e) {
       if (!e.toString().contains('MissingPluginException')) {
         debugPrint('Model file removal error: $e');
         failures.add('Downloaded model (${model.name})');
-      }
-    }
-    try {
-      final file = await _modelFile(model);
-      final partial = File('${file.path}.part');
-      if (await partial.exists()) await partial.delete();
-      await _deleteRangeFiles(partial);
-    } catch (e) {
-      if (!e.toString().contains('MissingPluginException')) {
-        debugPrint('Partial file removal error: $e');
-        failures.add('Partial download (${model.name})');
       }
     }
     try {
@@ -859,18 +861,6 @@ class FinnAccelerator extends ChangeNotifier {
     return failures;
   }
 
-  /// Deletes per-range scratch files (`<partial>.r0` …) left by
-  /// [_downloadSegmented], so interrupted downloads leave nothing behind on
-  /// model removal or "delete all local data".
-  Future<void> _deleteRangeFiles(File partial) async {
-    for (var i = 0; i < _dartDownloadSegments; i++) {
-      try {
-        final rangeFile = File('${partial.path}.r$i');
-        if (await rangeFile.exists()) await rangeFile.delete();
-      } catch (_) {}
-    }
-  }
-
   /// Removes the downloaded projector separately from the language model.
   /// Vision is not exposed by this release, but data deletion must still
   /// remove the reserved artifact if it was installed.
@@ -878,11 +868,8 @@ class FinnAccelerator extends ChangeNotifier {
     final failures = <String>{};
     try {
       final file = await _mmprojFile();
-      for (final suffix in const ['', '.part']) {
-        final candidate = File('${file.path}$suffix');
-        if (await candidate.exists()) await candidate.delete();
-      }
-      await _deleteRangeFiles(File('${file.path}.part'));
+      // removeModelArtifactFiles already clears the .part range side-files.
+      await removeModelArtifactFiles(file);
     } catch (error) {
       if (!error.toString().contains('MissingPluginException')) {
         debugPrint('Projector file removal error: $error');
@@ -901,6 +888,13 @@ class FinnAccelerator extends ChangeNotifier {
   FinnModelSpec get lastGeneratingModel => _lastGeneratingModel ?? selected;
   GenerationReport? _lastGenerationReport;
   GenerationReport? get lastGenerationReport => _lastGenerationReport;
+
+  /// The context window the current engine plan was built with.
+  ///
+  /// 2048 and 4096 are both shipped depending on the device class, and the
+  /// same prompt produces different answers at each, so every quality baseline
+  /// has to record which one it ran at (see `eval/`).
+  int get contextSize => _plan?.contextSize ?? 2048;
 
   /// Generates a reply for [prompt].
   ///
@@ -1833,7 +1827,7 @@ class FinnAccelerator extends ChangeNotifier {
                 trace?.mark(TtftPhase.nativeToken);
                 if (text.isNotEmpty && firstTokenAt == null) {
                   firstTokenAt = runWatch.elapsed;
-                  if (!kReleaseMode) {
+                  if (PerfLogSampler.sample()) {
                     debugPrint(
                       'FINN_PERF first_token_ms=${firstTokenAt!.inMilliseconds} '
                       'model=${model.tier.name} '
@@ -1869,7 +1863,7 @@ class FinnAccelerator extends ChangeNotifier {
                   outputTokens: generatedCount,
                   tokensPerSecond: tokensPerSecond,
                 );
-                if (!kReleaseMode) {
+                if (PerfLogSampler.sample()) {
                   final totalMs = total.inMilliseconds;
                   debugPrint(
                     'FINN_PERF done total_ms=$totalMs decode_ms=$decodeMs '
@@ -2657,7 +2651,7 @@ class FinnAccelerator extends ChangeNotifier {
   /// keeps desktop/macOS model + projector transfers fast too. Sixteen
   /// segments keeps high-latency and lossy links saturated the way the
   /// Android foreground service does.
-  static const int _dartDownloadSegments = 16;
+  static const int dartDownloadSegments = 16;
 
   Future<File> _ensureArtifactDart({
     required String url,
@@ -2689,7 +2683,7 @@ class FinnAccelerator extends ChangeNotifier {
     // Default certificate validation stays enabled (see _ensureDownloaded).
     final client = HttpClient()
       ..connectionTimeout = const Duration(seconds: 20)
-      ..maxConnectionsPerHost = _dartDownloadSegments + 2;
+      ..maxConnectionsPerHost = dartDownloadSegments + 2;
     _downloadClient = client;
     try {
       _setStatus(
@@ -2876,7 +2870,7 @@ class FinnAccelerator extends ChangeNotifier {
 
   /// Parallel HTTP-range downloader used by the non-Android path.
   ///
-  /// Splits [total] bytes into [_dartDownloadSegments] ranges fetched
+  /// Splits [total] bytes into [dartDownloadSegments] ranges fetched
   /// concurrently (the same strategy the Android foreground service uses).
   /// Each range accumulates sequentially into its own `${partial.path}.r$index`
   /// file; when every range file is complete they are concatenated into
@@ -2896,7 +2890,7 @@ class FinnAccelerator extends ChangeNotifier {
     required int existing,
     required String label,
   }) async {
-    final count = _dartDownloadSegments;
+    final count = dartDownloadSegments;
     final chunkSize = (total + count - 1) ~/ count;
     final startOffsets = List<int>.generate(count, (i) => i * chunkSize);
     final endOffsets = List<int>.generate(
@@ -3697,7 +3691,7 @@ class FinnAccelerator extends ChangeNotifier {
         session,
         _prefixCacheKey(runtime),
       );
-      if (!kReleaseMode) {
+      if (PerfLogSampler.sample()) {
         debugPrint(
           'FINN_PREFIX ${jsonEncode({
                 'cache_hit': report.cacheHit,
@@ -4128,7 +4122,7 @@ class FinnAccelerator extends ChangeNotifier {
       final modelDirectory =
           await (_modelDirectoryJob ??= _createModelDirectory());
       for (final fileName in _retiredModelFiles) {
-        for (final suffix in const ['', '.part']) {
+        for (final suffix in modelFileSuffixes) {
           final file = File(
             '${modelDirectory.path}${Platform.pathSeparator}$fileName$suffix',
           );
@@ -4341,6 +4335,54 @@ Future<bool> promoteVerifiedModelPartial({
     return false;
   }
   return true;
+}
+
+/// Deletes an installed model file and everything that belongs to it:
+/// the `.part` of an interrupted download, its range side-files, and the
+/// `.finn_repack` repacked-weight cache the vendored native build writes next
+/// to the model.
+///
+/// The repack cache is the reason this exists. It is worth ~693MB for the 1.6B
+/// and was never deleted, so "Delete All Local Data" and model removal left a
+/// third of a gigabyte behind — found on the device, not in the code.
+///
+/// Returns the paths that were removed. A missing file is not a failure, and a
+/// file that refuses to delete is logged and skipped rather than aborting the
+/// rest of the cleanup.
+@visibleForTesting
+Future<List<String>> removeModelArtifactFiles(File file) async {
+  final removed = <String>[];
+  for (final suffix in FinnAccelerator.modelFileSuffixes) {
+    final candidate = File('${file.path}$suffix');
+    if (!await candidate.exists()) continue;
+    try {
+      await candidate.delete();
+      removed.add(candidate.path);
+    } on FileSystemException catch (error) {
+      debugPrint('Model artifact removal failed for ${candidate.path}: $error');
+    }
+  }
+  try {
+    await deleteRangeFiles(File('${file.path}.part'));
+  } on FileSystemException catch (error) {
+    debugPrint('Model range-file removal failed for ${file.path}: $error');
+  }
+  return removed;
+}
+
+/// Deletes the `<partial>.r0` … scratch files a segmented download leaves.
+///
+/// So interrupted downloads leave nothing behind on model removal or
+/// "delete all local data". Top-level so [removeModelArtifactFiles] and the
+/// accelerator share one implementation of the segment count.
+Future<void> deleteRangeFiles(File partial) async {
+  final segments = FinnAccelerator.dartDownloadSegments;
+  for (var i = 0; i < segments; i++) {
+    try {
+      final rangeFile = File('${partial.path}.r$i');
+      if (await rangeFile.exists()) await rangeFile.delete();
+    } catch (_) {}
+  }
 }
 
 typedef FinnEngine = FinnAccelerator;

@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:finn_ai/src/engine/metrics/perf_logging.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 
@@ -137,7 +138,10 @@ class TtftTrace {
   void report({bool force = false}) {
     if (_reported || (!force && !hasUiPaintScheduled)) return;
     _reported = true;
-    if (kReleaseMode) return;
+    // Sampled rather than debug-only: production is the only place the real
+    // distribution of time-to-first-token is visible, and these numbers carry
+    // no prompt or answer text (see PerfLogSampler).
+    if (!PerfLogSampler.sample()) return;
     final json = toJson();
     debugPrint('FINN_TTFT ${jsonEncode(json)}');
     debugPrint(

@@ -1,0 +1,182 @@
+[
+  {
+    "id": "multilingual.kannada_greeting",
+    "suite": "multilingual",
+    "prompt": "ನಮಸ್ಕಾರ. ನೀವು ಹೇಗಿದ್ದೀರಿ?",
+    "browse": "mustNot",
+    "checks": [
+      {"check": "word_count", "min": 1, "max": 40}
+    ]
+  },
+  {
+    "id": "multilingual.bengali_translate",
+    "suite": "multilingual",
+    "prompt": "Translate to Bengali: The shop opens at nine.",
+    "browse": "mustNot",
+    "checks": [
+      {"check": "word_count", "min": 1, "max": 30}
+    ]
+  },
+  {
+    "id": "multilingual.urdu_translate",
+    "suite": "multilingual",
+    "prompt": "Translate to Urdu: The train leaves at six.",
+    "browse": "mustNot",
+    "checks": [
+      {"check": "word_count", "min": 1, "max": 30}
+    ]
+  },
+  {
+    "id": "multilingual.telugu_question",
+    "suite": "multilingual",
+    "prompt": "తెలుగులో ఒక్క వాక్యంలో భారమేంద్రత గురించి చెప్పండి.",
+    "browse": "mustNot",
+    "checks": [
+      {"check": "word_count", "min": 1, "max": 60}
+    ]
+  },
+  {
+    "id": "multilingual.malayalam_greeting",
+    "suite": "multilingual",
+    "prompt": "നമസ്കാരം. നീ എന്താണ്?",
+    "browse": "mustNot",
+    "checks": [
+      {"check": "word_count", "min": 1, "max": 40}
+    ]
+  },
+  {
+    "id": "multilingual.gujarati_translate",
+    "suite": "multilingual",
+    "prompt": "Translate to Gujarati: The weather is warm today.",
+    "browse": "mustNot",
+    "checks": [
+      {"check": "word_count", "min": 1, "max": 30}
+    ]
+  },
+  {
+    "id": "multilingual.arabic_translate",
+    "suite": "multilingual",
+    "prompt": "Translate to Arabic: The shop opens at nine.",
+    "browse": "mustNot",
+    "checks": [
+      {"check": "word_count", "min": 1, "max": 30}
+    ]
+  },
+  {
+    "id": "multilingual.hebrew_translate",
+    "suite": "multilingual",
+    "prompt": "Translate to Hebrew: The train leaves at six.",
+    "browse": "mustNot",
+    "checks": [
+      {"check": "word_count", "min": 1, "max": 30}
+    ]
+  },
+  {
+    "id": "multilingual.japanese_translate",
+    "suite": "multilingual",
+    "prompt": "Translate to Japanese: The shop opens at nine.",
+    "browse": "mustNot",
+    "checks": [
+      {"check": "word_count", "min": 1, "max": 30}
+    ]
+  },
+  {
+    "id": "multilingual.korean_translate",
+    "suite": "multilingual",
+    "prompt": "Translate to Korean: The train leaves at six.",
+    "browse": "mustNot",
+    "checks": [
+      {"check": "word_count", "min": 1, "max": 30}
+    ]
+  },
+  {
+    "id": "multilingual.turkish_translate",
+    "suite": "multilingual",
+    "prompt": "Translate to Turkish: The shop opens at nine.",
+    "browse": "mustNot",
+    "checks": [
+      {"check": "word_count", "min": 1, "max": 30}
+    ]
+  },
+  {
+    "id": "multilingual.german_translate",
+    "suite": "multilingual",
+    "prompt": "Translate to German: The shop opens at nine.",
+    "browse": "mustNot",
+    "checks": [
+      {"check": "word_count", "min": 1, "max": 30}
+    ]
+  },
+  {
+    "id": "multilingual.french_translate",
+    "suite": "multilingual",
+    "prompt": "Translate to French: The shop opens at nine.",
+    "browse": "mustNot",
+    "checks": [
+      {"check": "word_count", "min": 1, "max": 30}
+    ]
+  },
+  {
+    "id": "multilingual.spanish_translate",
+    "suite": "multilingual",
+    "prompt": "Translate to Spanish: The shop opens at nine.",
+    "browse": "mustNot",
+    "checks": [
+      {"check": "word_count", "min": 1, "max": 30}
+    ]
+  },
+  {
+    "id": "multilingual.swahili_translate",
+    "suite": "multilingual",
+    "prompt": "Translate to Swahili: The shop opens at nine.",
+    "browse": "mustNot",
+    "checks": [
+      {"check": "word_count", "min": 1, "max": 30}
+    ]
+  },
+  {
+    "id": "multilingual.russian_translate",
+    "suite": "multilingual",
+    "prompt": "Translate to Russian: The shop opens at nine.",
+    "browse": "mustNot",
+    "checks": [
+      {"check": "word_count", "min": 1, "max": 30}
+    ]
+  },
+  {
+    "id": "multilingual.hindi_translate",
+    "suite": "multilingual",
+    "prompt": "Translate to Hindi: The shop opens at nine.",
+    "browse": "mustNot",
+    "checks": [
+      {"check": "word_count", "min": 1, "max": 30}
+    ]
+  },
+  {
+    "id": "multilingual.tamil_translate",
+    "suite": "multilingual",
+    "prompt": "Translate to Tamil: The shop opens at nine.",
+    "browse": "mustNot",
+    "checks": [
+      {"check": "word_count", "min": 1, "max": 30}
+    ]
+  },
+  {
+    "id": "multilingual.chinese_explain",
+    "suite": "multilingual",
+    "prompt": "用一句话解释什么是重力。",
+    "browse": "mustNot",
+    "checks": [
+      {"check": "word_count", "min": 1, "max": 60}
+    ]
+  },
+  {
+    "id": "multilingual.codeswitch",
+    "suite": "multilingual",
+    "prompt": "Reply in the same language: What is the capital of Japan? Hindi mein jawab do.",
+    "browse": "mustNot",
+    "checks": [
+      {"check": "word_count", "min": 1, "max": 30}
+    ]
+  }
+]
