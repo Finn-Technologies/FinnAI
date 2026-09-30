@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -58,6 +60,21 @@ class SafeMarkdownText extends StatefulWidget {
   final String text;
   final bool showImages;
 
+  /// Number of full Markdown parses performed, across all instances. A
+  /// streaming reply used to re-parse the whole answer on every build; the
+  /// tests assert how many parses a stream actually costs.
+  @visibleForTesting
+  static int debugParseCount = 0;
+
+  /// How long the screen is allowed to trail a streaming answer. Exposed so a
+  /// test can wait exactly the window rather than guessing at it.
+  @visibleForTesting
+  static const Duration reparseDelay = Duration(milliseconds: 48);
+
+  /// The largest growth that may be deferred; anything bigger re-parses at once.
+  @visibleForTesting
+  static const int maxDeferredGrowth = 192;
+
   static String sanitize(String source) {
     if (identical(source, _sanitizeCacheKey)) return _sanitizeCacheValue!;
     var value = source
@@ -86,11 +103,82 @@ class SafeMarkdownText extends StatefulWidget {
   }
 
   @override
-  State<SafeMarkdownText> createState() => _SafeMarkdownTextState();
+  State<SafeMarkdownText> createState() => SafeMarkdownTextState();
 }
 
-class _SafeMarkdownTextState extends State<SafeMarkdownText> {
+/// Everything the rendered form of a reply depends on besides its own text.
+/// A change in any of these forces a full re-parse, because the cached
+/// widgets baked in the old values.
+@immutable
+class _RenderInputs {
+  const _RenderInputs({
+    required this.isDark,
+    required this.showImages,
+    required this.bodyLarge,
+    required this.primary,
+  });
+
+  final bool isDark;
+  final bool showImages;
+  final TextStyle? bodyLarge;
+  final Color primary;
+
+  @override
+  bool operator ==(Object other) =>
+      other is _RenderInputs &&
+      other.isDark == isDark &&
+      other.showImages == showImages &&
+      other.bodyLarge == bodyLarge &&
+      other.primary == primary;
+
+  @override
+  int get hashCode => Object.hash(isDark, showImages, bodyLarge, primary);
+}
+
+class SafeMarkdownTextState extends State<SafeMarkdownText> {
   final List<TapGestureRecognizer> _recognizers = [];
+
+  // --- Incremental parse guard -------------------------------------------------
+  //
+  // The controller notifies at up to 60 Hz and the shell rebuilds several
+  // times per notify, so a streaming answer used to re-run the whole parse
+  // (six regex passes plus a per-line classification of every line so far) on
+  // every one of those builds. The guard reuses the previous render only when
+  // deferring is provably safe: the incoming text is a *pure extension* of what
+  // is already on screen and the growth is small.
+  //
+  // Everything else re-parses immediately: first paint, a new turn (the text is
+  // replaced rather than extended, including the empty string a turn starts
+  // with), a jump larger than [kMaxDeferredGrowth], and any change of
+  // brightness, theme style, link colour, or `showImages`. Because that last
+  // group is exactly what determines the rendered text — and therefore the
+  // semantics TalkBack reads off the rendered `Text` widgets — those changes
+  // can never be deferred.
+  //
+  // A deferred render can never outlive the stream: [_scheduleReparse] ends the
+  // window by setting [_forceReparse], which [_canReuseRender] treats as an
+  // unconditional refusal. The screen therefore trails the token buffer by at
+  // most [SafeMarkdownText.reparseDelay] plus the frame the parse lands in, and
+  // any build after the window renders exactly.
+  //
+  // The decision is deliberately *not* made against `DateTime.now()`. This file
+  // previously compared the age of the last parse against the window, which
+  // made the behaviour depend on real elapsed time, untestable under the widget
+  // test clock, and — because the trailing parse re-entered `build` and
+  // re-evaluated the very same conditions — able to defer itself indefinitely
+  // and strand the tail of an answer. Structural enforcement cannot fail that
+  // way.
+
+  String? _renderedSource;
+  List<Widget>? _renderedBlocks;
+  _RenderInputs? _renderedInputs;
+  bool _forceReparse = false;
+  Timer? _pendingReparse;
+
+  /// True while the tree is showing a render that trails [widget.text].
+  /// [kReparseDelay] plus a frame is the hard upper bound on that.
+  @visibleForTesting
+  bool get isRenderDeferred => _pendingReparse != null;
 
   void _disposeRecognizers() {
     for (final recognizer in _recognizers) {
@@ -100,17 +188,88 @@ class _SafeMarkdownTextState extends State<SafeMarkdownText> {
   }
 
   @override
+  void didUpdateWidget(SafeMarkdownText oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // A new turn reuses this element, so the previous answer's first line must
+    // not be mistaken for an extension of the new one.
+    if (oldWidget.text != widget.text &&
+        !widget.text.startsWith(oldWidget.text)) {
+      _invalidateRender();
+    }
+  }
+
+  void _invalidateRender() {
+    _renderedSource = null;
+    _renderedBlocks = null;
+    _renderedInputs = null;
+    _forceReparse = false;
+    _pendingReparse?.cancel();
+    _pendingReparse = null;
+  }
+
+  /// Queues the trailing parse that ends a deferral. The flag is the important
+  /// half: it makes the parse that follows unconditional, so this cannot
+  /// re-defer and lose the final tokens.
+  void _scheduleReparse() {
+    _pendingReparse ??= Timer(SafeMarkdownText.reparseDelay, () {
+      _pendingReparse = null;
+      _forceReparse = true;
+      if (!mounted) return;
+      setState(() {});
+    });
+  }
+
+  bool _canReuseRender(_RenderInputs inputs) {
+    final source = _renderedSource;
+    final blocks = _renderedBlocks;
+    if (source == null || blocks == null) return false;
+    // A deferred render is already outstanding, so the newest text is owed a
+    // full parse; reusing here is what strands the tail of an answer.
+    if (_forceReparse) return false;
+    if (_renderedInputs != inputs) return false;
+    final text = widget.text;
+    if (text.length < source.length) return false;
+    // Pure extension only: a rewritten or re-generated answer is never treated
+    // as a continuation of what is on screen.
+    if (!text.startsWith(source)) return false;
+    return text.length - source.length <= SafeMarkdownText.maxDeferredGrowth;
+  }
+
+  @override
   void dispose() {
+    _pendingReparse?.cancel();
+    _pendingReparse = null;
     _disposeRecognizers();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    _disposeRecognizers();
     final isDark = FluxColors.isDark(context);
+    final theme = Theme.of(context);
+    final inputs = _RenderInputs(
+      isDark: isDark,
+      showImages: widget.showImages,
+      bodyLarge: theme.textTheme.bodyLarge,
+      primary: theme.colorScheme.primary,
+    );
+
+    final cached = _renderedBlocks;
+    if (cached != null && _canReuseRender(inputs)) {
+      _scheduleReparse();
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: cached,
+      );
+    }
+
+    _pendingReparse?.cancel();
+    _pendingReparse = null;
+    _forceReparse = false;
+    SafeMarkdownText.debugParseCount++;
+    _disposeRecognizers();
     final fallback = const TextStyle(fontSize: 16, height: 1.25);
-    final base = (Theme.of(context).textTheme.bodyLarge ?? fallback).copyWith(
+    final base = (theme.textTheme.bodyLarge ?? fallback).copyWith(
       fontSize: 16,
       height: 1.25,
       letterSpacing: -0.12,
@@ -187,6 +346,10 @@ class _SafeMarkdownTextState extends State<SafeMarkdownText> {
       widgets.add(_buildCodeBlock(
           context, codeBuffer.toString().trim(), codeLang, isDark));
     }
+
+    _renderedSource = widget.text;
+    _renderedBlocks = widgets;
+    _renderedInputs = inputs;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,

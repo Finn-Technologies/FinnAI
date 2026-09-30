@@ -364,19 +364,21 @@ void main() {
       systemContext: '',
     );
     runtime.emit('Kept');
+    // The engine keeps decoding for a moment after it has been told to stop;
+    // those tokens land while the controller is tearing down.
+    runtime.emitDuringStop = ' LATE';
     controller.dispose();
     await Future<void>.delayed(const Duration(milliseconds: 40));
 
     // The controller has let go of the native stream, so a token that lands
     // after disposal cannot overwrite the partial its flush persisted.
-    runtime.emit(' LATE');
-    await controller.flushActive();
-    await Future<void>.delayed(const Duration(milliseconds: 40));
-
     expect(
       store.conversationById(conversation.id)!.messages.last.text,
       'Kept',
     );
+    // And the runtime really was torn down, not just unsubscribed: cancelling
+    // the Dart subscription alone left llama.cpp decoding to completion.
+    expect(runtime.stopRequested, isTrue);
   });
 
   test(

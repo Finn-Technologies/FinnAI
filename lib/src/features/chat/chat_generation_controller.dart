@@ -225,7 +225,16 @@ class ChatGenerationController extends ChangeNotifier {
   ChatGenerationJob? _job;
   ChatGenerationJob? get job => _job;
   ChatGenerationJob? get activeJob => _job?.busy == true ? _job : null;
-  bool get busy => activeJob != null;
+
+  /// True from the moment a turn's answer has been committed to the store
+  /// until that commit has reached disk.
+  ///
+  /// [busy] stays true for that window so "the controller is not busy" keeps
+  /// meaning "the previous answer is durable", but [activeJob] is already null
+  /// and [_job] already terminal, so nothing can write over the finished turn
+  /// while the encrypted flush is in flight.
+  bool _commitPending = false;
+  bool get busy => _commitPending || activeJob != null;
 
   /// Browser steps recorded for the running turn, oldest first.
   ///
@@ -243,7 +252,7 @@ class ChatGenerationController extends ChangeNotifier {
     if (current != null) {
       _job = current.copyWith(toolActivities: _toolActivities);
     }
-    if (!_disposed) notifyListeners();
+    _notify();
   }
 
   /// Drops the live step list. The steps survive on the persisted message, so
@@ -255,14 +264,42 @@ class ChatGenerationController extends ChangeNotifier {
   Timer? _notifyTimer;
   Future<void>? _stopFuture;
 
-  /// Incremental token accumulator for the running job. Appending tokens to
-  /// a StringBuffer avoids the O(n^2) re-allocation of string concatenation
-  /// on every token; the job still exposes the same final [ChatGenerationJob.responseText].
+  /// Authoritative accumulator for the running answer.
+  ///
+  /// Tokens are appended here and *only* here. The immutable snapshot that
+  /// the UI reads through [ChatGenerationJob.responseText] is materialised
+  /// from this buffer by [_materialize], which is called when a listener is
+  /// actually notified, when a persistence checkpoint runs, and on every
+  /// terminal write. Calling `buffer.toString()` per token made a 500-token
+  /// answer copy the whole string 500 times (O(n^2) in allocated characters);
+  /// now the copy happens once per paint batch instead.
   StringBuffer? _responseText;
+
+  /// `StringBuffer.length` at the time the current snapshot was materialised,
+  /// or -1 when no snapshot exists for this generation. A cheap O(1) guard so
+  /// a notify that does not change the text does not re-materialise it.
+  int _materializedLength = -1;
+  int _materializationCount = 0;
+  int _materializedChars = 0;
+
+  /// How many times the growing buffer has been materialised into a snapshot,
+  /// and how many characters those snapshots contained in total. Both are the
+  /// cost that used to scale with the token count instead of the paint rate.
+  @visibleForTesting
+  int get responseMaterializationCount => _materializationCount;
+  @visibleForTesting
+  int get responseMaterializedChars => _materializedChars;
+
   var _epoch = 0;
   var _idSequence = 0;
   var _lateTokenCount = 0;
   var _disposed = false;
+
+  /// Tokens that arrived after the job lost ownership of the stream (stopped,
+  /// superseded, or the controller was disposed). They are counted for the
+  /// cancellation metrics and never applied to the answer.
+  @visibleForTesting
+  int get lateTokenCount => _lateTokenCount;
   CancellationMetrics? _lastCancellationMetrics;
   CancellationMetrics? get lastCancellationMetrics => _lastCancellationMetrics;
   TtftTrace? _activeTrace;
@@ -536,6 +573,7 @@ class ChatGenerationController extends ChangeNotifier {
     _lateTokenCount = 0;
     _activeTrace = trace;
     _responseText = StringBuffer(initialText);
+    _materializedLength = -1;
     _job = ChatGenerationJob(
       generationId: generationId,
       conversationId: conversationId,
@@ -554,7 +592,7 @@ class ChatGenerationController extends ChangeNotifier {
       // reach the finished message.
       toolActivities: _toolActivities,
     );
-    if (!_disposed) notifyListeners();
+    _notify();
     _preparingGuard?.cancel();
     _preparingGuard = Timer(const Duration(seconds: 90), () {
       final current = _job;
@@ -602,7 +640,11 @@ class ChatGenerationController extends ChangeNotifier {
   void _token(String generationId, int epoch, String token) {
     if (token.isEmpty) return;
     final current = _job;
-    if (current == null ||
+    // A disposed controller has already detached from the stream and flushed
+    // what it had; anything that lands afterwards is a late token to be
+    // counted, never applied.
+    if (_disposed ||
+        current == null ||
         current.generationId != generationId ||
         current.epoch != epoch ||
         epoch != _epoch ||
@@ -614,11 +656,13 @@ class ChatGenerationController extends ChangeNotifier {
       _preparingGuard?.cancel();
       _preparingGuard = null;
     }
-    final responseText = (_responseText ??= StringBuffer(current.responseText))
-      ..write(token);
+    (_responseText ??= StringBuffer(current.responseText)).write(token);
+    // Deliberately does NOT call `buffer.toString()`. The job keeps the last
+    // materialised snapshot; _notify() refreshes it exactly when a listener is
+    // about to read it, which is once per paint batch instead of once per
+    // token. That is what removed the O(n^2) copy from the token path.
     _job = current.copyWith(
       state: ChatGenerationState.generating,
-      responseText: responseText.toString(),
       modelName: runtime.lastGeneratingModelName,
     );
     _schedulePersistence();
@@ -626,10 +670,40 @@ class ChatGenerationController extends ChangeNotifier {
       _notifyTimer?.cancel();
       _notifyTimer = null;
       _activeTrace?.mark(TtftPhase.uiPaintScheduled);
-      if (!_disposed) notifyListeners();
+      _notify();
     } else {
       _scheduleNotify();
     }
+  }
+
+  /// Materialises the token accumulator into the immutable snapshot the UI
+  /// reads, publishing it on [_job].
+  ///
+  /// Returns the snapshot. This is the *only* place the growing buffer is
+  /// copied, and it is a no-op when the buffer has not grown since the last
+  /// call, so a burst of tokens costs one copy rather than one per token.
+  String _materialize() {
+    final buffer = _responseText;
+    final job = _job;
+    if (buffer == null) return job?.responseText ?? '';
+    if (_materializedLength == buffer.length) return job?.responseText ?? '';
+    final text = buffer.toString();
+    _materializedLength = buffer.length;
+    _materializationCount++;
+    _materializedChars += text.length;
+    if (job != null && !identical(job.responseText, text)) {
+      _job = job.copyWith(responseText: text);
+    }
+    return text;
+  }
+
+  /// The single notification path. A disposed controller never notifies, and
+  /// the response snapshot it publishes is always current with the buffer, so
+  /// every `notifyListeners()` the UI observes sees the full text.
+  void _notify() {
+    if (_disposed) return;
+    _materialize();
+    notifyListeners();
   }
 
   void markFirstVisiblePaintCompleted() {
@@ -648,7 +722,7 @@ class ChatGenerationController extends ChangeNotifier {
     final nextModel = runtime.lastGeneratingModelName;
     if (nextState == current.state && nextModel == current.modelName) return;
     _job = current.copyWith(state: nextState, modelName: nextModel);
-    if (!_disposed) notifyListeners();
+    _notify();
   }
 
   List<WebSource> _runtimeSources() => runtime is FinnChatInferenceRuntime
@@ -694,8 +768,8 @@ class ChatGenerationController extends ChangeNotifier {
     final completedText = (reason == GenerationFinishReason.eos ||
                 reason == GenerationFinishReason.tokenLimit) &&
             responseSuffix.isNotEmpty
-        ? '${current.responseText.trimRight()}$responseSuffix'
-        : current.responseText;
+        ? '${_materialize().trimRight()}$responseSuffix'
+        : _materialize();
     await _finishPersisted(
       current.copyWith(
         state: reason == GenerationFinishReason.error
@@ -727,6 +801,7 @@ class ChatGenerationController extends ChangeNotifier {
         !current.busy) {
       return;
     }
+    _materialize();
     await _finishPersisted(
       current.copyWith(
         state: ChatGenerationState.error,
@@ -735,6 +810,50 @@ class ChatGenerationController extends ChangeNotifier {
       ),
       ConversationMessageStatus.failed,
     );
+  }
+
+  /// Writes a finished answer to the store as a terminal message. Returns
+  /// `false` (and leaves the store alone) when the message is already settled,
+  /// so a late partial writer can never undo a completed turn.
+  bool _commitTerminal(
+      ChatGenerationJob job, ConversationMessageStatus status) {
+    if (job.responseText.trim().isEmpty) {
+      return conversations.removeMessageInConversation(
+        job.conversationId,
+        job.assistantMessageId,
+        expectedGenerationId: job.generationId,
+      );
+    }
+    return conversations.updateMessageInConversation(
+      job.conversationId,
+      job.assistantMessageId,
+      job.responseText,
+      expectedGenerationId: job.generationId,
+      modelTier: job.modelName,
+      status: status,
+      finishReason: job.finishReason?.name,
+      continuationCount: job.continuationCount,
+      sources: job.sources,
+      // An empty list would erase the steps a continuation inherited; leaving
+      // it null keeps whatever the message already carries.
+      toolActivities: job.toolActivities.isEmpty ? null : job.toolActivities,
+    );
+  }
+
+  /// True once the assistant message behind [job] has left the `generating`
+  /// state, i.e. it already carries a settled answer.
+  ///
+  /// A missing message counts as settled: [ConversationStore] prunes the
+  /// message when a turn produced nothing, and re-creating it would put an
+  /// orphan bubble back in the transcript.
+  bool _messageSettled(ChatGenerationJob job) {
+    final conversation = conversations.conversationById(job.conversationId);
+    if (conversation == null) return true;
+    for (final message in conversation.messages) {
+      if (message.id != job.assistantMessageId) continue;
+      return message.status != ConversationMessageStatus.generating;
+    }
+    return true;
   }
 
   Future<void> _finishPersisted(
@@ -746,25 +865,27 @@ class ChatGenerationController extends ChangeNotifier {
     _notifyTimer?.cancel();
     _notifyTimer = null;
     _subscription = null;
-    conversations.updateMessageInConversation(
-      terminal.conversationId,
-      terminal.assistantMessageId,
-      terminal.responseText,
-      expectedGenerationId: terminal.generationId,
-      modelTier: terminal.modelName,
-      status: status,
-      finishReason: terminal.finishReason?.name,
-      continuationCount: terminal.continuationCount,
-      sources: terminal.sources,
-      // An empty list would erase the steps a continuation inherited; leaving
-      // it null keeps whatever the message already carries.
-      toolActivities:
-          terminal.toolActivities.isEmpty ? null : terminal.toolActivities,
-    );
-    await conversations.flush();
+    // The store write and the terminal job MUST land in the same synchronous
+    // step, before the first await. Publishing `_job` only after the awaited
+    // encrypted flush left the controller advertising a live generation for
+    // as long as the disk write took: `busy` stayed true (the composer stayed
+    // stuck on "Finn is typing…"), and any `flushActive()` / `stop()` / the
+    // 1.5 s persistence timer that ran in that window re-read the stale
+    // non-terminal job and overwrote the finished answer — downgrading its
+    // status back to `generating` and, whenever the last paint batch lagged
+    // behind the token buffer, truncating its text. On device that is how a
+    // two-token reply ("blue") only showed up once the *next* user turn made
+    // the store dirty again.
+    _commitTerminal(terminal, status);
     _job = terminal;
     _clearToolActivities();
-    if (!_disposed) notifyListeners();
+    _commitPending = true;
+    _notify();
+    try {
+      await conversations.flush();
+    } finally {
+      _commitPending = false;
+    }
   }
 
   Future<void> stop() {
@@ -786,7 +907,7 @@ class ChatGenerationController extends ChangeNotifier {
       state: ChatGenerationState.stopping,
       cancellationRequested: true,
     );
-    if (!_disposed) notifyListeners();
+    _notify();
 
     final subscription = _subscription;
     // Calling the native stop starts cancellation synchronously. Do not cancel
@@ -794,11 +915,11 @@ class ChatGenerationController extends ChangeNotifier {
     // shutdown by closing that listener, so concurrent close/cancel can
     // deadlock. The epoch above already makes every subsequent token inert.
     final nativeStop = runtime.stopGeneration();
-    final persistence = _persistPartial();
+    _persistPartial();
     var resetRequired = false;
     Duration? nativeAcknowledgement;
     try {
-      await Future.wait([nativeStop, persistence]).timeout(cancellationTimeout);
+      await nativeStop.timeout(cancellationTimeout);
       nativeAcknowledgement = watch.elapsed;
     } catch (_) {
       resetRequired = true;
@@ -822,35 +943,38 @@ class ChatGenerationController extends ChangeNotifier {
     _subscription = null;
     _persistenceTimer?.cancel();
     _persistenceTimer = null;
-    final latest = _job;
-    if (latest == null || latest.generationId != captured.generationId) return;
-    if (latest.responseText.trim().isEmpty) {
-      conversations.removeMessageInConversation(
-        latest.conversationId,
-        latest.assistantMessageId,
-        expectedGenerationId: latest.generationId,
-      );
-    } else {
-      conversations.updateMessageInConversation(
-        latest.conversationId,
-        latest.assistantMessageId,
-        latest.responseText,
-        expectedGenerationId: latest.generationId,
-        modelTier: latest.modelName,
-        status: ConversationMessageStatus.stopped,
-        finishReason: GenerationFinishReason.userCancellation.name,
-        continuationCount: latest.continuationCount,
-        sources: latest.sources,
-        toolActivities:
-            latest.toolActivities.isEmpty ? null : latest.toolActivities,
+    final capturedLatest = _job;
+    if (capturedLatest == null ||
+        capturedLatest.generationId != captured.generationId) {
+      return;
+    }
+    _materialize();
+    final latest = _job!;
+    // A finish that committed while the native stop was in flight is
+    // authoritative: the answer is already in the transcript, so do not
+    // relabel it as user-cancelled and do not resurrect `generating`.
+    final settled = !latest.busy || _messageSettled(latest);
+    if (!settled) {
+      _commitTerminal(
+        latest.copyWith(finishReason: GenerationFinishReason.userCancellation),
+        ConversationMessageStatus.stopped,
       );
     }
-    await conversations.flush();
+    // Publish the terminal job before the flush, for the same reason
+    // _finishPersisted does: nothing downstream may observe a live job once
+    // this turn's answer is in the store.
     _clearToolActivities();
     _job = latest.copyWith(
       state: ChatGenerationState.complete,
       finishReason: GenerationFinishReason.userCancellation,
     );
+    _commitPending = true;
+    _notify();
+    try {
+      await conversations.flush();
+    } finally {
+      _commitPending = false;
+    }
     _lastCancellationMetrics = CancellationMetrics(
       nativeAcknowledgement: nativeAcknowledgement,
       composerUnblocked: watch.elapsed,
@@ -862,24 +986,35 @@ class ChatGenerationController extends ChangeNotifier {
       'composer_unblocked_ms=${watch.elapsedMilliseconds} '
       'late_tokens=$_lateTokenCount reset_required=$resetRequired',
     );
-    if (!_disposed) notifyListeners();
+    _notify();
   }
 
   Future<void> flushActive() async {
-    await _persistPartial();
+    _persistPartial();
     await conversations.flush();
   }
 
-  Future<void> _persistPartial({bool persistSoon = false}) async {
+  /// Checkpoints the in-memory answer without announcing it to the UI.
+  ///
+  /// Never downgrades a message that has already settled: this is the path the
+  /// shell fires unawaited on every lifecycle pause, conversation switch and
+  /// disposal, so it used to be able to land after a finish had committed and
+  /// replace a completed answer with its own stale snapshot.
+  void _persistPartial({bool persistSoon = false}) {
     final current = _job;
-    if (current == null || current.responseText.isEmpty) return;
+    if (current == null || !current.busy) return;
+    if (_messageSettled(current)) return;
+    // Materialising here keeps the checkpoint complete even when the last UI
+    // paint batch lagged behind the token buffer.
+    final text = _materialize();
+    if (text.isEmpty) return;
     conversations.updateMessageInConversation(
       current.conversationId,
       current.assistantMessageId,
-      current.responseText,
+      text,
       expectedGenerationId: current.generationId,
       modelTier: current.modelName,
-      status: current.busy ? ConversationMessageStatus.generating : null,
+      status: ConversationMessageStatus.generating,
       continuationCount: current.continuationCount,
       sources: current.sources,
       persistSoon: persistSoon,
@@ -894,7 +1029,7 @@ class ChatGenerationController extends ChangeNotifier {
       // and disk I/O. Stop, completion, navigation, and disposal still flush
       // immediately, so this removes hot-path writes without risking the
       // terminal response.
-      unawaited(_persistPartial(persistSoon: true));
+      _persistPartial(persistSoon: true);
     });
   }
 
@@ -903,7 +1038,7 @@ class ChatGenerationController extends ChangeNotifier {
       Duration(milliseconds: _runtimeTokenPaintIntervalMs()),
       () {
         _notifyTimer = null;
-        if (!_disposed) notifyListeners();
+        _notify();
       },
     );
   }
@@ -913,17 +1048,56 @@ class ChatGenerationController extends ChangeNotifier {
   @override
   void dispose() {
     if (_disposed) return;
+    final running = activeJob;
+    // Invalidate the running turn BEFORE detaching, so anything the runtime
+    // still delivers (native decode loop, queued microtask) is counted as a
+    // late token and can never be written over the partial flushed below.
+    _epoch++;
+    _lateTokenCount = 0;
     _disposed = true;
     runtime.removeListener(_runtimeChanged);
-    // Detach from the native token stream before flushing: a disposed
-    // controller must not keep writing late tokens over the partial response
-    // its flush just persisted.
-    _subscription?.cancel();
-    _subscription = null;
     _persistenceTimer?.cancel();
+    _persistenceTimer = null;
     _notifyTimer?.cancel();
+    _notifyTimer = null;
     _preparingGuard?.cancel();
-    if (activeJob != null) unawaited(flushActive());
+    _preparingGuard = null;
+    final subscription = _subscription;
+    _subscription = null;
+    if (running != null) {
+      // Cancelling the Dart subscription alone left llama.cpp decoding to
+      // completion in the background: the engine kept the job's KV session
+      // pinned and burned battery on an answer nobody would ever see, and the
+      // discarded cancel future meant the native stop might never even be
+      // delivered. Tear the generation down explicitly instead.
+      _persistPartial();
+      unawaited(_shutdownGeneration(subscription));
+      unawaited(conversations.flush());
+    } else {
+      unawaited(subscription?.cancel() ?? Future<void>.value());
+    }
     super.dispose();
+  }
+
+  /// Stops the native generation this controller started and then detaches
+  /// from its token stream.
+  ///
+  /// The runtime is asked first and awaited, for the same reason [_stop] does:
+  /// a runtime may complete native shutdown by closing this very listener, so
+  /// the cancel must not race the stop. Every step is best effort — a runtime
+  /// that throws on the way down must not turn `dispose()` into an error, and
+  /// the epoch bump above already makes whatever is still decoding harmless.
+  Future<void> _shutdownGeneration(
+      StreamSubscription<String>? subscription) async {
+    try {
+      await runtime.stopGeneration();
+    } catch (error) {
+      debugPrint('FINN_DISPOSE stop failed: $error');
+    }
+    try {
+      await subscription?.cancel();
+    } catch (error) {
+      debugPrint('FINN_DISPOSE cancel failed: $error');
+    }
   }
 }
