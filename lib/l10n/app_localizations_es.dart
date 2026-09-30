@@ -735,9 +735,6 @@ class AppLocalizationsEs extends AppLocalizations {
   String get flowsScheduleHeading => 'Cuándo';
 
   @override
-  String get flowsScheduleManual => 'Solo cuando tú lo ejecutas';
-
-  @override
   String flowsScheduleWeekdaysAt(String time) {
     return 'Días laborables a las $time';
   }
@@ -819,6 +816,9 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get flowsScheduleLabel => 'Se ejecuta';
+
+  @override
+  String get flowsScheduleManual => 'Solo cuando tú lo ejecutas';
 
   @override
   String flowsScheduleDaily(String time) {

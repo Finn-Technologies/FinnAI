@@ -46,7 +46,13 @@ void main() {
     await tester.pump();
     expect(find.byKey(const Key('add-flow-button')), findsOneWidget);
 
-    await tester.tap(find.byKey(const Key('add-flow-button')));
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('new-skill-button')),
+      120,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('new-skill-button')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 

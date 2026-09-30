@@ -61,10 +61,25 @@ class SearchTurnFlowSearch implements FlowSearch {
 
   final SearchTurn _search;
 
+  /// A step's text may begin `news:` or `weather:` to use that source instead
+  /// of general web search: `weather: Rome`, `news: football`.
+  static ({String? provider, String query}) route(String text) {
+    final match = RegExp(r'^(news|weather):\s*(.*)$', dotAll: true)
+        .firstMatch(text.trim());
+    return match == null
+        ? (provider: null, query: text.trim())
+        : (provider: match.group(1), query: match.group(2)!.trim());
+  }
+
   @override
   Future<FlowSearchResult> search(String query) async {
+    final routed = route(query);
     final result = await _search.run(
-      SearchPlan.search(query, SearchPlanReason.explicit),
+      SearchPlan.search(
+        routed.query,
+        SearchPlanReason.explicit,
+        provider: routed.provider,
+      ),
     );
     // The "no results" note is for chat's prompt; a flow's prompt is told there
     // was nothing by an empty context instead.

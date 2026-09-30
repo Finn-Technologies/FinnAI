@@ -23,6 +23,30 @@ class WebSearchPolicy {
 
   bool shouldSearch(String prompt) => reasonFor(prompt).searches;
 
+  /// A purpose-built source for a query general search answers badly.
+  ///
+  /// Only `news` for now: "what is happening" is a question of headlines, and a
+  /// Wikipedia search for it returns articles about the concept of news. A
+  /// weather question needs a *place*, so it is routed by a flow that has one
+  /// (`weather:` steps), not guessed from free text.
+  String? providerFor(String prompt) {
+    final value = _collapse(prompt).toLowerCase();
+    return _newsCues.any(value.contains) ? 'news' : null;
+  }
+
+  static const _newsCues = [
+    'news',
+    'headlines',
+    'breaking',
+    'what happened',
+    'notizie',
+    'ultime notizie',
+    'noticias',
+    'actualités',
+    'actualites',
+    'nachrichten',
+  ];
+
   /// The decision and the rule that made it. [shouldSearch] is this reduced
   /// to a bool; the eval and the UI want the reason.
   SearchPlanReason reasonFor(String prompt) {

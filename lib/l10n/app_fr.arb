@@ -814,7 +814,6 @@
   "flowsSlotTopic": "Sujet",
   "flowsSlotMessage": "Message",
   "flowsScheduleHeading": "Quand",
-  "flowsScheduleManual": "Seulement quand j’appuie sur Lancer",
   "flowsScheduleWeekdaysAt": "Jours ouvrés à {time}",
   "flowsScheduleEveryDay": "Tous les jours",
   "flowsScheduleWeekdaysOnly": "Jours ouvrés",

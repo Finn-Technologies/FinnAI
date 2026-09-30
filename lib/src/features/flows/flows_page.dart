@@ -229,7 +229,7 @@ class _SkillsPageState extends State<FlowsPage> {
         builder: (context, _) => _store.initialized
             ? FloatingActionButton.extended(
                 key: const Key('add-flow-button'),
-                onPressed: _editSkill,
+                onPressed: () => unawaited(_newAutomation()),
                 backgroundColor: FluxColors.inkOf(context),
                 foregroundColor: FluxColors.canvasOf(context),
                 elevation: 0,
@@ -239,7 +239,7 @@ class _SkillsPageState extends State<FlowsPage> {
                   size: 20,
                   color: FluxColors.canvasOf(context),
                 ),
-                label: Text(L10n.of(context).flowsNewSkill),
+                label: Text(L10n.of(context).flowsNewAutomation),
               )
             : const SizedBox.shrink(),
       ),
@@ -289,31 +289,6 @@ class _SkillsPageState extends State<FlowsPage> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
-                                  _SkillsSummary(
-                                    active: _store.enabledSkills.length,
-                                    total: _store.flows.length,
-                                  ),
-                                  const SizedBox(height: 24),
-                                  _SectionTitle(
-                                    title: L10n.of(context).flowsBuiltForFinn,
-                                    subtitle: L10n.of(
-                                      context,
-                                    ).flowsBuiltForFinnSubtitle,
-                                  ),
-                                  const SizedBox(height: 10),
-                                  ...builtIns.map(
-                                    (flow) => Padding(
-                                      padding: const EdgeInsets.only(
-                                        bottom: 10,
-                                      ),
-                                      child: _SkillCard(
-                                        flow: flow,
-                                        onToggle: (value) =>
-                                            _store.setEnabled(flow.id, value),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 14),
                                   _SectionTitle(
                                     title:
                                         L10n.of(context).flowsAutomationsTitle,
@@ -372,6 +347,31 @@ class _SkillsPageState extends State<FlowsPage> {
                                         ),
                                       ),
                                     ),
+                                  const SizedBox(height: 24),
+                                  _SkillsSummary(
+                                    active: _store.enabledSkills.length,
+                                    total: _store.flows.length,
+                                  ),
+                                  const SizedBox(height: 24),
+                                  _SectionTitle(
+                                    title: L10n.of(context).flowsBuiltForFinn,
+                                    subtitle: L10n.of(
+                                      context,
+                                    ).flowsBuiltForFinnSubtitle,
+                                  ),
+                                  const SizedBox(height: 10),
+                                  ...builtIns.map(
+                                    (flow) => Padding(
+                                      padding: const EdgeInsets.only(
+                                        bottom: 10,
+                                      ),
+                                      child: _SkillCard(
+                                        flow: flow,
+                                        onToggle: (value) =>
+                                            _store.setEnabled(flow.id, value),
+                                      ),
+                                    ),
+                                  ),
                                   const SizedBox(height: 14),
                                   _SectionTitle(
                                     title: L10n.of(context).flowsYourSkills,
@@ -380,6 +380,16 @@ class _SkillsPageState extends State<FlowsPage> {
                                     ).flowsYourSkillsSubtitle,
                                   ),
                                   const SizedBox(height: 10),
+                                  Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: FluxPillButton(
+                                      key: const Key('new-skill-button'),
+                                      label: L10n.of(context).flowsNewSkill,
+                                      icon: FluxIcons.add,
+                                      onTap: _editSkill,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
                                   if (custom.isEmpty)
                                     const _EmptyCustomSkills()
                                   else

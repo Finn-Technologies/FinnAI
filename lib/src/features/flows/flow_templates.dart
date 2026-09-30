@@ -66,15 +66,11 @@ class MorningBriefTemplate extends FlowTemplate {
       category: 'Automation',
       trigger: trigger ?? defaultTrigger,
       steps: [
-        FlowStep(
-          kind: FlowStepKind.browse,
-          text: 'top news about $topics today {date}',
-        ),
+        // `news:` and `weather:` pick a source built for the question; general
+        // web search returns articles *about* news and weather, not the news.
+        FlowStep(kind: FlowStepKind.browse, text: 'news: $topics'),
         if (city.isNotEmpty)
-          FlowStep(
-            kind: FlowStepKind.browse,
-            text: 'weather forecast $city today',
-          ),
+          FlowStep(kind: FlowStepKind.browse, text: 'weather: $city'),
         FlowStep(
           kind: FlowStepKind.prompt,
           text:
@@ -123,7 +119,7 @@ class WebCheckTemplate extends FlowTemplate {
       category: 'Automation',
       trigger: trigger ?? defaultTrigger,
       steps: [
-        FlowStep(kind: FlowStepKind.browse, text: '$topic latest {date}'),
+        FlowStep(kind: FlowStepKind.browse, text: 'news: $topic'),
         FlowStep(
           kind: FlowStepKind.prompt,
           text: 'What is the latest on $topic? Answer in 3 short bullet points '

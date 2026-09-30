@@ -32,6 +32,25 @@ requests are sent for search; conversation history, saved profile data, custom
 instructions, and Skills are not included. If search is unavailable, FinnAI
 falls back to a local answer.
 
+For questions about current news, FinnAI asks Google News's public RSS feed
+(`news.google.com`) for recent headlines, sending the topic words and your
+device language and region. For a weather line in a Flow such as a morning
+brief, FinnAI asks Open-Meteo (`geocoding-api.open-meteo.com` and
+`api.open-meteo.com`) for the forecast of the city you entered, sending that
+city name and the coordinates it resolves to. These requests also expose
+ordinary network metadata such as the device IP address to those hosts. No
+account or key is used, and nothing else from the device is sent.
+
+### Scheduled Flows
+
+A Flow you schedule runs only because you turned it on. FinnAI asks for
+notification permission the first time you enable a scheduled Flow, and uses
+the operating system's alarm service to remind you when it is due. Tapping the
+notification opens FinnAI, which then runs the Flow (including any search
+described above) and saves the result as a conversation in your encrypted
+history. The Flow run log records which steps ran and whether they succeeded,
+never the text of the result.
+
 ## 2. Network Usage & Third-Party Services
 FinnAI uses network access exclusively for the following specific purposes:
 

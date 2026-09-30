@@ -1358,12 +1358,6 @@ abstract class AppLocalizations {
   /// **'When'**
   String get flowsScheduleHeading;
 
-  /// Manual trigger
-  ///
-  /// In en, this message translates to:
-  /// **'Only when you run it'**
-  String get flowsScheduleManual;
-
   /// Schedule label for Monday to Friday
   ///
   /// In en, this message translates to:
@@ -1489,6 +1483,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Runs'**
   String get flowsScheduleLabel;
+
+  /// Manual trigger
+  ///
+  /// In en, this message translates to:
+  /// **'Only when you run it'**
+  String get flowsScheduleManual;
 
   /// Daily trigger
   ///

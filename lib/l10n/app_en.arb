@@ -925,16 +925,12 @@
   "@flowsScheduleHeading": {
     "description": "Flows automation text"
   },
-  "flowsScheduleManual": "Only when I tap Run",
   "flowsScheduleWeekdaysAt": "Weekdays at {time}",
   "@flowsScheduleWeekdaysAt": {
     "description": "Schedule label for Monday to Friday",
     "placeholders": {
       "time": { "type": "String" }
     }
-  },
-  "@flowsScheduleManual": {
-    "description": "Flows automation text"
   },
   "flowsScheduleEveryDay": "Every day",
   "@flowsScheduleEveryDay": {

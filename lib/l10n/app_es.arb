@@ -814,7 +814,6 @@
   "flowsSlotTopic": "Tema",
   "flowsSlotMessage": "Mensaje",
   "flowsScheduleHeading": "Cuándo",
-  "flowsScheduleManual": "Solo cuando toque Ejecutar",
   "flowsScheduleWeekdaysAt": "Días laborables a las {time}",
   "flowsScheduleEveryDay": "Todos los días",
   "flowsScheduleWeekdaysOnly": "Días laborables",

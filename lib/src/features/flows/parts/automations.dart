@@ -192,6 +192,7 @@ class _TemplatePicker extends StatelessWidget {
   Widget build(BuildContext context) => _SheetFrame(
         title: L10n.of(context).flowsNewAutomation,
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             for (final template in FlowTemplates.all)
               Padding(

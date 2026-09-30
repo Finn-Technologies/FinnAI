@@ -2,22 +2,31 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import 'package:finn_ai/src/features/search/providers/news_provider.dart';
+import 'package:finn_ai/src/features/search/providers/source_provider.dart';
+import 'package:finn_ai/src/features/search/providers/weather_provider.dart';
 import 'package:finn_ai/src/features/search/search_agent.dart';
 import 'package:finn_ai/src/features/search/web_search_service.dart';
 
 /// The app's decision for one turn: search once, or do not.
 @immutable
 class SearchPlan {
-  const SearchPlan._(this.search, this.query, this.reason);
+  const SearchPlan._(this.search, this.query, this.reason, this.provider);
 
-  const SearchPlan.skip(SearchPlanReason reason) : this._(false, '', reason);
+  const SearchPlan.skip(SearchPlanReason reason)
+      : this._(false, '', reason, null);
 
-  const SearchPlan.search(String query, SearchPlanReason reason)
-      : this._(true, query, reason);
+  const SearchPlan.search(String query, SearchPlanReason reason,
+      {String? provider})
+      : this._(true, query, reason, provider);
 
   final bool search;
   final String query;
   final SearchPlanReason reason;
+
+  /// A purpose-built source (`news`, `weather`) instead of general web search,
+  /// when the question is of a kind general search answers badly.
+  final String? provider;
 }
 
 /// Decides, deterministically, whether a turn should search the web.
@@ -44,9 +53,12 @@ class SearchPlanner {
     }
     final query = prompt.trim();
     final reason = policy.reasonFor(query);
-    return reason.searches
-        ? SearchPlan.search(query, reason)
-        : SearchPlan.skip(reason);
+    if (!reason.searches) return SearchPlan.skip(reason);
+    return SearchPlan.search(
+      query,
+      reason,
+      provider: policy.providerFor(query),
+    );
   }
 }
 
@@ -81,13 +93,22 @@ class SearchTurnResult {
 /// query. Failing fast is the feature: an unreachable web costs [budget], then
 /// the answer says it had no sources.
 class SearchTurn {
-  SearchTurn({SearchAgent? agent, this.budget = defaultBudget})
-      : _agent = agent ?? SearchAgent();
+  SearchTurn({
+    SearchAgent? agent,
+    this.budget = defaultBudget,
+    Iterable<SourceProvider>? providers,
+  })  : _agent = agent ?? SearchAgent(),
+        _providers = {
+          for (final provider
+              in providers ?? [NewsProvider(), WeatherProvider()])
+            provider.name: provider,
+        };
 
   static const Duration defaultBudget = Duration(seconds: 5);
 
   final SearchAgent _agent;
   final Duration budget;
+  final Map<String, SourceProvider> _providers;
 
   Future<SearchTurnResult> run(SearchPlan plan) async {
     if (!plan.search) return SearchTurnResult.none;
@@ -100,8 +121,20 @@ class SearchTurn {
       // timeout's `null` is always a legal value even when the agent hands
       // back a non-null future (a fake, or a cached result), and a
       // synchronous throw lands in the catch below like any other failure.
-      Future<GroundedSearchResult?> attempt() async =>
-          _agent.searchAndFetch(plan.query);
+      Future<GroundedSearchResult?> attempt() async {
+        final provider = _providers[plan.provider];
+        if (provider == null) return _agent.searchAndFetch(plan.query);
+        final sources = await provider.fetch(plan.query);
+        // A purpose-built source that has nothing falls back to general
+        // search once: a thin answer is better than none, and it is still
+        // one bounded attempt inside the same budget.
+        if (sources.isEmpty) return _agent.searchAndFetch(plan.query);
+        return GroundedSearchResult(
+          search: WebSearchResult(query: plan.query, sources: sources),
+          groundedContext: SearchAgent.groundedContextForSources(sources),
+        );
+      }
+
       final grounded = await attempt().timeout(budget, onTimeout: () => null);
       if (grounded == null || grounded.search.sources.isEmpty) {
         return SearchTurnResult(

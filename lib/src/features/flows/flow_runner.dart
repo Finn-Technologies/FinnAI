@@ -93,6 +93,7 @@ class FlowRunner {
     final pendingContext = <String>[];
     final allSources = <WebSource>[];
     var produced = false;
+    var sawBrowse = false;
     try {
       final validation = FlowsStore.validate(flow);
       if (!validation.isValid) {
@@ -129,6 +130,20 @@ class FlowRunner {
               outcome = FlowRunOutcome.failed;
               break;
             }
+            // A brief asked to use "the search results above" with none will
+            // invent them. Better to say it could not, and stop: the run then
+            // reads as failed instead of delivering a confident fiction.
+            if (sawBrowse && pendingContext.isEmpty) {
+              results.add(FlowStepResult(
+                index: index,
+                kind: step.kind,
+                outcome: FlowRunOutcome.failed,
+                detail: 'no sources',
+              ));
+              outcome = FlowRunOutcome.failed;
+              break;
+            }
+            sawBrowse = false;
             try {
               lastAnswer =
                   (await generate(_expand(step.text, lastAnswer))).trim();
@@ -163,6 +178,7 @@ class FlowRunner {
               break;
             }
             try {
+              sawBrowse = true;
               final found =
                   await searcher.search(_expand(step.text, lastAnswer));
               if (found.groundedContext.isNotEmpty) {

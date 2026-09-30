@@ -57,10 +57,25 @@ Use this before grepping. Paths are relative to the repository root.
 |---|---|
 | When a query triggers a search (and why) | `lib/src/features/search/search_policy.dart` (`WebSearchPolicy.reasonFor`, `SearchPlanReason`) and `search_turn.dart` (`SearchPlanner.plan`) |
 | How a query is cleaned / which endpoints are used | `lib/src/features/search/web_search_service.dart` (`_cleanSearchQuery`, `search`) |
+| News and weather sources (keyless) | `lib/src/features/search/providers/news_provider.dart`, `weather_provider.dart` (routed by `SearchPolicy.providerFor` or a `news:` / `weather:` flow step, see `chat/flow_wiring.dart`) |
 | The one search a turn gets (budget, failure note) | `lib/src/features/search/search_turn.dart` (`SearchTurn.run`, `defaultBudget`) |
 | Where chat runs the search for send / continue / regenerate / edit | `lib/src/features/chat/shell/send.dart` (`_groundTurn`) |
 | Turning search results into prompt context | `lib/src/features/search/search_agent.dart` (`groundedContextForSources`, `searchAndFetch`) |
 | The search step the eval applies before the engine | `lib/main.dart` (`_groundEvalTurn`) → `engine/eval/harness.dart` (`EvalGrounder`) |
+
+## Flows (automations)
+
+| To change… | Edit |
+|---|---|
+| The steps, trigger and run log data model | `lib/src/features/flows/flow_model.dart` |
+| How a run executes steps (grounding, stop rules, the grant rule) | `lib/src/features/flows/flow_runner.dart` |
+| What a flow may reach outside itself (model, search, sink, notifier) | `lib/src/features/flows/flow_ports.dart` |
+| The real implementations of those ports (engine, search, conversations) | `lib/src/features/chat/flow_wiring.dart` |
+| Morning brief / web check / reminder | `lib/src/features/flows/flow_templates.dart` |
+| When a scheduled flow next runs | `lib/src/features/flows/flow_schedule.dart` (mirrored in `android/.../FlowScheduler.kt`) |
+| Arming alarms, notification permission | `lib/src/features/flows/flow_scheduler.dart` + `android/app/src/main/kotlin/com/abhiflex/finnai/FlowScheduler.kt` |
+| Tap-a-notification-to-run, alarm sync at startup | `lib/src/features/chat/shell/flows.dart` |
+| The Flows screen, template sheet, schedule editor | `lib/src/features/flows/flows_page.dart` + `parts/automations.dart` |
 
 ## Creations
 

@@ -814,7 +814,6 @@
   "flowsSlotTopic": "Argomento",
   "flowsSlotMessage": "Messaggio",
   "flowsScheduleHeading": "Quando",
-  "flowsScheduleManual": "Solo quando tocco Esegui",
   "flowsScheduleWeekdaysAt": "Giorni feriali alle {time}",
   "flowsScheduleEveryDay": "Ogni giorno",
   "flowsScheduleWeekdaysOnly": "Giorni feriali",

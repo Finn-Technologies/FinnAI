@@ -80,6 +80,22 @@ void main() {
     arbs = {for (final locale in _locales) locale: _readArb(locale)};
   });
 
+  test('no ARB declares a key twice', () {
+    // JSON parsers keep the last duplicate silently, so a second definition of
+    // an existing key quietly replaces the first one's copy (it once changed a
+    // button label with no error anywhere).
+    for (final locale in _locales) {
+      final text = File('lib/l10n/app_$locale.arb').readAsStringSync();
+      final seen = <String>{};
+      final duplicates = <String>[];
+      for (final match
+          in RegExp(r'^  "([^"]+)":', multiLine: true).allMatches(text)) {
+        if (!seen.add(match.group(1)!)) duplicates.add(match.group(1)!);
+      }
+      expect(duplicates, isEmpty, reason: '$locale repeats $duplicates');
+    }
+  });
+
   test('each ARB declares its own locale', () {
     for (final locale in _locales) {
       expect(arbs[locale]!['@@locale'], locale);

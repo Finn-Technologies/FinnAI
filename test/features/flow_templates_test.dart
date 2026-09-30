@@ -43,6 +43,23 @@ class _Search implements FlowSearch {
   }
 }
 
+/// News is unreachable, weather answers.
+class _PartialSearch implements FlowSearch {
+  @override
+  Future<FlowSearchResult> search(String query) async {
+    if (query.startsWith('news:')) {
+      return const FlowSearchResult(failed: true);
+    }
+    return FlowSearchResult(
+      groundedContext: 'RETRIEVED WEB RESULTS:\n[1] $query',
+      sources: [
+        WebSource(
+            title: query, url: Uri.parse('https://e.com/w'), snippet: 's'),
+      ],
+    );
+  }
+}
+
 class _Sink implements FlowOutputSink {
   final delivered = <(String, String, int)>[];
   @override
@@ -108,8 +125,8 @@ void main() {
           template.slots, {'topic': 'cats {input} and {date}'});
       final flow = template.build('f', values);
       final query = flow.steps.first.text;
-      // Only the template's own {date} survives.
-      expect('{date}'.allMatches(query).length, 1);
+      // No placeholder can come in through a slot.
+      expect(query.contains('{date}'), isFalse);
       expect(query.contains('{input}'), isFalse);
     });
   });
@@ -138,13 +155,10 @@ void main() {
       ).run(flow, triggeredBy: 'schedule');
 
       expect(run.outcome, FlowRunOutcome.completed);
-      expect(search.queries, [
-        'top news about football today 2026-09-30',
-        'weather forecast Rome today',
-      ]);
+      expect(search.queries, ['news: football', 'weather: Rome']);
       expect(model.prompts, hasLength(1));
-      expect(model.contexts.single, contains('top news about football'));
-      expect(model.contexts.single, contains('weather forecast Rome'));
+      expect(model.contexts.single, contains('news: football'));
+      expect(model.contexts.single, contains('weather: Rome'));
       expect(notifier.sent.single.$1, 'Morning brief');
       expect(notifier.sent.single.$2, contains('first point'));
       expect(sink.delivered.single.$3, 2, reason: 'both sources delivered');
@@ -152,20 +166,45 @@ void main() {
           everyElement(FlowRunOutcome.completed));
     });
 
-    test('offline: the brief still runs, told there were no results', () async {
+    test('offline: a brief with no sources does not invent one', () async {
       final template = FlowTemplates.byId('web_check')!;
       final flow = template.build(
           'c', SlotSanitizer.sanitize(template.slots, {'topic': 'cats'}));
       final model = _Model();
+      final notifier = _Notifier();
+      final sink = _Sink();
       final run = await FlowRunner(
         store: store,
         model: model,
         search: _Search(offline: true),
+        notifier: notifier,
+        sink: sink,
+      ).run(flow);
+      expect(run.outcome, FlowRunOutcome.failed);
+      expect(run.steps.first.detail, 'offline');
+      expect(run.steps[1].detail, 'no sources');
+      expect(model.prompts, isEmpty, reason: 'the model must not be asked');
+      expect(notifier.sent, isEmpty);
+      expect(sink.delivered, isEmpty);
+    });
+
+    test('one source out of two is enough to write the brief', () async {
+      final template = FlowTemplates.byId('morning_brief')!;
+      final flow = template.build(
+        'b',
+        SlotSanitizer.sanitize(
+            template.slots, {'topics': 'football', 'city': 'Rome'}),
+      );
+      final model = _Model();
+      final run = await FlowRunner(
+        store: store,
+        model: model,
+        search: _PartialSearch(),
         notifier: _Notifier(),
       ).run(flow);
       expect(run.outcome, FlowRunOutcome.completed);
-      expect(run.steps.first.detail, 'offline');
-      expect(model.contexts.single, isEmpty);
+      expect(model.contexts.single, contains('weather: Rome'));
+      expect(model.contexts.single, isNot(contains('news: football')));
     });
 
     test('a reminder needs no model and no network', () async {
