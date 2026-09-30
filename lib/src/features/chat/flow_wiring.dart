@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
+
 import 'package:finn_ai/src/engine/api/web_source.dart';
 import 'package:finn_ai/src/features/conversations/conversation_store.dart';
 import 'package:finn_ai/src/features/flows/flow_ports.dart';
@@ -56,7 +58,18 @@ class EngineFlowModel implements FlowModel {
     )) {
       output.write(token);
     }
-    return output.toString();
+    // A small model sometimes wraps its answer in a made-up <Answer> tag,
+    // which renders as an empty block. It is never content.
+    final text = output
+        .toString()
+        .replaceAll(RegExp(r'</?answer>', caseSensitive: false), '')
+        .trim();
+    if (!kReleaseMode) {
+      // Debug only: telling an empty answer from a filtered one needs the text.
+      debugPrint('FINN_FLOW_ANSWER chars=${text.length} '
+          'head=${text.length > 160 ? text.substring(0, 160) : text}');
+    }
+    return text;
   }
 }
 
