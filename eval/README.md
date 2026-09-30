@@ -8,7 +8,13 @@ evaluation harness reads.
 ```bash
 ./tool/run_eval.sh --prompts eval/prompts/multilingual.json   # gate against the committed baseline
 ./tool/run_eval.sh --write-baseline                          # measure a new baseline
+BASELINE_SLUG=lite ./tool/run_eval.sh --write-baseline --lite --image eval/images/number42.png
 ```
+
+`--lite` forces the Lite device policy (2048 context, text-only load, projector on first
+image); `--image` adds the image case. A baseline name comes from `BASELINE_SLUG`
+(default: your git user name + `-device`). The app writes the baseline into its own files
+directory and the script reads it back with `run-as`, so it needs a debug build.
 
 The phone needs the model already installed and the screen on. Read
 `tool/run_eval.sh` for the full flag list.
