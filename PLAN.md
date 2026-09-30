@@ -1,6 +1,15 @@
 # FinnAI Full Rewrite — PLAN.md
 
-> **Status 2026-09-30: APPROVED AND IN PROGRESS.** Owner approved execution of
+> **Status 2026-09-30 (evening): Phases 0-5 implemented and merged; Phase 6
+> started.** Gate at `0493be0`: `dart format` clean · engine seam OK · analyze
+> clean · **847 tests passed**. The Phase 0 baseline is measured for the first
+> time — empty replies 17.1% → 8.6%, TTFT p95 9250 ms → 4489 ms, and the
+> 230-second runaway is gone. **Two of three eval gates still fail** (empty
+> replies 4× the bar, browse recall 0) and are recorded as open, not smoothed
+> over. Phases 4 and 5 are host-tested but **not device-verified**. See
+> [§10](#10-progress-log) and [`eval/RESULTS_2026-09-30.md`](eval/RESULTS_2026-09-30.md).
+>
+> **Earlier status (superseded).** Owner approved execution of
 > Phases 0-2 ("Phase 0 to 2 with subagents and all") and answered §9: release-mode
 > perf aggregates approved (no prompt text); Q4_K_M A/B deferred (Q4_0 stays pinned);
 > macOS-first order and foreground-only voice confirmed; one polished release after
@@ -11,7 +20,7 @@
 > where the progress log explicitly supersedes a line. PLAN.md remains the
 > cross-session contract (§5): update it per milestone.
 > Owner decisions 2026-09-29 (no code changed): (1) Desktop: mobile + macOS first (macOS first for easy testing on this machine; Linux/Windows later). (2) Flows: KEEP visible as Flows; target = MacroDroid-like on-device automations FinnAI can write + user-editable clean flowchart UI. (3) Voice: foreground-only + lifecycle stop, optimize for best experience. (4) Assistant: full Android digital assistant, acts on device. (5) Release: test everything first, ship one polished version (no rushed staged partial). (6) Users: global (Russia, India, any country/action) — multilingual + any-domain eval. (7) Model: stay pinned to lowest-resource / highest speed (Q4_0 class); no up-quant that costs RAM/heat without proof.
-> Device check 2026-09-29: Xiaomi `ebe7291` (Android 16, API 36) connected via `flutter devices`; `adb devices` shows `ebe7291 device`. macOS host present. Emulator list not yet verified. Full device verification in VERIFICATION.md §§1-7 (unmodified debug APK installed after Play uninstall; 21-prompt batch; dark mode; emulator).
+> Device check 2026-09-29: Xiaomi `ebe7291` (Android 16, API 36) connected via `flutter devices`; `adb devices` shows `ebe7291 device`. macOS host present. Full device verification in VERIFICATION.md §§1-7.
 > Deferred to later per owner: image/multimodal eval prompts (needs sample photo), TalkBack pass, voice-engine install + voice retest (phone has no recognizer/TTS).
 > Source: 9 parallel read-only audits (UI, animation, perf/memory, response quality, web search, Flows, voice, architecture/portability, a11y/onboarding/bugs). This file merges and dedups them.
 
@@ -168,6 +177,159 @@ run, with counts) versus **unverified** (built, on a device, awaiting a run). A
 milestone is only "done" when it has been merged into `main` with a green gate
 (`dart format` + `verify_engine_seam.sh` + `flutter analyze --no-pub` +
 `flutter test --no-pub`) and, where it claims a behaviour change, device evidence.
+
+### 2026-09-30 — Milestones 4-8: Phases 1, 2, 3, 4, 5 merged; Phase 6 started
+
+| Phase | State | Evidence |
+|---|---|---|
+| 0 — baselines + harness | **done** | 29-case suite run twice on the Xiaomi; [`eval/RESULTS_2026-09-30.md`](eval/RESULTS_2026-09-30.md) |
+| 1 — core + response quality | **done** (client + engine) | 847 tests; TTFT p95 −51% |
+| 2 — design + onboarding/a11y | **done** | consent fix; 38 goldens |
+| 3 — search speed | **done** | search policy + one client + bounded caches |
+| 4 — Flows runner | **done**, device-**unverified** | 23 tests; no device run |
+| 5 — voice | **done**, device-**unverified** | 29 tests; phone has no TTS/STT engine |
+| 6 — system assistant | **started** | audit log written, uncommitted |
+| 7 — desktop macOS | not started | — |
+
+Commits `c701614`…`0493be0` on `main`, plus two merges (`64357a6`, `890ff3b`).
+Gate at the last commit: `dart format` clean · seam OK · `flutter analyze
+--no-pub` no issues · **`flutter test --no-pub` 847 passed, 0 failed**
+(was 670 at the start of this session).
+
+#### Phases 1 + 2 — merged (`64357a6`, `890ff3b`)
+
+**Phase 1 client.** The two markdown-throttle tests that §10 previously
+recorded as blocking are green, and the blocker was a real bug rather than a
+bad test: the throttle decided to defer by comparing `DateTime.now()`
+against the age of the last parse, which the widget clock does not advance.
+The trailing parse also re-entered `build` and re-evaluated the same
+conditions, so it could re-defer indefinitely. The window is now closed by a
+flag `_canReuseRender` treats as an unconditional refusal, so the trail is
+bounded by the window plus a frame rather than by a timing guess. One of the
+two failing tests asserted an exact render *mid-burst* — which is precisely
+what the throttle defers — so it was corrected, and a new test asserts the
+real invariant: stale inside the window, exact outside it.
+
+Also merged: the O(n²) token path (951,995 chars copied → 3,896 for the same
+500-token burst), the terminal-commit ordering race that made a two-token
+reply appear only after the *next* user turn, and a `dispose()` that left
+llama.cpp decoding in the background.
+
+**Phase 2.** The consent step **could be skipped, and skipping opted you in**
+(Critical #4, device-confirmed). Next is now disabled until Yes or No is
+chosen, with a line saying why, and the question defines what "context" means
+in all five locales. Fixing the copy exposed a layout fault the audit had
+only ranked High: `_StepPage` sizes the artwork card from the height it
+reserves for the body, so the added sentence pushed the only two tappable
+things below the fold (y=877 on a 390×844 phone). The answers are now pinned
+and the explanation scrolls. Semantic colour tokens with measured WCAG
+contrast, a visible dark user bubble, one motion language, 48dp targets, and
+**38 goldens** (from 4).
+
+#### Phase 3 — search speed (`b055ac7`, `ed97cda`)
+
+Suppressed browsing for closed-domain facts and for follow-ups, made the
+decision prompt history-aware (its `history` parameter had been threaded
+through three layers and never written into the prompt — which is *why*
+follow-ups went to the web), put the per-intent task instruction into the
+session cache key, halved the tool budget to 6s, and stopped an unterminated
+`<tool_call>` parsing as a finished one.
+
+The output budget was **inverted**: `max(intentBudget, ctx - 96)` meant the
+context bound always won, so every turn was allowed 4000 output tokens on a
+4096 context. The eval caught a real runaway on exactly that — 4000 tokens,
+230 seconds, for a question whose whole answer was one word.
+
+Then one shared keep-alive HTTP client instead of three pools, and the
+browser's two unbounded caches bounded (24 entries, 15 min TTL).
+
+#### Phase 4 — Flows as real automations (`88de43c`, `f5a4270`)
+
+Flows were a prompt-snippet manager with a keyword gate. A flow is now a list
+of steps, and **a flow cannot act on the device without permission** — the
+rule is enforced in three independent places (shape check, manual run,
+scheduled run) and each has a test. `flows.json` had a version that was
+written but never read; a v1 file now migrates. Runs are recorded in a
+bounded log that **holds no model text**. 23 new tests.
+
+#### Phase 5 — voice, foreground-only (`0493be0`)
+
+`SpeakableText` turns Markdown into speakable segments: code blocks become a
+short marker instead of "backtick d-a-r-t backtick", tables one marker rather
+than a run of "pipe Name pipe", links speak their label. 23 tests.
+
+Voice is now **genuinely foreground-only** — backgrounding the app left the
+microphone hot and the orb frozen. `voiceDidNotCatch` had been translated
+into five languages and never displayed; it is now a real state. Two smaller
+bugs with real symptoms: a failed `speak()` could leave the controller stuck
+in `speaking` forever, and the orb was rebuilt at audio-callback rate (each
+rebuild restarted three `AnimatedContainer` tweens before they could finish).
+
+#### Phase 0 — the baseline is finally measured
+
+This is the §4 Phase 0 "definition of done" line, and it is now closed. Two
+runs of the same 29-case suite on the Xiaomi, before and after Phases 1-3.
+Full write-up in [`eval/RESULTS_2026-09-30.md`](eval/RESULTS_2026-09-30.md).
+
+| | before | after |
+|---|---|---|
+| Empty replies | 17.1% | **8.6%** |
+| TTFT p50 | 2704 ms | **2115 ms** |
+| TTFT p95 | 9250 ms | **4489 ms** |
+| 4000-token runaway | 1 (230 s) | **0** |
+| Browse suite | 0.75 | **1.00** |
+| Everyday suite | 0.00 | **0.33** |
+| Factual suite | 0.67 | **0.33** |
+| Check pass rate | 71.4% | 69.0% |
+
+**Two of three gates still fail** and the run reports `"passed": false`.
+Empty replies are 4× the 2% bar and browse recall is 0. The factual drop is
+the honest price of suppressing searches for closed-domain facts: those cases
+now answer from the model's own knowledge, which is right for "what is the
+capital of France" and wrong for anything the model has stale.
+
+**The baseline *files* were not recovered.** The app is replaced by the next
+build and the file each run wrote to external storage went with it. The
+numbers above are the `FINN_EVAL_SUMMARY` lines, which are what the files
+hold. `tool/run_eval.sh` now survives a dropped USB link, which is what lost
+the first of the two runs.
+
+#### Phase 6 — started, not finished
+
+`ActionAuditStore` is written (an append-only, bounded log of which action ran,
+whether it was approved or refused, and from where — with **no prompt text
+and no action arguments**, because a `dial` number is the user's data and the
+encrypted conversation store is the right place for it). It is wired into the
+chat approval and refusal paths. **Uncommitted and not gated.**
+
+**Not started:** share-to-Finn (`ACTION_SEND` is not accepted at all today —
+only `PROCESS_TEXT` is), the dead `finn_creation_id` shortcut deep link, and
+the Assist role, which PLAN.md's own cut line says to defer.
+
+#### Explicitly still open
+
+| Item | State |
+|---|---|
+| Empty replies 8.6% vs 2% bar | **unfixed** — the ordering race is gone; something else causes the rest |
+| Browse recall 0.0 | **unfixed** — the trigger lists are keyword-based and match nothing in the suite |
+| RAM growth 2.54 → 3.73 GB | partially addressed (bounded browser caches); not measured |
+| Non-Latin eval | still deferred — needs a hand-typed prompt or a harness |
+| TalkBack pass | still deferred to the owner |
+| Voice on a real device | **unverified** — the phone has no recognizer or TTS engine |
+| Flows on a real device | **unverified** — 23 host tests, no device run |
+| Phases 6 (rest) and 7 | not started |
+
+#### Two things worth knowing about this environment
+
+`flutter emulators` **crashes** on this OHOS Flutter fork (`--launch-ohos-emulator`
+is passed to a command that does not accept it). The `Medium_Phone` AVD
+exists and can be started directly with `emulator -avd Medium_Phone`.
+
+`flutter test` appears to hang rather than fail when a **previous run's
+`flutter_tester` process is still alive**. `pkill -f flutter_tester` first.
+This cost roughly 40 minutes and is worth remembering.
+
+---
 
 ### 2026-09-30 — Milestone 1: Phase 0 (baselines + harness) merged to `main`
 
