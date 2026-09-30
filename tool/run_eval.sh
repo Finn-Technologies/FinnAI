@@ -56,7 +56,7 @@ DEFINES=(--dart-define=FINN_EVALUATION=true)
 
 if [[ "$WRITE_BASELINE" -eq 1 ]]; then
   BASELINE_NAME="baseline_${BASELINE_SLUG}.json"
-  DEFINES+=(--dart-define=FINN_EVAL_WRITE_BASELINE="${REMOTE_DIR}/${BASELINE_NAME}")
+  DEFINES+=(--dart-define=FINN_EVAL_WRITE_BASELINE="${BASELINE_NAME}")
 else
   BASELINE_NAME="baseline_${BASELINE_SLUG}.json"
   if [[ ! -f "eval/${BASELINE_NAME}" ]]; then
@@ -103,7 +103,11 @@ set +e
 READER=$!
 
 for _ in $(seq 1 "$((WATCH_SECONDS / 5))"); do
-  if grep -q "FINN_EVAL_SUMMARY" "$LOG" 2>/dev/null; then break; fi
+  # The app writes the baseline *after* it logs the summary, so a baseline run
+  # waits for the write to be reported rather than racing it.
+  if [[ "$WRITE_BASELINE" -eq 1 ]]; then
+    if grep -qE "FINN_EVAL_BASELINE_(WRITTEN|FAILED)" "$LOG" 2>/dev/null; then break; fi
+  elif grep -q "FINN_EVAL_SUMMARY" "$LOG" 2>/dev/null; then break; fi
   if ! kill -0 "$READER" 2>/dev/null; then break; fi
   sleep 5
 done
@@ -120,9 +124,14 @@ grep -m1 "FINN_EVAL_GATE" "$LOG" || true
 echo "full log: $LOG"
 
 if [[ "$WRITE_BASELINE" -eq 1 ]]; then
-  if adb pull "${REMOTE_DIR}/${BASELINE_NAME}" "eval/${BASELINE_NAME}" >/dev/null; then
+  # The app writes into its own files directory (external storage is not
+  # writable); a debug build lets `run-as` read it back out.
+  if adb exec-out run-as "$PACKAGE" cat "files/${BASELINE_NAME}" > "eval/${BASELINE_NAME}.tmp" 2>/dev/null \
+      && [[ -s "eval/${BASELINE_NAME}.tmp" ]]; then
+    mv "eval/${BASELINE_NAME}.tmp" "eval/${BASELINE_NAME}"
     echo "wrote eval/${BASELINE_NAME} — review it, then commit it"
   else
+    rm -f "eval/${BASELINE_NAME}.tmp"
     echo "the app did not write ${BASELINE_NAME}; the run probably did not finish"
   fi
 fi

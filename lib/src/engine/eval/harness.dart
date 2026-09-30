@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:path_provider/path_provider.dart';
 
 import 'package:finn_ai/src/engine/api/web_source.dart';
 import 'package:finn_ai/src/engine/eval/eval_baseline.dart';
@@ -212,10 +213,16 @@ class EvalHarness {
     emit('FINN_EVAL_GATE ${jsonEncode(comparison.toJson())}');
 
     if (writeBaselineTo != null) {
-      final file = File(writeBaselineTo);
-      await file.parent.create(recursive: true);
-      await file.writeAsString(run.toBaseline(gates: gates).encode());
-      emit('FINN_EVAL_BASELINE_WRITTEN ${file.path}');
+      try {
+        final file = File(writeBaselineTo);
+        await file.parent.create(recursive: true);
+        await file.writeAsString(run.toBaseline(gates: gates).encode());
+        emit('FINN_EVAL_BASELINE_WRITTEN ${file.path}');
+      } catch (error) {
+        // A failed write must be loud: the numbers above are the run, and a
+        // silent failure here once cost a whole baseline.
+        emit('FINN_EVAL_BASELINE_FAILED $writeBaselineTo $error');
+      }
     }
     return run;
   }
@@ -445,9 +452,19 @@ Future<void> runEvalHarness({EvalGrounder? grounder}) async {
     cases,
     gates: baseline?.gates ?? const EvalGates(),
     baseline: baseline,
-    writeBaselineTo: writeBaseline.trim().isEmpty ? null : writeBaseline.trim(),
+    writeBaselineTo: await _baselinePath(writeBaseline.trim()),
   );
   await engine.releaseMemory();
+}
+
+/// A bare file name lands in the app's own files directory, which the app can
+/// always write and `adb shell run-as` can always read; an absolute path is
+/// used as given. External storage is not writable from a modern Android app.
+Future<String?> _baselinePath(String requested) async {
+  if (requested.isEmpty) return null;
+  if (requested.startsWith('/')) return requested;
+  final directory = await getApplicationSupportDirectory();
+  return '${directory.path}/$requested';
 }
 
 /// The original candidate-model comparison kept from the pre-Phase-0 harness:
