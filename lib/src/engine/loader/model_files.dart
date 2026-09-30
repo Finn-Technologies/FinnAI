@@ -9,6 +9,7 @@ extension FinnAcceleratorModelFiles on FinnAccelerator {
     if (output != null && !output.isClosed) await output.close();
     final runtimes = _runtimes.values.toList(growable: false);
     _runtimes.clear();
+    _projectorRequested = false;
     for (final runtime in runtimes) {
       for (final entry in runtime.sessions.values) {
         await entry.session.dispose();

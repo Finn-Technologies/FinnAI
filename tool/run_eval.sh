@@ -9,6 +9,8 @@
 #   ./tool/run_eval.sh --suites factual,math # narrow the run
 #   ./tool/run_eval.sh --max-cases 8         # quick smoke pass
 #   ./tool/run_eval.sh --prompts file.json   # add non-Latin cases from a file
+#   ./tool/run_eval.sh --lite                # force the Lite (4 GB) device policy
+#   ./tool/run_eval.sh --image eval/images/number42.png   # add the image case
 #
 # The app must already have the model installed (Settings -> AI Models). A run
 # that starts before the model is resident reports the cold load in the first
@@ -32,6 +34,8 @@ MAX_CASES=0
 PROMPT_FILE=""
 WRITE_BASELINE=0
 SKIP_BUILD=0
+LITE=0
+IMAGE=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -40,6 +44,8 @@ while [[ $# -gt 0 ]]; do
     --max-cases) MAX_CASES="$2"; shift 2 ;;
     --prompts) PROMPT_FILE="$2"; shift 2 ;;
     --skip-build) SKIP_BUILD=1; shift ;;
+    --lite) LITE=1; shift ;;
+    --image) IMAGE="$2"; shift 2 ;;
     -h|--help) sed -n '2,25p' "$0"; exit 0 ;;
     *) echo "unknown flag: $1" >&2; exit 2 ;;
   esac
@@ -66,6 +72,14 @@ else
   fi
   adb push "eval/${BASELINE_NAME}" "${REMOTE_DIR}/${BASELINE_NAME}" >/dev/null
   DEFINES+=(--dart-define=FINN_EVAL_BASELINE="${REMOTE_DIR}/${BASELINE_NAME}")
+fi
+
+[[ "$LITE" -eq 1 ]] && DEFINES+=(--dart-define=FINN_FORCE_LITE=true)
+if [[ -n "$IMAGE" ]]; then
+  # The image travels as a file; the app-specific external dir is shell-writable.
+  adb shell mkdir -p "${REMOTE_DIR}" >/dev/null 2>&1 || true
+  adb push "$IMAGE" "${REMOTE_DIR}/$(basename "$IMAGE")" >/dev/null
+  DEFINES+=(--dart-define=FINN_EVAL_IMAGE="${REMOTE_DIR}/$(basename "$IMAGE")")
 fi
 
 if [[ -n "$PROMPT_FILE" ]]; then

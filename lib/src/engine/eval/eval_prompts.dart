@@ -39,6 +39,9 @@ enum EvalSuite {
 
   /// A repeated factual prompt, to measure run-to-run consistency.
   determinism,
+
+  /// Turns that carry an image. Needs `FINN_EVAL_IMAGE`; skipped without it.
+  multimodal,
 }
 
 /// Whether a case is expected to reach the web.
@@ -213,6 +216,7 @@ class EvalCase {
     this.browse = BrowseExpectation.unspecified,
     this.repeats = 1,
     this.followUps = const [],
+    this.withImage = false,
   });
 
   /// Stable identifier. It is the key every baseline number is stored under, so
@@ -235,6 +239,10 @@ class EvalCase {
   /// must-not-browse follow-ups.
   final List<String> followUps;
 
+  /// The turn carries the image named by `FINN_EVAL_IMAGE`. Such a case is
+  /// dropped from a run that has no image, so it cannot fail for want of one.
+  final bool withImage;
+
   Map<String, Object?> toJson() => {
         'id': id,
         'suite': suite.name,
@@ -242,6 +250,7 @@ class EvalCase {
         'browse': browse.name,
         'repeats': repeats,
         'follow_ups': followUps,
+        'with_image': withImage,
         'checks': checks.map((check) => check.toJson()).toList(),
       };
 }
@@ -409,6 +418,19 @@ class EvalPromptCatalog {
       prompt: 'Translate into Spanish: the train leaves at six.',
       browse: BrowseExpectation.mustNot,
       checks: [AnswerCheck.wordCount(1, 15)],
+    ),
+    EvalCase(
+      id: 'multimodal.read_number',
+      suite: EvalSuite.multimodal,
+      prompt: 'What number is written in this image? Answer briefly.',
+      browse: BrowseExpectation.mustNot,
+      withImage: true,
+      checks: [
+        AnswerCheck.forbids('not installed'),
+        AnswerCheck.forbids('unavailable'),
+        AnswerCheck.wordCount(1, 40),
+        AnswerCheck.containsAny(['42']),
+      ],
     ),
     EvalCase(
       id: 'browse.must_current',

@@ -120,7 +120,22 @@ class DeviceProfiler {
 
   static PlanOverrides planOverrides = const PlanOverrides();
 
+  /// Treats every device as Lite. For testing the low-end path on a capable
+  /// phone or an emulator: `--dart-define=FINN_FORCE_LITE=true`.
+  static const bool forceLite = bool.fromEnvironment('FINN_FORCE_LITE');
+
+  /// Whether the image projector is loaded together with the model.
+  ///
+  /// The projector is 854 MB, more than the 696 MB language model, and it is
+  /// only needed for a turn that carries an image. A Lite device (under 4 GB,
+  /// or an entry-class chip) therefore loads text-only and brings the
+  /// projector in on the first image (ADR 0004); a capable device keeps the
+  /// single load so its first image has no extra wait.
+  static bool loadsProjectorEagerly(DeviceProfile profile) =>
+      !isLowEnd(profile);
+
   static bool isLowEnd(DeviceProfile profile) =>
+      forceLite ||
       profile.lowMemory ||
       (profile.totalRamBytes != null &&
           profile.totalRamBytes! < 4 * 1000 * 1000 * 1000) ||

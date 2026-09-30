@@ -25,6 +25,7 @@ export 'package:finn_ai/src/engine/finn_engine_types.dart';
 
 part 'install/install_lifecycle.dart';
 part 'loader/residency.dart';
+part 'loader/projector.dart';
 part 'generate/reply_api.dart';
 part 'generate/turn.dart';
 part 'generate/cancellation.dart';
@@ -314,6 +315,10 @@ class FinnAccelerator extends ChangeNotifier {
   /// them even when no bytes are arriving to observe the cancel flag.
   final Set<HttpClient> _activeDownloadClients = <HttpClient>{};
   bool _benchmarkRunning = false;
+
+  /// Set when an image arrives on a Lite device, so the next (re)load brings
+  /// the projector in. Cleared when the runtime is released.
+  bool _projectorRequested = false;
   final Set<FinnModelTier> _verifiedModels = <FinnModelTier>{};
   Future<Directory>? _modelDirectoryJob;
 

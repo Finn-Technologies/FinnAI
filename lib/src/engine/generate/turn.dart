@@ -50,6 +50,7 @@ extension FinnAcceleratorTurn on FinnAccelerator {
             ?..modelTier = model.tier.name
             ..modelAlreadyResident = alreadyResident
             ..mark(TtftPhase.modelLoadRequested);
+          await _ensureProjectorIfNeeded(model, history);
           final runtime = await _ensureLoaded(model, path);
           trace?.mark(TtftPhase.modelReady);
           _throwIfGenerationCancelled(generationEpoch);

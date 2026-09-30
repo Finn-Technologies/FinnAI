@@ -114,7 +114,11 @@ class EvalHarness {
     required this.device,
     this.emit = _debugEmit,
     this.clock = DateTime.now,
+    this.imageBytes,
   });
+
+  /// The image an [EvalCase.withImage] turn carries.
+  final Uint8List? imageBytes;
 
   /// Produces the answer for one turn.
   final EvalGeneration generate;
@@ -162,6 +166,7 @@ class EvalHarness {
           history: history,
           browse: entry.browse,
           checks: entry.checks,
+          withImage: entry.withImage,
         );
         observations.add(first.observation);
 
@@ -235,6 +240,7 @@ class EvalHarness {
     required BrowseExpectation browse,
     int turn = 0,
     List<AnswerCheck> checks = const [],
+    bool withImage = false,
   }) async {
     final trace = TtftTrace(
       generationId: 'eval-$caseId-$turn',
@@ -247,7 +253,19 @@ class EvalHarness {
       await for (final token in generate(
         prompt,
         conversationId: 'eval-$caseId',
-        history: history,
+        // An image turn reaches the engine as the app sends it: the newest
+        // history entry is the user's turn, with the picture attached.
+        history: withImage && imageBytes != null
+            ? [
+                ...history,
+                LocalChatTurn(
+                  role: 'user',
+                  content: prompt,
+                  imagePath: 'eval-image.png',
+                  imageBytes: imageBytes,
+                ),
+              ]
+            : history,
         trace: trace,
       )) {
         if (!firstToken && token.isNotEmpty) {
@@ -354,6 +372,7 @@ Future<void> runEvalHarness({EvalGrounder? grounder}) async {
   const baselinePath = String.fromEnvironment('FINN_EVAL_BASELINE');
   const writeBaseline = String.fromEnvironment('FINN_EVAL_WRITE_BASELINE');
   const maxCases = int.fromEnvironment('FINN_EVAL_MAX_CASES', defaultValue: 0);
+  const imageFile = String.fromEnvironment('FINN_EVAL_IMAGE');
 
   final Set<EvalSuite> suites;
   try {
@@ -379,6 +398,19 @@ Future<void> runEvalHarness({EvalGrounder? grounder}) async {
       print('FINN_EVAL_ERROR prompt file rejected: $error');
       return;
     }
+  }
+  Uint8List? imageBytes;
+  if (imageFile.trim().isNotEmpty) {
+    final file = File(imageFile);
+    if (file.existsSync()) {
+      imageBytes = file.readAsBytesSync();
+    } else {
+      // ignore: avoid_print
+      print('FINN_EVAL_WARN image not found: $imageFile');
+    }
+  }
+  if (imageBytes == null) {
+    cases = cases.where((c) => !c.withImage).toList(growable: false);
   }
   if (maxCases > 0 && cases.length > maxCases) {
     cases = cases.take(maxCases).toList(growable: false);
@@ -443,6 +475,7 @@ Future<void> runEvalHarness({EvalGrounder? grounder}) async {
         tokensPerSecond: report?.tokensPerSecond,
       );
     },
+    imageBytes: imageBytes,
     model: engine.lastGeneratingModel.name,
     contextTokens: engine.contextSize,
     device: '${profile.soc.isEmpty ? 'unknown-soc' : profile.soc}/'

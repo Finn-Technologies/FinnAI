@@ -68,7 +68,8 @@ extension FinnAcceleratorLoader on FinnAccelerator {
 
     final mmprojFile = await _mmprojFile();
     final hasMmproj = await mmprojFile.exists() &&
-        await mmprojFile.length() == finnMmproj.expectedBytes;
+        await mmprojFile.length() == finnMmproj.expectedBytes &&
+        (DeviceProfiler.loadsProjectorEagerly(profile) || _projectorRequested);
 
     if (engine != null && hasMmproj && !engine.multimodalLoaded) {
       await engine.dispose();
