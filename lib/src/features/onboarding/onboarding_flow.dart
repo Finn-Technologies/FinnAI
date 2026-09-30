@@ -20,10 +20,16 @@ class OnboardingFlow extends StatefulWidget {
     super.key,
     this.enableModelDownload = true,
     this.onComplete,
+    this.consentStore,
   });
 
   final bool enableModelDownload;
   final Future<void> Function()? onComplete;
+
+  /// Overrides the process-wide [ContextConsentStore]. The consent step reads
+  /// and writes it, and a widget test needs to stand one up against a
+  /// temporary directory rather than the real app-support path.
+  final ContextConsentStore? consentStore;
 
   @override
   State<OnboardingFlow> createState() => _OnboardingFlowState();
@@ -131,7 +137,11 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               onBack: () => _to(1),
               onNext: () => _to(3),
             ),
-            _ConsentPage(onBack: () => _to(2), onNext: () => _to(4)),
+            _ConsentPage(
+              store: widget.consentStore,
+              onBack: () => _to(2),
+              onNext: () => _to(4),
+            ),
             _FinishPage(onDone: _finish),
           ],
         ),
@@ -373,10 +383,13 @@ class _StepPage extends StatelessWidget {
     this.twoLineTitle = false,
     this.body,
     this.bodyHeight = 100,
+    this.scrollBody = true,
+    this.bodyMaxFloor = 0,
     this.progress = 0,
     this.backEnabled = true,
     this.onNext,
     this.footer,
+    this.footerHint,
   });
 
   final String artwork;
@@ -389,8 +402,31 @@ class _StepPage extends StatelessWidget {
   /// Copy or controls shown between the card and the bottom bar.
   final Widget? body;
 
-  /// Height held for [body] when sizing the artwork card.
+  /// The height the artwork card is sized against: the budget [body] is
+  /// expected to fit in.
+  ///
+  /// This is a *budget*, not a measurement — the body is laid out from the
+  /// space that is actually left, so copy that runs longer than this (a
+  /// translated paragraph, a large text scale) shrinks the card further
+  /// rather than overflowing. A step whose body holds the only tappable
+  /// controls needs [bodyHeight] to be an honest over-estimate of that
+  /// content, or those controls land below the fold.
   final double bodyHeight;
+
+  /// Whether [_StepPage] should wrap [body] in a scroll view.
+  ///
+  /// True by default, which is right for prose. A body that lays out its own
+  /// overflow — a control pinned to the bottom of the region with a scrolling
+  /// explanation above it — must set this false, or the two nested scroll
+  /// views leave its Column unbounded and it throws at layout time.
+  final bool scrollBody;
+
+  /// The smallest the body region is allowed to get, in logical pixels.
+  ///
+  /// A body that pins a control must state what that control needs. Below this
+  /// the artwork card keeps shrinking instead, because losing the card is
+  /// cosmetic and losing the control means the step cannot be completed.
+  final double bodyMaxFloor;
 
   /// Filled quarters of the step bar (0 on the steps that carry no bar).
   final int progress;
@@ -401,36 +437,54 @@ class _StepPage extends StatelessWidget {
   /// full-width action instead of step navigation.
   final Widget? footer;
 
+  /// A line directly above the control bar, for a step that cannot be
+  /// completed yet. Without it a disabled Next is just a grey circle, and the
+  /// consent step read as "skip this" rather than "answer this first".
+  final String? footerHint;
+
   @override
   Widget build(BuildContext context) => LayoutBuilder(
         builder: (context, constraints) {
           final sy = (constraints.maxHeight / 912).clamp(.6, 1.3);
           final cardWidth = math.min(380.0, constraints.maxWidth - 40);
-          // The design's card is 380x660; on a shorter viewport it gives up
-          // height to the copy and the control bar instead of overflowing.
-          final reserved = 60 * sy + bodyHeight + 60;
+          final hint = footerHint;
+          final hintHeight = hint == null ? 0.0 : 20.0;
+          const controlsHeight = 60.0;
+          const gap = 20.0;
+
+          // The body is sized from the space the card does not use, and the
+          // card is bounded by what is left after reserving the body's budget.
+          // The floor on the card is what makes this safe: when the viewport
+          // cannot hold the ideal card *and* the body, the card is the thing
+          // that gives way, because the body is where the answer lives. A
+          // step whose only tappable controls are in the body must never be
+          // laid out with those controls below the fold.
+          //
+          // The floor scales with the viewport rather than being a constant,
+          // because a fixed 160px card plus a 250px body cannot both fit in a
+          // landscape phone's 390px — the body was squeezed to 114px and
+          // overflowed by 12.
+          final chrome = 3 * gap * sy + controlsHeight + hintHeight;
+          final budget = math.max(0.0, constraints.maxHeight - chrome);
+          final minCard = 120.0 * sy;
           final cardHeight = math.min(
             cardWidth * 660 / 380,
-            math.max(160.0, constraints.maxHeight - reserved),
+            math.max(minCard, budget - bodyHeight),
+          );
+          // The body never gets less than the space the viewport can spare,
+          // and the card yields below its floor rather than starving it.
+          final bodyMax = math.max(
+            bodyMaxFloor,
+            math.max(0.0, budget - cardHeight),
           );
           final body = this.body;
-          // The copy gets every pixel the card and the control bar leave over,
-          // sized up front rather than shared with the Spacer: as siblings of
-          // equal flex they used to split the leftover, and a paragraph that
-          // needed more than its half was clipped mid-sentence.
-          const controlsHeight = 60.0;
-          final bodyMax = math.max(
-            0.0,
-            constraints.maxHeight -
-                (20 * sy + cardHeight + 20 * sy + controlsHeight + 20 * sy),
-          );
           return ColoredBox(
             color: FluxColors.cardOf(context),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Column(
                 children: [
-                  SizedBox(height: 20 * sy),
+                  SizedBox(height: gap * sy),
                   SizedBox(
                     height: cardHeight,
                     child: _ArtworkCard(
@@ -439,16 +493,41 @@ class _StepPage extends StatelessWidget {
                       twoLineTitle: twoLineTitle,
                     ),
                   ),
-                  SizedBox(height: 20 * sy),
+                  SizedBox(height: gap * sy),
                   if (body != null)
                     SizedBox(
                       height: bodyMax,
-                      child: Align(
-                        alignment: Alignment.topLeft,
-                        child: SingleChildScrollView(child: body),
-                      ),
+                      // Not an Align: it would hand the body an unbounded
+                      // height, which is what a Column with a flexible child
+                      // cannot lay out. A step that scrolls its own body needs
+                      // the region to constrain it; the prose steps shrink-wrap
+                      // and sit at the top, which is what Align was for.
+                      child: scrollBody
+                          ? Align(
+                              alignment: Alignment.topLeft,
+                              child: SingleChildScrollView(child: body),
+                            )
+                          : body,
                     ),
                   const Spacer(),
+                  if (hint != null)
+                    SizedBox(
+                      height: hintHeight,
+                      child: Align(
+                        alignment: Alignment.center,
+                        child: Text(
+                          hint,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontFamily: 'InstrumentSans',
+                            fontSize: 13,
+                            height: 1.2,
+                            color: FluxColors.secondaryInkOf(context),
+                          ),
+                        ),
+                      ),
+                    ),
                   footer ??
                       _StepControls(
                         progress: progress,
@@ -1245,21 +1324,37 @@ class _SoftwareUpgradeScreenState extends State<SoftwareUpgradeScreen> {
 /// answer. The question is the card's title; the two answers are the step's
 /// body, with the flow's own Next control still doing the advancing.
 class _ConsentPage extends StatefulWidget {
-  const _ConsentPage({required this.onBack, required this.onNext});
+  const _ConsentPage({
+    required this.onBack,
+    required this.onNext,
+    this.store,
+  });
 
   final VoidCallback onBack;
   final VoidCallback onNext;
+  final ContextConsentStore? store;
 
   @override
   State<_ConsentPage> createState() => _ConsentPageState();
 }
 
 class _ConsentPageState extends State<_ConsentPage> {
-  final _consent = ContextConsentStore.instance;
-
-  /// Null until the user answers, so the step opens with neither card filled
-  /// in — as designed. Advancing without answering keeps the stored choice.
+  /// Null until the user answers, which is what gates the step's Next control.
+  ///
+  /// This is the device-confirmed privacy bug: tapping Next with neither
+  /// answer selected advanced to Finish, so the step was passed without a
+  /// decision. The flow then completed, and because the stored choice was
+  /// never written the app fell back to [ContextConsentStore]'s default —
+  /// Settings showed "On-device context" **on**, without anyone having agreed
+  /// to it.
+  ///
+  /// The step is unanswerable unless it is answerable, so the body now says
+  /// what "context" actually is: which things would be read, and that they
+  /// never leave the device.
   bool? _granted;
+
+  ContextConsentStore get _consent =>
+      widget.store ?? ContextConsentStore.instance;
 
   @override
   void initState() {
@@ -1273,46 +1368,88 @@ class _ConsentPageState extends State<_ConsentPage> {
   }
 
   @override
-  Widget build(BuildContext context) => _StepPage(
-        artwork: FigmaAssets.artworkConsent,
-        title: L10n.of(context).onboardingConsentTitle,
-        twoLineTitle: true,
-        bodyHeight: 112,
-        progress: 3,
-        onBack: widget.onBack,
-        onNext: widget.onNext,
-        body: Row(
-          children: [
-            Expanded(
-              child: _ConsentChoice(
-                label: L10n.of(context).commonYes,
-                selected: _granted == true,
-                cornerRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(10),
-                  topRight: Radius.circular(10),
-                  bottomLeft: Radius.circular(25),
-                  bottomRight: Radius.circular(10),
-                ),
-                onTap: () => _answer(true),
+  Widget build(BuildContext context) {
+    final l10n = L10n.of(context);
+    // A required answer: the control is disabled until one is given, rather
+    // than accepting the tap and quietly defaulting.
+    final canAdvance = _granted != null;
+    return _StepPage(
+      artwork: FigmaAssets.artworkConsent,
+      title: l10n.onboardingConsentTitle,
+      twoLineTitle: true,
+      // Measured, not guessed. `_StepPage` gives the artwork whatever the body
+      // does not use, so understating this pushes the only two tappable things
+      // off a 390x844 screen — they landed at y=877, below the fold and
+      // impossible to hit-test. This covers the explanation plus the answer
+      // row; the row is pinned at the bottom of the body region either way, so
+      // a longer translation scrolls its copy instead of pushing the answers
+      // off the screen.
+      bodyHeight: 250,
+      // This body pins the answers to the bottom of the region and scrolls the
+      // explanation above them, so `_StepPage` must not wrap it again.
+      scrollBody: false,
+      // What the pinned answer row needs: 112 for the cards plus the 14px
+      // gap above them. Below this the row overflows, so the artwork card has
+      // to keep shrinking instead — a landscape phone's 390px of height cannot
+      // hold a 250px body and a 160px card, and the row is what matters.
+      bodyMaxFloor: 126,
+      progress: 3,
+      onBack: widget.onBack,
+      onNext: canAdvance ? widget.onNext : null,
+      footerHint: canAdvance ? null : l10n.onboardingConsentRequiredHint,
+      // The answers are pinned to the bottom of the body region and the
+      // explanation takes what is left, scrolling if it must. A plain Column
+      // pushed them below the fold the moment the copy wrapped one line more —
+      // which is what happened once this step grew a sentence, and would have
+      // happened again in every language whose translation runs longer.
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.max,
+        children: [
+          Flexible(
+            child: SingleChildScrollView(
+              child: Text(
+                l10n.onboardingConsentBody,
+                style: _bodyStyle(FluxColors.secondaryInkOf(context)),
               ),
             ),
-            const SizedBox(width: 20),
-            Expanded(
-              child: _ConsentChoice(
-                label: L10n.of(context).commonNo,
-                selected: _granted == false,
-                cornerRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(10),
-                  topRight: Radius.circular(10),
-                  bottomLeft: Radius.circular(10),
-                  bottomRight: Radius.circular(25),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: _ConsentChoice(
+                  label: l10n.commonYes,
+                  selected: _granted == true,
+                  cornerRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(10),
+                    topRight: Radius.circular(10),
+                    bottomLeft: Radius.circular(25),
+                    bottomRight: Radius.circular(10),
+                  ),
+                  onTap: () => _answer(true),
                 ),
-                onTap: () => _answer(false),
               ),
-            ),
-          ],
-        ),
-      );
+              const SizedBox(width: 20),
+              Expanded(
+                child: _ConsentChoice(
+                  label: l10n.commonNo,
+                  selected: _granted == false,
+                  cornerRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(10),
+                    topRight: Radius.circular(10),
+                    bottomLeft: Radius.circular(10),
+                    bottomRight: Radius.circular(25),
+                  ),
+                  onTap: () => _answer(false),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 /// One of the two consent answers: a large tappable card that fills in once it

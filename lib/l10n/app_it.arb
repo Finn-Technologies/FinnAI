@@ -66,7 +66,7 @@
   "@commonNotNow": {
     "description": "Not now action"
   },
-  "commonPurge": "Svuota",
+  "commonPurge": "Libera",
   "@commonPurge": {
     "description": "Purge action"
   },
@@ -146,11 +146,11 @@
   "@onboardingInstallTitleReady": {
     "description": "Install title ready"
   },
-  "onboardingDownloadLead": "Download del nucleo,",
+  "onboardingDownloadLead": "Configurazione di FinnAI,",
   "@onboardingDownloadLead": {
     "description": ""
   },
-  "onboardingDownloadNote": "attendi prego.",
+  "onboardingDownloadNote": "il primo avvio richiede qualche minuto.",
   "@onboardingDownloadNote": {
     "description": ""
   },
@@ -158,9 +158,18 @@
   "@onboardingProgressPercent": {
     "description": ""
   },
-  "onboardingProgressEtaTail": "minuti rimanenti.",
+  "onboardingProgressEtaTail": "rimanenti.",
   "@onboardingProgressEtaTail": {
     "description": ""
+  },
+  "onboardingProgressEtaAbout": "Circa {minutes, plural, =1{1 minuto} other{{minutes} minuti}} rimanenti.",
+  "@onboardingProgressEtaAbout": {
+    "description": "Whole-minute download estimate. Replaces the m:ss clock read-out plus onboardingProgressEtaTail, which rendered as '0:05 minutes'.",
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
   },
   "onboardingInstallPreparing": "Preparazione di LFM2.5-VL 1.6B per questo dispositivo…",
   "@onboardingInstallPreparing": {
@@ -170,7 +179,7 @@
   "@onboardingInstallReadyForChat": {
     "description": "Ready subtitle"
   },
-  "onboardingInstallModelWithComponent": "{modelName} + componente multimodale · {size}",
+  "onboardingInstallModelWithComponent": "{modelName} + supporto immagini · {size}",
   "@onboardingInstallModelWithComponent": {
     "description": "Model + component · size",
     "placeholders": {
@@ -256,6 +265,8 @@
     "description": "Ready subtitle"
   },
   "onboardingConsentTitle": "Consenti a FinnAI di usare il contesto del tuo dispositivo?",
+  "onboardingConsentBody": "Questo permette a FinnAI di leggere cose come il tuo calendario, le tue note e le tue foto, così le risposte si adattano meglio a te. Legge solo su questo dispositivo e nulla viene inviato altrove.",
+  "onboardingConsentRequiredHint": "Scegli Sì o No per continuare",
   "onboardingStartUsing": "Inizia a usare FinnAI",
   "onboardingYouLabel": "Tu",
   "@onboardingYouLabel": {
@@ -435,19 +446,19 @@
   "@settingsDeleteAllDataSubtitle": {
     "description": "Lists what a full wipe removes, so it is not confused with clearing history."
   },
-  "settingsPurgeMemory": "Svuota la memoria dell'IA",
+  "settingsPurgeMemory": "Libera la memoria",
   "@settingsPurgeMemory": {
     "description": "Purge memory row"
   },
-  "settingsPurgeMemoryTitle": "Svuotare la memoria dell'IA?",
+  "settingsPurgeMemoryTitle": "Liberare la memoria?",
   "@settingsPurgeMemoryTitle": {
     "description": "Purge dialog title"
   },
-  "settingsPurgeMemoryBody": "Il modello IA verrà scaricato dalla RAM. Verrà ricaricato automaticamente al prossimo messaggio.",
+  "settingsPurgeMemoryBody": "Questo chiude il modello IA per liberare memoria. Verrà riaperto al tuo prossimo messaggio.",
   "@settingsPurgeMemoryBody": {
     "description": "Purge body"
   },
-  "settingsPurgeMemoryReleased": "Memoria del modello IA rilasciata.",
+  "settingsPurgeMemoryReleased": "Memoria liberata.",
   "@settingsPurgeMemoryReleased": {
     "description": "Purge success"
   },
@@ -504,7 +515,7 @@
   "@settingsPrivacyPolicy": {
     "description": "Privacy policy row"
   },
-  "settingsPrivacyPolicyUnconfigured": "L'URL dell'informativa sulla privacy non è configurato (imposta FINN_PRIVACY_POLICY_URL).",
+  "settingsPrivacyPolicyUnconfigured": "Il collegamento all'informativa sulla privacy non è disponibile in questa versione.",
   "@settingsPrivacyPolicyUnconfigured": {
     "description": "Unconfigured"
   },
@@ -521,7 +532,7 @@
   "@settingsTermsOfUse": {
     "description": "Terms row"
   },
-  "settingsTermsUnconfigured": "L'URL dei termini di utilizzo non è configurato (imposta FINN_TERMS_URL).",
+  "settingsTermsUnconfigured": "Il collegamento ai termini di utilizzo non è disponibile in questa versione.",
   "@settingsTermsUnconfigured": {
     "description": "Terms unconfigured"
   },
@@ -568,11 +579,11 @@
   "@settingsAppVersion": {
     "description": "App version row"
   },
-  "settingsInferenceEngine": "Motore di inferenza",
+  "settingsInferenceEngine": "Come funziona Finn",
   "@settingsInferenceEngine": {
     "description": "Engine row"
   },
-  "settingsInferenceEngineValue": "llama.cpp · GGUF",
+  "settingsInferenceEngineValue": "Interamente su questo telefono",
   "@settingsInferenceEngineValue": {
     "description": "Engine value"
   },
@@ -1039,7 +1050,7 @@
   "@reportCategoryOther": {
     "description": "Other"
   },
-  "snackModelMemoryReleased": "Memoria del modello IA rilasciata.",
+  "snackModelMemoryReleased": "Memoria liberata.",
   "@snackModelMemoryReleased": {
     "description": "Snack"
   },
@@ -1053,7 +1064,7 @@
   "bootstrapErrorTitle": "FinnAI non è riuscito ad avviarsi",
   "bootstrapErrorBody": "Qualcosa è andato storto durante l'inizializzazione del motore AI. Le tue conversazioni sono al sicuro.",
   "chatHeicNotSupported": "Le immagini HEIC non sono supportate. Condividile come JPEG o PNG.",
-  "chatImageAnalysisUnavailable": "Analisi delle immagini non disponibile: installa il componente immagini nelle Impostazioni.",
+  "chatImageAnalysisUnavailable": "L'analisi delle immagini non è ancora configurata. Aggiungi il supporto immagini nelle Impostazioni.",
   "attachmentCamera": "Fotocamera",
   "attachmentPhotos": "Foto",
   "attachmentFiles": "File",
