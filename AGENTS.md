@@ -20,6 +20,22 @@ editing. `docs/architecture/CODE_MAP.md` tells you *which file to edit for which
 | **`lib/l10n/app_localizations*.dart` are generated.** Edit `lib/l10n/app_*.arb`, never the generated files. | `flutter gen-l10n` overwrites them. | `flutter pub get` / build |
 | **Code must be `dart format` clean.** | CI gate. | `dart format --output=none --set-exit-if-changed .` |
 | **User-facing strings go through `L10n.of(context)`.** | The app ships 5 locales. | review |
+| **`engine/` imports nothing from `features/`, `app/`, `shared/`, `platform/`; only `chat` imports other features; no Dart file over 600 lines.** Pre-existing violations are baselined and may only shrink. | Keeps units small enough for an agent to hold in context and stops new coupling. | `bash tool/verify_boundaries.sh` (runs in CI) |
+| **A turn never runs more than one search, and the model never emits tool calls in chat** (direction, see ADR 0001; the current loop is being removed). | A 1.6B model loops on tool calls. | `docs/decisions/0001-app-driven-search.md` |
+
+---
+
+## 1a. Where the rules live
+
+Root rules are here. Area rules are nested and short; read the one for the directory you edit:
+`lib/src/engine/AGENTS.md`, `lib/src/features/chat/AGENTS.md`, `lib/src/features/flows/AGENTS.md`,
+`lib/src/features/creations/AGENTS.md`, `lib/src/features/search/AGENTS.md`.
+Every `lib/src/features/<name>/` has a `README.md` (purpose, entry points, invariants).
+Why-decisions are in `docs/decisions/` — read before undoing one. `PLAN.md` is the roadmap and progress log.
+
+**When you finish a change:** if you added, moved or deleted a file named in `docs/architecture/CODE_MAP.md`,
+update the map (a test fails if it names a missing file). If you fixed a baselined violation, delete its line
+in `tool/boundaries_baseline.txt`.
 
 ---
 
@@ -72,6 +88,7 @@ flutter pub get
 # Static analysis + format + tests (what CI runs)
 dart format --output=none --set-exit-if-changed .
 bash tool/verify_engine_seam.sh
+bash tool/verify_boundaries.sh
 flutter analyze
 flutter test
 bash test/shell/test_cleanup.sh

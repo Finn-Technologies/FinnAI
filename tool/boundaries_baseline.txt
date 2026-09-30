@@ -1,0 +1,26 @@
+# Pre-existing violations. May only shrink. See tool/verify_boundaries.sh.
+feature conversations -> actions
+feature conversations -> search
+feature creations -> chat
+feature flows -> actions
+feature onboarding -> chat
+feature settings -> conversations
+feature settings -> onboarding
+feature settings -> voice
+layer lib/src/engine/finn_accelerator.dart -> features/search
+size lib/src/engine/adaptive/adaptive.dart 660
+size lib/src/engine/eval/eval_baseline.dart 617
+size lib/src/engine/finn_accelerator.dart 4479
+size lib/src/engine/prompt/prompt_intent.dart 666
+size lib/src/features/chat/chat_generation_controller.dart 1103
+size lib/src/features/chat/home_shell.dart 5078
+size lib/src/features/conversations/conversation_store.dart 1731
+size lib/src/features/creations/creations_page.dart 1832
+size lib/src/features/flows/flows_page.dart 988
+size lib/src/features/onboarding/onboarding_flow.dart 1603
+size lib/src/features/search/tiny_browser.dart 769
+size lib/src/features/search/web_search_service.dart 914
+size lib/src/features/settings/settings_page.dart 1618
+size lib/src/features/voice/voice_chat_controller.dart 612
+size lib/src/shared/widgets/flux_controls.dart 1019
+size lib/src/shared/widgets/safe_markdown_text.dart 673

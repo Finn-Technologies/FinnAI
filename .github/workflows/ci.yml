@@ -54,6 +54,9 @@ jobs:
       - name: Verify Engine Seam
         run: bash tool/verify_engine_seam.sh
 
+      - name: Verify Architecture Boundaries
+        run: bash tool/verify_boundaries.sh
+
       - name: Run Static Analysis
         run: flutter analyze
 
