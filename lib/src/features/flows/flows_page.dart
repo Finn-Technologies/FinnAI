@@ -1,17 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 import 'package:finn_ai/l10n/l10n_helper.dart';
 import 'package:finn_ai/src/shared/widgets/ambient_background.dart';
 import 'package:finn_ai/src/shared/widgets/finn_page_header.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
+import 'package:finn_ai/src/features/flows/flow_runner.dart';
 import 'package:finn_ai/src/features/flows/flows_store.dart';
 
 class FlowsPage extends StatefulWidget {
-  const FlowsPage({super.key, required this.onBack, this.store});
+  const FlowsPage({super.key, required this.onBack, this.store, this.runner});
 
   final VoidCallback onBack;
   final FlowsStore? store;
+
+  /// Runs a flow on the spot. Injected so the page can be driven in a widget
+  /// test without the engine, and so the page has no opinion about how a flow
+  /// is executed.
+  final FlowRunner? runner;
 
   @override
   State<FlowsPage> createState() => _SkillsPageState();
@@ -22,12 +29,62 @@ class _SkillsPageState extends State<FlowsPage> {
   late final ScrollController _scrollController = ScrollController();
   final ValueNotifier<double> _scrollOffset = ValueNotifier(0);
 
+  /// Which flow is running right now, if any. One at a time: two concurrent
+  /// runs would attribute their device actions to each other.
+  String? _runningId;
+
+  FlowRunner get _runner => widget.runner ?? FlowRunner(store: _store);
+
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
     _store.initialize();
   }
+
+  /// Runs a flow once, on the spot.
+  ///
+  /// A manual run asks before any device action, exactly as a chat turn does:
+  /// the grant is what lets a flow act when the user is not looking, and here
+  /// the user *is* looking, so one tap stands in for it. The run is recorded
+  /// either way, including a refusal.
+  Future<void> _run(FinnFlow flow) async {
+    if (_runningId != null) return;
+    setState(() => _runningId = flow.id);
+    try {
+      var permitted = true;
+      if (flow.hasDeviceAction) {
+        // A one-tap confirmation, not a stored grant. The alternative — a
+        // dialog naming every action the flow can take — is more honest but
+        // is a different screen, and this is the same shape the chat shell
+        // already uses for a pending action.
+        permitted = await _confirmRun(context, flow) ?? false;
+      }
+      await _runner.run(flow, granted: permitted);
+    } finally {
+      if (mounted) setState(() => _runningId = null);
+    }
+  }
+
+  Future<bool?> _confirmRun(BuildContext context, FinnFlow flow) =>
+      showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(flow.name),
+          content: Text(L10n.of(context).flowsGrantExplain),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(L10n.of(context).commonCancel),
+            ),
+            FilledButton(
+              key: const Key('flow-confirm-run'),
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(L10n.of(context).flowsRunAction),
+            ),
+          ],
+        ),
+      );
 
   void _onScroll() {
     if (_scrollController.hasClients) {
@@ -208,6 +265,11 @@ class _SkillsPageState extends State<FlowsPage> {
                                               _store.setEnabled(flow.id, value),
                                           onEdit: () => _editSkill(flow),
                                           onDelete: () => _delete(flow),
+                                          onRun: () => _run(flow),
+                                          onGrantChanged: (value) =>
+                                              _store.setGranted(flow.id, value),
+                                          runs: _store.runsOf(flow.id),
+                                          isRunning: _runningId == flow.id,
                                         ),
                                       ),
                                     ),
@@ -334,12 +396,23 @@ class _SkillCard extends StatelessWidget {
     required this.onToggle,
     this.onEdit,
     this.onDelete,
+    this.onRun,
+    this.onGrantChanged,
+    this.runs = const [],
+    this.isRunning = false,
   });
 
   final FinnFlow flow;
   final ValueChanged<bool> onToggle;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
+
+  /// Runs the flow once, on the spot. Always asks before any device action.
+  final VoidCallback? onRun;
+
+  final ValueChanged<bool>? onGrantChanged;
+  final List<FlowRun> runs;
+  final bool isRunning;
 
   @override
   Widget build(BuildContext context) {
@@ -469,6 +542,19 @@ class _SkillCard extends StatelessWidget {
                         ),
                       ],
                     ),
+                    if (flow.steps.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      _AutomationControls(
+                        flow: flow,
+                        isRunning: isRunning,
+                        onRun: onRun,
+                        onGrantChanged: onGrantChanged,
+                      ),
+                    ],
+                    if (runs.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      _RunHistory(runs: runs),
+                    ],
                   ],
                 ),
               ),
@@ -486,6 +572,180 @@ class _SkillCard extends StatelessWidget {
         'Planning' => FluxIcons.task,
         _ => FluxIcons.magic,
       };
+}
+
+/// The controls that make a flow an automation rather than a preference: when
+/// it runs, whether it may run by itself, and a button to run it now.
+class _AutomationControls extends StatelessWidget {
+  const _AutomationControls({
+    required this.flow,
+    required this.isRunning,
+    this.onRun,
+    this.onGrantChanged,
+  });
+
+  final FinnFlow flow;
+  final bool isRunning;
+  final VoidCallback? onRun;
+  final ValueChanged<bool>? onGrantChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = L10n.of(context);
+    final canAct = flow.hasDeviceAction;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            FluxPillButton(
+              key: Key('flow-run-${flow.id}'),
+              label: isRunning ? l10n.flowsRunRunning : l10n.flowsRunAction,
+              onTap: isRunning ? null : onRun,
+            ),
+            FluxChip(
+              key: Key('flow-steps-${flow.id}'),
+              label: l10n.flowsStepCount(flow.steps.length),
+              onTap: null,
+            ),
+            if (flow.trigger.isScheduled)
+              FluxChip(
+                key: Key('flow-schedule-${flow.id}'),
+                label: _scheduleLabel(context, flow.trigger),
+                onTap: null,
+              ),
+          ],
+        ),
+        if (canAct) ...[
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  l10n.flowsGrantLabel,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: FluxColors.inkOf(context),
+                      ),
+                ),
+              ),
+              Semantics(
+                label: l10n.flowsGrantLabel,
+                toggled: flow.granted,
+                child: ExcludeSemantics(
+                  child: Switch.adaptive(
+                    key: Key('flow-grant-${flow.id}'),
+                    value: flow.granted,
+                    onChanged: onGrantChanged,
+                    activeTrackColor: FluxColors.inkOf(context),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            l10n.flowsGrantExplain,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: FluxColors.secondaryInkOf(context),
+                  height: 1.35,
+                ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  String _scheduleLabel(BuildContext context, FlowTrigger trigger) {
+    final l10n = L10n.of(context);
+    final time = '${trigger.hour.toString().padLeft(2, '0')}:'
+        '${trigger.minute.toString().padLeft(2, '0')}';
+    if (trigger.daysOfWeek.isEmpty) {
+      return l10n.flowsScheduleDaily(time);
+    }
+    return l10n.flowsScheduleWeekly(_weekdays(context, trigger), time);
+  }
+
+  String _weekdays(BuildContext context, FlowTrigger trigger) {
+    // Uses intl's locale data rather than shipping weekday names in five ARB
+    // files. A weekly trigger is the only place they are needed, and adding
+    // seven strings per locale for one label is a bad trade.
+    final names = DateFormat.EEEE(L10n.of(context).localeName);
+    return [
+      for (final day in trigger.daysOfWeek.toList()..sort())
+        if (day >= 1 && day <= 7) names.format(DateTime(2026, 1, 5 + day - 1)),
+    ].join(', ');
+  }
+}
+
+/// What an automation did, and whether the user or the schedule did it.
+///
+/// A flow that runs by itself is something that happened *to* the user, so
+/// being able to see that it did — and what it did — is the difference between
+/// an automation and a surprise.
+class _RunHistory extends StatelessWidget {
+  const _RunHistory({required this.runs});
+
+  final List<FlowRun> runs;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = L10n.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          l10n.flowsHistoryTitle,
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: FluxColors.mutedOf(context),
+              ),
+        ),
+        const SizedBox(height: 6),
+        for (final run in runs.take(3))
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Row(
+              children: [
+                FluxIcon(
+                  icon: run.outcome == FlowRunOutcome.completed
+                      ? FluxIcons.check
+                      : FluxIcons.error,
+                  size: 14,
+                  color: run.outcome == FlowRunOutcome.completed
+                      ? FluxColors.successOf(context)
+                      : FluxColors.warningOf(context),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '${_outcomeLabel(context, run.outcome)} · '
+                    '${run.triggeredBy == 'schedule' ? l10n.flowsRunBySchedule : l10n.flowsRunByYou}',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: FluxColors.secondaryInkOf(context),
+                        ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  String _outcomeLabel(BuildContext context, FlowRunOutcome outcome) {
+    final l10n = L10n.of(context);
+    return switch (outcome) {
+      FlowRunOutcome.completed => l10n.flowsRunCompleted,
+      FlowRunOutcome.declined => l10n.flowsRunDeclined,
+      FlowRunOutcome.failed => l10n.flowsRunFailed,
+      FlowRunOutcome.interrupted => l10n.flowsRunInterrupted,
+      // The one a user can act on: the flow wanted to run by itself and was
+      // not allowed to.
+      FlowRunOutcome.needsGrant => l10n.flowsNeedsGrant,
+    };
+  }
 }
 
 /// Resolves a store failure code to the sentence the user reads.

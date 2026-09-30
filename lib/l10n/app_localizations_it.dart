@@ -647,6 +647,95 @@ class AppLocalizationsIt extends AppLocalizations {
   String get flowsInstructionLabel => 'Istruzione';
 
   @override
+  String get flowsRunAction => 'Esegui ora';
+
+  @override
+  String get flowsRunRunning => 'In corso…';
+
+  @override
+  String get flowsGrantLabel => 'Lascia che si esegua da solo';
+
+  @override
+  String get flowsGrantExplain =>
+      'Un flow che modifica il telefono ha bisogno di questo per essere eseguito senza di te. Puoi disattivarlo quando vuoi.';
+
+  @override
+  String get flowsNeedsGrant =>
+      'Ha bisogno della tua autorizzazione per essere eseguito da solo';
+
+  @override
+  String get flowsHistoryTitle => 'Esecuzioni recenti';
+
+  @override
+  String get flowsHistoryEmpty => 'Questo flow non è ancora stato eseguito.';
+
+  @override
+  String get flowsRunCompleted => 'Completato';
+
+  @override
+  String get flowsRunDeclined => 'Hai rifiutato';
+
+  @override
+  String get flowsRunFailed => 'Interrotto prima';
+
+  @override
+  String get flowsRunInterrupted => 'Annullato';
+
+  @override
+  String get flowsRunBySchedule => 'Eseguito da solo';
+
+  @override
+  String get flowsRunByYou => 'Eseguito da te';
+
+  @override
+  String get flowsStepsLabel => 'Passaggi';
+
+  @override
+  String flowsStepCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count passaggi',
+      one: '1 passo',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get flowsStepPrompt => 'Chiedi';
+
+  @override
+  String get flowsStepDeviceAction => 'Agisci sul telefono';
+
+  @override
+  String get flowsStepNotify => 'Nota';
+
+  @override
+  String get flowsStepBrowse => 'Cerca';
+
+  @override
+  String get flowsScheduleLabel => 'Esecuzione';
+
+  @override
+  String get flowsScheduleManual => 'Solo quando lo esegui tu';
+
+  @override
+  String flowsScheduleDaily(String time) {
+    return 'Ogni giorno alle $time';
+  }
+
+  @override
+  String flowsScheduleWeekly(String days, String time) {
+    return '$days alle $time';
+  }
+
+  @override
+  String get flowsScheduleAdd => 'Aggiungi un orario';
+
+  @override
+  String get flowsScheduleRemove => 'Esegui solo quando lo chiedo io';
+
+  @override
   String get chatBrowsingTitle => 'Navigazione sul web';
 
   @override

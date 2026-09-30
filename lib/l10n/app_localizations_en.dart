@@ -632,6 +632,94 @@ class AppLocalizationsEn extends AppLocalizations {
   String get flowsInstructionLabel => 'Instruction';
 
   @override
+  String get flowsRunAction => 'Run now';
+
+  @override
+  String get flowsRunRunning => 'Running…';
+
+  @override
+  String get flowsGrantLabel => 'Let this run by itself';
+
+  @override
+  String get flowsGrantExplain =>
+      'A flow that changes your phone needs this before it can run without you. You can turn it off at any time.';
+
+  @override
+  String get flowsNeedsGrant => 'Needs your permission to run by itself';
+
+  @override
+  String get flowsHistoryTitle => 'Recent runs';
+
+  @override
+  String get flowsHistoryEmpty => 'This flow has not run yet.';
+
+  @override
+  String get flowsRunCompleted => 'Finished';
+
+  @override
+  String get flowsRunDeclined => 'You said no';
+
+  @override
+  String get flowsRunFailed => 'Stopped early';
+
+  @override
+  String get flowsRunInterrupted => 'Cancelled';
+
+  @override
+  String get flowsRunBySchedule => 'Ran by itself';
+
+  @override
+  String get flowsRunByYou => 'Run by you';
+
+  @override
+  String get flowsStepsLabel => 'Steps';
+
+  @override
+  String flowsStepCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count steps',
+      one: '1 step',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get flowsStepPrompt => 'Ask';
+
+  @override
+  String get flowsStepDeviceAction => 'Act on phone';
+
+  @override
+  String get flowsStepNotify => 'Note';
+
+  @override
+  String get flowsStepBrowse => 'Look up';
+
+  @override
+  String get flowsScheduleLabel => 'Runs';
+
+  @override
+  String get flowsScheduleManual => 'Only when you run it';
+
+  @override
+  String flowsScheduleDaily(String time) {
+    return 'Every day at $time';
+  }
+
+  @override
+  String flowsScheduleWeekly(String days, String time) {
+    return 'Days $days at $time';
+  }
+
+  @override
+  String get flowsScheduleAdd => 'Add a time';
+
+  @override
+  String get flowsScheduleRemove => 'Run it only when I ask';
+
+  @override
   String get chatBrowsingTitle => 'Browsing the web';
 
   @override

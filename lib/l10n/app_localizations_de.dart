@@ -645,6 +645,94 @@ class AppLocalizationsDe extends AppLocalizations {
   String get flowsInstructionLabel => 'Anweisung';
 
   @override
+  String get flowsRunAction => 'Jetzt ausführen';
+
+  @override
+  String get flowsRunRunning => 'Läuft…';
+
+  @override
+  String get flowsGrantLabel => 'Automatisch ausführen lassen';
+
+  @override
+  String get flowsGrantExplain =>
+      'Ein Flow, der dein Handy verändert, braucht diese Erlaubnis, um ohne dich zu laufen. Du kannst sie jederzeit wieder deaktivieren.';
+
+  @override
+  String get flowsNeedsGrant => 'Braucht deine Erlaubnis, um selbst zu laufen';
+
+  @override
+  String get flowsHistoryTitle => 'Letzte Ausführungen';
+
+  @override
+  String get flowsHistoryEmpty => 'Dieser Flow wurde noch nicht ausgeführt.';
+
+  @override
+  String get flowsRunCompleted => 'Fertig';
+
+  @override
+  String get flowsRunDeclined => 'Du hast abgelehnt';
+
+  @override
+  String get flowsRunFailed => 'Früh beendet';
+
+  @override
+  String get flowsRunInterrupted => 'Abgebrochen';
+
+  @override
+  String get flowsRunBySchedule => 'Automatisch ausgeführt';
+
+  @override
+  String get flowsRunByYou => 'Von dir ausgeführt';
+
+  @override
+  String get flowsStepsLabel => 'Schritte';
+
+  @override
+  String flowsStepCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Schritte',
+      one: '1 Schritt',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get flowsStepPrompt => 'Fragen';
+
+  @override
+  String get flowsStepDeviceAction => 'Auf dem Handy handeln';
+
+  @override
+  String get flowsStepNotify => 'Notiz';
+
+  @override
+  String get flowsStepBrowse => 'Nachschlagen';
+
+  @override
+  String get flowsScheduleLabel => 'Ausführung';
+
+  @override
+  String get flowsScheduleManual => 'Nur, wenn du ihn startest';
+
+  @override
+  String flowsScheduleDaily(String time) {
+    return 'Täglich um $time';
+  }
+
+  @override
+  String flowsScheduleWeekly(String days, String time) {
+    return '$days um $time';
+  }
+
+  @override
+  String get flowsScheduleAdd => 'Uhrzeit festlegen';
+
+  @override
+  String get flowsScheduleRemove => 'Nur auf deine Anfrage ausführen';
+
+  @override
   String get chatBrowsingTitle => 'Web wird durchsucht';
 
   @override

@@ -1190,6 +1190,156 @@ abstract class AppLocalizations {
   /// **'Instruction'**
   String get flowsInstructionLabel;
 
+  /// Runs a flow once, on the spot
+  ///
+  /// In en, this message translates to:
+  /// **'Run now'**
+  String get flowsRunAction;
+
+  /// Shown on the run button while a flow is running
+  ///
+  /// In en, this message translates to:
+  /// **'Running…'**
+  String get flowsRunRunning;
+
+  /// Standing permission for a scheduled flow to act on the device
+  ///
+  /// In en, this message translates to:
+  /// **'Let this run by itself'**
+  String get flowsGrantLabel;
+
+  /// Explains the standing grant
+  ///
+  /// In en, this message translates to:
+  /// **'A flow that changes your phone needs this before it can run without you. You can turn it off at any time.'**
+  String get flowsGrantExplain;
+
+  /// A scheduled run that stopped because it had no grant
+  ///
+  /// In en, this message translates to:
+  /// **'Needs your permission to run by itself'**
+  String get flowsNeedsGrant;
+
+  /// Heading for a flow's run history
+  ///
+  /// In en, this message translates to:
+  /// **'Recent runs'**
+  String get flowsHistoryTitle;
+
+  /// No runs recorded for a flow
+  ///
+  /// In en, this message translates to:
+  /// **'This flow has not run yet.'**
+  String get flowsHistoryEmpty;
+
+  /// A run that completed
+  ///
+  /// In en, this message translates to:
+  /// **'Finished'**
+  String get flowsRunCompleted;
+
+  /// A run the user declined
+  ///
+  /// In en, this message translates to:
+  /// **'You said no'**
+  String get flowsRunDeclined;
+
+  /// A run that failed
+  ///
+  /// In en, this message translates to:
+  /// **'Stopped early'**
+  String get flowsRunFailed;
+
+  /// A run that was interrupted
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled'**
+  String get flowsRunInterrupted;
+
+  /// How a scheduled run is labelled in the log
+  ///
+  /// In en, this message translates to:
+  /// **'Ran by itself'**
+  String get flowsRunBySchedule;
+
+  /// How a manual run is labelled in the log
+  ///
+  /// In en, this message translates to:
+  /// **'Run by you'**
+  String get flowsRunByYou;
+
+  /// How many steps a flow has
+  ///
+  /// In en, this message translates to:
+  /// **'Steps'**
+  String get flowsStepsLabel;
+
+  /// A flow's step count
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{1 step} other{{count} steps}}'**
+  String flowsStepCount(int count);
+
+  /// A prompt step in the flow editor
+  ///
+  /// In en, this message translates to:
+  /// **'Ask'**
+  String get flowsStepPrompt;
+
+  /// A device-action step in the flow editor
+  ///
+  /// In en, this message translates to:
+  /// **'Act on phone'**
+  String get flowsStepDeviceAction;
+
+  /// A notify step in the flow editor
+  ///
+  /// In en, this message translates to:
+  /// **'Note'**
+  String get flowsStepNotify;
+
+  /// A browse step in the flow editor
+  ///
+  /// In en, this message translates to:
+  /// **'Look up'**
+  String get flowsStepBrowse;
+
+  /// Label for a flow's trigger
+  ///
+  /// In en, this message translates to:
+  /// **'Runs'**
+  String get flowsScheduleLabel;
+
+  /// Manual trigger
+  ///
+  /// In en, this message translates to:
+  /// **'Only when you run it'**
+  String get flowsScheduleManual;
+
+  /// Daily trigger
+  ///
+  /// In en, this message translates to:
+  /// **'Every day at {time}'**
+  String flowsScheduleDaily(String time);
+
+  /// Weekly trigger
+  ///
+  /// In en, this message translates to:
+  /// **'Days {days} at {time}'**
+  String flowsScheduleWeekly(String days, String time);
+
+  /// Turns a flow into a scheduled one
+  ///
+  /// In en, this message translates to:
+  /// **'Add a time'**
+  String get flowsScheduleAdd;
+
+  /// Turns a scheduled flow back to manual
+  ///
+  /// In en, this message translates to:
+  /// **'Run it only when I ask'**
+  String get flowsScheduleRemove;
+
   /// Header of the live browser activity panel
   ///
   /// In en, this message translates to:

@@ -786,6 +786,39 @@
   "@flowsInstructionLabel": {
     "description": "Instruction label"
   },
+  "flowsRunAction": "Esegui ora",
+  "flowsRunRunning": "In corso…",
+  "flowsGrantLabel": "Lascia che si esegua da solo",
+  "flowsGrantExplain": "Un flow che modifica il telefono ha bisogno di questo per essere eseguito senza di te. Puoi disattivarlo quando vuoi.",
+  "flowsNeedsGrant": "Ha bisogno della tua autorizzazione per essere eseguito da solo",
+  "flowsHistoryTitle": "Esecuzioni recenti",
+  "flowsHistoryEmpty": "Questo flow non è ancora stato eseguito.",
+  "flowsRunCompleted": "Completato",
+  "flowsRunDeclined": "Hai rifiutato",
+  "flowsRunFailed": "Interrotto prima",
+  "flowsRunInterrupted": "Annullato",
+  "flowsRunBySchedule": "Eseguito da solo",
+  "flowsRunByYou": "Eseguito da te",
+  "flowsStepsLabel": "Passaggi",
+  "flowsStepPrompt": "Chiedi",
+  "flowsStepDeviceAction": "Agisci sul telefono",
+  "flowsStepNotify": "Nota",
+  "flowsStepBrowse": "Cerca",
+  "flowsScheduleLabel": "Esecuzione",
+  "flowsScheduleManual": "Solo quando lo esegui tu",
+  "flowsScheduleDaily": "Ogni giorno alle {time}",
+  "flowsScheduleWeekly": "{days} alle {time}",
+  "flowsScheduleAdd": "Aggiungi un orario",
+  "flowsScheduleRemove": "Esegui solo quando lo chiedo io",
+  "flowsStepCount": "{count, plural, =1{1 passo} other{{count} passaggi}}",
+  "@flowsStepCount": {
+    "description": "A flow's step count",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "chatBrowsingTitle": "Navigazione sul web",
   "@chatBrowsingTitle": {
     "description": "Header of the live browser activity panel"

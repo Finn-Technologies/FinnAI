@@ -786,6 +786,39 @@
   "@flowsInstructionLabel": {
     "description": "Instruction label"
   },
+  "flowsRunAction": "Exécuter maintenant",
+  "flowsRunRunning": "En cours…",
+  "flowsGrantLabel": "La laisser s'exécuter seule",
+  "flowsGrantExplain": "Un flux qui modifie votre téléphone a besoin de cela pour s'exécuter sans vous. Vous pouvez le désactiver à tout moment.",
+  "flowsNeedsGrant": "A besoin de votre autorisation pour s'exécuter seule",
+  "flowsHistoryTitle": "Exécutions récentes",
+  "flowsHistoryEmpty": "Ce flux n'a pas encore été exécuté.",
+  "flowsRunCompleted": "Terminé",
+  "flowsRunDeclined": "Vous avez refusé",
+  "flowsRunFailed": "Arrêté en cours de route",
+  "flowsRunInterrupted": "Annulé",
+  "flowsRunBySchedule": "Exécuté automatiquement",
+  "flowsRunByYou": "Lancée par vous",
+  "flowsStepsLabel": "Étapes",
+  "flowsStepPrompt": "Demander",
+  "flowsStepDeviceAction": "Agir sur le téléphone",
+  "flowsStepNotify": "Mémo",
+  "flowsStepBrowse": "Rechercher",
+  "flowsScheduleLabel": "Exécution",
+  "flowsScheduleManual": "Uniquement quand vous la lancez",
+  "flowsScheduleDaily": "Tous les jours à {time}",
+  "flowsScheduleWeekly": "{days} à {time}",
+  "flowsScheduleAdd": "Ajouter une heure",
+  "flowsScheduleRemove": "L'exécuter seulement quand je le demande",
+  "flowsStepCount": "{count, plural, =1{1 étape} other{{count} étapes}}",
+  "@flowsStepCount": {
+    "description": "A flow's step count",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "chatBrowsingTitle": "Navigation sur le web",
   "@chatBrowsingTitle": {
     "description": "Header of the live browser activity panel"

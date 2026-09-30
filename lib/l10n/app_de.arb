@@ -786,6 +786,39 @@
   "@flowsInstructionLabel": {
     "description": "Instruction label"
   },
+  "flowsRunAction": "Jetzt ausführen",
+  "flowsRunRunning": "Läuft…",
+  "flowsGrantLabel": "Automatisch ausführen lassen",
+  "flowsGrantExplain": "Ein Flow, der dein Handy verändert, braucht diese Erlaubnis, um ohne dich zu laufen. Du kannst sie jederzeit wieder deaktivieren.",
+  "flowsNeedsGrant": "Braucht deine Erlaubnis, um selbst zu laufen",
+  "flowsHistoryTitle": "Letzte Ausführungen",
+  "flowsHistoryEmpty": "Dieser Flow wurde noch nicht ausgeführt.",
+  "flowsRunCompleted": "Fertig",
+  "flowsRunDeclined": "Du hast abgelehnt",
+  "flowsRunFailed": "Früh beendet",
+  "flowsRunInterrupted": "Abgebrochen",
+  "flowsRunBySchedule": "Automatisch ausgeführt",
+  "flowsRunByYou": "Von dir ausgeführt",
+  "flowsStepsLabel": "Schritte",
+  "flowsStepPrompt": "Fragen",
+  "flowsStepDeviceAction": "Auf dem Handy handeln",
+  "flowsStepNotify": "Notiz",
+  "flowsStepBrowse": "Nachschlagen",
+  "flowsScheduleLabel": "Ausführung",
+  "flowsScheduleManual": "Nur, wenn du ihn startest",
+  "flowsScheduleDaily": "Täglich um {time}",
+  "flowsScheduleWeekly": "{days} um {time}",
+  "flowsScheduleAdd": "Uhrzeit festlegen",
+  "flowsScheduleRemove": "Nur auf deine Anfrage ausführen",
+  "flowsStepCount": "{count, plural, =1{1 Schritt} other{{count} Schritte}}",
+  "@flowsStepCount": {
+    "description": "A flow's step count",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "chatBrowsingTitle": "Web wird durchsucht",
   "@chatBrowsingTitle": {
     "description": "Header of the live browser activity panel"

@@ -813,6 +813,124 @@
   "@flowsInstructionLabel": {
     "description": "Instruction label"
   },
+  "flowsRunAction": "Run now",
+  "@flowsRunAction": {
+    "description": "Runs a flow once, on the spot"
+  },
+  "flowsRunRunning": "Running…",
+  "@flowsRunRunning": {
+    "description": "Shown on the run button while a flow is running"
+  },
+  "flowsGrantLabel": "Let this run by itself",
+  "@flowsGrantLabel": {
+    "description": "Standing permission for a scheduled flow to act on the device"
+  },
+  "flowsGrantExplain": "A flow that changes your phone needs this before it can run without you. You can turn it off at any time.",
+  "@flowsGrantExplain": {
+    "description": "Explains the standing grant"
+  },
+  "flowsNeedsGrant": "Needs your permission to run by itself",
+  "@flowsNeedsGrant": {
+    "description": "A scheduled run that stopped because it had no grant"
+  },
+  "flowsHistoryTitle": "Recent runs",
+  "@flowsHistoryTitle": {
+    "description": "Heading for a flow's run history"
+  },
+  "flowsHistoryEmpty": "This flow has not run yet.",
+  "@flowsHistoryEmpty": {
+    "description": "No runs recorded for a flow"
+  },
+  "flowsRunCompleted": "Finished",
+  "@flowsRunCompleted": {
+    "description": "A run that completed"
+  },
+  "flowsRunDeclined": "You said no",
+  "@flowsRunDeclined": {
+    "description": "A run the user declined"
+  },
+  "flowsRunFailed": "Stopped early",
+  "@flowsRunFailed": {
+    "description": "A run that failed"
+  },
+  "flowsRunInterrupted": "Cancelled",
+  "@flowsRunInterrupted": {
+    "description": "A run that was interrupted"
+  },
+  "flowsRunBySchedule": "Ran by itself",
+  "@flowsRunBySchedule": {
+    "description": "How a scheduled run is labelled in the log"
+  },
+  "flowsRunByYou": "Run by you",
+  "@flowsRunByYou": {
+    "description": "How a manual run is labelled in the log"
+  },
+  "flowsStepsLabel": "Steps",
+  "@flowsStepsLabel": {
+    "description": "How many steps a flow has"
+  },
+  "flowsStepCount": "{count, plural, one{1 step} other{{count} steps}}",
+  "@flowsStepCount": {
+    "description": "A flow's step count",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "flowsStepPrompt": "Ask",
+  "@flowsStepPrompt": {
+    "description": "A prompt step in the flow editor"
+  },
+  "flowsStepDeviceAction": "Act on phone",
+  "@flowsStepDeviceAction": {
+    "description": "A device-action step in the flow editor"
+  },
+  "flowsStepNotify": "Note",
+  "@flowsStepNotify": {
+    "description": "A notify step in the flow editor"
+  },
+  "flowsStepBrowse": "Look up",
+  "@flowsStepBrowse": {
+    "description": "A browse step in the flow editor"
+  },
+  "flowsScheduleLabel": "Runs",
+  "@flowsScheduleLabel": {
+    "description": "Label for a flow's trigger"
+  },
+  "flowsScheduleManual": "Only when you run it",
+  "@flowsScheduleManual": {
+    "description": "Manual trigger"
+  },
+  "flowsScheduleDaily": "Every day at {time}",
+  "@flowsScheduleDaily": {
+    "description": "Daily trigger",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "flowsScheduleWeekly": "Days {days} at {time}",
+  "@flowsScheduleWeekly": {
+    "description": "Weekly trigger",
+    "placeholders": {
+      "days": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "flowsScheduleAdd": "Add a time",
+  "@flowsScheduleAdd": {
+    "description": "Turns a flow into a scheduled one"
+  },
+  "flowsScheduleRemove": "Run it only when I ask",
+  "@flowsScheduleRemove": {
+    "description": "Turns a scheduled flow back to manual"
+  },
   "chatBrowsingTitle": "Browsing the web",
   "@chatBrowsingTitle": {
     "description": "Header of the live browser activity panel"
