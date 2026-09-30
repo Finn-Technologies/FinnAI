@@ -21,6 +21,8 @@ import 'package:finn_ai/src/inference/finn_inference.dart';
 import 'package:finn_ai/src/inference/residency_policy.dart';
 import 'package:finn_ai/src/features/reporting/report_dialog.dart';
 import 'package:finn_ai/src/features/search/search_agent.dart';
+import 'package:finn_ai/src/features/search/providers/news_provider.dart';
+import 'package:finn_ai/src/features/search/providers/weather_provider.dart';
 import 'package:finn_ai/src/features/search/search_turn.dart';
 import 'package:finn_ai/src/features/search/web_search_service.dart';
 import 'package:finn_ai/src/features/actions/action_audit_store.dart';
@@ -101,9 +103,19 @@ class _HomeShellState extends State<HomeShell>
   late final _webSearch = widget.webSearch ?? WebSearchService();
   final _flowScheduler = FlowScheduler();
   late final _flowSink = ConversationFlowSink(_conversations);
+  // A flow is not waiting on a keyboard, so its searches get longer than a chat
+  // turn's 5 seconds: a phone on a slow radio still gets its headlines.
+  late final _flowSearchTurn = SearchTurn(
+    agent: SearchAgent(searchService: _webSearch),
+    budget: const Duration(seconds: 14),
+    providers: [
+      NewsProvider(timeout: const Duration(seconds: 9)),
+      WeatherProvider(timeout: const Duration(seconds: 9)),
+    ],
+  );
   late final _flowRunner = buildFlowRunner(
     sink: _flowSink,
-    search: _searchTurn,
+    search: _flowSearchTurn,
     notifier: _flowScheduler,
   );
   Timer? _flowSyncTimer;

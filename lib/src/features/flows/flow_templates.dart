@@ -77,7 +77,8 @@ class MorningBriefTemplate extends FlowTemplate {
               'Write a short morning brief of 3 to 5 bullet points: first the '
               'most important news about $topics'
               '${city.isEmpty ? '' : ', then the weather in $city'}. '
-              'Use only the search results above, under 120 words. $_language',
+              'Use only the search results above; where a part has no results '
+              'say so instead of inventing it. Under 120 words. $_language',
         ),
         const FlowStep(kind: FlowStepKind.notify, text: ''),
       ],

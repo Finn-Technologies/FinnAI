@@ -204,7 +204,10 @@ void main() {
       ).run(flow);
       expect(run.outcome, FlowRunOutcome.completed);
       expect(model.contexts.single, contains('weather: Rome'));
-      expect(model.contexts.single, isNot(contains('news: football')));
+      // The missing part is named, so the model is told not to fill it in.
+      expect(model.contexts.single,
+          contains('NO RESULTS were found for "football"'));
+      expect(model.contexts.single, contains('Do not make anything up'));
     });
 
     test('a reminder needs no model and no network', () async {

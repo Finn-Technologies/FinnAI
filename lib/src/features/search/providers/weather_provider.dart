@@ -14,12 +14,13 @@ import 'package:finn_ai/src/features/search/shared_http_client.dart';
 /// one source with a sentence the model can quote, never a table to interpret.
 /// Open-Meteo asks for attribution; the source title carries it.
 class WeatherProvider implements SourceProvider {
-  WeatherProvider({http.Client? client})
+  WeatherProvider({http.Client? client, this.timeout = defaultTimeout})
       : _client = client ?? SharedHttpClient.instance.client;
 
   final http.Client _client;
 
-  static const Duration timeout = Duration(seconds: 4);
+  static const Duration defaultTimeout = Duration(seconds: 4);
+  final Duration timeout;
 
   @override
   String get name => 'weather';

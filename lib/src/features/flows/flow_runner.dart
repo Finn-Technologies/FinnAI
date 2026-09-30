@@ -94,6 +94,7 @@ class FlowRunner {
     final allSources = <WebSource>[];
     var produced = false;
     var sawBrowse = false;
+    var sourcesSincePrompt = 0;
     try {
       final validation = FlowsStore.validate(flow);
       if (!validation.isValid) {
@@ -133,7 +134,7 @@ class FlowRunner {
             // A brief asked to use "the search results above" with none will
             // invent them. Better to say it could not, and stop: the run then
             // reads as failed instead of delivering a confident fiction.
-            if (sawBrowse && pendingContext.isEmpty) {
+            if (sawBrowse && sourcesSincePrompt == 0) {
               results.add(FlowStepResult(
                 index: index,
                 kind: step.kind,
@@ -144,6 +145,7 @@ class FlowRunner {
               break;
             }
             sawBrowse = false;
+            sourcesSincePrompt = 0;
             try {
               lastAnswer =
                   (await generate(_expand(step.text, lastAnswer))).trim();
@@ -183,7 +185,18 @@ class FlowRunner {
                   await searcher.search(_expand(step.text, lastAnswer));
               if (found.groundedContext.isNotEmpty) {
                 pendingContext.add(found.groundedContext);
+              } else {
+                // Say what is missing. With other sources present the prompt
+                // would otherwise fill the gap from imagination: a brief that
+                // had weather but no news wrote the news itself.
+                final what = _expand(step.text, '')
+                    .replaceFirst(RegExp(r'^\w+:\s*'), '');
+                pendingContext.add(
+                  'NO RESULTS were found for "$what". Write "no results" for '
+                  'that part. Do not make anything up.',
+                );
               }
+              sourcesSincePrompt += found.sources.length;
               for (final source in found.sources) {
                 if (!allSources.any((s) => s.url == source.url)) {
                   allSources.add(source);

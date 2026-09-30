@@ -15,9 +15,12 @@ import 'package:finn_ai/src/features/search/shared_http_client.dart';
 /// that: title, outlet, link, date. The snippet handed to the model is the
 /// outlet, the date and the headline: real, dated, attributable, and short.
 class NewsProvider implements SourceProvider {
-  NewsProvider(
-      {http.Client? client, String? localeName, DateTime Function()? clock})
-      : _client = client ?? SharedHttpClient.instance.client,
+  NewsProvider({
+    http.Client? client,
+    String? localeName,
+    DateTime Function()? clock,
+    this.timeout = defaultTimeout,
+  })  : _client = client ?? SharedHttpClient.instance.client,
         _locale = localeName ?? _platformLocale(),
         _clock = clock ?? DateTime.now;
 
@@ -25,7 +28,11 @@ class NewsProvider implements SourceProvider {
   final String _locale;
   final DateTime Function() _clock;
 
-  static const Duration timeout = Duration(seconds: 4);
+  static const Duration defaultTimeout = Duration(seconds: 4);
+
+  /// Per-request limit. A chat turn keeps the short default; a flow, which is
+  /// not waiting on a keyboard, is given longer.
+  final Duration timeout;
   static const int maxItems = 5;
 
   @override
