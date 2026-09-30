@@ -1,13 +1,14 @@
 # FinnAI Full Rewrite — PLAN.md
 
-> **Status 2026-09-30 (evening): Phases 0-5 implemented and merged; Phase 6
-> started.** Gate at `0493be0`: `dart format` clean · engine seam OK · analyze
-> clean · **847 tests passed**. The Phase 0 baseline is measured for the first
-> time — empty replies 17.1% → 8.6%, TTFT p95 9250 ms → 4489 ms, and the
-> 230-second runaway is gone. **Two of three eval gates still fail** (empty
-> replies 4× the bar, browse recall 0) and are recorded as open, not smoothed
-> over. Phases 4 and 5 are host-tested but **not device-verified**. See
-> [§10](#10-progress-log) and [`eval/RESULTS_2026-09-30.md`](eval/RESULTS_2026-09-30.md).
+> **Status 2026-09-30 (night): the v2 rewrite is under way; the three eval gates now pass.**
+> Empty replies 8.6% → **0%**, browse precision **100%**, recall **100%** (Xiaomi, standard
+> and forced-Lite policies; [`eval/RESULTS_2026-09-30_v2.md`](eval/RESULTS_2026-09-30_v2.md)).
+> The reported "looping on tool calls" and the blank replies had one cause: the base prompt
+> advertised browser tools on every turn. Search is now decided by the app (ADR 0001).
+> `finn_accelerator.dart` (4,479 → 574 lines) and `home_shell.dart` (5,073 → 578) are split
+> into part files; a boundary/size gate runs in CI. **Flows scheduling, the Creations remake,
+> the motion system and a real `FinnEngine` interface are not done.** See the v2 entry in
+> [§10](#10-progress-log) and `docs/decisions/`.
 >
 > **Earlier status (superseded).** Owner approved execution of
 > Phases 0-2 ("Phase 0 to 2 with subagents and all") and answered §9: release-mode
@@ -177,6 +178,33 @@ run, with counts) versus **unverified** (built, on a device, awaiting a run). A
 milestone is only "done" when it has been merged into `main` with a green gate
 (`dart format` + `verify_engine_seam.sh` + `flutter analyze --no-pub` +
 `flutter test --no-pub`) and, where it claims a behaviour change, device evidence.
+
+### 2026-09-30 (night) — v2 rewrite, stage 1: guardrails, search, engine/shell split, Lite
+
+Plan: `/Users/abhi/.claude/plans/` (owner-approved): staged rewrite, quality first, Android Play
+release only, app-driven search, template-first Creations, Flows v1 = scheduled + manual +
+templates, minimum device 4 GB. Commits `69b5c31`…`4864cde` on `main`.
+
+| Stage | State | Evidence |
+|---|---|---|
+| Audit log committed (Phase 0) | **done** | 5 tests; was missing an import, now purged by "Delete all data" |
+| Guardrails | **done** | `tool/verify_boundaries.sh` (layering, feature edges, 600-line cap, shrink-only baseline), nested AGENTS.md, feature READMEs, ADRs 0001-0005, CODE_MAP test |
+| Search rewrite (D1) | **done, device-verified** | `SearchPlanner` + `SearchTurn`; eval gates all pass; `WebSource` moved to `engine/api/` so `engine/` imports nothing from `features/` |
+| Engine split | **done** (mechanical) | `finn_accelerator.dart` 4,479 → 574 lines + 17 part files; bodies moved verbatim |
+| Shell split | **done** (mechanical) | `home_shell.dart` 5,073 → 578 + `shell/` and `widgets/`; `composer.dart` (648) is the one baselined file |
+| Lite tier (D3) | **partly done, device-verified on the Lite *policy*** | text-only load, projector on first image; image case passes; not measured on a real 4 GB phone |
+| Empty-reply retry (D2) | **done, host-tested only** | retry decision is a tested pure function; the native hiccup it guards cannot be forced |
+| Flows scheduler (D4) | **not started** | the model and runner exist; nothing fires a schedule (`isDueAt` has no caller) |
+| Creations remake (D5) | **not started** | |
+| Motion system (D6) | **not started** | |
+| Real `FinnEngine` interface (D2) | **not started** | the parts still share private state |
+
+Verified: `dart format` clean, engine seam OK, boundaries OK, `flutter analyze --no-pub` clean,
+**834 tests**. Device: three eval runs on the Xiaomi (see RESULTS v2).
+
+Known gaps to carry forward: searching turns cost 8-12 s TTFT; an empty reply after the retry
+still deletes the bubble silently (the target is an explicit retry state); check pass rate is
+65-75% (verbosity); the voice and Flows device runs are still unverified.
 
 ### 2026-09-30 — Milestones 4-8: Phases 1, 2, 3, 4, 5 merged; Phase 6 started
 
