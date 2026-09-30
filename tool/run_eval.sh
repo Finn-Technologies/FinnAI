@@ -86,11 +86,30 @@ adb shell am force-stop "$PACKAGE"
 adb shell am start -n "$ACTIVITY" >/dev/null
 
 echo "running the suite on the device; this takes minutes and warms the phone"
-echo "keep the screen on. Ctrl-C to stop and still keep the partial log."
+echo "keep the screen on and the cable in. Ctrl-C to stop and still keep the partial log."
 
 LOG="$(mktemp -t finn-eval)"
+# The suite runs 15-20 minutes against a 1.6B model, which is long enough for
+# a flaky USB link to drop mid-run. `adb logcat` exits when the device does, and
+# without this the whole baseline is lost to a cable; re-establish the transport
+# and keep draining until the app reports its summary or we give up.
+WATCH_SECONDS="${WATCH_SECONDS:-2700}"
 set +e
-adb logcat -s flutter | tee "$LOG" | grep --line-buffered -E "FINN_EVAL|FINN_TTFT_SUMMARY"
+( while true; do
+    adb logcat -s flutter 2>/dev/null
+    sleep 3
+    adb get-state >/dev/null 2>&1 || { sleep 5; continue; }
+  done ) | tee "$LOG" | grep --line-buffered -E "FINN_EVAL|FINN_TTFT_SUMMARY" &
+READER=$!
+
+for _ in $(seq 1 "$((WATCH_SECONDS / 5))"); do
+  if grep -q "FINN_EVAL_SUMMARY" "$LOG" 2>/dev/null; then break; fi
+  if ! kill -0 "$READER" 2>/dev/null; then break; fi
+  sleep 5
+done
+kill "$READER" 2>/dev/null
+pkill -f "adb logcat -s flutter" 2>/dev/null
+wait "$READER" 2>/dev/null
 set -e
 
 echo
