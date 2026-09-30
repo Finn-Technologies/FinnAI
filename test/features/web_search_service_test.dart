@@ -23,10 +23,6 @@ void main() {
         isTrue,
       );
       expect(
-        policy.shouldSearch('How do living ants detect a dead ant?'),
-        isTrue,
-      );
-      expect(
         policy.shouldSearch('Cerca online le ultime notizie di Roma'),
         isTrue,
       );
@@ -35,21 +31,32 @@ void main() {
     },
   );
 
-  test('search-happy policy searches factual questions in any language', () {
-    // These are open-domain or explanatory, so retrieval can genuinely add
-    // something the model does not have.
+  test('questions that name something browse; generic ones stay local', () {
+    // Generic explanations, how-tos and definitions are the model's own
+    // territory: the eval measured 76% of must-not-browse turns searching
+    // when every question browsed.
+    for (final generic in [
+      'Why is the sky blue?',
+      'How do living ants detect a dead ant?',
+      'How do I boil an egg?',
+      'What is the chemical formula for water?',
+      'How do I fix a flat bicycle tire?',
+      'How many cartons of milk did I buy?',
+      'What does my sister study?',
+      '¿Cómo funciona el motor de un coche?',
+      'Comment fonctionne un moteur ?',
+      'Wie funktioniert ein Verbrennungsmotor?',
+    ]) {
+      expect(policy.shouldSearch(generic), isFalse, reason: generic);
+    }
+    // A named subject is where a small model guesses; retrieval helps.
     expect(policy.shouldSearch('When did Rome fall?'), isTrue);
-    expect(policy.shouldSearch('Why is the sky blue?'), isTrue);
     expect(
       policy.shouldSearch('Come funziona il routing in Bridgetown?'),
       isTrue,
     );
-    expect(policy.shouldSearch('¿Cómo funciona el motor de un coche?'), isTrue);
-    expect(policy.shouldSearch('Comment fonctionne un moteur ?'), isTrue);
-    expect(
-      policy.shouldSearch('Wie funktioniert ein Verbrennungsmotor?'),
-      isTrue,
-    );
+    expect(policy.shouldSearch('Who is the mayor of Bridgetown?'), isTrue);
+    expect(policy.shouldSearch('Quel est le maire de Toulouse ?'), isTrue);
   });
 
   test('settled authorship answers from knowledge, current questions do not',

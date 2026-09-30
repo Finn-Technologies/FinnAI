@@ -416,6 +416,36 @@ class EvalPromptCatalog {
       prompt: 'What is the current price of gold per gram today?',
       browse: BrowseExpectation.must,
     ),
+    EvalCase(
+      id: 'browse.must_news',
+      suite: EvalSuite.browse,
+      prompt: 'What are the top news headlines right now?',
+      browse: BrowseExpectation.must,
+    ),
+    EvalCase(
+      id: 'browse.must_weather',
+      suite: EvalSuite.browse,
+      prompt: 'What is the weather in Rome this week?',
+      browse: BrowseExpectation.must,
+    ),
+    EvalCase(
+      id: 'browse.must_office_holder',
+      suite: EvalSuite.browse,
+      prompt: 'Who is the mayor of Bridgetown, Barbados?',
+      browse: BrowseExpectation.must,
+    ),
+    EvalCase(
+      id: 'browse.must_score',
+      suite: EvalSuite.browse,
+      prompt: 'What was the score of the last Lakers game?',
+      browse: BrowseExpectation.must,
+    ),
+    EvalCase(
+      id: 'browse.must_explicit',
+      suite: EvalSuite.browse,
+      prompt: 'Search the web for the tallest building in Dubai.',
+      browse: BrowseExpectation.must,
+    ),
 
     // --- everyday: the mom-test shape ------------------------------------
     EvalCase(

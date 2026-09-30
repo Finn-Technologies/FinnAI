@@ -26,7 +26,7 @@ class WebSearchPolicy {
   /// The decision and the rule that made it. [shouldSearch] is this reduced
   /// to a bool; the eval and the UI want the reason.
   SearchPlanReason reasonFor(String prompt) {
-    final value = prompt.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
+    final value = _collapse(prompt).toLowerCase();
     if (value.isEmpty) return SearchPlanReason.noCue;
     // A user who asks for the web gets the web, whatever else is true of the
     // prompt. This is checked first so an explicit request is never suppressed
@@ -47,7 +47,9 @@ class WebSearchPolicy {
     // matched the "needs a fact check" question shape and each cost ~3s of
     // retrieval before the model answered the same thing it already knew.
     if (_isStableFact(value)) return SearchPlanReason.stableFact;
-    return _recipes.any(value.contains) || _requiresFactCheck(value)
+    if (_isAboutTheUser(value)) return SearchPlanReason.backReference;
+    return _recipes.any(value.contains) ||
+            _requiresFactCheck(value, _collapse(prompt))
         ? SearchPlanReason.factCheck
         : SearchPlanReason.noCue;
   }
@@ -178,13 +180,59 @@ class WebSearchPolicy {
     'primzahl',
   ];
 
-  static bool _requiresFactCheck(String value) {
+  static String _collapse(String prompt) =>
+      prompt.replaceAll(RegExp(r'\s+'), ' ').trim();
+
+  /// Whether a question is about a specific person, place, thing or year,
+  /// which is where the model's memory is thinnest and a retrieval helps.
+  ///
+  /// This used to be "any question", so "How do I boil an egg?", "What is the
+  /// chemical formula for water?" and "How do I fix a flat bicycle tire?" each
+  /// paid a 5-9 s search, and the eval measured 76% of must-not-browse turns
+  /// searching. A generic explanation, how-to or definition is the model's own
+  /// territory. A question that *names* something ("How does routing in
+  /// Bridgetown work?") is where a 1.6B model guesses, so that one browses.
+  static bool _requiresFactCheck(String value, String original) {
     final stripped = value.replaceFirst(_leadingPunctuation, '');
     if (!_questionOpener.hasMatch(stripped)) return false;
     if (_conversationalQuestions.any(value.contains)) return false;
     if (_isSelfContained(value)) return false;
-    return true;
+    // German capitalises every noun, so a capital letter says nothing there.
+    if (_germanOpener.hasMatch(stripped)) return false;
+    return _namesSomething(original);
   }
+
+  static final RegExp _germanOpener = RegExp(
+    r'^(?:wie|wer|was|warum|wieso|welche|welcher|welches|wo|wann)(?!\w)',
+    caseSensitive: false,
+  );
+
+  /// A capitalised word that is not the first word, or a number that looks
+  /// like a year or a quantity. A lone "I" is a pronoun, not a name.
+  static bool _namesSomething(String original) {
+    final words = original.split(' ');
+    for (var i = 1; i < words.length; i++) {
+      final word = words[i].replaceAll(
+          RegExp(r'^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$', unicode: true), '');
+      if (word.length < 2) continue;
+      final first = word.substring(0, 1);
+      if (first != first.toLowerCase() && first == first.toUpperCase()) {
+        return true;
+      }
+    }
+    return RegExp(r'\d{3,}').hasMatch(original);
+  }
+
+  /// A question about what the user themselves said or own is answered from
+  /// the conversation, not the web: "How many cartons of milk did I buy?".
+  static bool _isAboutTheUser(String value) => _userMarkers.hasMatch(value);
+
+  static final RegExp _userMarkers = RegExp(
+    r"\b(?:my|mine|did i|do i|have i|i bought|i told|i said|i have|"
+    r"i am|i'm|i was|our|we)\b|\b(?:il mio|la mia|i miei|mio|mia)\b|"
+    r"\b(?:mi|mis|nuestro|nuestra)\b|\b(?:mon|ma|mes|notre)\b|"
+    r"\b(?:mein|meine|meinen|unser)\b",
+  );
 
   static bool _isSelfContained(String value) {
     // Pure arithmetic expressions like "what is 2 + 2", "what is 15 * 8"
