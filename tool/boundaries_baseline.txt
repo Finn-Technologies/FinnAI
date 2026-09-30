@@ -12,7 +12,6 @@ size lib/src/engine/eval/eval_baseline.dart 617
 size lib/src/features/chat/chat_generation_controller.dart 919
 size lib/src/features/chat/widgets/composer.dart 648
 size lib/src/features/conversations/conversation_store.dart 1731
-size lib/src/features/creations/creations_page.dart 1832
 size lib/src/features/flows/flows_page.dart 988
 size lib/src/features/onboarding/onboarding_flow.dart 1603
 size lib/src/features/settings/settings_page.dart 1618
