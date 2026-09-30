@@ -8,6 +8,7 @@ class _ArtifactCard extends StatelessWidget {
     required this.onOpen,
     required this.onAddToHomeScreen,
     required this.onExport,
+    this.onEdit,
   });
 
   final FinnCreation creation;
@@ -15,6 +16,9 @@ class _ArtifactCard extends StatelessWidget {
   final VoidCallback onOpen;
   final VoidCallback onAddToHomeScreen;
   final VoidCallback onExport;
+
+  /// Edits the creation's slots. Null for a creation with no template.
+  final VoidCallback? onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -101,6 +105,15 @@ class _ArtifactCard extends StatelessWidget {
                     onTap: onOpen,
                   ),
                 ),
+                if (onEdit != null) ...[
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: FluxPillButton(
+                      label: L10n.of(context).creationsEdit,
+                      onTap: onEdit,
+                    ),
+                  ),
+                ],
                 const SizedBox(width: 8),
                 FluxIconButton(
                   icon: kind == CreationKind.presentation

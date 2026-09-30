@@ -5,10 +5,11 @@ import 'package:finn_ai/src/features/creations/creation_model.dart';
 import 'package:finn_ai/src/features/creations/creation_prompts.dart';
 import 'package:finn_ai/src/features/creations/json_salvage.dart';
 import 'package:finn_ai/src/features/creations/spec/deck_spec.dart';
-import 'package:finn_ai/src/features/creations/spec/mini_app_spec.dart';
-import 'package:finn_ai/src/features/creations/spec/spec_repair.dart';
 import 'package:finn_ai/src/features/creations/spec/spec_validator.dart';
-import 'package:finn_ai/src/features/creations/spec/widget_spec.dart';
+import 'package:finn_ai/src/features/creations/templates/creation_template.dart';
+import 'package:finn_ai/src/features/creations/templates/slot_prompt.dart';
+import 'package:finn_ai/src/features/creations/templates/template_catalog.dart';
+import 'package:finn_ai/src/features/creations/templates/template_slots.dart';
 import 'package:finn_ai/src/inference/finn_inference.dart';
 import 'package:finn_ai/src/inference/prompt_intent.dart';
 
@@ -28,11 +29,16 @@ class CreationOutcome {
     required this.summary,
     required this.artifact,
     required this.usedFallback,
+    this.template,
   });
 
   final String title;
   final String summary;
   final CreationArtifact artifact;
+
+  /// The template and slot values behind [artifact], so it can be edited later
+  /// without the model. Null for a presentation, which is free-form.
+  final TemplateRef? template;
 
   /// True when the model could not produce a valid spec and a deterministic
   /// starter was substituted. Surfaced as a non-blocking note, not an error.
@@ -44,6 +50,7 @@ abstract interface class CreationGenerator {
     required String prompt,
     required CreationKind kind,
     required void Function(CreationStage stage) onStage,
+    String? templateId,
   });
 }
 
@@ -114,17 +121,94 @@ class FinnCreationGenerator
     required String prompt,
     required CreationKind kind,
     required void Function(CreationStage stage) onStage,
+    String? templateId,
   }) async {
     _cancelled = false;
     _conversationId =
         'creation-${DateTime.now().microsecondsSinceEpoch.toRadixString(36)}';
+    return kind == CreationKind.presentation
+        ? _generateDeck(prompt, onStage)
+        : _generateFromTemplate(prompt, kind, onStage, templateId);
+  }
 
+  /// Apps and widgets: the app chooses the template, the model fills its slots
+  /// (ADR 0003). A reply can be wrong in content but never in structure, so the
+  /// only failure is "nothing usable", which earns one more try and then a
+  /// template filled from the brief instead of a generic starter.
+  Future<CreationOutcome> _generateFromTemplate(
+    String prompt,
+    CreationKind kind,
+    void Function(CreationStage stage) onStage,
+    String? templateId,
+  ) async {
+    final requested = CreationTemplates.byId(templateId);
+    final template = requested != null && requested.kind == kind
+        ? requested
+        : CreationTemplates.pick(kind, prompt);
+    String? note;
+    for (var attempt = 0; attempt <= maxRepairRounds; attempt++) {
+      if (_cancelled) throw const CreationCancelled();
+      onStage(attempt == 0 ? CreationStage.designing : CreationStage.repairing);
+      final request = SlotPrompt.build(
+        template: template,
+        brief: prompt,
+        repairNote: note,
+      );
+      if (_cancelled) throw const CreationCancelled();
+      onStage(CreationStage.writing);
+      final raw = await _complete(request);
+      if (_cancelled) throw const CreationCancelled();
+      final decoded = extractJsonObject(raw);
+      if (decoded == null) {
+        note = 'it was not a JSON object';
+        continue;
+      }
+      onStage(CreationStage.validating);
+      if (SlotSanitizer.usable(template.slots, decoded) == 0) {
+        note = 'none of the keys had a usable value';
+        continue;
+      }
+      return _fromSlots(template, decoded, prompt, usedFallback: false);
+    }
+    debugPrint(
+      'FINN_CREATION fallback to template ${template.id} after '
+      '$maxRepairRounds repair round(s): $note',
+    );
+    return _fromSlots(template, const {}, prompt, usedFallback: true);
+  }
+
+  CreationOutcome _fromSlots(
+    CreationTemplate template,
+    Map<String, Object?> raw,
+    String prompt, {
+    required bool usedFallback,
+  }) {
+    final withTitle = {
+      ...raw,
+      if (raw['title'] == null || '${raw['title']}'.trim().isEmpty)
+        'title': titleFromPrompt(prompt),
+    };
+    final values = SlotSanitizer.sanitize(template.slots, withTitle);
+    return CreationOutcome(
+      title: template.titleFor(values),
+      summary: template.summaryFor(values),
+      artifact: template.build(values),
+      usedFallback: usedFallback,
+      template: TemplateRef(id: template.id, slots: values.toJson()),
+    );
+  }
+
+  /// Presentations stay free-form (a deck is prose, not wiring): the model
+  /// writes the slides, the validator decides, and one repair round follows.
+  Future<CreationOutcome> _generateDeck(
+    String prompt,
+    void Function(CreationStage stage) onStage,
+  ) async {
     var issues = const <SpecIssue>[];
     for (var attempt = 0; attempt <= maxRepairRounds; attempt++) {
       if (_cancelled) throw const CreationCancelled();
       onStage(attempt == 0 ? CreationStage.designing : CreationStage.repairing);
       final request = CreationPrompts.build(
-        kind: kind,
         brief: prompt,
         repairIssues:
             attempt == 0 ? null : SpecValidator.describeIssues(issues),
@@ -133,19 +217,33 @@ class FinnCreationGenerator
       onStage(CreationStage.writing);
       final raw = await _complete(request);
       if (_cancelled) throw const CreationCancelled();
-      final evaluated = _evaluate(raw, kind, prompt, onStage);
-      final outcome = evaluated.outcome;
-      if (outcome != null) return outcome;
-      issues = evaluated.issues;
+      final decoded = extractJsonObject(raw);
+      if (decoded == null) {
+        issues = const [SpecIssue('', 'the reply was not a JSON object')];
+        continue;
+      }
+      onStage(CreationStage.validating);
+      issues = SpecValidator.validateDeck(decoded);
+      if (issues.isNotEmpty) continue;
+      try {
+        return CreationOutcome(
+          title: _titleFrom(decoded, prompt),
+          summary: _summaryFrom(decoded),
+          artifact: PresentationArtifact(DeckSpec.fromJson(decoded)),
+          usedFallback: false,
+        );
+      } on Object catch (error) {
+        issues = [SpecIssue('', 'the JSON could not be read: $error')];
+      }
     }
     debugPrint(
-      'FINN_CREATION fallback after $maxRepairRounds repair round(s): '
+      'FINN_CREATION deck fallback after $maxRepairRounds repair round(s): '
       '${SpecValidator.describeIssues(issues)}',
     );
     return CreationOutcome(
       title: titleFromPrompt(prompt),
       summary: '',
-      artifact: CreationFallbacks.forKind(kind),
+      artifact: CreationFallbacks.starterDeck(),
       usedFallback: true,
     );
   }
@@ -184,74 +282,6 @@ class FinnCreationGenerator
       );
     }
     return raw;
-  }
-
-  ({CreationOutcome? outcome, List<SpecIssue> issues}) _evaluate(
-    String raw,
-    CreationKind kind,
-    String prompt,
-    void Function(CreationStage stage) onStage,
-  ) {
-    final decoded = extractJsonObject(raw);
-    if (decoded == null) {
-      return (
-        outcome: null,
-        issues: const [
-          SpecIssue('', 'the reply was not a JSON object'),
-        ],
-      );
-    }
-
-    onStage(CreationStage.validating);
-    var issues = switch (kind) {
-      CreationKind.app => SpecValidator.validateMiniApp(decoded),
-      CreationKind.widget => SpecValidator.validateHomeWidget(decoded),
-      CreationKind.presentation => SpecValidator.validateDeck(decoded),
-    };
-
-    // Before spending a repair round re-asking, drop any node that displays a
-    // key nothing writes and see whether the remainder is usable. The validator
-    // still decides: this pass is only accepted when it produces zero issues.
-    if (issues.isNotEmpty && kind == CreationKind.app) {
-      final pruned = pruneUnwiredNodes(decoded);
-      if (pruned != null && SpecValidator.validateMiniApp(pruned).isEmpty) {
-        debugPrint('FINN_CREATION pruned unwired node(s) instead of repairing');
-        return (
-          outcome: CreationOutcome(
-            title: _titleFrom(pruned, prompt),
-            summary: _summaryFrom(pruned),
-            artifact: MiniAppArtifact(MiniAppSpec.fromJson(pruned)),
-            usedFallback: false,
-          ),
-          issues: const <SpecIssue>[],
-        );
-      }
-    }
-
-    if (issues.isNotEmpty) return (outcome: null, issues: issues);
-
-    try {
-      final artifact = switch (kind) {
-        CreationKind.app => MiniAppArtifact(MiniAppSpec.fromJson(decoded)),
-        CreationKind.widget => WidgetArtifact(HomeWidgetSpec.fromJson(decoded)),
-        CreationKind.presentation =>
-          PresentationArtifact(DeckSpec.fromJson(decoded)),
-      };
-      return (
-        outcome: CreationOutcome(
-          title: _titleFrom(decoded, prompt),
-          summary: _summaryFrom(decoded),
-          artifact: artifact,
-          usedFallback: false,
-        ),
-        issues: const <SpecIssue>[],
-      );
-    } on Object catch (error) {
-      return (
-        outcome: null,
-        issues: [SpecIssue('', 'the JSON could not be read: $error')],
-      );
-    }
   }
 }
 

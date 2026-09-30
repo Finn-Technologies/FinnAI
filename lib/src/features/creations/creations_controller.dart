@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:finn_ai/src/features/creations/creation_generator.dart';
 import 'package:finn_ai/src/features/creations/creation_model.dart';
 import 'package:finn_ai/src/features/creations/creation_store.dart';
+import 'package:finn_ai/src/features/creations/templates/template_catalog.dart';
+import 'package:finn_ai/src/features/creations/templates/template_slots.dart';
 
 /// The outcome of one creation attempt, as the page needs to present it.
 @immutable
@@ -103,7 +105,11 @@ class CreationsController extends ChangeNotifier {
     _notify();
   }
 
-  Future<CreationResult?> create(String prompt, CreationKind kind) async {
+  Future<CreationResult?> create(
+    String prompt,
+    CreationKind kind, {
+    String? templateId,
+  }) async {
     final cleanPrompt = prompt.trim();
     if (cleanPrompt.isEmpty || _loading || _generating) return null;
     _generating = true;
@@ -119,6 +125,7 @@ class CreationsController extends ChangeNotifier {
         prompt: cleanPrompt,
         kind: kind,
         onStage: _reportStage,
+        templateId: templateId,
       );
       if (_cancelRequested) {
         _cancelled = true;
@@ -132,6 +139,7 @@ class CreationsController extends ChangeNotifier {
         summary: outcome.summary,
         artifact: outcome.artifact,
         createdAt: now,
+        template: outcome.template,
       );
       final previous = _creations;
       _creations = [creation, ...previous];
@@ -183,6 +191,39 @@ class CreationsController extends ChangeNotifier {
   /// The page reads this to write a quiet "stopped" turn, so a deliberate stop
   /// is never reported back as a failure.
   bool get wasCancelled => _cancelled;
+
+  /// Rebuilds a template-made creation from edited slot values, with no model
+  /// call. Returns the updated creation, or null when it has no template or
+  /// the store refused the write (the list is restored in that case).
+  Future<FinnCreation?> editSlots(
+    FinnCreation creation,
+    Map<String, Object?> slots,
+  ) async {
+    final ref = creation.template;
+    final template = CreationTemplates.byId(ref?.id);
+    if (ref == null || template == null) return null;
+    final values = SlotSanitizer.sanitize(template.slots, slots);
+    final updated = creation.copyWith(
+      title: template.titleFor(values),
+      summary: template.summaryFor(values),
+      artifact: template.build(values),
+      template: TemplateRef(id: template.id, slots: values.toJson()),
+    );
+    final previous = _creations;
+    _creations = [
+      for (final item in previous) item.id == creation.id ? updated : item,
+    ];
+    _notify();
+    try {
+      await _store.save(_creations);
+      return updated;
+    } on Object {
+      _creations = previous;
+      _failure = CreationFailure.create;
+      _notify();
+      return null;
+    }
+  }
 
   Future<void> delete(FinnCreation creation) async {
     final previous = _creations;

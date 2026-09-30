@@ -1,6 +1,6 @@
 # 0003 — Creations are template-first
 
-**Status.** Accepted 2026-09-30. Not yet implemented.
+**Status.** Accepted and implemented 2026-09-30 (apps, widgets; decks gain themes and layouts but stay free-form).
 
 **Context.** The model writes a whole JSON spec. A 1.6B Q4 model does this inconsistently, and the fallback is a generic counter.
 

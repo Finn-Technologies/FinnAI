@@ -1472,6 +1472,204 @@ abstract class AppLocalizations {
   /// **'Finn couldn\'t finish that design, so here is a working starter you can build on.'**
   String get creationsFallbackNote;
 
+  /// Creations template/editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Let Finn choose'**
+  String get creationsTemplateAuto;
+
+  /// Creations template/editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Want a starting point? Pick one, or just describe what you want.'**
+  String get creationsTemplateQuestion;
+
+  /// Creations template/editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Counter'**
+  String get creationsTemplateCounter;
+
+  /// Creations template/editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Checklist'**
+  String get creationsTemplateChecklist;
+
+  /// Creations template/editor label
+  ///
+  /// In en, this message translates to:
+  /// **'List'**
+  String get creationsTemplateList;
+
+  /// Creations template/editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Scoreboard'**
+  String get creationsTemplateScoreboard;
+
+  /// Creations template/editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Big number'**
+  String get creationsTemplateStat;
+
+  /// Creations template/editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Lines'**
+  String get creationsTemplateRows;
+
+  /// Creations template/editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get creationsEdit;
+
+  /// Creations template/editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Edit details'**
+  String get creationsEditTitle;
+
+  /// Creations template/editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get creationsSlotTitle;
+
+  /// Creations template/editor label
+  ///
+  /// In en, this message translates to:
+  /// **'What you count'**
+  String get creationsSlotUnit;
+
+  /// Creations template/editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Goal'**
+  String get creationsSlotGoal;
+
+  /// Creations template/editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Emoji'**
+  String get creationsSlotEmoji;
+
+  /// Creations template/editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Colour'**
+  String get creationsSlotAccent;
+
+  /// Creations template/editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Items'**
+  String get creationsSlotItems;
+
+  /// Creations template/editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Input hint'**
+  String get creationsSlotHint;
+
+  /// Creations template/editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Empty message'**
+  String get creationsSlotEmpty;
+
+  /// Creations template/editor label
+  ///
+  /// In en, this message translates to:
+  /// **'First name'**
+  String get creationsSlotNameA;
+
+  /// Creations template/editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Second name'**
+  String get creationsSlotNameB;
+
+  /// Creations template/editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Label'**
+  String get creationsSlotLabel;
+
+  /// Creations template/editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Value'**
+  String get creationsSlotValue;
+
+  /// Creations template/editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Footer'**
+  String get creationsSlotFooter;
+
+  /// Creations template/editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Lines'**
+  String get creationsSlotRows;
+
+  /// Creations template/editor label
+  ///
+  /// In en, this message translates to:
+  /// **'One per line'**
+  String get creationsSlotOnePerLine;
+
+  /// Creations template/editor label
+  ///
+  /// In en, this message translates to:
+  /// **'One per line, like “Water: 3”'**
+  String get creationsSlotRowFormat;
+
+  /// Creations template/editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Mint'**
+  String get creationsAccentMint;
+
+  /// Creations template/editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Blue'**
+  String get creationsAccentBlue;
+
+  /// Creations template/editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Lime'**
+  String get creationsAccentLime;
+
+  /// Creations template/editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Amber'**
+  String get creationsAccentAmber;
+
+  /// Creations template/editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Rose'**
+  String get creationsAccentRose;
+
+  /// Creations template/editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Violet'**
+  String get creationsAccentViolet;
+
+  /// Creations template/editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Sky'**
+  String get creationsAccentSky;
+
   /// Button starting a new creation from the gallery
   ///
   /// In en, this message translates to:

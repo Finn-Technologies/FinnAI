@@ -1044,6 +1044,138 @@
   "@creationsFallbackNote": {
     "description": "Shown when a deterministic starter creation was substituted"
   },
+  "creationsTemplateAuto": "Let Finn choose",
+  "@creationsTemplateAuto": {
+    "description": "Creations template/editor label"
+  },
+  "creationsTemplateQuestion": "Want a starting point? Pick one, or just describe what you want.",
+  "@creationsTemplateQuestion": {
+    "description": "Creations template/editor label"
+  },
+  "creationsTemplateCounter": "Counter",
+  "@creationsTemplateCounter": {
+    "description": "Creations template/editor label"
+  },
+  "creationsTemplateChecklist": "Checklist",
+  "@creationsTemplateChecklist": {
+    "description": "Creations template/editor label"
+  },
+  "creationsTemplateList": "List",
+  "@creationsTemplateList": {
+    "description": "Creations template/editor label"
+  },
+  "creationsTemplateScoreboard": "Scoreboard",
+  "@creationsTemplateScoreboard": {
+    "description": "Creations template/editor label"
+  },
+  "creationsTemplateStat": "Big number",
+  "@creationsTemplateStat": {
+    "description": "Creations template/editor label"
+  },
+  "creationsTemplateRows": "Lines",
+  "@creationsTemplateRows": {
+    "description": "Creations template/editor label"
+  },
+  "creationsEdit": "Edit",
+  "@creationsEdit": {
+    "description": "Creations template/editor label"
+  },
+  "creationsEditTitle": "Edit details",
+  "@creationsEditTitle": {
+    "description": "Creations template/editor label"
+  },
+  "creationsSlotTitle": "Name",
+  "@creationsSlotTitle": {
+    "description": "Creations template/editor label"
+  },
+  "creationsSlotUnit": "What you count",
+  "@creationsSlotUnit": {
+    "description": "Creations template/editor label"
+  },
+  "creationsSlotGoal": "Goal",
+  "@creationsSlotGoal": {
+    "description": "Creations template/editor label"
+  },
+  "creationsSlotEmoji": "Emoji",
+  "@creationsSlotEmoji": {
+    "description": "Creations template/editor label"
+  },
+  "creationsSlotAccent": "Colour",
+  "@creationsSlotAccent": {
+    "description": "Creations template/editor label"
+  },
+  "creationsSlotItems": "Items",
+  "@creationsSlotItems": {
+    "description": "Creations template/editor label"
+  },
+  "creationsSlotHint": "Input hint",
+  "@creationsSlotHint": {
+    "description": "Creations template/editor label"
+  },
+  "creationsSlotEmpty": "Empty message",
+  "@creationsSlotEmpty": {
+    "description": "Creations template/editor label"
+  },
+  "creationsSlotNameA": "First name",
+  "@creationsSlotNameA": {
+    "description": "Creations template/editor label"
+  },
+  "creationsSlotNameB": "Second name",
+  "@creationsSlotNameB": {
+    "description": "Creations template/editor label"
+  },
+  "creationsSlotLabel": "Label",
+  "@creationsSlotLabel": {
+    "description": "Creations template/editor label"
+  },
+  "creationsSlotValue": "Value",
+  "@creationsSlotValue": {
+    "description": "Creations template/editor label"
+  },
+  "creationsSlotFooter": "Footer",
+  "@creationsSlotFooter": {
+    "description": "Creations template/editor label"
+  },
+  "creationsSlotRows": "Lines",
+  "@creationsSlotRows": {
+    "description": "Creations template/editor label"
+  },
+  "creationsSlotOnePerLine": "One per line",
+  "@creationsSlotOnePerLine": {
+    "description": "Creations template/editor label"
+  },
+  "creationsSlotRowFormat": "One per line, like “Water: 3”",
+  "@creationsSlotRowFormat": {
+    "description": "Creations template/editor label"
+  },
+  "creationsAccentMint": "Mint",
+  "@creationsAccentMint": {
+    "description": "Creations template/editor label"
+  },
+  "creationsAccentBlue": "Blue",
+  "@creationsAccentBlue": {
+    "description": "Creations template/editor label"
+  },
+  "creationsAccentLime": "Lime",
+  "@creationsAccentLime": {
+    "description": "Creations template/editor label"
+  },
+  "creationsAccentAmber": "Amber",
+  "@creationsAccentAmber": {
+    "description": "Creations template/editor label"
+  },
+  "creationsAccentRose": "Rose",
+  "@creationsAccentRose": {
+    "description": "Creations template/editor label"
+  },
+  "creationsAccentViolet": "Violet",
+  "@creationsAccentViolet": {
+    "description": "Creations template/editor label"
+  },
+  "creationsAccentSky": "Sky",
+  "@creationsAccentSky": {
+    "description": "Creations template/editor label"
+  },
   "creationsNewCreation": "New creation",
   "@creationsNewCreation": {
     "description": "Button starting a new creation from the gallery"

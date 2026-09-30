@@ -195,7 +195,7 @@ templates, minimum device 4 GB. Commits `69b5c31`…`4864cde` on `main`.
 | Lite tier (D3) | **partly done, device-verified on the Lite *policy*** | text-only load, projector on first image; image case passes; not measured on a real 4 GB phone |
 | Empty-reply retry (D2) | **done, host-tested only** | retry decision is a tested pure function; the native hiccup it guards cannot be forced |
 | Flows scheduler (D4) | **not started** | the model and runner exist; nothing fires a schedule (`isDueAt` has no caller) |
-| Creations remake (D5) | **not started** | |
+| Creations remake (D5) | **done**, host-tested; not device-run | 4 app templates, 2 widget templates, deck themes/layouts, slot editor; every template fuzz-tested; `append` with `{field}` + `clear` |
 | Motion system (D6) | **not started** | |
 | Real `FinnEngine` interface (D2) | **not started** | the parts still share private state |
 

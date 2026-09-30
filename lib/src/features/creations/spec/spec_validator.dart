@@ -465,6 +465,18 @@ abstract final class SpecValidator {
           maxChars: SpecLimits.maxTextChars,
           required: true,
         );
+        // `{key}` placeholders in the value read state, and `clear` writes it.
+        final appended = action['value'];
+        if (appended is String) {
+          referenced.addAll(
+            RegExp(r'\{([a-z][a-z0-9_]*)\}')
+                .allMatches(appended)
+                .map((match) => match.group(1)!),
+          );
+        }
+        if (action['clear'] != null) {
+          _checkKey(action, 'clear', path, issues, written);
+        }
       case 'reset':
         break;
       default:

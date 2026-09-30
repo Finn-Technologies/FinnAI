@@ -152,6 +152,29 @@ final class LegacyDocumentArtifact extends CreationArtifact {
       };
 }
 
+/// Which template built a creation, and with what values.
+///
+/// Stored beside the artifact so a template-made creation can be edited by
+/// changing its slots and rebuilding, with no model call. Creations made
+/// before templates carry none and stay view-only.
+@immutable
+class TemplateRef {
+  const TemplateRef({required this.id, required this.slots});
+
+  final String id;
+  final Map<String, Object?> slots;
+
+  Map<String, Object?> toJson() => {'id': id, 'slots': slots};
+
+  static TemplateRef? tryParse(Object? raw) {
+    if (raw is! Map) return null;
+    final id = raw['id'];
+    final slots = raw['slots'];
+    if (id is! String || slots is! Map) return null;
+    return TemplateRef(id: id, slots: slots.cast<String, Object?>());
+  }
+}
+
 /// One saved creation.
 @immutable
 class FinnCreation {
@@ -162,6 +185,7 @@ class FinnCreation {
     required this.summary,
     required this.artifact,
     required this.createdAt,
+    this.template,
   });
 
   final String id;
@@ -170,6 +194,25 @@ class FinnCreation {
   final String summary;
   final CreationArtifact artifact;
   final DateTime createdAt;
+
+  /// Null for a creation made before templates, or one the user built by hand.
+  final TemplateRef? template;
+
+  FinnCreation copyWith({
+    String? title,
+    String? summary,
+    CreationArtifact? artifact,
+    TemplateRef? template,
+  }) =>
+      FinnCreation(
+        id: id,
+        prompt: prompt,
+        title: title ?? this.title,
+        summary: summary ?? this.summary,
+        artifact: artifact ?? this.artifact,
+        createdAt: createdAt,
+        template: template ?? this.template,
+      );
 
   CreationKind get kind => artifact.kind;
 
@@ -180,6 +223,7 @@ class FinnCreation {
         'summary': summary,
         'artifact': artifact.toJson(),
         'createdAt': createdAt.toUtc().toIso8601String(),
+        if (template != null) 'template': template!.toJson(),
       };
 
   factory FinnCreation.fromJson(Map<String, Object?> json) => FinnCreation(
@@ -189,5 +233,6 @@ class FinnCreation {
         summary: SpecJson.stringOr(json, 'summary', ''),
         artifact: CreationArtifact.fromJson(SpecJson.object(json, 'artifact')),
         createdAt: DateTime.parse(json['createdAt'] as String).toLocal(),
+        template: TemplateRef.tryParse(json['template']),
       );
 }

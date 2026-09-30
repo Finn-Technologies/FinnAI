@@ -813,6 +813,106 @@ class AppLocalizationsDe extends AppLocalizations {
       'Finn konnte das Design nicht fertigstellen – hier ist eine funktionierende Vorlage, auf der du aufbauen kannst.';
 
   @override
+  String get creationsTemplateAuto => 'Finn entscheiden lassen';
+
+  @override
+  String get creationsTemplateQuestion =>
+      'Brauchst du einen Ausgangspunkt? Wähle einen oder beschreibe einfach, was du möchtest.';
+
+  @override
+  String get creationsTemplateCounter => 'Zähler';
+
+  @override
+  String get creationsTemplateChecklist => 'Checkliste';
+
+  @override
+  String get creationsTemplateList => 'Liste';
+
+  @override
+  String get creationsTemplateScoreboard => 'Spielstand';
+
+  @override
+  String get creationsTemplateStat => 'Große Zahl';
+
+  @override
+  String get creationsTemplateRows => 'Zeilen';
+
+  @override
+  String get creationsEdit => 'Bearbeiten';
+
+  @override
+  String get creationsEditTitle => 'Details bearbeiten';
+
+  @override
+  String get creationsSlotTitle => 'Name';
+
+  @override
+  String get creationsSlotUnit => 'Was du zählst';
+
+  @override
+  String get creationsSlotGoal => 'Ziel';
+
+  @override
+  String get creationsSlotEmoji => 'Emoji';
+
+  @override
+  String get creationsSlotAccent => 'Farbe';
+
+  @override
+  String get creationsSlotItems => 'Einträge';
+
+  @override
+  String get creationsSlotHint => 'Eingabehinweis';
+
+  @override
+  String get creationsSlotEmpty => 'Text für leere Liste';
+
+  @override
+  String get creationsSlotNameA => 'Erster Name';
+
+  @override
+  String get creationsSlotNameB => 'Zweiter Name';
+
+  @override
+  String get creationsSlotLabel => 'Beschriftung';
+
+  @override
+  String get creationsSlotValue => 'Wert';
+
+  @override
+  String get creationsSlotFooter => 'Fußzeile';
+
+  @override
+  String get creationsSlotRows => 'Zeilen';
+
+  @override
+  String get creationsSlotOnePerLine => 'Eine pro Zeile';
+
+  @override
+  String get creationsSlotRowFormat => 'Eine pro Zeile, z. B. „Wasser: 3“';
+
+  @override
+  String get creationsAccentMint => 'Mint';
+
+  @override
+  String get creationsAccentBlue => 'Blau';
+
+  @override
+  String get creationsAccentLime => 'Limone';
+
+  @override
+  String get creationsAccentAmber => 'Bernstein';
+
+  @override
+  String get creationsAccentRose => 'Rosa';
+
+  @override
+  String get creationsAccentViolet => 'Violett';
+
+  @override
+  String get creationsAccentSky => 'Himmel';
+
+  @override
   String get creationsNewCreation => 'Neue Kreation';
 
   @override

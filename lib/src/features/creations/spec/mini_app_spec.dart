@@ -94,9 +94,11 @@ sealed class MiniAppAction {
           by: SpecJson.intOr(json, 'by', 1),
         );
       case 'append':
+        final clear = SpecJson.stringOr(json, 'clear', '');
         return AppendAction(
           key: SpecJson.string(json, 'key'),
           value: SpecJson.string(json, 'value'),
+          clearKey: clear.isEmpty ? null : clear,
         );
       case 'reset':
         return const ResetAction();
@@ -153,18 +155,27 @@ final class IncrementAction extends MiniAppAction {
       };
 }
 
-/// Appends the literal `value` to the list stored at `key`.
+/// Appends `value` to the list stored at `key`.
+///
+/// `value` may contain `{key}` placeholders, which read state when the button
+/// is pressed: `{"value":"{draft}","clear":"draft"}` adds what was typed in the
+/// `draft` field and empties the field, which is what makes a notes or
+/// shopping list possible. A value that resolves to nothing adds nothing.
 final class AppendAction extends MiniAppAction {
-  const AppendAction({required this.key, required this.value});
+  const AppendAction({required this.key, required this.value, this.clearKey});
 
   final String key;
   final String value;
+
+  /// A key to set back to empty after appending (usually the input field).
+  final String? clearKey;
 
   @override
   Map<String, Object?> toJson() => {
         'kind': 'append',
         'key': key,
         'value': value,
+        if (clearKey != null) 'clear': clearKey,
       };
 }
 
@@ -280,7 +291,11 @@ final class ButtonNode extends MiniAppNode {
           },
         ToggleAction(:final key) => {key},
         IncrementAction(:final key) => {key},
-        AppendAction(:final key) => {key},
+        AppendAction(:final key, :final value, :final clearKey) => {
+            key,
+            ..._placeholdersIn(value),
+            if (clearKey != null) clearKey,
+          },
         ResetAction() => const <String>{},
       };
 }

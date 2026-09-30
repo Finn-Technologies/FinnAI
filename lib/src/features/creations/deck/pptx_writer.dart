@@ -5,6 +5,7 @@ import 'package:archive/archive.dart';
 import 'package:xml/xml.dart' show XmlText;
 
 import 'package:finn_ai/src/features/creations/spec/deck_spec.dart';
+import 'package:finn_ai/src/features/creations/spec/deck_theme.dart';
 
 /// Writes a [DeckSpec] to a real `.pptx` (OOXML) package.
 ///
@@ -50,7 +51,7 @@ abstract final class PptxWriter {
     for (var index = 0; index < slides.length; index++) {
       add(
         'ppt/slides/slide${index + 1}.xml',
-        _slide(slides[index], index == 0),
+        _slide(slides[index], index, deck.theme),
       );
       add('ppt/slides/_rels/slide${index + 1}.xml.rels', _slideRels());
     }
@@ -213,37 +214,149 @@ $slides</Types>''';
 <Relationship Id="rId1" Type="$_nsR/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>
 </Relationships>''';
 
-  static String _slide(DeckSlide slide, bool isTitleSlide) {
-    final body = StringBuffer();
-    for (final bullet in slide.bullets) {
-      body.writeln(
-        '<a:p><a:pPr marL="342900" indent="-342900"><a:buChar char="\u2022"/></a:pPr>'
-        '<a:r><a:rPr lang="en-US" sz="1800" dirty="0"/>'
-        '<a:t>${_escape(bullet)}</a:t></a:r></a:p>',
-      );
+  static String _slide(DeckSlide slide, int index, DeckTheme theme) {
+    final layout = slide.layoutAt(index);
+    final background = DeckTheme.hex(theme.background);
+    final text = DeckTheme.hex(theme.text);
+    final muted = DeckTheme.hex(theme.muted);
+    final accent = DeckTheme.hex(theme.accent);
+
+    String run(
+      String value, {
+      required int size,
+      required String color,
+      bool bold = false,
+      bool italic = false,
+    }) =>
+        '<a:r><a:rPr lang="en-US" sz="$size"${bold ? ' b="1"' : ''}'
+        '${italic ? ' i="1"' : ''} dirty="0">'
+        '<a:solidFill><a:srgbClr val="$color"/></a:solidFill></a:rPr>'
+        '<a:t>${_escape(value)}</a:t></a:r>';
+
+    String box({
+      required int id,
+      required String name,
+      required int y,
+      required int height,
+      required String paragraphs,
+    }) =>
+        '<p:sp>'
+        '<p:nvSpPr><p:cNvPr id="$id" name="$name"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr>'
+        '<p:spPr><a:xfrm><a:off x="838200" y="$y"/><a:ext cx="10515600" cy="$height"/></a:xfrm><a:noFill/></p:spPr>'
+        '<p:txBody><a:bodyPr wrap="square" rtlCol="0"/><a:lstStyle/>$paragraphs</p:txBody>'
+        '</p:sp>';
+
+    String bar(int y) =>
+        '<p:sp><p:nvSpPr><p:cNvPr id="4" name="Accent"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>'
+        '<p:spPr><a:xfrm><a:off x="838200" y="$y"/><a:ext cx="457200" cy="50800"/></a:xfrm>'
+        '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>'
+        '<a:solidFill><a:srgbClr val="$accent"/></a:solidFill><a:ln><a:noFill/></a:ln></p:spPr></p:sp>';
+
+    String bulletParagraphs() {
+      final body = StringBuffer();
+      for (final bullet in slide.bullets) {
+        body.writeln(
+          '<a:p><a:pPr marL="342900" indent="-342900">'
+          '<a:buClr><a:srgbClr val="$accent"/></a:buClr>'
+          '<a:buChar char="\u2022"/></a:pPr>'
+          '${run(bullet, size: 1800, color: text)}</a:p>',
+        );
+      }
+      return body.toString();
     }
-    final titleSize = isTitleSlide ? 4000 : 3200;
-    final titleHeight = isTitleSlide ? 1600200 : 1143000;
+
+    final shapes = StringBuffer();
+    switch (layout) {
+      case DeckLayout.title:
+        shapes
+          ..write(bar(2057400))
+          ..write(box(
+            id: 2,
+            name: 'Title',
+            y: 2286000,
+            height: 1600200,
+            paragraphs:
+                '<a:p>${run(slide.title, size: 4000, color: text, bold: true)}</a:p>',
+          ))
+          ..write(box(
+            id: 3,
+            name: 'Body',
+            y: 4114800,
+            height: 1600200,
+            paragraphs: slide.bullets
+                .take(2)
+                .map((b) => '<a:p>${run(b, size: 2000, color: muted)}</a:p>')
+                .join(),
+          ));
+      case DeckLayout.section:
+        shapes
+          ..write(bar(2286000))
+          ..write(box(
+            id: 2,
+            name: 'Title',
+            y: 2514600,
+            height: 1828800,
+            paragraphs:
+                '<a:p>${run(slide.title, size: 5000, color: accent, bold: true)}</a:p>',
+          ))
+          ..write(box(
+            id: 3,
+            name: 'Body',
+            y: 4500000,
+            height: 1200000,
+            paragraphs: slide.bullets
+                .take(2)
+                .map((b) => '<a:p>${run(b, size: 2000, color: muted)}</a:p>')
+                .join(),
+          ));
+      case DeckLayout.quote:
+        final quote = slide.bullets.isEmpty ? slide.title : slide.bullets.first;
+        shapes
+          ..write(bar(1600200))
+          ..write(box(
+            id: 2,
+            name: 'Quote',
+            y: 1828800,
+            height: 2971800,
+            paragraphs:
+                '<a:p>${run('\u201C$quote\u201D', size: 3200, color: text, italic: true)}</a:p>',
+          ))
+          ..write(box(
+            id: 3,
+            name: 'Source',
+            y: 5029200,
+            height: 685800,
+            paragraphs: slide.bullets.isEmpty
+                ? '<a:p/>'
+                : '<a:p>${run('\u2014 ${slide.title}', size: 2000, color: muted)}</a:p>',
+          ));
+      case DeckLayout.bullets:
+        shapes
+          ..write(bar(548640))
+          ..write(box(
+            id: 2,
+            name: 'Title',
+            y: 685800,
+            height: 1143000,
+            paragraphs:
+                '<a:p>${run(slide.title, size: 3200, color: text, bold: true)}</a:p>',
+          ))
+          ..write(box(
+            id: 3,
+            name: 'Body',
+            y: 2057400,
+            height: 3886200,
+            paragraphs: bulletParagraphs(),
+          ));
+    }
     return '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <p:sld xmlns:a="$_nsA" xmlns:r="$_nsR" xmlns:p="$_nsP">
 <p:cSld>
+<p:bg><p:bgPr><a:solidFill><a:srgbClr val="$background"/></a:solidFill><a:effectLst/></p:bgPr></p:bg>
 <p:spTree>
 <p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>
 <p:grpSpPr/>
-<p:sp>
-<p:nvSpPr><p:cNvPr id="2" name="Title"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr>
-<p:spPr><a:xfrm><a:off x="838200" y="${isTitleSlide ? 2286000 : 685800}"/><a:ext cx="10515600" cy="$titleHeight"/></a:xfrm><a:noFill/></p:spPr>
-<p:txBody><a:bodyPr wrap="square" rtlCol="0"/><a:lstStyle/>
-<a:p><a:r><a:rPr lang="en-US" sz="$titleSize" b="1" dirty="0"/><a:t>${_escape(slide.title)}</a:t></a:r></a:p>
-</p:txBody>
-</p:sp>
-<p:sp>
-<p:nvSpPr><p:cNvPr id="3" name="Body"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr>
-<p:spPr><a:xfrm><a:off x="838200" y="${isTitleSlide ? 4114800 : 2057400}"/><a:ext cx="10515600" cy="3886200"/></a:xfrm><a:noFill/></p:spPr>
-<p:txBody><a:bodyPr wrap="square" rtlCol="0"/><a:lstStyle/>
-$body</p:txBody>
-</p:sp>
-</p:spTree>
+$shapes</p:spTree>
 </p:cSld>
 <p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>
 </p:sld>''';

@@ -4,5 +4,8 @@
 - Generated text is never executed. No JS engine, no WebView, no `eval`. Values come from `SafeExpression` only.
 - Caps live in `spec/spec_limits.dart`; the prompt and validator both read them.
 - The model fills content; templates own layout and style. Colours and radii come from `FluxColors` / `FluxRadius`, not from a spec.
+- A new template is a class in `templates/` plus an entry in `CreationTemplates.all`, keywords in several locales, l10n keys for its name and slot labels, and it must pass the fuzz test in `test/features/creations/templates_test.dart` (valid from fallbacks, examples and hostile input).
+- Every slot limit is stated in the prompt from the same slot definition. Never hard-code a limit in prompt text.
+- Slot text must never contain `{` or `}`: a brace would inject a `{key}` placeholder.
 - `creations_page.dart` is oversized and may only shrink. New screens are new files.
 - Saved artifacts are versioned; a shape change needs a migration and a test in `test/features/creations/`.

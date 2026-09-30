@@ -31,6 +31,7 @@ Future<
   required CreationKind kind,
   String prompt = 'a habit tracker',
   int maxRepairRounds = 1,
+  String? templateId,
 }) async {
   final model = ScriptedCompletion(responses);
   final generator = FinnCreationGenerator(
@@ -42,67 +43,95 @@ Future<
     prompt: prompt,
     kind: kind,
     onStage: stages.add,
+    templateId: templateId,
   );
   return (outcome: outcome, stages: stages, model: model);
 }
 
-const _validApp = '{"title":"Habit Tracker","summary":"Track daily habits.",'
-    '"accent":"mint","nodes":['
-    '{"type":"text","value":"Done: {count}","style":"title"},'
-    '{"type":"button","label":"Add","action":{"kind":"set","key":"count","expr":"count + 1"}}]}';
+const _counterReply = '{"title":"Water tracker","unit":"Glasses","goal":8,'
+    '"emoji":"💧","accent":"sky"}';
 
-const _invalidApp = '{"title":"Habit Tracker","summary":"Track habits.",'
-    '"nodes":[{"type":"webview","url":"https://example.com"}]}';
+const _widgetReply = '{"title":"Reading streak","label":"Days in a row",'
+    '"value":"12","footer":"Keep going","accent":"mint"}';
 
-const _validWidget = '{"title":"Hydration","summary":"Water.",'
-    '"accent":"sky","rows":[{"label":"Glasses","value":"3"}],'
-    '"footer":"Tap to open"}';
-
-const _validDeck = '{"title":"Review","summary":"A deck.","slides":['
-    '{"title":"Review","bullets":["One","Two"]},'
+const _validDeck = '{"title":"Review","summary":"A deck.","theme":"midnight",'
+    '"slides":[{"title":"Review","layout":"title","bullets":["One","Two"]},'
     '{"title":"Next","bullets":["Ship it"]}]}';
 
 void main() {
-  group('a valid first reply is used as-is', () {
-    test('mini app', () async {
+  group('apps and widgets are filled into a template', () {
+    test('a good reply becomes the chosen template', () async {
       final result = await run(
-        responses: [_validApp],
+        responses: [_counterReply],
         kind: CreationKind.app,
+        prompt: 'count how many glasses of water I drink',
       );
       expect(result.outcome.usedFallback, isFalse);
-      expect(result.outcome.title, 'Habit Tracker');
-      expect(result.outcome.summary, 'Track daily habits.');
+      expect(result.outcome.title, 'Water tracker');
       expect(result.outcome.artifact, isA<MiniAppArtifact>());
+      expect(result.outcome.template?.id, 'counter');
+      expect(result.outcome.template?.slots['goal'], 8);
       expect(result.model.requests, hasLength(1));
+    });
+
+    test('the app picks the template, the model is never asked to', () async {
+      final result = await run(
+        responses: ['{"title":"Groceries"}'],
+        kind: CreationKind.app,
+        prompt: 'a shopping list',
+      );
+      expect(result.outcome.template?.id, 'list');
+      expect(result.model.requests.single, contains('list the user adds to'));
+    });
+
+    test('a chosen template id is honoured for its own kind only', () async {
+      final scoreboard = await run(
+        responses: ['{"title":"Game night","nameA":"Us","nameB":"Them"}'],
+        kind: CreationKind.app,
+        prompt: 'keep track of something',
+        templateId: 'scoreboard',
+      );
+      expect(scoreboard.outcome.template?.id, 'scoreboard');
+      final wrongKind = await run(
+        responses: ['{"title":"x"}'],
+        kind: CreationKind.widget,
+        prompt: 'something',
+        templateId: 'scoreboard', // an app template, asked for a widget
+      );
+      expect(wrongKind.outcome.artifact, isA<WidgetArtifact>());
     });
 
     test('widget', () async {
       final result = await run(
-        responses: [_validWidget],
+        responses: [_widgetReply],
         kind: CreationKind.widget,
+        prompt: 'a streak counter',
       );
       expect(result.outcome.artifact, isA<WidgetArtifact>());
-      expect(
-        (result.outcome.artifact as WidgetArtifact).spec.rows.single.label,
-        'Glasses',
-      );
+      expect(result.outcome.template?.id, 'stat');
     });
 
-    test('presentation', () async {
+    test('out-of-range and hostile values are repaired, not rejected',
+        () async {
       final result = await run(
-        responses: [_validDeck],
-        kind: CreationKind.presentation,
+        responses: [
+          '{"title":"  {count} Steps  ","unit":"a very long unit name '
+              'that goes on","goal":99999,"emoji":"no emoji","accent":"plaid"}',
+        ],
+        kind: CreationKind.app,
+        prompt: 'count steps',
       );
-      expect(result.outcome.artifact, isA<PresentationArtifact>());
-      expect(
-        (result.outcome.artifact as PresentationArtifact).spec.slides,
-        hasLength(2),
-      );
+      final slots = result.outcome.template!.slots;
+      expect(slots['goal'], 500);
+      expect(slots['accent'], 'mint');
+      expect(slots['emoji'], '✨');
+      expect('${slots['title']}', isNot(contains('{')));
+      expect('${slots['unit']}'.length, lessThanOrEqualTo(20));
     });
 
     test('reports designing, writing and validating in order', () async {
       final result = await run(
-        responses: [_validApp],
+        responses: [_counterReply],
         kind: CreationKind.app,
       );
       expect(result.stages, [
@@ -113,129 +142,87 @@ void main() {
     });
   });
 
-  group('repair round', () {
-    test('re-prompts once with the validation errors and uses the fix',
+  group('when the reply is unusable', () {
+    test('it asks once more, then builds the template from the brief',
         () async {
       final result = await run(
-        responses: [_invalidApp, _validApp],
+        responses: ['sorry, I cannot do that', '{"nothing":"useful"}'],
         kind: CreationKind.app,
+        prompt: 'a packing checklist for a trip',
       );
-
-      expect(result.outcome.usedFallback, isFalse);
       expect(result.model.requests, hasLength(2));
-      // The second request must quote the concrete problem back to the model.
-      expect(result.model.requests[1], contains('webview'));
-      expect(result.model.requests[1], contains('corrected JSON'));
-      expect(result.stages, contains(CreationStage.repairing));
-    });
-
-    test('falls back when the repair is also invalid', () async {
-      final result = await run(
-        responses: [_invalidApp, _invalidApp],
-        kind: CreationKind.app,
-      );
-
+      expect(result.model.requests.last, contains('could not be used'));
       expect(result.outcome.usedFallback, isTrue);
-      expect(result.model.requests, hasLength(2));
-      expect(
-        result.model.requests,
-        hasLength(1 + 1),
-        reason: 'exactly one repair round',
-      );
+      // Not a generic counter: the template the brief asked for, titled by it.
+      expect(result.outcome.template?.id, 'checklist');
+      expect(result.outcome.title, 'A packing checklist for a trip');
+      expect(result.outcome.artifact, isA<MiniAppArtifact>());
     });
 
     test('honours maxRepairRounds of zero', () async {
       final result = await run(
-        responses: [_invalidApp, _validApp],
+        responses: ['not json'],
         kind: CreationKind.app,
         maxRepairRounds: 0,
       );
-
-      expect(result.outcome.usedFallback, isTrue);
       expect(result.model.requests, hasLength(1));
+      expect(result.outcome.usedFallback, isTrue);
     });
 
-    test('re-prompts when the reply is not JSON at all', () async {
+    test('a second reply can rescue the first', () async {
       final result = await run(
-        responses: ['I cannot help with that.', _validApp],
+        responses: ['not json', _counterReply],
         kind: CreationKind.app,
+        prompt: 'count glasses of water',
       );
-
       expect(result.outcome.usedFallback, isFalse);
-      expect(result.model.requests[1], contains('not a JSON object'));
+      expect(result.outcome.title, 'Water tracker');
     });
   });
 
-  group('fallback', () {
-    test('produces a runnable starter rather than an error', () async {
+  group('presentations stay free-form', () {
+    test('a valid deck is used as-is, with its theme', () async {
       final result = await run(
-        responses: ['nonsense'],
-        kind: CreationKind.app,
+        responses: [_validDeck],
+        kind: CreationKind.presentation,
       );
+      expect(result.outcome.usedFallback, isFalse);
+      final deck = (result.outcome.artifact as PresentationArtifact).spec;
+      expect(deck.theme.name, 'midnight');
+      expect(deck.slides.first.layoutAt(0).name, 'title');
+      expect(result.outcome.template, isNull);
+    });
 
+    test('an invalid deck is repaired once, then falls back', () async {
+      final result = await run(
+        responses: ['{"title":"x","slides":[]}', '{"title":"x","slides":[]}'],
+        kind: CreationKind.presentation,
+      );
+      expect(result.model.requests, hasLength(2));
       expect(result.outcome.usedFallback, isTrue);
-      final spec = (result.outcome.artifact as MiniAppArtifact).spec;
-      expect(spec.nodes, isNotEmpty);
-      // The starter must be self-consistent: every displayed key is written.
-      expect(spec.referencedKeys.difference(spec.writtenKeys), isEmpty);
-    });
-
-    test('names the creation after the brief', () async {
-      final result = await run(
-        responses: ['nonsense'],
-        kind: CreationKind.app,
-        prompt: 'a plant watering reminder',
-      );
-      expect(result.outcome.title, 'A plant watering reminder');
-    });
-
-    test('every kind has a distinct starter', () async {
-      final app = await run(responses: ['x'], kind: CreationKind.app);
-      final widget = await run(responses: ['x'], kind: CreationKind.widget);
-      final deck = await run(responses: ['x'], kind: CreationKind.presentation);
-
-      expect(app.outcome.artifact, isA<MiniAppArtifact>());
-      expect(widget.outcome.artifact, isA<WidgetArtifact>());
-      expect(deck.outcome.artifact, isA<PresentationArtifact>());
+      expect(result.outcome.artifact, isA<PresentationArtifact>());
     });
   });
 
   group('json salvage feeds the pipeline', () {
     test('recovers a reply wrapped in a think block and fences', () async {
       final result = await run(
-        responses: [
-          '<think>planning the app</think>\n```json\n$_validApp\n```'
-        ],
+        responses: ['<think>hm</think>```json\n$_counterReply\n```'],
         kind: CreationKind.app,
       );
       expect(result.outcome.usedFallback, isFalse);
-      expect(result.outcome.title, 'Habit Tracker');
-    });
-
-    test('recovers a reply truncated mid-object', () async {
-      const truncated =
-          '{"title":"Water","summary":"Hydration.","accent":"sky","nodes":['
-          '{"type":"text","value":"Cups: {count}"},'
-          '{"type":"button","label":"Add","action":{"kind":"set","key":"count","ex';
-      final result = await run(
-        responses: [truncated],
-        kind: CreationKind.app,
-      );
-      // The salvaged spec is missing a complete action, so it is either
-      // repaired or falls back — never a crash and never raw JSON in the UI.
-      expect(result.outcome.title, isNotEmpty);
+      expect(result.outcome.title, 'Water tracker');
     });
 
     test('ignores a browser tool call emitted before the answer', () async {
       final result = await run(
         responses: [
-          '<tool_call>{"name":"browser_search","arguments":{"query":"habits"}}'
-              '</tool_call>$_validApp',
+          '<tool_call>{"name":"browser_search","arguments":{"query":"x"}}'
+              '</tool_call>$_counterReply',
         ],
         kind: CreationKind.app,
       );
       expect(result.outcome.usedFallback, isFalse);
-      expect(result.outcome.title, 'Habit Tracker');
     });
   });
 

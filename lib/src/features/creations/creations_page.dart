@@ -19,6 +19,9 @@ import 'package:finn_ai/src/features/creations/runtime/mini_app_host.dart';
 import 'package:finn_ai/src/features/creations/spec/deck_spec.dart';
 import 'package:finn_ai/src/features/creations/spec/mini_app_spec.dart';
 import 'package:finn_ai/src/features/creations/spec/widget_spec.dart';
+import 'package:finn_ai/src/features/creations/templates/creation_template.dart';
+import 'package:finn_ai/src/features/creations/templates/template_catalog.dart';
+import 'package:finn_ai/src/features/creations/templates/template_slots.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 import 'package:finn_ai/src/shared/widgets/ambient_background.dart';
 import 'package:finn_ai/src/shared/widgets/finn_page_header.dart';
@@ -32,6 +35,8 @@ part 'parts/composer.dart';
 part 'parts/sheets.dart';
 part 'parts/chrome.dart';
 part 'parts/labels.dart';
+part 'parts/template_ui.dart';
+part 'parts/actions.dart';
 
 class CreationsPage extends StatefulWidget {
   const CreationsPage({super.key, this.controller});
@@ -57,6 +62,7 @@ class _CreationsPageState extends State<CreationsPage> {
   _Mode _mode = _Mode.gallery;
   final List<_Turn> _turns = [];
   CreationKind? _pendingKind;
+  String? _pendingTemplateId;
   String? _pendingPrompt;
   bool _modeChosen = false;
 
@@ -152,6 +158,7 @@ class _CreationsPageState extends State<CreationsPage> {
         ..clear()
         ..add(const _KindQuestionTurn());
       _pendingKind = null;
+      _pendingTemplateId = null;
       _pendingPrompt = null;
     });
     _focusNode.requestFocus();
@@ -187,7 +194,7 @@ class _CreationsPageState extends State<CreationsPage> {
       if (_mode == _Mode.gallery) _mode = _Mode.builder;
       _turns.add(_UserTurn(text));
     });
-    unawaited(_run(text, kind));
+    unawaited(_run(text, kind, _pendingTemplateId));
   }
 
   void _chooseKind(CreationKind kind) {
@@ -200,7 +207,13 @@ class _CreationsPageState extends State<CreationsPage> {
       } else {
         _turns.add(_KindQuestionTurn(answered: kind));
       }
+      _pendingTemplateId = null;
       if (pending == null) {
+        // A starting point is offered only for kinds that have templates, and
+        // only while the brief has not been typed yet.
+        if (CreationTemplates.forKind(kind).isNotEmpty) {
+          _turns.add(_TemplateQuestionTurn(kind: kind));
+        }
         _turns.add(
           _AssistantNoteTurn(
             L10n.of(context).creationsDescribeKind(_kindLabel(context, kind)),
@@ -215,19 +228,39 @@ class _CreationsPageState extends State<CreationsPage> {
       _scrollToEnd();
       return;
     }
-    unawaited(_run(pending, kind));
+    unawaited(_run(pending, kind, null));
   }
 
-  Future<void> _run(String prompt, CreationKind kind) async {
+  void _chooseTemplate(String? id) {
+    setState(() {
+      _pendingTemplateId = id;
+      final index =
+          _turns.lastIndexWhere((turn) => turn is _TemplateQuestionTurn);
+      if (index >= 0) {
+        final previous = _turns[index] as _TemplateQuestionTurn;
+        _turns[index] =
+            _TemplateQuestionTurn(kind: previous.kind, answered: id);
+      }
+    });
+    _focusNode.requestFocus();
+  }
+
+  Future<void> _run(
+    String prompt,
+    CreationKind kind,
+    String? templateId,
+  ) async {
     const progress = _ProgressTurn();
     setState(() => _turns.add(progress));
     _scrollToEnd();
 
-    final result = await _controller.create(prompt, kind);
+    final result =
+        await _controller.create(prompt, kind, templateId: templateId);
     if (!mounted) return;
     setState(() {
       _turns.remove(progress);
       _pendingKind = null;
+      _pendingTemplateId = null;
       _pendingPrompt = null;
       if (result == null) {
         // A stopped job is a deliberate user action, not a failure, so it gets
@@ -258,131 +291,6 @@ class _CreationsPageState extends State<CreationsPage> {
         curve: Curves.easeOutCubic,
       );
     });
-  }
-
-  Future<void> _open(FinnCreation creation) async {
-    switch (creation.artifact) {
-      case MiniAppArtifact(:final spec):
-        await Navigator.of(context).push(
-          FinnPageRoute<void>(
-            child: MiniAppHost(
-              title: creation.title,
-              spec: spec,
-              onBack: () => Navigator.of(context).pop(),
-            ),
-          ),
-        );
-      case PresentationArtifact(:final spec):
-        await Navigator.of(context).push(
-          FinnPageRoute<void>(
-            child: DeckViewer(
-              title: creation.title,
-              deck: spec,
-              onBack: () => Navigator.of(context).pop(),
-              onExport: () => unawaited(_exportDeck(creation, spec)),
-            ),
-          ),
-        );
-      case WidgetArtifact(:final spec):
-        await _showWidgetPreview(creation, spec);
-      case LegacyDocumentArtifact():
-        await _showDocument(creation);
-    }
-  }
-
-  Future<void> _showWidgetPreview(FinnCreation creation, HomeWidgetSpec spec) {
-    return showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      useSafeArea: true,
-      builder: (_) => _WidgetPreviewSheet(
-        creation: creation,
-        spec: spec,
-        onAddToHomeScreen: () {
-          Navigator.pop(context);
-          unawaited(_addToHomeScreen(creation));
-        },
-      ),
-    );
-  }
-
-  Future<void> _showDocument(FinnCreation creation) {
-    return showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      useSafeArea: true,
-      builder: (_) => _DocumentSheet(
-        creation: creation,
-        onDelete: () {
-          Navigator.pop(context);
-          unawaited(_controller.delete(creation));
-        },
-      ),
-    );
-  }
-
-  Future<void> _addToHomeScreen(FinnCreation creation) async {
-    final supported = await _homeScreen.isSupported();
-    if (!mounted) return;
-    if (!supported) {
-      _snack(L10n.of(context).creationsHomeScreenUnsupported);
-      return;
-    }
-    final ok = switch (creation.artifact) {
-      WidgetArtifact(:final spec) => await _homeScreen.addWidgetToHomeScreen(
-          creationId: creation.id,
-          spec: spec,
-          label: creation.title,
-        ),
-      MiniAppArtifact() => await _homeScreen.addCreationShortcut(
-          creationId: creation.id,
-          label: creation.title,
-        ),
-      _ => false,
-    };
-    if (!mounted) return;
-    _snack(
-      ok
-          ? L10n.of(context).creationsHomeScreenAdded
-          : L10n.of(context).creationsHomeScreenFailed,
-    );
-  }
-
-  Future<void> _exportDeck(FinnCreation creation, DeckSpec deck) async {
-    try {
-      final file = await _deckExport.export(deck, title: creation.title);
-      if (!mounted) return;
-      final shared = await _homeScreen.shareFile(
-        path: file.path,
-        mimeType: 'application/vnd.openxmlformats-officedocument'
-            '.presentationml.presentation',
-        label: creation.title,
-      );
-      if (!mounted) return;
-      _snack(
-        shared
-            ? L10n.of(context).creationsExportedShared
-            : L10n.of(context).creationsExportedTo(
-                file.path.split(Platform.pathSeparator).last,
-              ),
-      );
-    } on Object {
-      if (mounted) _snack(L10n.of(context).creationsExportFailed);
-    }
-  }
-
-  void _snack(String message) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(message),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: FluxColors.inkOf(context),
-        ),
-      );
   }
 
   @override
@@ -550,6 +458,8 @@ class _CreationsPageState extends State<CreationsPage> {
         scrollController: _transcriptScroll,
         stage: _controller.stage,
         onChooseKind: _chooseKind,
+        onChooseTemplate: _chooseTemplate,
+        onEdit: _editCreation,
         onOpen: _open,
         onAddToHomeScreen: _addToHomeScreen,
         onExport: (creation) => unawaited(

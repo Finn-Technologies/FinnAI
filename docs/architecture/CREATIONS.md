@@ -25,13 +25,18 @@ that can compute a value is `SafeExpression`, a recursive-descent parser over in
 (`+ - * / %`, parentheses, literals, state keys). There is no `eval`, no `dart:mirrors`, no
 `dart_eval`. An expression the parser cannot read is a *validation error*, not a runtime hazard.
 
+> The component vocabulary below is what templates are *built from* and what the validator still
+> enforces. The model no longer writes it directly.
+
 ### Mini-app vocabulary
 
 `spec/mini_app_spec.dart`: `text`, `button`, `field`, `toggle`, `slider`, `list`, `progress`,
 `choice`, `image`, `row`, `column`, `spacer`.
 
 Actions are the only mutation primitives: `set {key, expr}`, `toggle {key}`, `increment {key, by}`,
-`append {key, value}`, `reset`.
+`append {key, value, clear?}`, `reset`. An `append` value may contain `{key}` placeholders read when
+the button is pressed, and `clear` empties a key afterwards: `{"value":"{draft}","clear":"draft"}`
+adds what was typed and clears the field, which is what lets a notes or shopping list exist.
 
 Text nodes interpolate state with `{key}`; expressions are arithmetic only.
 
@@ -49,22 +54,50 @@ there is no path by which a spec can inject arbitrary styling.
 
 ---
 
-## 2. Generation pipeline
+## 2. Generation pipeline (template-first, ADR 0003)
+
+Apps and widgets are **templates**, not free-form specs. A `CreationTemplate`
+(`templates/`) owns layout, wiring and style and exposes a few typed **slots**
+(`title`, `goal`, `items`, `accent`, …). The model's whole job is to fill those slots; it never
+writes a component tree, so a reply can be wrong in *content* but never in *structure*.
 
 `creation_generator.dart`, driven from `creations_controller.dart`:
 
-1. **Designing** — build a kind-specific, JSON-only prompt (`creation_prompts.dart`) that enumerates
-   the closed vocabulary and the caps, with one compact example.
-2. **Writing** — one bounded engine call at `temperature ≈ 0.15` with the search-decision pass
-   disabled, so the budget is never spent on a tool call.
+1. **Choosing** — `CreationTemplates.pick(kind, brief)` picks the template from multilingual
+   whole-word keywords (deterministic; the model is not asked). The user may override it with a chip
+   in the builder.
+2. **Designing/Writing** — `SlotPrompt.build` shows the model a flat JSON object of a few short
+   values and what each means, with the limits taken from the slot definitions themselves (one
+   source of truth). One bounded engine call at `temperature ≈ 0.15`.
 3. **Parsing** — `json_salvage.dart` strips `<think>` blocks and fences, skips browser tool calls,
-   and salvages a reply that was truncated mid-object.
-4. **Validating** — `spec_validator.dart` returns `List<SpecIssue>`; nothing throws.
-5. **Repairing** — on issues, re-prompt **once** with the concrete error list appended.
-6. **Fallback** — still invalid ⇒ a deterministic starter (`creation_fallbacks.dart`) that actually
-   works, plus a quiet note in the transcript.
+   and salvages a reply truncated mid-object.
+4. **Sanitising** — `SlotSanitizer` never throws and never returns an invalid value: a missing,
+   mistyped or out-of-range slot takes its fallback; text loses control characters and `{}` (so a
+   value cannot inject a `{key}` placeholder); lists are deduped and capped. A reply with *no*
+   usable slot counts as "nothing".
+5. **Retrying** — nothing usable earns one more try with a one-line note.
+6. **Fallback** — still nothing ⇒ the **same template filled from the brief** (title from the
+   brief, defaults elsewhere), flagged `usedFallback`. The old generic counter is gone: a failed
+   "shopping list" is still a shopping list.
 
-Failure is therefore graceful: the worst case is a working counter instead of a bespoke app.
+Presentations stay free-form (a deck is prose). The model writes slides plus a `theme` and
+per-slide `layout` from closed lists; the validator decides; one repair round; then a small
+starter outline.
+
+### Templates
+
+| Kind | Templates | What the model fills |
+|---|---|---|
+| App | `counter` (goal + progress), `checklist`, `list` (type to add), `scoreboard` | title, unit/goal/emoji, items, names, accent |
+| Widget | `stat` (one big number), `rows` (up to four `Label: value` lines) | title, label/value, rows, footer, accent |
+| Deck | (themes + layouts) `paper`, `midnight`, `mint`, `sunset`, `mono` × `title`, `bullets`, `section`, `quote` | slides |
+
+A template-made creation stores `template: {id, slots}` beside its artifact, so **Edit** rebuilds it
+from edited slots with no model call (`CreationsController.editSlots`). Creations made before
+templates have none and stay view-only.
+
+Tests prove every template is valid by construction: each builds and validates from its fallbacks,
+its prompt examples, and 300 rounds of hostile input, and every built app's buttons are pressed.
 
 ### Stages and cancellation
 

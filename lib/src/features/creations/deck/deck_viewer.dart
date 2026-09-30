@@ -3,8 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import 'package:finn_ai/l10n/l10n_helper.dart';
-import 'package:finn_ai/src/features/creations/creation_model.dart';
-import 'package:finn_ai/src/features/creations/creation_palette.dart';
+import 'package:finn_ai/src/features/creations/deck/slide_card.dart';
 import 'package:finn_ai/src/features/creations/spec/deck_spec.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 import 'package:finn_ai/src/shared/widgets/ambient_background.dart';
@@ -97,12 +96,10 @@ class _DeckViewerState extends State<DeckViewer> {
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Flexible(
-                                  child: _SlideCard(
+                                  child: DeckSlideCard(
                                     slide: slides[index],
-                                    accent: CreationPalette.tileFor(
-                                      CreationKind.presentation,
-                                    ),
-                                    isTitleSlide: index == 0,
+                                    theme: widget.deck.theme,
+                                    index: index,
                                   ),
                                 ),
                                 if (slides[index].notes.trim().isNotEmpty) ...[
@@ -152,105 +149,6 @@ class _DeckViewerState extends State<DeckViewer> {
               ],
             );
           },
-        ),
-      ),
-    );
-  }
-}
-
-class _SlideCard extends StatelessWidget {
-  const _SlideCard({
-    required this.slide,
-    required this.accent,
-    required this.isTitleSlide,
-  });
-
-  final DeckSlide slide;
-  final Color accent;
-  final bool isTitleSlide;
-
-  @override
-  Widget build(BuildContext context) {
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 620),
-      child: AspectRatio(
-        aspectRatio: 16 / 9,
-        child: Container(
-          padding: EdgeInsets.all(isTitleSlide ? 26 : 22),
-          decoration: BoxDecoration(
-            color: FluxColors.cardOf(context),
-            borderRadius: BorderRadius.circular(FluxRadius.card),
-            border: Border.all(
-              color: FluxColors.lineOf(context).withValues(alpha: .8),
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 34,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: accent,
-                  borderRadius: BorderRadius.circular(FluxRadius.pill),
-                ),
-              ),
-              const SizedBox(height: 14),
-              Text(
-                slide.title,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: (isTitleSlide
-                        ? Theme.of(context).textTheme.headlineLarge
-                        : Theme.of(context).textTheme.titleLarge)
-                    ?.copyWith(height: 1.2),
-              ),
-              if (slide.bullets.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                Flexible(
-                  child: SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        for (final bullet in slide.bullets)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 6),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 7),
-                                  child: Container(
-                                    width: 5,
-                                    height: 5,
-                                    decoration: BoxDecoration(
-                                      color: FluxColors.mutedOf(context),
-                                      shape: BoxShape.circle,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 9),
-                                Expanded(
-                                  child: Text(
-                                    bullet,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodyMedium
-                                        ?.copyWith(height: 1.35),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
         ),
       ),
     );

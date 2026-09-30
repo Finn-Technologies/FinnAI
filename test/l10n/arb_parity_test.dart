@@ -64,6 +64,12 @@ const Map<String, String> _identicalAllowlist = {
   'creationsFilterWidgets': 'loanword',
   'onboardingInstallProgressStatus': 'placeholder-only template',
   'commonNo': 'cognate (es/it)',
+  'creationsSlotTitle': 'cognate (de: Name)',
+  'creationsSlotEmoji': 'loanword',
+  'creationsAccentMint': 'cognate (de: Mint)',
+  'creationsAccentRose': 'cognate (fr: Rose)',
+  'creationsAccentLime': 'cognate (it: Lime)',
+  'creationsAccentViolet': 'cognate (fr: Violet)',
 };
 
 void main() {

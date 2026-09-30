@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import 'package:finn_ai/src/features/creations/spec/mini_app_spec.dart';
+import 'package:finn_ai/src/features/creations/spec/safe_expression.dart';
 
 /// Runtime state for one mini app.
 ///
@@ -37,12 +38,16 @@ class MiniAppState extends ChangeNotifier {
         _values[key] = !_asBool(_values[key]);
       case IncrementAction(:final key, :final by):
         _values[key] = _asInt(_values[key]) + by;
-      case AppendAction(:final key, :final value):
+      case AppendAction(:final key, :final value, :final clearKey):
+        final text = SafeExpression.interpolate(value, _values).trim();
+        // Nothing typed is nothing to add, and the field stays as it was.
+        if (text.isEmpty) return;
         final current = _values[key];
         final items =
             current is List ? List<Object?>.from(current) : <Object?>[];
-        items.add(value);
+        items.add(text);
         _values[key] = items;
+        if (clearKey != null) _values[clearKey] = '';
       case ResetAction():
         reset();
         return;
