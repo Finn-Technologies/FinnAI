@@ -212,6 +212,8 @@ class WebSearchPolicy {
   static bool _namesSomething(String original) {
     final words = original.split(' ');
     for (var i = 1; i < words.length; i++) {
+      // A capital after a full stop is the next sentence, not a name.
+      if (RegExp(r'[.!?…]["”)]*$').hasMatch(words[i - 1])) continue;
       final word = words[i].replaceAll(
           RegExp(r'^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$', unicode: true), '');
       if (word.length < 2) continue;

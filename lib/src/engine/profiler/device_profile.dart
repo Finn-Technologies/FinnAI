@@ -196,7 +196,8 @@ class DeviceProfiler {
   static InferencePlan plan(DeviceProfile profile) {
     final processor = profile.processor;
 
-    final constrained = profile.lowMemory ||
+    final constrained = forceLite ||
+        profile.lowMemory ||
         (profile.availableRamBytes != null &&
             profile.availableRamBytes! < 1800 * 1024 * 1024) ||
         (profile.totalRamBytes != null &&

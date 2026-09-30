@@ -51,6 +51,11 @@ void main() {
     }
     // A named subject is where a small model guesses; retrieval helps.
     expect(policy.shouldSearch('When did Rome fall?'), isTrue);
+    // A capital after a full stop is a new sentence, not a name.
+    expect(
+      policy.shouldSearch('What number is written here? Answer briefly.'),
+      isFalse,
+    );
     expect(
       policy.shouldSearch('Come funziona il routing in Bridgetown?'),
       isTrue,

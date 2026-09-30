@@ -76,10 +76,14 @@ fi
 
 [[ "$LITE" -eq 1 ]] && DEFINES+=(--dart-define=FINN_FORCE_LITE=true)
 if [[ -n "$IMAGE" ]]; then
-  # The image travels as a file; the app-specific external dir is shell-writable.
-  adb shell mkdir -p "${REMOTE_DIR}" >/dev/null 2>&1 || true
-  adb push "$IMAGE" "${REMOTE_DIR}/$(basename "$IMAGE")" >/dev/null
-  DEFINES+=(--dart-define=FINN_EVAL_IMAGE="${REMOTE_DIR}/$(basename "$IMAGE")")
+  # The image travels as a file. The app cannot read a file the shell pushed to
+  # external storage, so stage it in /data/local/tmp and copy it into the app's
+  # own files directory with run-as (debug builds only).
+  IMAGE_NAME="$(basename "$IMAGE")"
+  adb push "$IMAGE" "/data/local/tmp/${IMAGE_NAME}" >/dev/null
+  adb shell run-as "$PACKAGE" mkdir -p files
+  adb shell run-as "$PACKAGE" cp "/data/local/tmp/${IMAGE_NAME}" "files/${IMAGE_NAME}"
+  DEFINES+=(--dart-define=FINN_EVAL_IMAGE="/data/user/0/${PACKAGE}/files/${IMAGE_NAME}")
 fi
 
 if [[ -n "$PROMPT_FILE" ]]; then

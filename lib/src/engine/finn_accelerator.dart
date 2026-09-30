@@ -41,6 +41,7 @@ part 'download/progress.dart';
 part 'download/model_artifacts.dart';
 part 'session/session_key.dart';
 part 'generate/reply_gate.dart';
+part 'generate/empty_reply_retry.dart';
 
 /// Per-generation RNG used to pick a fresh llama.cpp sampler seed.
 ///

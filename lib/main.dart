@@ -90,9 +90,10 @@ final _evalSearch = SearchTurn();
 /// measures the path a user's message takes and not the engine alone.
 Future<EvalGrounding> _groundEvalTurn(
   String prompt,
-  List<LocalChatTurn> history,
-) async {
-  final plan = const SearchPlanner().plan(prompt);
+  List<LocalChatTurn> history, {
+  required bool hasAttachment,
+}) async {
+  final plan = const SearchPlanner().plan(prompt, hasAttachment: hasAttachment);
   if (!plan.search) return EvalGrounding.none;
   final result = await _evalSearch.run(plan);
   return EvalGrounding(

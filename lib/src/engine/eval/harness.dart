@@ -44,8 +44,9 @@ class EvalGrounding {
 /// does not depend on `features/`.
 typedef EvalGrounder = Future<EvalGrounding> Function(
   String prompt,
-  List<LocalChatTurn> history,
-);
+  List<LocalChatTurn> history, {
+  required bool hasAttachment,
+});
 
 /// The bits of the engine the harness reads back after a turn.
 @immutable
@@ -453,7 +454,12 @@ Future<void> runEvalHarness({EvalGrounder? grounder}) async {
     }) async* {
       final grounding = grounder == null
           ? EvalGrounding.none
-          : await grounder(prompt, history);
+          : await grounder(
+              prompt,
+              history,
+              hasAttachment:
+                  history.isNotEmpty && history.last.imageBytes != null,
+            );
       searchedThisTurn = grounding.searched;
       yield* engine.generateReply(
         prompt,

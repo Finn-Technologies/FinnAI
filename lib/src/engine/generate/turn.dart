@@ -312,119 +312,180 @@ extension FinnAcceleratorTurn on FinnAccelerator {
             'promptChars=${renderedPrompt.length}',
           );
           trace?.mark(TtftPhase.generationRequested);
-          _generation = session
-              .generate(
-            prompt: renderedPrompt,
-            addSpecial: !entry.primed && !entry.basePrefixReady,
-            parseSpecial: true,
-            maxTokens: outputBudget,
-            media: (hasAttachedImage && runtime.engine.multimodalLoaded)
-                ? effectiveMediaList
-                : const <LlamaMedia>[],
-            shiftPolicy: runtime.engine.canShift && effectiveMediaList.isEmpty
-                ? ContextShiftPolicy.auto
-                : ContextShiftPolicy.off,
-            shift: ContextShift(
-              nKeep: entry.basePrefixReady ? 321 : 0,
-            ),
-            sampler: (samplerProfile ??
-                    PromptIntentPolicy.sampler(promptAnalysis.intent))
-                .params
-                .copyWith(seed: _nextGenerationSeed()),
-          )
-              .listen(
-            (event) {
-              if (generationEpoch != _generationEpoch) return;
-              if (event case TokenEvent(:final text)) {
-                emittedTokens++;
-                trace?.mark(TtftPhase.nativeToken);
-                if (text.isNotEmpty && firstTokenAt == null) {
-                  firstTokenAt = runWatch.elapsed;
-                  if (PerfLogSampler.sample()) {
-                    debugPrint(
-                      'FINN_PERF first_token_ms=${firstTokenAt!.inMilliseconds} '
-                      'model=${model.tier.name} '
-                      'ctx=${_plan?.contextSize} threads=${_plan?.threads}',
+          var attemptId = 0;
+          var retryBudget = 1;
+          var visibleEmitted = 0;
+          StreamSubscription<GenerationEvent> attempt(
+            String promptText, {
+            required bool addSpecial,
+            required int id,
+          }) =>
+              session
+                  .generate(
+                prompt: promptText,
+                addSpecial: addSpecial,
+                parseSpecial: true,
+                maxTokens: outputBudget,
+                media: (hasAttachedImage && runtime.engine.multimodalLoaded)
+                    ? effectiveMediaList
+                    : const <LlamaMedia>[],
+                shiftPolicy:
+                    runtime.engine.canShift && effectiveMediaList.isEmpty
+                        ? ContextShiftPolicy.auto
+                        : ContextShiftPolicy.off,
+                shift: ContextShift(
+                  nKeep: entry.basePrefixReady ? 321 : 0,
+                ),
+                sampler: (samplerProfile ??
+                        PromptIntentPolicy.sampler(promptAnalysis.intent))
+                    .params
+                    .copyWith(seed: _nextGenerationSeed()),
+              )
+                  .listen(
+                (event) {
+                  if (generationEpoch != _generationEpoch) return;
+                  if (event case TokenEvent(:final text)) {
+                    emittedTokens++;
+                    trace?.mark(TtftPhase.nativeToken);
+                    if (text.isNotEmpty && firstTokenAt == null) {
+                      firstTokenAt = runWatch.elapsed;
+                      if (PerfLogSampler.sample()) {
+                        debugPrint(
+                          'FINN_PERF first_token_ms=${firstTokenAt!.inMilliseconds} '
+                          'model=${model.tier.name} '
+                          'ctx=${_plan?.contextSize} threads=${_plan?.threads}',
+                        );
+                      }
+                    }
+                    if (text.isNotEmpty) {
+                      visibleEmitted++;
+                      output.add(text);
+                    }
+                  } else if (event
+                      case DoneEvent(
+                        :final trailingText,
+                        :final generatedCount,
+                        :final reason,
+                      )) {
+                    // A reply that ended at once with nothing visible is a rare
+                    // native hiccup (the eval saw one in ~40 turns, on a greeting).
+                    // One fresh attempt on a cleared session is cheap and turns a
+                    // silent empty turn into an answer; a second empty result is
+                    // reported as it is.
+                    if (retryBudget > 0 &&
+                        visibleEmitted == 0 &&
+                        trailingText.isEmpty &&
+                        finishReasonFromStopReason(reason) ==
+                            GenerationFinishReason.eos) {
+                      retryBudget--;
+                      attemptId++;
+                      debugPrint('FINN_RETRY empty reply; retrying once');
+                      unawaited(() async {
+                        try {
+                          await session.clear();
+                          entry.primed = false;
+                          entry.basePrefixReady = false;
+                          emittedTokens = 0;
+                          final again = _renderPrompt(
+                            entry,
+                            prompt,
+                            history,
+                            systemContext: systemContext,
+                            groundedContext: groundedContext,
+                            analysis: promptAnalysis,
+                            includeTaskInstruction: true,
+                            primeEmptyThinking: primeEmptyThinking,
+                            includeMediaMarker: useMediaMarker,
+                            mediaCount:
+                                useMediaMarker ? effectiveMediaList.length : 0,
+                            attachedDocContext: attachedDocContext,
+                          );
+                          if (generationEpoch != _generationEpoch) return;
+                          _generation =
+                              attempt(again, addSpecial: true, id: attemptId);
+                        } catch (error, stack) {
+                          output.addError(error, stack);
+                          await output.close();
+                        }
+                      }());
+                      return;
+                    }
+                    nativeFinished = true;
+                    if (trailingText.isNotEmpty) output.add(trailingText);
+                    final total = runWatch.elapsed;
+                    final decodeMs = total.inMilliseconds -
+                        (firstTokenAt?.inMilliseconds ?? total.inMilliseconds);
+                    final decodeTokens = math.max(0, generatedCount - 1);
+                    final tokensPerSecond =
+                        decodeMs <= 0 ? 0.0 : decodeTokens * 1000 / decodeMs;
+                    _lastGenerationReport = GenerationReport(
+                      model: model,
+                      intent: promptAnalysis.intent,
+                      route: model.tier,
+                      outputBudget: outputBudget,
+                      finishReason: finishReasonFromStopReason(reason),
+                      firstTokenLatency: firstTokenAt,
+                      totalGenerationTime: total,
+                      outputTokens: generatedCount,
+                      tokensPerSecond: tokensPerSecond,
                     );
+                    if (PerfLogSampler.sample()) {
+                      final totalMs = total.inMilliseconds;
+                      debugPrint(
+                        'FINN_PERF done total_ms=$totalMs decode_ms=$decodeMs '
+                        'tokens=$generatedCount emitted=$emittedTokens '
+                        'tps=${tokensPerSecond.toStringAsFixed(2)}',
+                      );
+                    }
                   }
-                }
-                if (text.isNotEmpty) {
-                  output.add(text);
-                }
-              } else if (event
-                  case DoneEvent(
-                    :final trailingText,
-                    :final generatedCount,
-                    :final reason,
-                  )) {
-                nativeFinished = true;
-                if (trailingText.isNotEmpty) output.add(trailingText);
-                final total = runWatch.elapsed;
-                final decodeMs = total.inMilliseconds -
-                    (firstTokenAt?.inMilliseconds ?? total.inMilliseconds);
-                final decodeTokens = math.max(0, generatedCount - 1);
-                final tokensPerSecond =
-                    decodeMs <= 0 ? 0.0 : decodeTokens * 1000 / decodeMs;
-                _lastGenerationReport = GenerationReport(
-                  model: model,
-                  intent: promptAnalysis.intent,
-                  route: model.tier,
-                  outputBudget: outputBudget,
-                  finishReason: finishReasonFromStopReason(reason),
-                  firstTokenLatency: firstTokenAt,
-                  totalGenerationTime: total,
-                  outputTokens: generatedCount,
-                  tokensPerSecond: tokensPerSecond,
-                );
-                if (PerfLogSampler.sample()) {
-                  final totalMs = total.inMilliseconds;
-                  debugPrint(
-                    'FINN_PERF done total_ms=$totalMs decode_ms=$decodeMs '
-                    'tokens=$generatedCount emitted=$emittedTokens '
-                    'tps=${tokensPerSecond.toStringAsFixed(2)}',
+                },
+                onError: (Object error, StackTrace stack) {
+                  _lastGenerationReport = GenerationReport(
+                    model: model,
+                    intent: promptAnalysis.intent,
+                    route: model.tier,
+                    outputBudget: outputBudget,
+                    finishReason: GenerationFinishReason.error,
+                    firstTokenLatency: firstTokenAt,
+                    totalGenerationTime: runWatch.elapsed,
+                    outputTokens: emittedTokens,
+                    tokensPerSecond: 0,
                   );
-                }
-              }
-            },
-            onError: (Object error, StackTrace stack) {
-              _lastGenerationReport = GenerationReport(
-                model: model,
-                intent: promptAnalysis.intent,
-                route: model.tier,
-                outputBudget: outputBudget,
-                finishReason: GenerationFinishReason.error,
-                firstTokenLatency: firstTokenAt,
-                totalGenerationTime: runWatch.elapsed,
-                outputTokens: emittedTokens,
-                tokensPerSecond: 0,
+                  _setStatus(
+                    InferencePhase.error,
+                    _friendlyError(error),
+                    key: FinnStatusKey.error,
+                  );
+                  output.addError(error, stack);
+                  unawaited(output.close());
+                  unawaited(_recoverAfterError());
+                },
+                onDone: () {
+                  // A retried attempt owns the turn now; the first one just ended.
+                  if (id != attemptId) return;
+                  _generation = null;
+                  if (identical(_activeOutput, output)) {
+                    _activeOutput = null;
+                  }
+                  _lastSources = sources;
+                  entry.primed = true;
+                  entry.lastTaskInstruction = taskInstruction;
+                  entry.messageCount = history.length + 2;
+                  entry.lastUsed = ++runtime.useSequence;
+                  _setStatus(
+                    InferencePhase.idle,
+                    'Generated locally',
+                    key: FinnStatusKey.generatedLocally,
+                  );
+                  unawaited(output.close());
+                },
+                cancelOnError: true,
               );
-              _setStatus(
-                InferencePhase.error,
-                _friendlyError(error),
-                key: FinnStatusKey.error,
-              );
-              output.addError(error, stack);
-              unawaited(output.close());
-              unawaited(_recoverAfterError());
-            },
-            onDone: () {
-              _generation = null;
-              if (identical(_activeOutput, output)) {
-                _activeOutput = null;
-              }
-              _lastSources = sources;
-              entry.primed = true;
-              entry.lastTaskInstruction = taskInstruction;
-              entry.messageCount = history.length + 2;
-              entry.lastUsed = ++runtime.useSequence;
-              _setStatus(
-                InferencePhase.idle,
-                'Generated locally',
-                key: FinnStatusKey.generatedLocally,
-              );
-              unawaited(output.close());
-            },
-            cancelOnError: true,
+
+          _generation = attempt(
+            renderedPrompt,
+            addSpecial: !entry.primed && !entry.basePrefixReady,
+            id: attemptId,
           );
         } on _GenerationCancelled {
           if (identical(_activeOutput, output)) _activeOutput = null;
