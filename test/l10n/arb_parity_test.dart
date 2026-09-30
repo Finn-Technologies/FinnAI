@@ -68,6 +68,7 @@ const Map<String, String> _identicalAllowlist = {
   'creationsSlotEmoji': 'loanword',
   'creationsAccentMint': 'cognate (de: Mint)',
   'creationsAccentRose': 'cognate (fr: Rose)',
+  'flowsSlotMessage': 'cognate (fr: Message)',
   'creationsAccentLime': 'cognate (it: Lime)',
   'creationsAccentViolet': 'cognate (fr: Violet)',
 };

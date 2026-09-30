@@ -685,6 +685,110 @@ class AppLocalizationsEs extends AppLocalizations {
   String get flowsRunBySchedule => 'Se ejecutó solo';
 
   @override
+  String get flowsAutomationsTitle => 'Automatizaciones';
+
+  @override
+  String get flowsAutomationsSubtitle =>
+      'Cosas que Finn hace por ti con un horario. Nada se ejecuta si no lo activas.';
+
+  @override
+  String get flowsNewAutomation => 'Nueva automatización';
+
+  @override
+  String get flowsNoAutomations =>
+      'Aún no hay automatizaciones. Empieza con un resumen matutino.';
+
+  @override
+  String get flowsTemplateMorningBrief => 'Resumen matutino';
+
+  @override
+  String get flowsTemplateMorningBriefBody =>
+      'Las noticias que te importan y el tiempo, en pocas líneas.';
+
+  @override
+  String get flowsTemplateWebCheck => 'Revisión web';
+
+  @override
+  String get flowsTemplateWebCheckBody =>
+      'Revisa un tema y te dice qué hay de nuevo.';
+
+  @override
+  String get flowsTemplateReminder => 'Recordatorio';
+
+  @override
+  String get flowsTemplateReminderBody =>
+      'Una notificación con tus propias palabras.';
+
+  @override
+  String get flowsSlotTopics => 'Qué seguir';
+
+  @override
+  String get flowsSlotCity => 'Ciudad para el tiempo (opcional)';
+
+  @override
+  String get flowsSlotTopic => 'Tema';
+
+  @override
+  String get flowsSlotMessage => 'Mensaje';
+
+  @override
+  String get flowsScheduleHeading => 'Cuándo';
+
+  @override
+  String get flowsScheduleManual => 'Solo cuando tú lo ejecutas';
+
+  @override
+  String flowsScheduleWeekdaysAt(String time) {
+    return 'Días laborables a las $time';
+  }
+
+  @override
+  String get flowsScheduleEveryDay => 'Todos los días';
+
+  @override
+  String get flowsScheduleWeekdaysOnly => 'Días laborables';
+
+  @override
+  String get flowsScheduleTime => 'Hora';
+
+  @override
+  String get flowsNotifyWhyTitle => '¿Permitir notificaciones?';
+
+  @override
+  String get flowsNotifyWhyBody =>
+      'Finn envía una notificación cuando toca esta automatización. Sin ella, solo se ejecuta cuando tocas Ejecutar.';
+
+  @override
+  String get flowsNotifyAllow => 'Permitir';
+
+  @override
+  String get flowsNotifyOff =>
+      'Las notificaciones están desactivadas, así que no se ejecutará sola.';
+
+  @override
+  String flowsRunning(String name) {
+    return 'Ejecutando $name…';
+  }
+
+  @override
+  String flowsRunReady(String name) {
+    return '$name está listo';
+  }
+
+  @override
+  String flowsRunCouldNotFinish(String name) {
+    return '$name no pudo terminar';
+  }
+
+  @override
+  String get flowsOpenResult => 'Abrir resultado';
+
+  @override
+  String flowsNextRun(String when) {
+    return 'Próxima: $when';
+  }
+
+  @override
   String get flowsRunByYou => 'Lo ejecutaste tú';
 
   @override
@@ -715,9 +819,6 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get flowsScheduleLabel => 'Se ejecuta';
-
-  @override
-  String get flowsScheduleManual => 'Solo cuando tú lo ejecutas';
 
   @override
   String flowsScheduleDaily(String time) {

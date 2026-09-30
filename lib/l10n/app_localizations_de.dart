@@ -686,6 +686,110 @@ class AppLocalizationsDe extends AppLocalizations {
   String get flowsRunBySchedule => 'Automatisch ausgeführt';
 
   @override
+  String get flowsAutomationsTitle => 'Automatisierungen';
+
+  @override
+  String get flowsAutomationsSubtitle =>
+      'Dinge, die Finn nach Zeitplan für dich erledigt. Nichts läuft, solange du es nicht einschaltest.';
+
+  @override
+  String get flowsNewAutomation => 'Neue Automatisierung';
+
+  @override
+  String get flowsNoAutomations =>
+      'Noch keine Automatisierungen. Beginne mit einem Morgenbriefing.';
+
+  @override
+  String get flowsTemplateMorningBrief => 'Morgenbriefing';
+
+  @override
+  String get flowsTemplateMorningBriefBody =>
+      'Nachrichten, die dich interessieren, und das Wetter in wenigen Zeilen.';
+
+  @override
+  String get flowsTemplateWebCheck => 'Web-Check';
+
+  @override
+  String get flowsTemplateWebCheckBody =>
+      'Prüft ein Thema und sagt dir, was es Neues gibt.';
+
+  @override
+  String get flowsTemplateReminder => 'Erinnerung';
+
+  @override
+  String get flowsTemplateReminderBody =>
+      'Eine Benachrichtigung mit deinen eigenen Worten.';
+
+  @override
+  String get flowsSlotTopics => 'Was du verfolgen möchtest';
+
+  @override
+  String get flowsSlotCity => 'Stadt für das Wetter (optional)';
+
+  @override
+  String get flowsSlotTopic => 'Thema';
+
+  @override
+  String get flowsSlotMessage => 'Nachricht';
+
+  @override
+  String get flowsScheduleHeading => 'Wann';
+
+  @override
+  String get flowsScheduleManual => 'Nur, wenn du ihn startest';
+
+  @override
+  String flowsScheduleWeekdaysAt(String time) {
+    return 'Werktage um $time';
+  }
+
+  @override
+  String get flowsScheduleEveryDay => 'Jeden Tag';
+
+  @override
+  String get flowsScheduleWeekdaysOnly => 'Werktage';
+
+  @override
+  String get flowsScheduleTime => 'Uhrzeit';
+
+  @override
+  String get flowsNotifyWhyTitle => 'Benachrichtigungen erlauben?';
+
+  @override
+  String get flowsNotifyWhyBody =>
+      'Finn sendet eine Benachrichtigung, wenn die Automatisierung fällig ist. Ohne sie läuft sie nur, wenn du auf Ausführen tippst.';
+
+  @override
+  String get flowsNotifyAllow => 'Erlauben';
+
+  @override
+  String get flowsNotifyOff =>
+      'Benachrichtigungen sind aus, daher läuft das nicht von selbst.';
+
+  @override
+  String flowsRunning(String name) {
+    return '$name wird ausgeführt …';
+  }
+
+  @override
+  String flowsRunReady(String name) {
+    return '$name ist fertig';
+  }
+
+  @override
+  String flowsRunCouldNotFinish(String name) {
+    return '$name konnte nicht abgeschlossen werden';
+  }
+
+  @override
+  String get flowsOpenResult => 'Ergebnis öffnen';
+
+  @override
+  String flowsNextRun(String when) {
+    return 'Nächste: $when';
+  }
+
+  @override
   String get flowsRunByYou => 'Von dir ausgeführt';
 
   @override
@@ -716,9 +820,6 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get flowsScheduleLabel => 'Ausführung';
-
-  @override
-  String get flowsScheduleManual => 'Nur, wenn du ihn startest';
 
   @override
   String flowsScheduleDaily(String time) {

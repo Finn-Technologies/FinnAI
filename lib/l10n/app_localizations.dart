@@ -1268,6 +1268,180 @@ abstract class AppLocalizations {
   /// **'Ran by itself'**
   String get flowsRunBySchedule;
 
+  /// Flows automation text
+  ///
+  /// In en, this message translates to:
+  /// **'Automations'**
+  String get flowsAutomationsTitle;
+
+  /// Flows automation text
+  ///
+  /// In en, this message translates to:
+  /// **'Things Finn does for you on a schedule. Nothing runs unless you turn it on.'**
+  String get flowsAutomationsSubtitle;
+
+  /// Flows automation text
+  ///
+  /// In en, this message translates to:
+  /// **'New automation'**
+  String get flowsNewAutomation;
+
+  /// Flows automation text
+  ///
+  /// In en, this message translates to:
+  /// **'No automations yet. Start with a morning brief.'**
+  String get flowsNoAutomations;
+
+  /// Flows automation text
+  ///
+  /// In en, this message translates to:
+  /// **'Morning brief'**
+  String get flowsTemplateMorningBrief;
+
+  /// Flows automation text
+  ///
+  /// In en, this message translates to:
+  /// **'News you care about and the weather, in a few lines.'**
+  String get flowsTemplateMorningBriefBody;
+
+  /// Flows automation text
+  ///
+  /// In en, this message translates to:
+  /// **'Web check'**
+  String get flowsTemplateWebCheck;
+
+  /// Flows automation text
+  ///
+  /// In en, this message translates to:
+  /// **'Checks one topic and tells you what\'s new.'**
+  String get flowsTemplateWebCheckBody;
+
+  /// Flows automation text
+  ///
+  /// In en, this message translates to:
+  /// **'Reminder'**
+  String get flowsTemplateReminder;
+
+  /// Flows automation text
+  ///
+  /// In en, this message translates to:
+  /// **'A notification with your own words.'**
+  String get flowsTemplateReminderBody;
+
+  /// Flows automation text
+  ///
+  /// In en, this message translates to:
+  /// **'What to follow'**
+  String get flowsSlotTopics;
+
+  /// Flows automation text
+  ///
+  /// In en, this message translates to:
+  /// **'City for the weather (optional)'**
+  String get flowsSlotCity;
+
+  /// Flows automation text
+  ///
+  /// In en, this message translates to:
+  /// **'Topic'**
+  String get flowsSlotTopic;
+
+  /// Flows automation text
+  ///
+  /// In en, this message translates to:
+  /// **'Message'**
+  String get flowsSlotMessage;
+
+  /// Flows automation text
+  ///
+  /// In en, this message translates to:
+  /// **'When'**
+  String get flowsScheduleHeading;
+
+  /// Manual trigger
+  ///
+  /// In en, this message translates to:
+  /// **'Only when you run it'**
+  String get flowsScheduleManual;
+
+  /// Schedule label for Monday to Friday
+  ///
+  /// In en, this message translates to:
+  /// **'Weekdays at {time}'**
+  String flowsScheduleWeekdaysAt(String time);
+
+  /// Flows automation text
+  ///
+  /// In en, this message translates to:
+  /// **'Every day'**
+  String get flowsScheduleEveryDay;
+
+  /// Flows automation text
+  ///
+  /// In en, this message translates to:
+  /// **'Weekdays'**
+  String get flowsScheduleWeekdaysOnly;
+
+  /// Flows automation text
+  ///
+  /// In en, this message translates to:
+  /// **'Time'**
+  String get flowsScheduleTime;
+
+  /// Flows automation text
+  ///
+  /// In en, this message translates to:
+  /// **'Allow notifications?'**
+  String get flowsNotifyWhyTitle;
+
+  /// Flows automation text
+  ///
+  /// In en, this message translates to:
+  /// **'Finn sends a notification when this automation is due. Without it, the automation can only run when you tap Run.'**
+  String get flowsNotifyWhyBody;
+
+  /// Flows automation text
+  ///
+  /// In en, this message translates to:
+  /// **'Allow'**
+  String get flowsNotifyAllow;
+
+  /// Flows automation text
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications are off, so this won\'t run by itself.'**
+  String get flowsNotifyOff;
+
+  /// Flows automation text
+  ///
+  /// In en, this message translates to:
+  /// **'Running {name}…'**
+  String flowsRunning(String name);
+
+  /// Flows automation text
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is ready'**
+  String flowsRunReady(String name);
+
+  /// Flows automation text
+  ///
+  /// In en, this message translates to:
+  /// **'{name} couldn\'t finish'**
+  String flowsRunCouldNotFinish(String name);
+
+  /// Flows automation text
+  ///
+  /// In en, this message translates to:
+  /// **'Open result'**
+  String get flowsOpenResult;
+
+  /// Flows automation text
+  ///
+  /// In en, this message translates to:
+  /// **'Next: {when}'**
+  String flowsNextRun(String when);
+
   /// How a manual run is labelled in the log
   ///
   /// In en, this message translates to:
@@ -1315,12 +1489,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Runs'**
   String get flowsScheduleLabel;
-
-  /// Manual trigger
-  ///
-  /// In en, this message translates to:
-  /// **'Only when you run it'**
-  String get flowsScheduleManual;
 
   /// Daily trigger
   ///

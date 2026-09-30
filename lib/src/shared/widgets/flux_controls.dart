@@ -287,12 +287,19 @@ class FluxChip extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                label,
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: fg,
-                      fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                    ),
+              // Flexible so a long label ellipsises instead of overflowing the
+              // row it sits in.
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        color: fg,
+                        fontWeight:
+                            selected ? FontWeight.w600 : FontWeight.w400,
+                      ),
+                ),
               ),
             ],
           ),

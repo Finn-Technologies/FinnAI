@@ -865,6 +865,137 @@
   "@flowsRunBySchedule": {
     "description": "How a scheduled run is labelled in the log"
   },
+  "flowsAutomationsTitle": "Automations",
+  "@flowsAutomationsTitle": {
+    "description": "Flows automation text"
+  },
+  "flowsAutomationsSubtitle": "Things Finn does for you on a schedule. Nothing runs unless you turn it on.",
+  "@flowsAutomationsSubtitle": {
+    "description": "Flows automation text"
+  },
+  "flowsNewAutomation": "New automation",
+  "@flowsNewAutomation": {
+    "description": "Flows automation text"
+  },
+  "flowsNoAutomations": "No automations yet. Start with a morning brief.",
+  "@flowsNoAutomations": {
+    "description": "Flows automation text"
+  },
+  "flowsTemplateMorningBrief": "Morning brief",
+  "@flowsTemplateMorningBrief": {
+    "description": "Flows automation text"
+  },
+  "flowsTemplateMorningBriefBody": "News you care about and the weather, in a few lines.",
+  "@flowsTemplateMorningBriefBody": {
+    "description": "Flows automation text"
+  },
+  "flowsTemplateWebCheck": "Web check",
+  "@flowsTemplateWebCheck": {
+    "description": "Flows automation text"
+  },
+  "flowsTemplateWebCheckBody": "Checks one topic and tells you what's new.",
+  "@flowsTemplateWebCheckBody": {
+    "description": "Flows automation text"
+  },
+  "flowsTemplateReminder": "Reminder",
+  "@flowsTemplateReminder": {
+    "description": "Flows automation text"
+  },
+  "flowsTemplateReminderBody": "A notification with your own words.",
+  "@flowsTemplateReminderBody": {
+    "description": "Flows automation text"
+  },
+  "flowsSlotTopics": "What to follow",
+  "@flowsSlotTopics": {
+    "description": "Flows automation text"
+  },
+  "flowsSlotCity": "City for the weather (optional)",
+  "@flowsSlotCity": {
+    "description": "Flows automation text"
+  },
+  "flowsSlotTopic": "Topic",
+  "@flowsSlotTopic": {
+    "description": "Flows automation text"
+  },
+  "flowsSlotMessage": "Message",
+  "@flowsSlotMessage": {
+    "description": "Flows automation text"
+  },
+  "flowsScheduleHeading": "When",
+  "@flowsScheduleHeading": {
+    "description": "Flows automation text"
+  },
+  "flowsScheduleManual": "Only when I tap Run",
+  "flowsScheduleWeekdaysAt": "Weekdays at {time}",
+  "@flowsScheduleWeekdaysAt": {
+    "description": "Schedule label for Monday to Friday",
+    "placeholders": {
+      "time": { "type": "String" }
+    }
+  },
+  "@flowsScheduleManual": {
+    "description": "Flows automation text"
+  },
+  "flowsScheduleEveryDay": "Every day",
+  "@flowsScheduleEveryDay": {
+    "description": "Flows automation text"
+  },
+  "flowsScheduleWeekdaysOnly": "Weekdays",
+  "@flowsScheduleWeekdaysOnly": {
+    "description": "Flows automation text"
+  },
+  "flowsScheduleTime": "Time",
+  "@flowsScheduleTime": {
+    "description": "Flows automation text"
+  },
+  "flowsNotifyWhyTitle": "Allow notifications?",
+  "@flowsNotifyWhyTitle": {
+    "description": "Flows automation text"
+  },
+  "flowsNotifyWhyBody": "Finn sends a notification when this automation is due. Without it, the automation can only run when you tap Run.",
+  "@flowsNotifyWhyBody": {
+    "description": "Flows automation text"
+  },
+  "flowsNotifyAllow": "Allow",
+  "@flowsNotifyAllow": {
+    "description": "Flows automation text"
+  },
+  "flowsNotifyOff": "Notifications are off, so this won't run by itself.",
+  "@flowsNotifyOff": {
+    "description": "Flows automation text"
+  },
+  "flowsRunning": "Running {name}…",
+  "@flowsRunning": {
+    "description": "Flows automation text",
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "flowsRunReady": "{name} is ready",
+  "@flowsRunReady": {
+    "description": "Flows automation text",
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "flowsRunCouldNotFinish": "{name} couldn't finish",
+  "@flowsRunCouldNotFinish": {
+    "description": "Flows automation text",
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "flowsOpenResult": "Open result",
+  "@flowsOpenResult": {
+    "description": "Flows automation text"
+  },
+  "flowsNextRun": "Next: {when}",
+  "@flowsNextRun": {
+    "description": "Flows automation text",
+    "placeholders": {
+      "when": { "type": "String" }
+    }
+  },
   "flowsRunByYou": "Run by you",
   "@flowsRunByYou": {
     "description": "How a manual run is labelled in the log"

@@ -164,8 +164,19 @@ class FlowsStore extends ChangeNotifier {
   FlowsFailure? _failure;
 
   List<FinnFlow> get flows => List.unmodifiable(_skills);
-  List<FinnFlow> get enabledSkills =>
-      List.unmodifiable(_skills.where((flow) => flow.enabled));
+
+  /// Enabled *skills*: instruction flows that shape chat replies, capped at
+  /// four by the prompt budget. Automations (flows with steps) are not skills:
+  /// their prompts are for their own runs and must never leak into chat, and
+  /// they do not spend the skill budget.
+  List<FinnFlow> get enabledSkills => List.unmodifiable(
+        _skills.where((flow) => flow.enabled && flow.steps.isEmpty),
+      );
+
+  /// Enabled flows that run steps, by hand or on a schedule.
+  List<FinnFlow> get enabledAutomations => List.unmodifiable(
+        _skills.where((flow) => flow.enabled && flow.steps.isNotEmpty),
+      );
   List<FlowRun> get runs => List.unmodifiable(_runs);
   bool get initialized => _initialized;
   bool get saving => _saving;
@@ -266,7 +277,10 @@ class FlowsStore extends ChangeNotifier {
   Future<bool> setEnabled(String id, bool enabled) async {
     final index = _skills.indexWhere((flow) => flow.id == id);
     if (index < 0) return false;
-    if (enabled && !_skills[index].enabled && enabledSkills.length >= 4) {
+    if (enabled &&
+        !_skills[index].enabled &&
+        _skills[index].steps.isEmpty &&
+        enabledSkills.length >= 4) {
       _failure = FlowsFailure.limit;
       notifyListeners();
       return false;
@@ -302,7 +316,7 @@ class FlowsStore extends ChangeNotifier {
         : _skills.indexWhere((flow) => flow.id == id && !flow.builtIn);
     final previous = existingIndex >= 0 ? _skills[existingIndex] : null;
     final wasEnabled = previous != null && previous.enabled;
-    if (enabled && !wasEnabled && enabledSkills.length >= 4) {
+    if (enabled && !wasEnabled && steps.isEmpty && enabledSkills.length >= 4) {
       _failure = FlowsFailure.limit;
       notifyListeners();
       return false;

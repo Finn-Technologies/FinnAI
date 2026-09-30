@@ -73,6 +73,7 @@ extension _HomeShellLifecycle on _HomeShellState {
       _historyUnavailable =
           failed.contains('conversations') || _conversations.storageError;
     });
+    unawaited(_flowsReady());
     _schedulePrewarm();
   }
 

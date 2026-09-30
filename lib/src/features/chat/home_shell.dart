@@ -29,6 +29,8 @@ import 'package:finn_ai/src/features/actions/device_action.dart';
 import 'package:finn_ai/src/features/actions/device_action_descriptions.dart';
 import 'package:finn_ai/src/features/actions/device_actions_page.dart';
 import 'package:finn_ai/src/features/settings/settings_page.dart';
+import 'package:finn_ai/src/features/chat/flow_wiring.dart';
+import 'package:finn_ai/src/features/flows/flow_scheduler.dart';
 import 'package:finn_ai/src/features/flows/flows_page.dart';
 import 'package:finn_ai/src/features/flows/flows_store.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
@@ -48,6 +50,7 @@ part 'shell/device_actions.dart';
 part 'shell/send.dart';
 part 'shell/voice.dart';
 part 'shell/navigation.dart';
+part 'shell/flows.dart';
 part 'shell/selected_text.dart';
 part 'widgets/header_and_fade.dart';
 part 'widgets/conversation.dart';
@@ -96,6 +99,15 @@ class _HomeShellState extends State<HomeShell>
   late final _generation =
       widget.generationController ?? ChatGenerationController.instance;
   late final _webSearch = widget.webSearch ?? WebSearchService();
+  final _flowScheduler = FlowScheduler();
+  late final _flowSink = ConversationFlowSink(_conversations);
+  late final _flowRunner = buildFlowRunner(
+    sink: _flowSink,
+    search: _searchTurn,
+    notifier: _flowScheduler,
+  );
+  Timer? _flowSyncTimer;
+  bool _flowRunInProgress = false;
   final _searchPlanner = const SearchPlanner();
   late final _searchTurn =
       SearchTurn(agent: SearchAgent(searchService: _webSearch));
@@ -154,6 +166,7 @@ class _HomeShellState extends State<HomeShell>
     _generation.addListener(_generationChanged);
     _conversations.addListener(_conversationChanged);
     _chatScrollController.addListener(_onChatScroll);
+    _startFlowScheduling();
     WidgetsBinding.instance.addObserver(this);
     // Cap decoded image bytes retained in the widget image cache.
     // 20 MiB bounds RSS from chat + composer previews; pressure
@@ -264,6 +277,7 @@ class _HomeShellState extends State<HomeShell>
     _generation.removeListener(_generationChanged);
     _conversations.removeListener(_conversationChanged);
     _chatScrollController.removeListener(_onChatScroll);
+    _stopFlowScheduling();
     _chatScrollController.dispose();
     _chatScrolledAway.dispose();
     _memoryPressureChannel.setMethodCallHandler(null);

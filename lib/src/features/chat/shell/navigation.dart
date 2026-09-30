@@ -51,7 +51,12 @@ extension _HomeShellNavigation on _HomeShellState {
     if (!mounted) return;
     Navigator.of(context).push(
       FinnPageRoute<void>(
-        child: FlowsPage(onBack: () => Navigator.of(context).pop()),
+        child: FlowsPage(
+          onBack: () => Navigator.of(context).pop(),
+          runner: _flowRunner,
+          scheduler: _flowScheduler,
+          onOpenResult: _openFlowResult,
+        ),
       ),
     );
   }

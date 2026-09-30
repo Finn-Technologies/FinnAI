@@ -673,6 +673,109 @@ class AppLocalizationsEn extends AppLocalizations {
   String get flowsRunBySchedule => 'Ran by itself';
 
   @override
+  String get flowsAutomationsTitle => 'Automations';
+
+  @override
+  String get flowsAutomationsSubtitle =>
+      'Things Finn does for you on a schedule. Nothing runs unless you turn it on.';
+
+  @override
+  String get flowsNewAutomation => 'New automation';
+
+  @override
+  String get flowsNoAutomations =>
+      'No automations yet. Start with a morning brief.';
+
+  @override
+  String get flowsTemplateMorningBrief => 'Morning brief';
+
+  @override
+  String get flowsTemplateMorningBriefBody =>
+      'News you care about and the weather, in a few lines.';
+
+  @override
+  String get flowsTemplateWebCheck => 'Web check';
+
+  @override
+  String get flowsTemplateWebCheckBody =>
+      'Checks one topic and tells you what\'s new.';
+
+  @override
+  String get flowsTemplateReminder => 'Reminder';
+
+  @override
+  String get flowsTemplateReminderBody => 'A notification with your own words.';
+
+  @override
+  String get flowsSlotTopics => 'What to follow';
+
+  @override
+  String get flowsSlotCity => 'City for the weather (optional)';
+
+  @override
+  String get flowsSlotTopic => 'Topic';
+
+  @override
+  String get flowsSlotMessage => 'Message';
+
+  @override
+  String get flowsScheduleHeading => 'When';
+
+  @override
+  String get flowsScheduleManual => 'Only when you run it';
+
+  @override
+  String flowsScheduleWeekdaysAt(String time) {
+    return 'Weekdays at $time';
+  }
+
+  @override
+  String get flowsScheduleEveryDay => 'Every day';
+
+  @override
+  String get flowsScheduleWeekdaysOnly => 'Weekdays';
+
+  @override
+  String get flowsScheduleTime => 'Time';
+
+  @override
+  String get flowsNotifyWhyTitle => 'Allow notifications?';
+
+  @override
+  String get flowsNotifyWhyBody =>
+      'Finn sends a notification when this automation is due. Without it, the automation can only run when you tap Run.';
+
+  @override
+  String get flowsNotifyAllow => 'Allow';
+
+  @override
+  String get flowsNotifyOff =>
+      'Notifications are off, so this won\'t run by itself.';
+
+  @override
+  String flowsRunning(String name) {
+    return 'Running $name…';
+  }
+
+  @override
+  String flowsRunReady(String name) {
+    return '$name is ready';
+  }
+
+  @override
+  String flowsRunCouldNotFinish(String name) {
+    return '$name couldn\'t finish';
+  }
+
+  @override
+  String get flowsOpenResult => 'Open result';
+
+  @override
+  String flowsNextRun(String when) {
+    return 'Next: $when';
+  }
+
+  @override
   String get flowsRunByYou => 'Run by you';
 
   @override
@@ -703,9 +806,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get flowsScheduleLabel => 'Runs';
-
-  @override
-  String get flowsScheduleManual => 'Only when you run it';
 
   @override
   String flowsScheduleDaily(String time) {

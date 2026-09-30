@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -7,10 +9,24 @@ import 'package:finn_ai/src/shared/widgets/ambient_background.dart';
 import 'package:finn_ai/src/shared/widgets/finn_page_header.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
 import 'package:finn_ai/src/features/flows/flow_runner.dart';
+import 'package:finn_ai/src/features/flows/flow_scheduler.dart';
+import 'package:finn_ai/src/features/flows/flow_templates.dart';
+import 'package:finn_ai/src/shared/slots/slots.dart';
 import 'package:finn_ai/src/features/flows/flows_store.dart';
 
+part 'parts/skill_editor.dart';
+part 'parts/history.dart';
+part 'parts/automations.dart';
+
 class FlowsPage extends StatefulWidget {
-  const FlowsPage({super.key, required this.onBack, this.store, this.runner});
+  const FlowsPage({
+    super.key,
+    required this.onBack,
+    this.store,
+    this.runner,
+    this.scheduler,
+    this.onOpenResult,
+  });
 
   final VoidCallback onBack;
   final FlowsStore? store;
@@ -19,6 +35,15 @@ class FlowsPage extends StatefulWidget {
   /// test without the engine, and so the page has no opinion about how a flow
   /// is executed.
   final FlowRunner? runner;
+
+  /// Arms scheduled flows and asks for notification permission. Null in tests
+  /// and on platforms with no scheduler; scheduling controls then still save
+  /// the choice, which simply never fires.
+  final FlowScheduler? scheduler;
+
+  /// Opens the conversation a finished run just wrote. Null where there is
+  /// nowhere to open it.
+  final VoidCallback? onOpenResult;
 
   @override
   State<FlowsPage> createState() => _SkillsPageState();
@@ -33,6 +58,9 @@ class _SkillsPageState extends State<FlowsPage> {
   /// runs would attribute their device actions to each other.
   String? _runningId;
 
+  /// Whether the OS will show this app's notifications. Null until known.
+  bool? _notificationsOn;
+
   FlowRunner get _runner => widget.runner ?? FlowRunner(store: _store);
 
   @override
@@ -40,6 +68,7 @@ class _SkillsPageState extends State<FlowsPage> {
     super.initState();
     _scrollController.addListener(_onScroll);
     _store.initialize();
+    unawaited(_refreshNotificationState());
   }
 
   /// Runs a flow once, on the spot.
@@ -60,10 +89,46 @@ class _SkillsPageState extends State<FlowsPage> {
         // already uses for a pending action.
         permitted = await _confirmRun(context, flow) ?? false;
       }
-      await _runner.run(flow, granted: permitted);
+      final run = await _runner.run(flow, granted: permitted);
+      if (mounted) _announce(flow, run);
     } finally {
       if (mounted) setState(() => _runningId = null);
     }
+  }
+
+  /// Says how a run ended. A run that wrote something offers to open it.
+  void _announce(FinnFlow flow, FlowRun run) {
+    final l10n = L10n.of(context);
+    final wrote = flow.steps.any((step) => step.kind == FlowStepKind.prompt);
+    final (message, canOpen) = switch (run.outcome) {
+      FlowRunOutcome.completed => (l10n.flowsRunReady(flow.name), wrote),
+      FlowRunOutcome.failed => (l10n.flowsRunCouldNotFinish(flow.name), false),
+      _ => (null, false),
+    };
+    if (message == null) return;
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          behavior: SnackBarBehavior.floating,
+          action: canOpen && widget.onOpenResult != null
+              ? SnackBarAction(
+                  label: l10n.flowsOpenResult,
+                  onPressed: widget.onOpenResult!,
+                )
+              : null,
+        ),
+      );
+  }
+
+  /// Turning a scheduled automation on is the moment to ask for notifications;
+  /// turning it off just disarms it.
+  Future<void> _toggleAutomation(FinnFlow flow, bool value) async {
+    await _store.setEnabled(flow.id, value);
+    if (value && flow.trigger.isScheduled) await _ensureNotifications();
+    await widget.scheduler?.sync(_store.flows);
+    await _refreshNotificationState();
   }
 
   Future<bool?> _confirmRun(BuildContext context, FinnFlow flow) =>
@@ -201,8 +266,13 @@ class _SkillsPageState extends State<FlowsPage> {
                       }
                       final builtIns =
                           _store.flows.where((flow) => flow.builtIn).toList();
-                      final custom =
-                          _store.flows.where((flow) => !flow.builtIn).toList();
+                      final custom = _store.flows
+                          .where((flow) => !flow.builtIn && flow.steps.isEmpty)
+                          .toList();
+                      final automations = _store.flows
+                          .where(
+                              (flow) => !flow.builtIn && flow.steps.isNotEmpty)
+                          .toList();
                       return ListView(
                         controller: _scrollController,
                         physics: const FluxBouncingScrollPhysics(),
@@ -243,6 +313,65 @@ class _SkillsPageState extends State<FlowsPage> {
                                       ),
                                     ),
                                   ),
+                                  const SizedBox(height: 14),
+                                  _SectionTitle(
+                                    title:
+                                        L10n.of(context).flowsAutomationsTitle,
+                                    subtitle: L10n.of(
+                                      context,
+                                    ).flowsAutomationsSubtitle,
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: FluxPillButton(
+                                      key: const Key('new-automation-button'),
+                                      label:
+                                          L10n.of(context).flowsNewAutomation,
+                                      icon: FluxIcons.add,
+                                      onTap: () => unawaited(_newAutomation()),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  if (automations.isEmpty)
+                                    Padding(
+                                      padding:
+                                          const EdgeInsets.only(bottom: 10),
+                                      child: Text(
+                                        L10n.of(context).flowsNoAutomations,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodyMedium
+                                            ?.copyWith(
+                                              color:
+                                                  FluxColors.mutedOf(context),
+                                            ),
+                                      ),
+                                    )
+                                  else
+                                    ...automations.map(
+                                      (flow) => Padding(
+                                        padding:
+                                            const EdgeInsets.only(bottom: 10),
+                                        child: _SkillCard(
+                                          flow: flow,
+                                          onToggle: (value) => unawaited(
+                                            _toggleAutomation(flow, value),
+                                          ),
+                                          onDelete: () => _delete(flow),
+                                          onRun: () => _run(flow),
+                                          onEditSchedule: () =>
+                                              unawaited(_editSchedule(flow)),
+                                          onGrantChanged: (value) =>
+                                              _store.setGranted(flow.id, value),
+                                          runs: _store.runsOf(flow.id),
+                                          isRunning: _runningId == flow.id,
+                                          notificationsOff: flow.enabled &&
+                                              flow.trigger.isScheduled &&
+                                              _notificationsOn == false,
+                                        ),
+                                      ),
+                                    ),
                                   const SizedBox(height: 14),
                                   _SectionTitle(
                                     title: L10n.of(context).flowsYourSkills,
@@ -398,12 +527,18 @@ class _SkillCard extends StatelessWidget {
     this.onDelete,
     this.onRun,
     this.onGrantChanged,
+    this.onEditSchedule,
+    this.notificationsOff = false,
     this.runs = const [],
     this.isRunning = false,
   });
 
   final FinnFlow flow;
   final ValueChanged<bool> onToggle;
+  final VoidCallback? onEditSchedule;
+
+  /// The flow is scheduled but the OS will not show its notification.
+  final bool notificationsOff;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
 
@@ -549,6 +684,8 @@ class _SkillCard extends StatelessWidget {
                         isRunning: isRunning,
                         onRun: onRun,
                         onGrantChanged: onGrantChanged,
+                        onEditSchedule: onEditSchedule,
+                        notificationsOff: notificationsOff,
                       ),
                     ],
                     if (runs.isNotEmpty) ...[
@@ -582,12 +719,16 @@ class _AutomationControls extends StatelessWidget {
     required this.isRunning,
     this.onRun,
     this.onGrantChanged,
+    this.onEditSchedule,
+    this.notificationsOff = false,
   });
 
   final FinnFlow flow;
   final bool isRunning;
   final VoidCallback? onRun;
   final ValueChanged<bool>? onGrantChanged;
+  final VoidCallback? onEditSchedule;
+  final bool notificationsOff;
 
   @override
   Widget build(BuildContext context) {
@@ -611,14 +752,27 @@ class _AutomationControls extends StatelessWidget {
               label: l10n.flowsStepCount(flow.steps.length),
               onTap: null,
             ),
-            if (flow.trigger.isScheduled)
+            if (flow.trigger.isScheduled || onEditSchedule != null)
               FluxChip(
                 key: Key('flow-schedule-${flow.id}'),
-                label: _scheduleLabel(context, flow.trigger),
-                onTap: null,
+                label: flow.trigger.isScheduled
+                    ? _scheduleLabel(context, flow.trigger)
+                    : l10n.flowsScheduleHeading,
+                onTap: onEditSchedule,
               ),
           ],
         ),
+        if (notificationsOff) ...[
+          const SizedBox(height: 8),
+          Text(
+            l10n.flowsNotifyOff,
+            key: Key('flow-notify-off-${flow.id}'),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: FluxColors.secondaryInkOf(context),
+                  height: 1.35,
+                ),
+          ),
+        ],
         if (canAct) ...[
           const SizedBox(height: 12),
           Row(
@@ -665,86 +819,39 @@ class _AutomationControls extends StatelessWidget {
     if (trigger.daysOfWeek.isEmpty) {
       return l10n.flowsScheduleDaily(time);
     }
+    if (trigger.daysOfWeek.length == 5 &&
+        trigger.daysOfWeek.containsAll(const {1, 2, 3, 4, 5})) {
+      return l10n.flowsScheduleWeekdaysAt(time);
+    }
     return l10n.flowsScheduleWeekly(_weekdays(context, trigger), time);
   }
 
   String _weekdays(BuildContext context, FlowTrigger trigger) {
     // Uses intl's locale data rather than shipping weekday names in five ARB
-    // files. A weekly trigger is the only place they are needed, and adding
-    // seven strings per locale for one label is a bad trade.
-    final names = DateFormat.EEEE(L10n.of(context).localeName);
-    return [
+    // files. The data is loaded by the app's Material delegates; where it is
+    // not (a bare test app, an unsupported locale) the English names are used
+    // instead of letting a label crash the page.
+    final days = [
       for (final day in trigger.daysOfWeek.toList()..sort())
-        if (day >= 1 && day <= 7) names.format(DateTime(2026, 1, 5 + day - 1)),
-    ].join(', ');
-  }
-}
-
-/// What an automation did, and whether the user or the schedule did it.
-///
-/// A flow that runs by itself is something that happened *to* the user, so
-/// being able to see that it did — and what it did — is the difference between
-/// an automation and a surprise.
-class _RunHistory extends StatelessWidget {
-  const _RunHistory({required this.runs});
-
-  final List<FlowRun> runs;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = L10n.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          l10n.flowsHistoryTitle,
-          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: FluxColors.mutedOf(context),
-              ),
-        ),
-        const SizedBox(height: 6),
-        for (final run in runs.take(3))
-          Padding(
-            padding: const EdgeInsets.only(bottom: 4),
-            child: Row(
-              children: [
-                FluxIcon(
-                  icon: run.outcome == FlowRunOutcome.completed
-                      ? FluxIcons.check
-                      : FluxIcons.error,
-                  size: 14,
-                  color: run.outcome == FlowRunOutcome.completed
-                      ? FluxColors.successOf(context)
-                      : FluxColors.warningOf(context),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    '${_outcomeLabel(context, run.outcome)} · '
-                    '${run.triggeredBy == 'schedule' ? l10n.flowsRunBySchedule : l10n.flowsRunByYou}',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: FluxColors.secondaryInkOf(context),
-                        ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-      ],
-    );
-  }
-
-  String _outcomeLabel(BuildContext context, FlowRunOutcome outcome) {
-    final l10n = L10n.of(context);
-    return switch (outcome) {
-      FlowRunOutcome.completed => l10n.flowsRunCompleted,
-      FlowRunOutcome.declined => l10n.flowsRunDeclined,
-      FlowRunOutcome.failed => l10n.flowsRunFailed,
-      FlowRunOutcome.interrupted => l10n.flowsRunInterrupted,
-      // The one a user can act on: the flow wanted to run by itself and was
-      // not allowed to.
-      FlowRunOutcome.needsGrant => l10n.flowsNeedsGrant,
-    };
+        if (day >= 1 && day <= 7) day,
+    ];
+    try {
+      final names = DateFormat.EEEE(L10n.of(context).localeName);
+      return [
+        for (final day in days) names.format(DateTime(2026, 1, 5 + day - 1)),
+      ].join(', ');
+    } on Object {
+      const english = [
+        'Monday',
+        'Tuesday',
+        'Wednesday',
+        'Thursday',
+        'Friday',
+        'Saturday',
+        'Sunday',
+      ];
+      return [for (final day in days) english[day - 1]].join(', ');
+    }
   }
 }
 
@@ -790,199 +897,6 @@ class _EmptyCustomSkills extends StatelessWidget {
           style: Theme.of(
             context,
           ).textTheme.bodyMedium?.copyWith(color: FluxColors.mutedOf(context)),
-        ),
-      );
-}
-
-class _SkillDraft {
-  const _SkillDraft({
-    required this.name,
-    required this.description,
-    required this.instructions,
-  });
-
-  final String name;
-  final String description;
-  final String instructions;
-}
-
-class _SkillEditor extends StatefulWidget {
-  const _SkillEditor({this.flow});
-  final FinnFlow? flow;
-
-  @override
-  State<_SkillEditor> createState() => _SkillEditorState();
-}
-
-class _SkillEditorState extends State<_SkillEditor> {
-  late final _name = TextEditingController(text: widget.flow?.name ?? '');
-  late final _description = TextEditingController(
-    text: widget.flow?.description ?? '',
-  );
-  late final _instructions = TextEditingController(
-    text: widget.flow?.instructions ?? '',
-  );
-
-  bool get _valid =>
-      _name.text.trim().isNotEmpty && _instructions.text.trim().isNotEmpty;
-
-  @override
-  void initState() {
-    super.initState();
-    _name.addListener(_changed);
-    _instructions.addListener(_changed);
-  }
-
-  void _changed() => setState(() {});
-
-  @override
-  void dispose() {
-    _name.dispose();
-    _description.dispose();
-    _instructions.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => Container(
-        padding: EdgeInsets.fromLTRB(
-          20,
-          12,
-          20,
-          20 + MediaQuery.viewInsetsOf(context).bottom,
-        ),
-        decoration: BoxDecoration(
-          color: FluxColors.canvasOf(context),
-          borderRadius: const BorderRadius.vertical(
-              top: Radius.circular(FluxRadius.sheet)),
-        ),
-        child: SingleChildScrollView(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 680),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 36,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: FluxColors.lineOf(context),
-                        borderRadius: BorderRadius.circular(99),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    widget.flow == null
-                        ? L10n.of(context).flowsNewSkill
-                        : L10n.of(context).flowsEditTitle,
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    L10n.of(context).flowsInstructionHint,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: FluxColors.mutedOf(context),
-                        ),
-                  ),
-                  const SizedBox(height: 18),
-                  _EditorField(
-                    key: const Key('flow-name-field'),
-                    controller: _name,
-                    label: L10n.of(context).flowsEditorName,
-                    hint: L10n.of(context).flowsEditorNameHint,
-                    maxLength: 60,
-                  ),
-                  const SizedBox(height: 10),
-                  _EditorField(
-                    controller: _description,
-                    label: L10n.of(context).flowsEditorDescription,
-                    hint: L10n.of(context).flowsEditorDescriptionHint,
-                    maxLength: 140,
-                    maxLines: 2,
-                  ),
-                  const SizedBox(height: 10),
-                  _EditorField(
-                    key: const Key('flow-instructions-field'),
-                    controller: _instructions,
-                    label: L10n.of(context).flowsEditorInstructions,
-                    hint: L10n.of(context).flowsEditorInstructionsHint,
-                    maxLength: 500,
-                    maxLines: 5,
-                  ),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    height: 48,
-                    child: FilledButton(
-                      key: const Key('save-flow-button'),
-                      onPressed: _valid
-                          ? () => Navigator.pop(
-                                context,
-                                _SkillDraft(
-                                  name: _name.text,
-                                  description: _description.text,
-                                  instructions: _instructions.text,
-                                ),
-                              )
-                          : null,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: FluxColors.inkOf(context),
-                        foregroundColor: FluxColors.canvasOf(context),
-                        shape: const StadiumBorder(),
-                        elevation: 0,
-                      ),
-                      child: Text(L10n.of(context).commonSaveFlow),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-}
-
-class _EditorField extends StatelessWidget {
-  const _EditorField({
-    super.key,
-    required this.controller,
-    required this.label,
-    required this.hint,
-    required this.maxLength,
-    this.maxLines = 1,
-  });
-
-  final TextEditingController controller;
-  final String label;
-  final String hint;
-  final int maxLength;
-  final int maxLines;
-
-  @override
-  Widget build(BuildContext context) => TextField(
-        controller: controller,
-        maxLength: maxLength,
-        maxLines: maxLines,
-        textCapitalization: TextCapitalization.sentences,
-        decoration: InputDecoration(
-          labelText: label,
-          hintText: hint,
-          hintStyle: TextStyle(color: FluxColors.mutedOf(context)),
-          filled: true,
-          fillColor: FluxColors.cardOf(context),
-          contentPadding: const EdgeInsets.all(16),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(FluxRadius.md),
-            borderSide: BorderSide(color: FluxColors.lineOf(context)),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(FluxRadius.md),
-            borderSide: BorderSide(color: FluxColors.inkOf(context)),
-          ),
-          border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(FluxRadius.md)),
         ),
       );
 }
