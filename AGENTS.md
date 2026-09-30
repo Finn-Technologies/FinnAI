@@ -157,7 +157,7 @@ Key log tags: `FINN_INSTALLING_MODEL`, `FINN_INSTALL_ARTIFACT_COMPLETE`, `FINN_E
 - **`third_party/llama_cpp_dart/` is vendored and excluded from analysis.** Patch via
   `tool/llama_android_build.patch` + `tool/rebuild_llama_android_aar.sh`, never by hand-editing.
 - **The engine is single-model and CPU-pinned on Android.** Don't re-enable accelerator probing on
-  Android; see the comment in `finn_accelerator.dart`'s `optimizeForDevice`.
+  Android; see the comment in `lib/src/engine/loader/device_optimizer.dart`'s `optimizeForDevice`.
 - **Conversations are AES-256-GCM encrypted** with a key in Android KeyStore. If the key is missing
   but an encrypted file exists, the store refuses to overwrite — that is deliberate
   (`ConversationStore._storageError`), not a bug to "fix" by deleting the file.

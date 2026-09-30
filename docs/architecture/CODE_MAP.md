@@ -1,5 +1,12 @@
 # Code map — "to change *X*, edit *Y*"
 
+**Engine layout.** `lib/src/engine/finn_accelerator.dart` holds the state and the public shape of the
+engine (fields, statics, `_setStatus`). Its behaviour lives in `part` files, each an `extension` on
+`FinnAccelerator`: `install/` (install lifecycle), `download/` (artifact, service + Dart downloads,
+progress, artifact helpers), `loader/` (model loader, residency, model files, device optimiser),
+`generate/` (reply API, one turn, prompt rendering, cancellation, reply gate), `session/` (KV session
+preparation and key). Statics are referenced as `FinnAccelerator.<name>` inside a part.
+
 Use this before grepping. Paths are relative to the repository root.
 
 ## Model system (see also `MODEL_PIPELINE.md`)
@@ -8,12 +15,12 @@ Use this before grepping. Paths are relative to the repository root.
 |---|---|
 | Which model is downloaded (name, file, URL, size, sha) | `lib/src/engine/catalog/model_catalog.dart` (`finnModels`, `finnMmproj`) |
 | The model name shown in the UI | `lib/l10n/app_*.arb` → `onboardingInstall*`, `settingsModelArchitectureValue`, then `flutter pub get` |
-| Download / resume / retry / stall handling | `lib/src/engine/finn_accelerator.dart` (`_ensureDownloaded`, `_ensureArtifactWithService`, `_downloadSegmented`, `_downloadSingleStream`) |
+| Download / resume / retry / stall handling | `lib/src/engine/download/artifact.dart` (`_ensureDownloaded`), `download/service_download.dart` (`_ensureArtifactWithService`), `download/dart_download.dart` (`_downloadSegmented`, `_downloadSingleStream`) |
 | Android-side transfer (segments, foreground notification) | `android/app/src/main/kotlin/com/abhiflex/finnai/ModelDownloadService.kt` |
-| Integrity checks (size, GGUF magic, SHA-256) | `finn_accelerator.dart` (`_isVerifiedModelFile`, `_looksLikeGguf`, `_verifyPromotedArtifact`) |
-| Disk-space pre-checks | `finn_accelerator.dart` (`install`, `_ensureDownloaded`, `installMmproj`) |
-| What upgrades delete | `finn_accelerator.dart` (`_retiredModelFiles`, `_removeRetiredModelArtifacts`) |
-| Model storage location | `finn_accelerator.dart` (`_createModelDirectory` → app support dir `/models`) |
+| Integrity checks (size, GGUF magic, SHA-256) | `lib/src/engine/loader/model_files.dart` (`_isVerifiedModelFile`, `_looksLikeGguf`), `download/artifact.dart` (`_verifyPromotedArtifact`) |
+| Disk-space pre-checks | `lib/src/engine/install/install_lifecycle.dart` (`install`), `download/artifact.dart` (`_ensureDownloaded`), `loader/model_files.dart` (`installMmproj`) |
+| What upgrades delete | `finn_accelerator.dart` (`_retiredModelFiles`), `lib/src/engine/loader/model_files.dart` (`_removeRetiredModelArtifacts`) |
+| Model storage location | `lib/src/engine/loader/model_files.dart` (`_createModelDirectory` → app support dir `/models`) |
 
 ## Inference
 
@@ -21,9 +28,9 @@ Use this before grepping. Paths are relative to the repository root.
 |---|---|
 | Threads, batch, context, KV type, flash attention | `lib/src/engine/profiler/device_profile.dart` (`DeviceProfiler.plan`) |
 | Backend/accelerator selection and caching | `lib/src/engine/adaptive/adaptive.dart` |
-| Engine spawn parameters / multimodal wiring | `finn_accelerator.dart` (`_loadModel`, `spawnWith`) |
-| Post-download device optimisation | `finn_accelerator.dart` (`optimizeForDevice`) |
-| When the model is unloaded | `finn_accelerator.dart` (`releaseMemory`, `_queueUnload`) + `lib/src/engine/policy/residency_policy.dart` |
+| Engine spawn parameters / multimodal wiring | `lib/src/engine/loader/model_loader.dart` (`_loadModel`, `spawnWith`) |
+| Post-download device optimisation | `lib/src/engine/loader/device_optimizer.dart` (`optimizeForDevice`) |
+| When the model is unloaded | `lib/src/engine/loader/residency.dart` (`releaseMemory`), `loader/model_files.dart` (`_queueUnload`) + `lib/src/engine/policy/residency_policy.dart` |
 | System prompt and chat template | `lib/src/engine/prompt/prompt_formatter.dart` |
 | Intent classification / output budgets / search gating | `lib/src/engine/prompt/prompt_intent.dart` |
 | Which llama.cpp API surface the app sees | `lib/src/engine/backends/llama_shim.dart` (the only `llama_cpp_dart` importer) |

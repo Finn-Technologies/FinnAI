@@ -59,7 +59,7 @@ UI state that is not shared lives in `State` objects — notably `_HomeShellStat
    to search and is never shown tool syntax in chat (ADR 0001).
 2. **Start.** `ChatGenerationController.start` creates a `ChatGenerationJob` and subscribes to
    `FinnInference.generateReplyQueued`.
-3. **Prepare.** The engine (`engine/finn_accelerator.dart`) ensures the model file exists, loads the
+3. **Prepare.** The engine (`engine/finn_accelerator.dart` and its parts under `engine/`) ensures the model file exists, loads the
    runtime if needed (`_ensureLoaded` → `_loadModel`), picks an inference plan, and prepares or
    restores a per-conversation session. A saved prefix state (`FINN_PREFIX`) lets a warm turn skip
    most prefill.
