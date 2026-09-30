@@ -63,7 +63,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get commonNotNow => 'Pas maintenant';
 
   @override
-  String get commonPurge => 'Purger';
+  String get commonPurge => 'Libérer';
 
   @override
   String get commonClearAll => 'Tout effacer';
@@ -132,10 +132,11 @@ class AppLocalizationsFr extends AppLocalizations {
   String get onboardingInstallTitleReady => 'FinnAI Foundation prête';
 
   @override
-  String get onboardingDownloadLead => 'Téléchargement du cœur,';
+  String get onboardingDownloadLead => 'Configuration de FinnAI,';
 
   @override
-  String get onboardingDownloadNote => 'veuillez patienter.';
+  String get onboardingDownloadNote =>
+      'la première utilisation prend quelques minutes.';
 
   @override
   String onboardingProgressPercent(Object percent) {
@@ -143,7 +144,18 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get onboardingProgressEtaTail => 'minutes restantes.';
+  String get onboardingProgressEtaTail => 'restant.';
+
+  @override
+  String onboardingProgressEtaAbout(int minutes) {
+    String _temp0 = intl.Intl.pluralLogic(
+      minutes,
+      locale: localeName,
+      other: '$minutes minutes',
+      one: '1 minute',
+    );
+    return 'Environ $_temp0 restantes.';
+  }
 
   @override
   String get onboardingInstallPreparing =>
@@ -155,7 +167,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String onboardingInstallModelWithComponent(String modelName, String size) {
-    return '$modelName + composant multimodal · $size';
+    return '$modelName + prise en charge des images · $size';
   }
 
   @override
@@ -210,6 +222,14 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get onboardingConsentTitle =>
       'Autorisez-vous Finn AI à utiliser le contexte de votre appareil ?';
+
+  @override
+  String get onboardingConsentBody =>
+      'Cela permet à FinnAI de lire votre agenda, vos notes et vos photos pour mieux adapter ses réponses. Tout reste sur cet appareil, rien n\'est envoyé ailleurs.';
+
+  @override
+  String get onboardingConsentRequiredHint =>
+      'Choisissez Oui ou Non pour continuer';
 
   @override
   String get onboardingStartUsing => 'Commencer avec Finn AI';
@@ -362,17 +382,17 @@ class AppLocalizationsFr extends AppLocalizations {
       'Discussions, modèles, créations et préférences — comme au premier lancement.';
 
   @override
-  String get settingsPurgeMemory => 'Purger la mémoire de l\'IA';
+  String get settingsPurgeMemory => 'Libérer la mémoire';
 
   @override
-  String get settingsPurgeMemoryTitle => 'Purger la mémoire de l\'IA ?';
+  String get settingsPurgeMemoryTitle => 'Libérer la mémoire ?';
 
   @override
   String get settingsPurgeMemoryBody =>
-      'Cela déchargera le modèle d\'IA de la RAM. Il sera rechargé automatiquement au prochain message.';
+      'Cela ferme le modèle d\'IA pour libérer de la mémoire. Il rouvrira à votre prochain message.';
 
   @override
-  String get settingsPurgeMemoryReleased => 'Mémoire du modèle d\'IA libérée.';
+  String get settingsPurgeMemoryReleased => 'Mémoire libérée.';
 
   @override
   String get settingsClearHistory => 'Effacer tout l\'historique des chats';
@@ -421,7 +441,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get settingsPrivacyPolicyUnconfigured =>
-      'L\'URL de la politique de confidentialité n\'est pas configurée (définissez FINN_PRIVACY_POLICY_URL).';
+      'Le lien vers la politique de confidentialité n\'est pas disponible dans cette version.';
 
   @override
   String settingsPrivacyPolicyLaunchFailed(String url) {
@@ -433,7 +453,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get settingsTermsUnconfigured =>
-      'L\'URL des conditions d\'utilisation n\'est pas configurée (définissez FINN_TERMS_URL).';
+      'Le lien vers les conditions d\'utilisation n\'est pas disponible dans cette version.';
 
   @override
   String settingsTermsLaunchFailed(String url) {
@@ -464,10 +484,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsAppVersion => 'Version de l\'application';
 
   @override
-  String get settingsInferenceEngine => 'Moteur d\'inférence';
+  String get settingsInferenceEngine => 'Comment Finn fonctionne';
 
   @override
-  String get settingsInferenceEngineValue => 'llama.cpp · GGUF';
+  String get settingsInferenceEngineValue => 'Entièrement sur ce téléphone';
 
   @override
   String get settingsPrivacyMode => 'Mode de confidentialité';
@@ -882,7 +902,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get reportCategoryOther => 'Autre';
 
   @override
-  String get snackModelMemoryReleased => 'Mémoire du modèle d\'IA libérée.';
+  String get snackModelMemoryReleased => 'Mémoire libérée.';
 
   @override
   String get settingsSavedConversationsLabel => 'Conversations enregistrées';
@@ -909,7 +929,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get chatImageAnalysisUnavailable =>
-      'Analyse d\'image indisponible : installez le composant d\'image dans les Réglages.';
+      'L\'analyse d\'image n\'est pas encore configurée. Ajoutez la prise en charge des images dans les Réglages.';
 
   @override
   String get attachmentCamera => 'Appareil photo';

@@ -20,6 +20,8 @@ class FluxSpringPressable extends StatefulWidget {
     this.onLongPress,
     this.scaleDownFactor = 0.96,
     this.enabled = true,
+    this.semanticLabel,
+    this.expandHitArea = false,
   });
 
   final Widget child;
@@ -27,6 +29,16 @@ class FluxSpringPressable extends StatefulWidget {
   final VoidCallback? onLongPress;
   final double scaleDownFactor;
   final bool enabled;
+
+  /// What a screen reader announces. Required for any control whose painted
+  /// content is only an icon or an image — without it the node is announced as
+  /// an unlabelled button.
+  final String? semanticLabel;
+
+  /// Pads the gesture area out to [FluxMotion.minTapTarget] in both axes. Off
+  /// by default because the widget also wraps large surfaces (chat bubbles,
+  /// cards) that must not grow.
+  final bool expandHitArea;
 
   @override
   State<FluxSpringPressable> createState() => _FluxSpringPressableState();
@@ -36,16 +48,16 @@ class _FluxSpringPressableState extends State<FluxSpringPressable>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 140),
-    reverseDuration: const Duration(milliseconds: 220),
+    duration: FluxMotion.pressIn,
+    reverseDuration: FluxMotion.pressOut,
   );
   late final Animation<double> _scaleAnimation = Tween<double>(
     begin: 1.0,
     end: widget.scaleDownFactor,
   ).animate(CurvedAnimation(
     parent: _controller,
-    curve: Curves.easeOutCubic,
-    reverseCurve: Curves.easeOutBack,
+    curve: FluxMotion.pressCurve,
+    reverseCurve: FluxMotion.pressReturnCurve,
   ));
 
   bool _pressed = false;
@@ -87,7 +99,7 @@ class _FluxSpringPressableState extends State<FluxSpringPressable>
   @override
   Widget build(BuildContext context) {
     final enabled = widget.enabled;
-    final content = enabled
+    Widget content = enabled
         ? GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTapDown: _handleTapDown,
@@ -105,9 +117,27 @@ class _FluxSpringPressableState extends State<FluxSpringPressable>
           )
         : widget.child;
 
+    if (widget.expandHitArea) {
+      content = Align(
+        widthFactor: 1,
+        heightFactor: 1,
+        alignment: Alignment.center,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(
+            minWidth: FluxMotion.minTapTarget,
+            minHeight: FluxMotion.minTapTarget,
+          ),
+          child: content,
+        ),
+      );
+    }
+
+    final label = widget.semanticLabel;
     return Semantics(
       button: true,
       enabled: enabled,
+      label: label,
+      excludeSemantics: label != null,
       onTap: enabled ? widget.onTap : null,
       onLongPress: enabled ? widget.onLongPress : null,
       child: content,
@@ -186,10 +216,10 @@ class _FluxContextMenuRoute<T> extends PopupRoute<T> {
   bool get barrierDismissible => true;
 
   @override
-  Duration get transitionDuration => const Duration(milliseconds: 280);
+  Duration get transitionDuration => FluxMotion.modalDuration;
 
   @override
-  Duration get reverseTransitionDuration => const Duration(milliseconds: 200);
+  Duration get reverseTransitionDuration => FluxMotion.modalDuration;
 
   @override
   Widget buildPage(
@@ -221,20 +251,20 @@ class _FluxContextMenuOverlay extends StatefulWidget {
 class _FluxContextMenuOverlayState extends State<_FluxContextMenuOverlay> {
   late final CurvedAnimation curvedAnimation = CurvedAnimation(
     parent: widget.animation,
-    curve: Curves.easeOutCubic,
-    reverseCurve: Curves.easeInCubic,
+    curve: FluxMotion.modalCurve,
+    reverseCurve: FluxMotion.modalReverseCurve,
   );
 
   late final CurvedAnimation springAnimation = CurvedAnimation(
     parent: widget.animation,
     curve: Curves.easeOutBack,
-    reverseCurve: Curves.easeInCubic,
+    reverseCurve: FluxMotion.modalReverseCurve,
   );
 
   late final CurvedAnimation fadeAnimation = CurvedAnimation(
     parent: widget.animation,
-    curve: const Interval(0.0, 0.65, curve: Curves.easeOut),
-    reverseCurve: Curves.easeInCubic,
+    curve: const Interval(0.0, 0.65, curve: FluxMotion.modalCurve),
+    reverseCurve: FluxMotion.modalReverseCurve,
   );
 
   @override
@@ -368,13 +398,13 @@ class _FluxContextMenuOverlayState extends State<_FluxContextMenuOverlay> {
                   child: Container(
                     decoration: BoxDecoration(
                       color: isDark
-                          ? const Color(0xEB222226)
-                          : const Color(0xF5FFFFFF),
+                          ? FluxColors.darkCard.withValues(alpha: .92)
+                          : FluxColors.card.withValues(alpha: .96),
                       borderRadius: BorderRadius.circular(FluxRadius.card),
                       border: Border.all(
                         color: isDark
-                            ? const Color(0x33FFFFFF)
-                            : const Color(0x18000000),
+                            ? Colors.white.withValues(alpha: .20)
+                            : Colors.black.withValues(alpha: .09),
                         width: 0.75,
                       ),
                       boxShadow: [
@@ -402,13 +432,10 @@ class _FluxContextMenuOverlayState extends State<_FluxContextMenuOverlay> {
                               indent: 10,
                               endIndent: 10,
                               color: isDark
-                                  ? const Color(0x22FFFFFF)
-                                  : const Color(0x15000000),
+                                  ? Colors.white.withValues(alpha: .13)
+                                  : Colors.black.withValues(alpha: .08),
                             ),
-                          _ContextMenuItemTile(
-                            item: route.items[i],
-                            isDark: isDark,
-                          ),
+                          _ContextMenuItemTile(item: route.items[i]),
                         ],
                       ],
                     ),
@@ -424,61 +451,67 @@ class _FluxContextMenuOverlayState extends State<_FluxContextMenuOverlay> {
 }
 
 class _ContextMenuItemTile extends StatelessWidget {
-  const _ContextMenuItemTile({
-    required this.item,
-    required this.isDark,
-  });
+  const _ContextMenuItemTile({required this.item});
 
   final FluxContextMenuItem item;
-  final bool isDark;
 
   @override
   Widget build(BuildContext context) {
+    // The item's own text token, so the same label has the same contrast
+    // wherever the menu is opened from. Previously a raw #18181B / white pair
+    // that ignored the active theme.
     final textColor = item.isDestructive
-        ? (FluxColors.destructiveOf(context))
-        : (isDark ? Colors.white : const Color(0xFF18181B));
+        ? FluxColors.destructiveOf(context)
+        : FluxColors.inkOf(context);
 
     final iconColor = item.isDestructive
-        ? (FluxColors.destructiveOf(context))
-        : (isDark ? const Color(0xFFE4E4E7) : const Color(0xFF27272A));
+        ? FluxColors.destructiveOf(context)
+        : FluxColors.mutedOf(context);
 
-    return Material(
-      color: Colors.transparent,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 48),
-        child: InkWell(
-          onTap: () {
-            HapticFeedback.selectionClick();
-            Navigator.of(context).pop();
-            item.onTap();
-          },
-          borderRadius: BorderRadius.circular(FluxRadius.sm),
-          child: Align(
-            widthFactor: 1,
-            heightFactor: 1,
-            alignment: Alignment.center,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-              child: Row(
-                children: [
-                  FluxIcon(
-                    icon: item.icon,
-                    size: 18,
-                    color: iconColor,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      item.label,
-                      style: TextStyle(
-                        fontFamily: 'InstrumentSans',
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
-                        color: textColor,
+    return Semantics(
+      button: true,
+      label: item.label,
+      excludeSemantics: true,
+      child: Material(
+        color: Colors.transparent,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(
+            minWidth: FluxMotion.minTapTarget,
+            minHeight: FluxMotion.minTapTarget,
+          ),
+          child: InkWell(
+            onTap: () {
+              HapticFeedback.selectionClick();
+              Navigator.of(context).pop();
+              item.onTap();
+            },
+            borderRadius: BorderRadius.circular(FluxRadius.sm),
+            child: Align(
+              widthFactor: 1,
+              heightFactor: 1,
+              alignment: Alignment.center,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 11,
+                ),
+                child: Row(
+                  children: [
+                    FluxIcon(icon: item.icon, size: 18, color: iconColor),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        item.label,
+                        style: TextStyle(
+                          fontFamily: 'InstrumentSans',
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                          color: textColor,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),

@@ -215,7 +215,7 @@ abstract class AppLocalizations {
   /// Purge action
   ///
   /// In en, this message translates to:
-  /// **'Purge'**
+  /// **'Free up'**
   String get commonPurge;
 
   /// Clear all action
@@ -335,13 +335,13 @@ abstract class AppLocalizations {
   ///
   ///
   /// In en, this message translates to:
-  /// **'Downloading the core,'**
+  /// **'Setting up FinnAI,'**
   String get onboardingDownloadLead;
 
   ///
   ///
   /// In en, this message translates to:
-  /// **'please standby.'**
+  /// **'the first run takes a few minutes.'**
   String get onboardingDownloadNote;
 
   ///
@@ -353,8 +353,14 @@ abstract class AppLocalizations {
   ///
   ///
   /// In en, this message translates to:
-  /// **'minutes remaining.'**
+  /// **'left.'**
   String get onboardingProgressEtaTail;
+
+  /// Whole-minute download estimate. Replaces the m:ss clock read-out plus onboardingProgressEtaTail, which rendered as '0:05 minutes'.
+  ///
+  /// In en, this message translates to:
+  /// **'About {minutes, plural, =1{1 minute} other{{minutes} minutes}} left.'**
+  String onboardingProgressEtaAbout(int minutes);
 
   /// Preparing message
   ///
@@ -371,7 +377,7 @@ abstract class AppLocalizations {
   /// Model + component · size
   ///
   /// In en, this message translates to:
-  /// **'{modelName} + multimodal component · {size}'**
+  /// **'{modelName} + image support · {size}'**
   String onboardingInstallModelWithComponent(String modelName, String size);
 
   /// Model ready label
@@ -457,6 +463,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Do you allow FinnAI to get context on your device?'**
   String get onboardingConsentTitle;
+
+  /// Explains what on-device context means before the user answers
+  ///
+  /// In en, this message translates to:
+  /// **'This lets FinnAI read things like your calendar, notes and photos so its answers fit you better. It only reads on this device, and nothing is sent anywhere.'**
+  String get onboardingConsentBody;
+
+  /// Shown above a disabled Next until the consent question is answered
+  ///
+  /// In en, this message translates to:
+  /// **'Choose Yes or No to continue'**
+  String get onboardingConsentRequiredHint;
 
   /// Final onboarding button
   ///
@@ -689,7 +707,7 @@ abstract class AppLocalizations {
   /// Releasing memory
   ///
   /// In en, this message translates to:
-  /// **'Releasing Memory…'**
+  /// **'Freeing up memory…'**
   String get settingsReleasingMemory;
 
   /// Explains that freeing model memory is reversible, unlike the two rows below it.
@@ -713,25 +731,25 @@ abstract class AppLocalizations {
   /// Purge memory row
   ///
   /// In en, this message translates to:
-  /// **'Purge AI Memory'**
+  /// **'Free up memory'**
   String get settingsPurgeMemory;
 
   /// Purge dialog title
   ///
   /// In en, this message translates to:
-  /// **'Purge AI Memory?'**
+  /// **'Free up memory?'**
   String get settingsPurgeMemoryTitle;
 
   /// Purge body
   ///
   /// In en, this message translates to:
-  /// **'This will unload the AI model from RAM. It will be reloaded automatically on the next message.'**
+  /// **'This closes the AI model to free up memory. It will open again on your next message.'**
   String get settingsPurgeMemoryBody;
 
   /// Purge success
   ///
   /// In en, this message translates to:
-  /// **'AI model memory released.'**
+  /// **'Memory freed up.'**
   String get settingsPurgeMemoryReleased;
 
   /// Clear history row
@@ -809,7 +827,7 @@ abstract class AppLocalizations {
   /// Unconfigured
   ///
   /// In en, this message translates to:
-  /// **'Privacy Policy URL is unconfigured (set FINN_PRIVACY_POLICY_URL).'**
+  /// **'The privacy policy link isn\'t available in this build.'**
   String get settingsPrivacyPolicyUnconfigured;
 
   /// Launch failed
@@ -827,7 +845,7 @@ abstract class AppLocalizations {
   /// Terms unconfigured
   ///
   /// In en, this message translates to:
-  /// **'Terms of Use URL is unconfigured (set FINN_TERMS_URL).'**
+  /// **'The terms of use link isn\'t available in this build.'**
   String get settingsTermsUnconfigured;
 
   /// Terms launch failed
@@ -875,13 +893,13 @@ abstract class AppLocalizations {
   /// Engine row
   ///
   /// In en, this message translates to:
-  /// **'Inference Engine'**
+  /// **'How Finn runs'**
   String get settingsInferenceEngine;
 
   /// Engine value
   ///
   /// In en, this message translates to:
-  /// **'llama.cpp · GGUF'**
+  /// **'Entirely on this phone'**
   String get settingsInferenceEngineValue;
 
   /// Privacy mode row
@@ -1607,7 +1625,7 @@ abstract class AppLocalizations {
   /// Snack
   ///
   /// In en, this message translates to:
-  /// **'AI model memory released.'**
+  /// **'Memory freed up.'**
   String get snackModelMemoryReleased;
 
   /// Saved conversations row label
@@ -1655,7 +1673,7 @@ abstract class AppLocalizations {
   /// Multimodal missing snackbar
   ///
   /// In en, this message translates to:
-  /// **'Image analysis unavailable: install the image component in Settings.'**
+  /// **'Looking at images isn\'t set up yet. Add image support in Settings.'**
   String get chatImageAnalysisUnavailable;
 
   /// Attachment menu camera

@@ -10,12 +10,22 @@ import 'package:path_provider/path_provider.dart';
 /// defaults to allowed: the app only ever reads context on-device, and installs
 /// that predate the question never had the chance to answer it.
 class ContextConsentStore extends ChangeNotifier {
-  ContextConsentStore({this.directoryProvider});
+  ContextConsentStore({this.directoryProvider, this.fileResolver});
 
   static final instance = ContextConsentStore();
 
   @visibleForTesting
   final Future<Directory> Function()? directoryProvider;
+
+  /// Overrides the whole file lookup, not just the directory.
+  ///
+  /// Widget tests drive this store from `initState`, and a widget test runs its
+  /// body in a fake-async zone where a real `File.exists`/`readAsString` never
+  /// completes — the unawaited initialize would hang the test rather than fail
+  /// it. A test can therefore supply either an in-memory resolver or a
+  /// `directoryProvider` backed by a temp dir, and the choice is explicit.
+  @visibleForTesting
+  final File Function()? fileResolver;
 
   bool _granted = true;
   bool _initialized = false;
@@ -72,6 +82,8 @@ class ContextConsentStore extends ChangeNotifier {
   }
 
   Future<File> _file() async {
+    final override = fileResolver;
+    if (override != null) return override();
     final directory = directoryProvider != null
         ? await directoryProvider!()
         : await getApplicationSupportDirectory();

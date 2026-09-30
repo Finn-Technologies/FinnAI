@@ -1,6 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+/// The app's colour system.
+///
+/// Every colour is declared twice — once for light, once for dark — and read
+/// through a `…Of(context)` resolver so no screen has to branch on brightness.
+/// The `*Of` resolvers are the only sanctioned way to reach these values: a
+/// literal `Color(0x…)` in a widget bypasses the theme and is how the app ended
+/// up with a white tile on a black sidebar and a 2.15:1 amber pill.
+///
+/// The semantic group (link/accent, info, warning, success, danger) is the set
+/// that must clear WCAG AA: 4.5:1 for body-size text, 3.0:1 for large text
+/// (>= 24px, or >= 18.66px bold) and for non-text marks. Each pair is asserted
+/// in `test/shared/flux_color_tokens_test.dart`, which recomputes the WCAG ratio
+/// from the same constants so the numbers cannot drift from the palette.
 abstract final class FluxColors {
   // Light Palette
   static const canvas = Color(0xFFF8F8F8);
@@ -9,7 +22,7 @@ abstract final class FluxColors {
   static const line = Color(0xFFEAEAE7);
   static const surface = Color(0xFFF3F3F3);
   static const card = Color(0xFFFFFFFF);
-  static const blue = Color(0xFF3E86F7);
+  static const blue = Color(0xFF15509E);
   static const lime = Color(0xFFD6FF7D);
   static const mint = Color(0xFF7DFFCD);
   static const green = Color(0xFF00FF2B);
@@ -23,17 +36,51 @@ abstract final class FluxColors {
   static const darkCard = Color(0xFF222226);
 
   // Destructive (unified red)
-  static const destructive = Color(0xFFD32F2F);
-  static const destructiveDark = Color(0xFFFF6B6B);
+  static const destructive = Color(0xFFB3261E);
+  static const destructiveDark = Color(0xFFFF9E96);
 
-  // Accent tokens (previously orphaned hardcodes)
-  static const accentBlue = Color(0xFF3B82F6);
-  static const accentBlueMuted = Color(0xFF4A7CF3);
-  static const accentGreen = Color(0xFF16A34A);
-  static const accentGreenDark = Color(0xFF4ADE80);
-  static const accentAmber = Color(0xFFF59E0B);
+  // Semantic tokens — light variants. Values and their measured contrast are
+  // documented in test/shared/flux_color_tokens_test.dart.
+  //
+  //   link/accent #2B49C8 — 6.84:1 on canvas, 7.27:1 on card
+  //   info        #15509E — 7.40:1 on canvas, 7.86:1 on card
+  //   warning     #8A4B00 — 6.41:1 on canvas, 6.80:1 on card
+  //   success     #0E6B38 — 6.22:1 on canvas, 6.61:1 on card
+  //   danger      #B3261E — 6.15:1 on canvas, 6.54:1 on card
+  static const link = Color(0xFF2B49C8);
+  static const accentLink = Color(0xFF2B49C8);
+  static const infoLight = Color(0xFF15509E);
+  static const warning = Color(0xFF8A4B00);
+  static const success = Color(0xFF0E6B38);
+
+  // Semantic tokens — dark variants.
+  //
+  //   link/accent #93B4FF — 10.21:1 on canvas, 7.71:1 on card
+  //   info        #8FC0FF — 11.15:1 on canvas, 8.42:1 on card
+  //   warning     #FBBF24 — 12.58:1 on canvas, 9.50:1 on card
+  //   success     #5FD99A — 11.88:1 on canvas, 8.97:1 on card
+  //   danger      #FF9E96 — 10.58:1 on canvas, 7.99:1 on card
+  static const linkDark = Color(0xFF93B4FF);
+  static const info = Color(0xFF8FC0FF);
+
+  // De-emphasised body copy — the second paragraph on a step, a supporting
+  // line under a title. This replaces `inkOf(context).withValues(alpha: .5)`,
+  // which composited to ~3.5:1 and measured 2.3-3.2:1 on the lighter surfaces.
+  //
+  //   secondaryInk #515250 — 7.40:1 on canvas, 7.86:1 on card
+  static const secondaryInk = Color(0xFF515250);
+  static const secondaryInkDark = Color(0xFF94949C);
+
+  // The former accent pair. Both members were re-purposed onto the AA-safe
+  // semantic values above so the settings model pill, which tints its own
+  // background from these, stops rendering body text at 2.15:1.
+  static const accentBlue = infoLight;
+  static const accentBlueMuted = infoLight;
+  static const accentGreen = success;
+  static const accentGreenDark = Color(0xFF5FD99A);
+  static const accentAmber = warning;
   static const accentAmberDark = Color(0xFFFBBF24);
-  static const accentAmberDeep = Color(0xFFD97706);
+  static const accentAmberDeep = warning;
 
   // Overlay / scrim (frosted glass, context menus, scrims)
   static const overlay = Color(0x33000000);
@@ -43,9 +90,14 @@ abstract final class FluxColors {
   static const scrimMenuLight = Color(0x18000000);
   static const scrimMenuDark = Color(0x33000000);
 
-  // Bubble / surface helpers
+  // Bubble / surface helpers.
+  //
+  // `bubbleUserDark` used to be #2C2C2E — 1.51:1 against the pure-black dark
+  // canvas, which is why the user bubble read as "very dark grey on black" on
+  // device. #575D6E keeps >= 4.5:1 for the text on it *and* >= 3:1 against the
+  // canvas, so the bubble is visible without the copy becoming unreadable.
   static const bubbleUserLight = Color(0xFFE5E5EA);
-  static const bubbleUserDark = Color(0xFF2C2C2E);
+  static const bubbleUserDark = Color(0xFF575D6E);
   static const bubbleAssistantLight = Color(0xFFF2F2F7);
   static const bubbleAssistantDark = Color(0xFF1C1C1E);
 
@@ -65,15 +117,20 @@ abstract final class FluxColors {
   static const tileLight = Color(0xFFF5F5F5);
   static const tileDark = Color(0xFF18181C);
 
-  // Secondary copy on a tile, e.g. a chat card's timestamp.
-  static const timestampLight = Color(0xFF848484);
-
-  /// Links inside body copy, e.g. the privacy policy line in onboarding.
-  static const link = Color(0xFF5D75FF);
+  // Secondary copy on a tile, e.g. a chat card's timestamp. #848484 measured
+  // 3.43:1 on the light tile fill; #646464 measures 5.43:1 on the same tile.
+  static const timestampLight = Color(0xFF646464);
 
   // Listening pill behind the composer (design: Chat - Voice).
   static const voiceStart = Color(0xFFC9E7A8);
   static const voiceEnd = Color(0xFFA7E9E1);
+
+  /// The smallest text the app renders. Anything a user has to *read* — labels,
+  /// hints, pills, section headers — goes through a text theme role that is at
+  /// least this size; 10px and 11px copy was measured as unreadable on a phone
+  /// and the audit flagged it. Non-text decoration (a superscript, a rule
+  /// thickness) is unaffected.
+  static const double minTextSize = 12;
 
   /// Diagonal wash used while the composer is listening.
   static const LinearGradient voiceGradient = LinearGradient(
@@ -87,6 +144,47 @@ abstract final class FluxColors {
   static const disclosureRowDark = Color(0xFF18181C);
 
   // Dynamic Context Resolvers
+
+  /// Link and the app's single accent colour, in the active theme. Both were
+  /// #5D75FF, which measured 3.63:1 on the light canvas — below AA for
+  /// body-size text, which is what the onboarding privacy link is.
+  static Color linkOf(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark ? linkDark : link;
+
+  /// Informational blue: the "an action is running / this is a fact" voice.
+  static Color infoOf(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark ? info : infoLight;
+
+  /// Amber: attention without alarm. The old #F59E0B measured 2.15:1 on white,
+  /// which is what made the model-status pill unreadable.
+  static Color warningOf(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+          ? accentAmberDark
+          : warning;
+
+  static Color successOf(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+          ? accentGreenDark
+          : success;
+
+  /// The app's accent. Deliberately the same token as [linkOf] — there is one
+  /// accent hue, and having a second near-identical blue is how the palette
+  /// drifted.
+  static Color accentOf(BuildContext context) => linkOf(context);
+
+  /// Text drawn on top of a chat bubble, a card, or any other raised surface.
+  static Color onBubbleOf(BuildContext context) => inkOf(context);
+
+  static Color bubbleUserOf(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+          ? bubbleUserDark
+          : bubbleUserLight;
+
+  static Color bubbleAssistantOf(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+          ? bubbleAssistantDark
+          : bubbleAssistantLight;
+
   static Color canvasOf(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark ? darkCanvas : canvas;
 
@@ -95,6 +193,14 @@ abstract final class FluxColors {
 
   static Color mutedOf(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark ? darkMuted : muted;
+
+  /// De-emphasised body copy. A solid token rather than a 50%-alpha
+  /// `withValues`, because an alpha ink composites to roughly 3.5:1 on the
+  /// canvas — below AA.
+  static Color secondaryInkOf(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+          ? secondaryInkDark
+          : secondaryInk;
 
   static Color lineOf(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark ? darkLine : line;
@@ -153,6 +259,42 @@ abstract final class FluxColors {
 
   static bool isDark(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark;
+}
+
+/// The app's single motion language.
+///
+/// The audit found three page motions and three modal motions with different
+/// durations and curves, so the same gesture felt like a different app on
+/// different screens. There is now exactly one duration and one curve per kind
+/// of transition, named here, and every shared widget routes through them. Any
+/// screen-level motion that is not one of these — a long-press preview, a
+/// progress ring — is a bug, and the call site belongs in the handoff list.
+abstract final class FluxMotion {
+  /// Push/pop of a secondary page (Settings, You, Creations, Flows).
+  static const Duration pageDuration = Duration(milliseconds: 280);
+  static const Curve pageCurve = Curves.easeOutCubic;
+  static const Curve pageReverseCurve = Curves.easeInCubic;
+
+  /// Presentation of a modal surface (context menu, bottom sheet, dialog).
+  static const Duration modalDuration = Duration(milliseconds: 220);
+  static const Curve modalCurve = Curves.easeOutCubic;
+  static const Curve modalReverseCurve = Curves.easeInCubic;
+
+  /// In-place content change: a disclosure opening, a chevron turning.
+  static const Duration revealDuration = Duration(milliseconds: 180);
+  static const Curve revealCurve = Curves.easeOutCubic;
+
+  /// Press feedback. Shared by every tappable surface so a thumb gets the same
+  /// answer everywhere.
+  static const Duration pressIn = Duration(milliseconds: 120);
+  static const Duration pressOut = Duration(milliseconds: 240);
+  static const Curve pressCurve = Curves.easeOutCubic;
+  static const Curve pressReturnCurve = Curves.easeOutBack;
+
+  /// Minimum touch target, in logical pixels. Everything tappable in
+  /// `lib/src/shared/widgets` reserves at least this much hit area even when
+  /// the painted control is smaller.
+  static const double minTapTarget = 48;
 }
 
 abstract final class FluxRadius {
@@ -243,14 +385,15 @@ abstract final class FluxTheme {
           fontWeight: FontWeight.w400,
         ),
         labelMedium: TextStyle(
-          fontSize: 12,
+          fontSize: FluxColors.minTextSize,
           height: 1.25,
           fontWeight: FontWeight.w400,
         ),
-        // Matches the M3 default this role previously inherited, so existing
-        // labelSmall usages keep rendering at the same size.
+        // Was 11px (the M3 default this role inherited), which the a11y audit
+        // measured as too small to read comfortably. Floored at
+        // [FluxColors.minTextSize] like every other readable role.
         labelSmall: TextStyle(
-          fontSize: 11,
+          fontSize: FluxColors.minTextSize,
           height: 1.25,
           fontWeight: FontWeight.w400,
         ),

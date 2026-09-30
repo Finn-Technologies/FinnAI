@@ -248,6 +248,87 @@ class FluxIcon extends StatelessWidget {
       );
 }
 
+/// A selectable filter pill: "All", "Apps", "Widgets", "Presentations".
+///
+/// Creations used to carry a private copy of this, so the same control looked
+/// slightly different between the gallery and the empty state.
+class FluxChip extends StatelessWidget {
+  const FluxChip({
+    super.key,
+    required this.label,
+    this.selected = false,
+    this.onTap,
+    this.semanticLabel,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback? onTap;
+
+  /// Overrides what a screen reader announces. Defaults to [label].
+  final String? semanticLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final ink = FluxColors.inkOf(context);
+    final muted = FluxColors.mutedOf(context);
+    final bg = selected ? ink : FluxColors.tileOf(context);
+    final fg = selected ? FluxColors.canvasOf(context) : muted;
+
+    final painted = Material(
+      color: bg,
+      borderRadius: BorderRadius.circular(FluxRadius.pill),
+      child: SizedBox(
+        height: 32,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          // A shrink-wrapping Row, not a Center: a Center expands to the
+          // incoming max width, so every chip in a Wrap would go full-bleed.
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: fg,
+                      fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                    ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    final hit = math.max(FluxMotion.minTapTarget, 32.0);
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: semanticLabel ?? label,
+      onTap: onTap,
+      excludeSemantics: true,
+      child: ConstrainedBox(
+        constraints:
+            BoxConstraints(minWidth: FluxMotion.minTapTarget, minHeight: hit),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(FluxRadius.pill),
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(FluxRadius.pill),
+            child: Align(
+              widthFactor: 1,
+              heightFactor: 1,
+              alignment: Alignment.center,
+              child: painted,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class FluxIconButton extends StatelessWidget {
   const FluxIconButton({
     super.key,
@@ -271,7 +352,10 @@ class FluxIconButton extends StatelessWidget {
     final fgColor =
         dark ? FluxColors.canvasOf(context) : FluxColors.inkOf(context);
 
-    final hit = math.max(48.0, size);
+    // The painted disc stays at [size]; the hit box is always at least
+    // [FluxMotion.minTapTarget] so a 34dp icon is still a comfortable thumb
+    // target on a phone.
+    final hit = math.max(FluxMotion.minTapTarget, size);
     final button = SizedBox.square(
       dimension: hit,
       child: Material(
@@ -361,22 +445,32 @@ class FluxPillButton extends StatelessWidget {
       ),
     );
 
-    return ConstrainedBox(
-      constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-      child: FluxPressScale(
-        scale: .95,
-        enabled: onTap != null,
-        child: Material(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(FluxRadius.pill),
-          child: InkWell(
-            onTap: onTap,
+    return Semantics(
+      button: true,
+      enabled: onTap != null,
+      label: label,
+      onTap: onTap,
+      excludeSemantics: true,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+          minWidth: FluxMotion.minTapTarget,
+          minHeight: FluxMotion.minTapTarget,
+        ),
+        child: FluxPressScale(
+          scale: .95,
+          enabled: onTap != null,
+          child: Material(
+            color: Colors.transparent,
             borderRadius: BorderRadius.circular(FluxRadius.pill),
-            child: Align(
-              widthFactor: 1,
-              heightFactor: 1,
-              alignment: Alignment.center,
-              child: painted,
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(FluxRadius.pill),
+              child: Align(
+                widthFactor: 1,
+                heightFactor: 1,
+                alignment: Alignment.center,
+                child: painted,
+              ),
             ),
           ),
         ),
@@ -411,8 +505,8 @@ class _FluxPressScaleState extends State<FluxPressScale>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 120),
-    reverseDuration: const Duration(milliseconds: 240),
+    duration: FluxMotion.pressIn,
+    reverseDuration: FluxMotion.pressOut,
   );
   late final Animation<double> _scale = Tween<double>(
     begin: 1,
@@ -420,8 +514,8 @@ class _FluxPressScaleState extends State<FluxPressScale>
   ).animate(
     CurvedAnimation(
       parent: _controller,
-      curve: Curves.easeOutCubic,
-      reverseCurve: Curves.easeOutBack,
+      curve: FluxMotion.pressCurve,
+      reverseCurve: FluxMotion.pressReturnCurve,
     ),
   );
 
@@ -484,9 +578,12 @@ class BackControl extends StatelessWidget {
                   alignment: Alignment.centerLeft,
                   child: Text(
                     L10n.of(context).commonBack,
+                    // 50%-alpha ink measured 3.47:1 on the canvas — below AA for
+                    // body-size text. [FluxColors.mutedOf] is a solid token at
+                    // 5.20:1 light / 7.33:1 dark and still reads as de-emphasised
+                    // next to full-strength ink.
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          color:
-                              FluxColors.inkOf(context).withValues(alpha: .5),
+                          color: FluxColors.mutedOf(context),
                         ),
                   ),
                 ),
@@ -515,14 +612,12 @@ class FluxGlass extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final effectiveColor = color ??
-        (FluxColors.isDark(context)
-            ? const Color(0xCC18181B)
-            : const Color(0xD9FFFFFF));
-    final effectiveBorder = borderColor ??
-        (FluxColors.isDark(context)
-            ? const Color(0x28FFFFFF)
-            : const Color(0x18FFFFFF));
+    // Routed through the theme's surface tokens instead of four raw
+    // Color(0x…) literals, so a future palette change moves the glass with it.
+    final effectiveColor =
+        color ?? FluxColors.surfaceOf(context).withValues(alpha: .80);
+    final effectiveBorder =
+        borderColor ?? FluxColors.lineOf(context).withValues(alpha: .60);
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -580,17 +675,15 @@ class FluxDisclosure extends StatefulWidget {
 
 class _FluxDisclosureState extends State<FluxDisclosure>
     with SingleTickerProviderStateMixin {
-  static const Duration _duration = Duration(milliseconds: 220);
-
   late final AnimationController _controller = AnimationController(
     vsync: this,
-    duration: _duration,
-    reverseDuration: _duration,
+    duration: FluxMotion.modalDuration,
+    reverseDuration: FluxMotion.modalDuration,
   )..addListener(_onFrame);
 
   late final CurvedAnimation _factor = CurvedAnimation(
     parent: _controller,
-    curve: Curves.easeOutCubic,
+    curve: FluxMotion.modalCurve,
   );
 
   final GlobalKey _contentKey = GlobalKey();
@@ -649,7 +742,10 @@ class _FluxDisclosureState extends State<FluxDisclosure>
           onTap: _toggle,
           excludeSemantics: true,
           child: ConstrainedBox(
-            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+            constraints: const BoxConstraints(
+              minWidth: FluxMotion.minTapTarget,
+              minHeight: FluxMotion.minTapTarget,
+            ),
             child: Material(
               color: Colors.transparent,
               borderRadius: BorderRadius.circular(FluxRadius.pill),
@@ -705,8 +801,8 @@ class _FluxDisclosureState extends State<FluxDisclosure>
                           turns: _expanded ? 0.25 : 0.0,
                           duration: MediaQuery.disableAnimationsOf(context)
                               ? Duration.zero
-                              : const Duration(milliseconds: 180),
-                          curve: Curves.easeOutCubic,
+                              : FluxMotion.revealDuration,
+                          curve: FluxMotion.revealCurve,
                           child: FluxIcon(
                             icon: FluxIcons.arrowRight01,
                             size: 14,
@@ -832,19 +928,28 @@ class FluxDisclosureRow extends StatelessWidget {
       margin: const EdgeInsets.symmetric(vertical: 3),
       child: onTap == null
           ? painted
-          : ConstrainedBox(
-              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-              child: Material(
-                color: Colors.transparent,
-                borderRadius: radius,
-                child: InkWell(
-                  onTap: onTap,
+          : Semantics(
+              button: true,
+              label: title,
+              onTap: onTap,
+              excludeSemantics: true,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  minWidth: FluxMotion.minTapTarget,
+                  minHeight: FluxMotion.minTapTarget,
+                ),
+                child: Material(
+                  color: Colors.transparent,
                   borderRadius: radius,
-                  child: Align(
-                    widthFactor: 1,
-                    heightFactor: 1,
-                    alignment: Alignment.center,
-                    child: painted,
+                  child: InkWell(
+                    onTap: onTap,
+                    borderRadius: radius,
+                    child: Align(
+                      widthFactor: 1,
+                      heightFactor: 1,
+                      alignment: Alignment.center,
+                      child: painted,
+                    ),
                   ),
                 ),
               ),
@@ -889,14 +994,23 @@ class FluxSectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // The label is rendered exactly as it was translated.
+    //
+    // This used to call `.toUpperCase()`, which broke three of the five shipped
+    // locales: German capitalises only nouns ("Über dich" became "ÜBER DICH",
+    // capitalising the accusative pronoun), and the transform cannot know a
+    // locale's casing rules from a plain Dart String. The English template
+    // already ships these section names in caps ("AI MODEL", "STORAGE & DATA"),
+    // so the design language is unchanged in English, and every other locale now
+    // shows correctly-cased text with the same weight and tracking.
     return Padding(
       padding: const EdgeInsets.only(left: 4, bottom: 4),
       child: Text(
-        label.toUpperCase(),
+        label,
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
               fontWeight: FontWeight.w700,
               letterSpacing: 1,
-              fontSize: 11,
+              fontSize: FluxColors.minTextSize,
               color: FluxColors.mutedOf(context),
             ),
       ),
