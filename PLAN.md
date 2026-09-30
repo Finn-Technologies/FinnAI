@@ -1,6 +1,15 @@
-# FinnAI Full Rewrite — PLAN.md (DRAFT for approval, no code changed)
+# FinnAI Full Rewrite — PLAN.md
 
-> Status: proposed plan only. Do not implement until owner approves.
+> **Status 2026-09-30: APPROVED AND IN PROGRESS.** Owner approved execution of
+> Phases 0-2 ("Phase 0 to 2 with subagents and all") and answered §9: release-mode
+> perf aggregates approved (no prompt text); Q4_K_M A/B deferred (Q4_0 stays pinned);
+> macOS-first order and foreground-only voice confirmed; one polished release after
+> full QA; device verification via build + install + screenshot.
+>
+> **Execution progress is tracked in [§10 Progress log](#10-progress-log) at the
+> bottom of this file.** Sections 0-9 below are the approved plan, unchanged except
+> where the progress log explicitly supersedes a line. PLAN.md remains the
+> cross-session contract (§5): update it per milestone.
 > Owner decisions 2026-09-29 (no code changed): (1) Desktop: mobile + macOS first (macOS first for easy testing on this machine; Linux/Windows later). (2) Flows: KEEP visible as Flows; target = MacroDroid-like on-device automations FinnAI can write + user-editable clean flowchart UI. (3) Voice: foreground-only + lifecycle stop, optimize for best experience. (4) Assistant: full Android digital assistant, acts on device. (5) Release: test everything first, ship one polished version (no rushed staged partial). (6) Users: global (Russia, India, any country/action) — multilingual + any-domain eval. (7) Model: stay pinned to lowest-resource / highest speed (Q4_0 class); no up-quant that costs RAM/heat without proof.
 > Device check 2026-09-29: Xiaomi `ebe7291` (Android 16, API 36) connected via `flutter devices`; `adb devices` shows `ebe7291 device`. macOS host present. Emulator list not yet verified. Full device verification in VERIFICATION.md §§1-7 (unmodified debug APK installed after Play uninstall; 21-prompt batch; dark mode; emulator).
 > Deferred to later per owner: image/multimodal eval prompts (needs sample photo), TalkBack pass, voice-engine install + voice retest (phone has no recognizer/TTS).
@@ -151,4 +160,146 @@ Observe, don’t coach: can they start (no swipe trap), explain consent in own w
 8. Image eval: attach 2 photos yourself or say "push a chart" for me to drive the picker? Recommended: your 2 photos (real + text) when ready — deferred, non-blocking.
 
 ---
-*End of draft. Awaiting approval — no code touched.*
+
+## 10. Progress log
+
+Append-only. Newest milestone first. Every entry states what is **verified** (tests
+run, with counts) versus **unverified** (built, on a device, awaiting a run). A
+milestone is only "done" when it has been merged into `main` with a green gate
+(`dart format` + `verify_engine_seam.sh` + `flutter analyze --no-pub` +
+`flutter test --no-pub`) and, where it claims a behaviour change, device evidence.
+
+### 2026-09-30 — Milestone 1: Phase 0 (baselines + harness) merged to `main`
+
+Commits `e347192` (pre-existing onboarding/Flows work checkpointed), `af513d9`,
+`134df4f`.
+
+**Owner decisions now settled (§9).**
+
+| # | Decision | Answer |
+|---|---|---|
+| 1 | Release-mode perf aggregates | **Yes**, no prompt text — every 8th turn |
+| 2 | Q4_K_M measure-only A/B | **Deferred.** Q4_0 stays pinned |
+| 3 | macOS-first desktop | Confirmed (Phase 7, not started) |
+| 4 | Foreground-only voice | Confirmed (Phase 5, not started) |
+| 5 | One polished release after full QA | Confirmed |
+| 6 | Real-user sessions | Not started (§8) |
+| 7 | Eval quality bar | **Set** — see gates below |
+| 8 | Image eval | Deferred, non-blocking |
+
+**Done and verified.**
+
+- **Harness out of `main.dart`.** The production entry point is now 116 lines of
+  bootstrap and nothing else; the benchmark moved to
+  `lib/src/engine/eval/benchmark.dart` and the quality runs to
+  `lib/src/engine/eval/{harness,eval_prompts,eval_baseline}.dart`.
+  `main.dart` went from 410 to 116 lines, all of it wiring.
+- **The catalog is data with machine-checkable expectations**, not a prose rubric:
+  `eval_prompts.dart` carries 31 cases across the suites of §2 (factual, math,
+  instruction, recall, multilingual, browse, everyday, adversarial, determinism).
+  A check is a predicate over the answer (`containsAny`, `forbids`, `wordCount`,
+  `hasLines`, `matches`, `satisfies`), so a wrong answer fails a check for a reason
+  the report can name.
+- **Summary + gates are pure Dart**, so CI can fail on a regression with no phone
+  attached. `compareToBaseline` emits a gate only when its denominator is non-zero —
+  a run that measures nothing must not read as a pass. This caught a real bug in my
+  own first cut (browse precision reporting 0.0 for a suite with no must-not-browse
+  turn); it is fixed and covered.
+- **Baselines carry no prompt or answer text.** Observations record counts,
+  latencies, routes and check verdicts only. A test asserts the encoded file
+  contains neither, because a baseline is generated on a real phone and committed.
+- **`tool/run_eval.sh --write-baseline`** is the `tool/eval --baseline` entry point
+  from §4 Phase 0: build, install, run on device, pull the baseline into `eval/`.
+  `--prompts eval/prompts/multilingual.json` covers the deferred non-Latin half of
+  Suite B — `adb shell input text` mangles non-ASCII (Devanagari arrived as literal
+  `\xNN`), so those 20 prompts travel as a file instead.
+- **Release builds are no longer blind (§9.1).** `PerfLogSampler` samples
+  `FINN_PERF`/`FINN_TTFT`/`FINN_PREFIX` once every 8 turns in release instead of
+  never. These lines carry only numbers, which is what makes the gate safe; the
+  full prompt breakdown (`FINN_PROMPT`) stays debug-only, and the
+  unverified-weights warning stays a debug decision rather than a measurement. The
+  rule takes the build mode as a parameter so it is testable — a test runs in debug,
+  where `kReleaseMode` is false and every turn would be kept.
+- **`.finn_repack` is deleted with the model.** It is ~693MB on the 1.6B and nothing
+  removed it, so "Delete All Local Data" left a third of a gigabyte on the device —
+  the exact state VERIFICATION.md §6 recorded. `removeModelArtifactFiles` is now the
+  one cleanup path for the model, its `.part`, its range side-files and the repack
+  cache, as a testable top-level function.
+- **Eval quality bar (§9.7), numeric and sourced** — `eval/README.md` documents each
+  gate and where its number comes from: empty-reply ≤ 2% (the device rate was 2/21),
+  browse precision = 1.0, TTFT +25%, decode −15%, check pass rate −5%, with every
+  relative gate skipped when the baseline has no comparable number.
+
+**Gate state at this commit:** `dart format` clean (211 files) · seam OK ·
+`flutter analyze --no-pub` no issues · `flutter test --no-pub` **670 passed, 0 failed**.
+
+**Not verified — do not treat as done.**
+
+- **The baseline has not been measured.** The eval APK builds and installs, but no
+  `eval/baseline_*.json` has been produced from a real run, so the gates are
+  unexercised against hardware. This is the §4 Phase 0 "definition of done" line
+  still open: **run `tool/run_eval.sh --write-baseline` on the Xiaomi** (model
+  already installed; ~25 prompts, several minutes, screen on).
+- **RAM growth (2.54GB → 3.73GB PSS over 20 turns) is unexplained.** No
+  investigation started. §4 Phase 0 lists it; it is open.
+
+### 2026-09-30 — Milestones 2 & 3: Phase 1 (chat streaming) + Phase 2 (design system) IN FLIGHT, not merged
+
+Both are being built on separate worktrees off `main` with disjoint file sets, per
+§5. Neither is merged; neither is verified end to end. Treat every line here as
+*work in progress*, not as a claim.
+
+**Phase 1 — `phase1-chat` worktree (uncommitted).** Targets the client side of the
+two device-confirmed Criticals:
+
+- O(n²) token path — `buffer.toString()` per token replaced by a single
+  materialisation per paint batch, with the count and bytes exposed for tests.
+- Message-ordering race (Critical #3, the "blue" reply appearing only after the next
+  user message). Root cause: `_finishPersisted` published the terminal job *after*
+  awaiting the encrypted flush, so anything running in that window (`flushActive`,
+  `stop`, the 1.5s persistence timer) re-read a stale live job and overwrote the
+  finished answer — downgrading status back to `generating`, and truncating text
+  whenever the last paint lagged the buffer. Fix: commit to the store and publish
+  the terminal job in one synchronous step before the first await.
+- `dispose()` now stops the native generation, not just the Dart subscription —
+  previously llama.cpp decoded to completion in the background holding the KV
+  session. The epoch is bumped before detaching, so late tokens are counted, never
+  applied.
+- 13 tests written, **11 pass / 2 fail.** Both failures are in the new
+  `safe_markdown_text` throttle tests ("final render equals final streamed text",
+  "a burst inside one paint gap costs one parse"), not in the controller fixes.
+  **Blocked on that.** The throttle design defers a re-parse inside a paint gap and
+  schedules a trailing one; it needs review before it ships, because stale rendered
+  text during a stream is a worse bug than the parse cost it saves.
+
+**Phase 2 — `phase2-design` worktree (uncommitted).** Targets the measured contrast
+failures and the missing dark-mode coverage:
+
+- Semantic colour tokens with light+dark variants (`linkOf`, `infoOf`, `warningOf`,
+  `successOf`, `bubbleUserOf`, `bubbleAssistantOf`, `secondaryInkOf`) plus a 48dp
+  `minTapTarget`. The values replaced were measured on the device: link 3.9:1, amber
+  pill 2.15:1, 50%-alpha body text ~2.3-3.2:1.
+- `test/shared/` — **32 tests passing**, including WCAG ratio maths asserted in the
+  test against both brightnesses, and the 48dp / semantic-label checks.
+- Goldens expanded from 4 light-phone onboarding shots to **35**: light+dark ×
+  phone/small/tablet/landscape, plus the shared widgets.
+- Locale-safe section labels (the `toUpperCase()` that breaks tr/i18n), one named
+  page+motion pair, and an ARB copy pass removing `llama.cpp`/`GGUF`/`artifact`/`Purge`
+  jargon from user-facing strings.
+- **Goldens not yet inspected.** A golden that captures a layout error is worse than
+  no golden; the produced PNGs must be read before this merges.
+
+**Explicitly not started.** Phases 3-7 (search speed, Flows runner, voice, system
+assistant, desktop). The Phase 1 *engine-side* items are also still open and are not
+in the `phase1-chat` worktree: deterministic factual sampler, history-aware decision
+prompt, single grounding format / stop browsing static facts, per-intent instruction
+in the session identity hash, attachment-preserving continue/regen.
+
+**Next, in order:** (1) resolve the two failing throttle tests or drop the throttle;
+(2) inspect the Phase 2 goldens, then merge both with a full gate run; (3) run
+`tool/run_eval.sh --write-baseline` on the Xiaomi to produce the first real baseline;
+(4) begin the Phase 1 engine-side response-quality work.
+
+---
+
+*Plan approved 2026-09-30. Phases 0-2 in progress; §10 records what is verified.*
