@@ -135,7 +135,13 @@ class FinnAccelerator extends ChangeNotifier {
 
   /// Wall-clock ceiling across all tool rounds of one turn. Research should not
   /// be able to stall a reply indefinitely on a slow connection.
-  static const Duration maxToolBudget = Duration(seconds: 12);
+  ///
+  /// Halved from 12s. The device measurement behind that: the 21-prompt batch
+  /// spent a 3s routing pass and then a multi-round agentic loop on questions
+  /// that needed no retrieval at all, and a 2-token answer took 5-9.6s of TTFT
+  /// for it. Most turns that need retrieval need exactly one round, which costs
+  /// ~2-3s; a turn that has not produced a usable answer by 6s was not going to.
+  static const Duration maxToolBudget = Duration(seconds: 6);
 
   static const continuationPrompt =
       'Continue exactly where the previous response stopped. Do not repeat '
@@ -1419,6 +1425,11 @@ class FinnAccelerator extends ChangeNotifier {
             conversationId,
             history,
             combinedContext,
+            // Part of the session's identity: the task instruction is a system
+            // block that lives in the KV cache for the session's whole life, so
+            // an intent switch has to start a fresh session rather than append
+            // a conflicting instruction over the resident one.
+            taskInstruction: PromptIntentPolicy.taskInstruction(promptAnalysis),
           );
           trace
             ?..conversationSessionCacheHit = prepared.cacheHit
@@ -3456,14 +3467,16 @@ class FinnAccelerator extends ChangeNotifier {
     _ModelRuntime runtime,
     String conversationId,
     List<LocalChatTurn> history,
-    String systemContext,
-  ) =>
+    String systemContext, {
+    String taskInstruction = '',
+  }) =>
       runtime.sessionSetupGate.run(
         () => _prepareSessionUnlocked(
           runtime,
           conversationId,
           history,
           systemContext,
+          taskInstruction: taskInstruction,
         ),
       );
 
@@ -3471,18 +3484,14 @@ class FinnAccelerator extends ChangeNotifier {
     _ModelRuntime runtime,
     String conversationId,
     List<LocalChatTurn> history,
-    String systemContext,
-  ) async {
-    final privateContextHash =
-        sha256.convert(utf8.encode(systemContext.trim())).toString();
-    final commonConfiguration = _prefixCacheKey(runtime);
-    final configuration = sha256
-        .convert(
-          utf8.encode(
-            '${commonConfiguration.stableHash}|$privateContextHash|mode=chat',
-          ),
-        )
-        .toString();
+    String systemContext, {
+    String taskInstruction = '',
+  }) async {
+    final configuration = sessionConfigurationHash(
+      stableHash: _prefixCacheKey(runtime).stableHash,
+      systemContext: systemContext,
+      taskInstruction: taskInstruction,
+    );
     final existing = runtime.sessions[conversationId];
     final historyMatches = existing != null &&
         existing.messageCount == history.length &&
@@ -3527,7 +3536,7 @@ class FinnAccelerator extends ChangeNotifier {
     final prefix = await _restoreOrPrepareBasePrefix(
       runtime,
       session,
-      commonConfiguration,
+      _prefixCacheKey(runtime),
     );
     final entry = _ConversationSession(
       session: session,
@@ -3819,6 +3828,9 @@ class FinnAccelerator extends ChangeNotifier {
       history: history,
       directive: directive,
       priorToolContext: priorToolContext,
+      // Same source of truth as [renderPromptText]: history trimming has to
+      // match the context the engine will actually run with.
+      contextTokens: _plan?.contextSize ?? 2048,
     );
   }
 
@@ -3964,16 +3976,20 @@ class FinnAccelerator extends ChangeNotifier {
   }
 
   int _outputBudget(PromptAnalysis analysis) {
-    // No per-intent output ceiling: long-form answers (writing, coding,
-    // analysis) must not be truncated mid-thought. The only bound is the
-    // device's context window, so maxTokens stays a runaway-safety bound
-    // rather than a truncation target — a normal answer ends at EOG long
-    // before this is reached.
+    // The intent budget is the *ceiling*, and the context window only caps it
+    // from above. It used to be `max(desired, contextSize - 96)`, which made
+    // the context bound always win: on a 4096-token context every turn was
+    // allowed 4000 output tokens regardless of what was asked. The device eval
+    // caught a real runaway on exactly that - one case emitted 4000 tokens and
+    // took 230 seconds, nearly four times the rest of the suite put together,
+    // and it was a question whose whole answer was one word.
+    //
+    // Generous relative to the intent (roughly 3x for a quick answer) so a
+    // long-form answer is never truncated mid-thought, but a runaway now
+    // stops instead of running to the end of the context.
     final contextSize = _plan?.contextSize ?? 2048;
-    return math.max(
-      PromptIntentPolicy.desiredOutputTokens(analysis.intent),
-      contextSize - 96,
-    );
+    final desired = PromptIntentPolicy.desiredOutputTokens(analysis.intent);
+    return math.min(desired * 3, contextSize - 96);
   }
 
   @visibleForTesting
@@ -3982,14 +3998,11 @@ class FinnAccelerator extends ChangeNotifier {
     int? deviceCeiling,
     bool supported = true,
   }) {
-    // Mirrors _outputBudget: no device-class ceiling; the desired intent
-    // budget is only a floor beneath the context-derived bound.
+    // Mirrors _outputBudget.
     final analysis = const PromptIntentClassifier().classify(prompt);
     final contextSize = deviceCeiling ?? _plan?.contextSize ?? 2048;
-    return math.max(
-      PromptIntentPolicy.desiredOutputTokens(analysis.intent),
-      contextSize - 96,
-    );
+    final desired = PromptIntentPolicy.desiredOutputTokens(analysis.intent);
+    return math.min(desired * 3, contextSize - 96);
   }
 
   Future<void> _unload() async {
@@ -4335,6 +4348,37 @@ Future<bool> promoteVerifiedModelPartial({
     return false;
   }
   return true;
+}
+
+/// The identity of a chat session: the token under which its KV cache may be
+/// reused.
+///
+/// A session is only reusable when the cache is holding exactly what the next
+/// turn is about to assume. That includes the per-intent task instruction,
+/// which is a `system` block that lives in the KV cache for the whole life of
+/// the session. It was left out of this hash, so a conversation that switched
+/// intent — a one-word answer, then a summarisation request — reused the
+/// session and carried the *first* turn's instruction underneath the second
+/// turn's prompt. Two instructions, one of them contradicting the other, and
+/// nothing in the cache key said so.
+///
+/// The instruction's text is hashed rather than embedded, so a long instruction
+/// does not make the key large and no prompt text ends up in a logged key.
+@visibleForTesting
+String sessionConfigurationHash({
+  required String stableHash,
+  required String systemContext,
+  String taskInstruction = '',
+}) {
+  final contextHash =
+      sha256.convert(utf8.encode(systemContext.trim())).toString();
+  final taskHash =
+      sha256.convert(utf8.encode(taskInstruction.trim())).toString();
+  return sha256
+      .convert(
+        utf8.encode('$stableHash|$contextHash|task=$taskHash|mode=chat'),
+      )
+      .toString();
 }
 
 /// Deletes an installed model file and everything that belongs to it:

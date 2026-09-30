@@ -94,8 +94,12 @@ class SearchDecisionParser {
     }
 
     // 1. Explicit <tool_call>...</tool_call> XML blocks emitted by ChatML/Qwen/Llama models
+    //
+    // A closing tag is required. The pattern used to accept an *unterminated*
+    // tag too, so a generation that was cut off mid-call was parsed as a
+    // complete call and browsed for whatever text came next.
     final toolCallTagMatch = RegExp(
-      r'<tool_call>([\s\S]*?)(?:</tool_call>|$)',
+      r'<tool_call>([\s\S]*?)</tool_call>',
       caseSensitive: false,
     ).firstMatch(value);
     if (toolCallTagMatch != null) {
@@ -292,7 +296,19 @@ class SearchDecisionParser {
         }
       }
     } catch (_) {
-      // If not strict JSON, inspect content inside tool call tag
+      // Not strict JSON. The old behaviour here read *any* leftover text out
+      // of a tool-call tag and issued a search for it, which is how a
+      // malformed turn turned into a web request: on the device a question
+      // with no browsing need at all spent ~3s in a search before answering
+      // from knowledge anyway.
+      //
+      // An unterminated `<tool_call>` is a truncated generation, not a
+      // request. Treating it as no decision lets the turn answer from
+      // knowledge instead of guessing a query out of the model's
+      // half-finished thought.
+      if (RegExp(r'<tool_call>', caseSensitive: false).hasMatch(trimmed)) {
+        return null;
+      }
       final cleaned = _cleanQuery(trimmed);
       if (cleaned != null &&
           !cleaned.startsWith('{') &&

@@ -37,7 +37,8 @@ void main() {
   );
 
   test('search-happy policy searches factual questions in any language', () {
-    expect(policy.shouldSearch('What is the capital of France?'), isTrue);
+    // These are open-domain or explanatory, so retrieval can genuinely add
+    // something the model does not have.
     expect(policy.shouldSearch('Who wrote Hamlet?'), isTrue);
     expect(policy.shouldSearch('When did Rome fall?'), isTrue);
     expect(policy.shouldSearch('Why is the sky blue?'), isTrue);
@@ -51,6 +52,54 @@ void main() {
       policy.shouldSearch('Wie funktioniert ein Verbrennungsmotor?'),
       isTrue,
     );
+  });
+
+  test('closed-domain facts answer from knowledge instead of browsing', () {
+    // The device measurement behind this: "What is the capital of France?"
+    // matched the "needs a fact check" question shape, cost ~3s of retrieval,
+    // and then produced the same answer the model already had. These are the
+    // prompts the eval suite checks for correctness, so a browse here is pure
+    // latency and a new way to be wrong (a stale or wrong snippet).
+    expect(policy.shouldSearch('What is the capital of France?'), isFalse);
+    expect(policy.shouldSearch('What is the largest planet?'), isFalse);
+    expect(policy.shouldSearch('Is 97 a prime number?'), isFalse);
+    expect(policy.shouldSearch('What is 17 * 23?'), isFalse);
+    expect(policy.shouldSearch('How many continents are there?'), isFalse);
+    expect(policy.shouldSearch('Qual è la capitale dItalia?'), isFalse);
+    expect(
+        policy.shouldSearch('Wie ist die Hauptstadt von Österreich?'), isFalse);
+
+    // A stable subject does not make a current question stable: the
+    // freshness words are checked first, so these still browse.
+    expect(
+      policy.shouldSearch('What is the capital of France right now?'),
+      isTrue,
+    );
+    expect(policy.shouldSearch('What is the price of gold today?'), isTrue);
+  });
+
+  test('a follow-up about the conversation never browses', () {
+    // Retrieval cannot answer a question about what was already said. On the
+    // device "What did you reply above? Say it again." searched the web,
+    // opened Wikipedia and read two more pages before restating an answer it
+    // had just given.
+    expect(policy.shouldSearch('What did you say?'), isFalse);
+    expect(policy.shouldSearch('Say it again'), isFalse);
+    expect(policy.shouldSearch('Tell me again, in shorter words'), isFalse);
+    expect(policy.shouldSearch('And what did I ask first?'), isFalse);
+    expect(policy.shouldSearch('Why?'), isFalse);
+    expect(policy.shouldSearch('again'), isFalse);
+  });
+
+  test('an explicit request for the web is always honoured', () {
+    // The suppression above must never override the user asking for it, even
+    // when the question is one of the closed-domain shapes.
+    expect(
+      policy.shouldSearch('Search the web for the capital of France'),
+      isTrue,
+    );
+    expect(policy.shouldSearch('Look up the largest planet'), isTrue);
+    expect(policy.shouldSearch('cerca online la capitale d\'Italia'), isTrue);
   });
 
   test('small talk, personal, and self-referential questions stay offline', () {

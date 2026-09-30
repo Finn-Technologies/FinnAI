@@ -127,6 +127,20 @@ user preferences but never reveal them.''';
     ];
   }
 
+  /// Renders the prompt for the "should I browse for this?" decision pass.
+  ///
+  /// [history] is the conversation so far, and it is rendered deliberately.
+  /// This pass existed with a `history` parameter that was threaded through
+  /// three layers and then never written into the prompt, so the decision was
+  /// made from the question alone: on the device "And what did I ask first?"
+  /// was answered by searching the web, Wikipedia and two more pages, because
+  /// nothing in the prompt told the model the answer was already in the
+  /// transcript. A follow-up can only be classified against the turn it follows.
+  ///
+  /// Only the recent turns are included, for the same reason [renderPromptText]
+  /// bounds them: the decision is a routing choice, not a summarisation, and a
+  /// long transcript on a 1.6B model is more likely to derail it than inform
+  /// it.
   static String renderDecisionPromptText({
     required bool primed,
     required bool basePrefixReady,
@@ -136,20 +150,27 @@ user preferences but never reveal them.''';
     required List<LocalChatTurn> history,
     required String directive,
     String priorToolContext = '',
+    int contextTokens = 2048,
     DateTime? now,
   }) {
     final buffer = StringBuffer();
     if (!primed) {
       if (!basePrefixReady) buffer.write(baseSystemPrefix);
-      buffer
-        ..write('<|im_start|>system\n')
-        ..write(PromptIntentPolicy.taskInstruction(analysis))
-        ..write('<|im_end|>\n');
+      // Honouring this flag is what keeps the instruction from being written
+      // twice over a primed session; it was accepted and then ignored, while
+      // `renderPromptText` did honour it.
+      if (includeTaskInstruction) {
+        buffer
+          ..write('<|im_start|>system\n')
+          ..write(PromptIntentPolicy.taskInstruction(analysis))
+          ..write('<|im_end|>\n');
+      }
       buffer
         ..write('<|im_start|>system\n')
         ..write(directive)
         ..write('<|im_end|>\n');
       writePriorToolContext(buffer, priorToolContext);
+      writeHistory(buffer, prompt, history, contextTokens);
       buffer.write(currentDateTimeSystemBlock(now ?? DateTime.now()));
       buffer
         ..write('<|im_start|>user\n')
@@ -162,6 +183,7 @@ user preferences but never reveal them.''';
         ..write(directive)
         ..write('<|im_end|>\n');
       writePriorToolContext(buffer, priorToolContext);
+      writeHistory(buffer, prompt, history, contextTokens);
       buffer.write(currentDateTimeSystemBlock(now ?? DateTime.now()));
       buffer
         ..write('<|im_start|>user\n')
@@ -169,6 +191,31 @@ user preferences but never reveal them.''';
         ..write('<|im_end|>\n<|im_start|>assistant\n');
     }
     return buffer.toString();
+  }
+
+  /// The recent conversation, oldest first, in the same bounded form
+  /// [renderPromptText] uses.
+  ///
+  /// A primed session already holds this in its KV cache, so re-sending it
+  /// would be a fresh, more expensive way to say the same thing. It is written
+  /// only on the unprimed path, which is exactly where the transcript was
+  /// missing before.
+  static void writeHistory(
+    StringBuffer buffer,
+    String prompt,
+    List<LocalChatTurn> history,
+    int contextTokens,
+  ) {
+    for (final turn in recentHistory(
+      prompt,
+      history,
+      contextTokens: contextTokens,
+    )) {
+      buffer
+        ..write('<|im_start|>${turn.role}\n')
+        ..write(turn.content)
+        ..write('<|im_end|>\n');
+    }
   }
 
   /// Replays what the browser already returned, so a later decision round asks
