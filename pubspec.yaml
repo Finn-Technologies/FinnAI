@@ -2,7 +2,7 @@ name: finn_ai
 description: "A private, on-device AI assistant for Android and OpenHarmony."
 publish_to: 'none'
 
-version: 2.0.0-beta+8
+version: 2.0.0-beta+9
 
 environment:
   sdk: ">=3.6.0 <4.0.0"
