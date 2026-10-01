@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show PlatformDispatcher;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -7,7 +8,10 @@ import 'package:finn_ai/l10n/app_localizations.dart';
 import 'package:finn_ai/l10n/l10n_helper.dart';
 
 import 'package:finn_ai/src/app/app_state_store.dart';
+import 'package:finn_ai/src/app/speech_model_addon.dart';
+import 'package:finn_ai/src/app/tts_voices_addon.dart';
 import 'package:finn_ai/src/features/chat/home_shell.dart';
+import 'package:finn_ai/src/features/onboarding/model_install.dart';
 import 'package:finn_ai/src/features/onboarding/onboarding_flow.dart';
 import 'package:finn_ai/src/inference/finn_inference.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
@@ -25,6 +29,18 @@ class _FinnBootstrapState extends State<FinnBootstrap> {
   late Future<void> _ready = _initialize();
   bool _modelInstalled = false;
 
+  /// Optional downloads that ride along with the language model.
+  final List<InstallAddon> _addons = [
+    SpeechModelAddon(),
+    TtsVoicesAddon(
+      deviceLanguage: PlatformDispatcher.instance.locale.languageCode,
+    ),
+  ];
+
+  /// False when an upgrading user is missing an add-on they have not already
+  /// been offered, which sends them through the install screen once.
+  bool _addonsReady = true;
+
   Future<void> _initialize() async {
     await Future.wait([
       AppStateStore.instance.initialize(),
@@ -34,6 +50,10 @@ class _FinnBootstrapState extends State<FinnBootstrap> {
     final inference = FinnInference.instance;
     if (inference.isDeviceSupported) {
       _modelInstalled = await inference.isInstalled(inference.selected);
+      _addonsReady = true;
+      for (final addon in _addons) {
+        if (await addon.shouldOfferOnUpgrade()) _addonsReady = false;
+      }
       // Run model download resumption and background accelerator benchmark
       // asynchronously in the background so the home screen boots instantly.
       unawaited(_backgroundWarmup(inference));
@@ -93,7 +113,8 @@ class _FinnBootstrapState extends State<FinnBootstrap> {
           if (snapshot.connectionState == ConnectionState.done) {
             return FluxApp(
               onboardingComplete: AppStateStore.instance.onboardingComplete,
-              modelInstalled: _modelInstalled,
+              modelInstalled: _modelInstalled && _addonsReady,
+              addons: _addons,
             );
           }
           return MaterialApp(
@@ -154,11 +175,13 @@ class FluxApp extends StatelessWidget {
     this.enableModelDownload = true,
     this.onboardingComplete = false,
     this.modelInstalled = true,
+    this.addons = const [],
   });
 
   final bool enableModelDownload;
   final bool onboardingComplete;
   final bool modelInstalled;
+  final List<InstallAddon> addons;
 
   @override
   Widget build(BuildContext context) {
@@ -180,9 +203,10 @@ class FluxApp extends StatelessWidget {
           ? onboardingComplete
               ? modelInstalled
                   ? const HomeShell()
-                  : const SoftwareUpgradeScreen()
+                  : SoftwareUpgradeScreen(addons: addons)
               : OnboardingFlow(
                   enableModelDownload: enableModelDownload,
+                  addons: addons,
                   onComplete: AppStateStore.instance.completeOnboarding,
                 )
           : const _UnsupportedDevicePage(),

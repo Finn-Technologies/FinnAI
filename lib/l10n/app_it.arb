@@ -609,7 +609,7 @@
   "@settingsSpokenResponses": {
     "description": "Spoken responses toggle label"
   },
-  "settingsSpokenResponsesBody": "Finn legge le risposte ad alta voce in modalità vocale. La trascrizione della tua voce viene elaborata dal riconoscimento vocale del dispositivo, che potrebbe richiedere internet.",
+  "settingsSpokenResponsesBody": "Finn legge le risposte ad alta voce in modalità vocale. Ciò che dici viene trasformato in testo su questo dispositivo e non lo lascia mai.",
   "@settingsSpokenResponsesBody": {
     "description": "Spoken responses toggle description"
   },
@@ -653,6 +653,40 @@
   "voiceUnavailable": "Il riconoscimento vocale non è disponibile al momento. Digita invece il tuo messaggio.",
   "@voiceUnavailable": {
     "description": "Voice STT unavailable message"
+  },
+  "voiceModelNeeded": "La modalità vocale richiede un download una tantum di {size}. La tua voce viene trasformata in testo su questo dispositivo e non lo lascia mai.",
+  "@voiceModelNeeded": {
+    "description": "Voice sheet: the speech model must be downloaded once",
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "voiceModelDownload": "Scarica",
+  "@voiceModelDownload": {
+    "description": "Button to download the speech model"
+  },
+  "voiceModelDownloading": "Download del modello vocale… {percent}%",
+  "@voiceModelDownloading": {
+    "description": "Voice sheet: speech model download progress",
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "voiceModelFailed": "Il download non è stato completato. Controlla la connessione e riprova.",
+  "@voiceModelFailed": {
+    "description": "Voice sheet: speech model download failed"
+  },
+  "voiceModelRetry": "Riprova",
+  "@voiceModelRetry": {
+    "description": "Button to retry the speech model download"
+  },
+  "voiceSpeakingLive": "Sta parlando…",
+  "@voiceSpeakingLive": {
+    "description": "Live voice: Finn is speaking the reply"
   },
   "voiceStopSemantic": "Interrompi",
   "@voiceStopSemantic": {

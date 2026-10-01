@@ -1,17 +1,28 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter_tts/flutter_tts.dart';
-import 'package:speech_to_text/speech_recognition_error.dart';
-import 'package:speech_to_text/speech_recognition_result.dart';
-import 'package:speech_to_text/speech_to_text.dart';
 
-import 'package:finn_ai/src/features/voice/speakable_text.dart';
-import 'package:finn_ai/src/features/voice/voice_settings_store.dart';
+import 'package:finn_ai/src/features/voice/reply_chunker.dart';
+import 'package:finn_ai/src/features/voice/stt/sherpa_speech_backend.dart';
+import 'package:finn_ai/src/features/voice/stt/speech_backend.dart';
+import 'package:finn_ai/src/features/voice/tts/fallback_tts_backend.dart';
+import 'package:finn_ai/src/features/voice/tts/language_pick.dart';
+import 'package:finn_ai/src/features/voice/tts/tts_voice_catalog.dart';
+import 'package:finn_ai/src/features/voice/tts_backend.dart';
+
+export 'package:finn_ai/src/features/voice/stt/speech_backend.dart';
+export 'package:finn_ai/src/features/voice/tts_backend.dart';
 
 enum VoiceChatState { idle, listening, thinking, speaking }
 
-enum VoiceChatError { none, micDenied, unavailable }
+enum VoiceChatError {
+  none,
+  micDenied,
+  unavailable,
+
+  /// The on-device speech model has not been downloaded. The sheet offers it.
+  modelMissing,
+}
 
 const double voiceSpeechRate = 0.45;
 
@@ -27,163 +38,23 @@ extension VoiceListenOutcomeX on VoiceListenOutcome {
   bool get didCatchNothing => this == VoiceListenOutcome.heardNothing;
 }
 
-abstract class SpeechBackend {
-  Future<bool> initialize({
-    void Function(SpeechRecognitionError error)? onError,
-    void Function(String status)? onStatus,
-  });
-  Future<bool> get hasPermission;
-  bool get isListening;
-  Future<void> listen({
-    void Function(SpeechRecognitionResult result)? onResult,
-    void Function(double level)? onSoundLevelChange,
-    bool preferOnDevice = false,
-  });
-  Future<void> stop();
-  Future<void> cancel();
-}
-
-class SpeechToTextBackend implements SpeechBackend {
-  SpeechToTextBackend({SpeechToText? speech})
-      : _speech = speech ?? SpeechToText();
-
-  final SpeechToText _speech;
-
-  @override
-  Future<bool> initialize({
-    void Function(SpeechRecognitionError error)? onError,
-    void Function(String status)? onStatus,
-  }) =>
-      _speech.initialize(
-        onError: onError,
-        onStatus: onStatus,
-        options: [
-          SpeechToText.androidIntentLookup,
-          SpeechToText.androidNoBluetooth,
-        ],
-      );
-
-  @override
-  Future<bool> get hasPermission => _speech.hasPermission;
-
-  @override
-  bool get isListening => _speech.isListening;
-
-  @override
-  Future<void> listen({
-    void Function(SpeechRecognitionResult result)? onResult,
-    void Function(double level)? onSoundLevelChange,
-    bool preferOnDevice = false,
-  }) =>
-      _speech.listen(
-        onResult: onResult,
-        onSoundLevelChange: onSoundLevelChange,
-        listenOptions: SpeechListenOptions(
-          onDevice: preferOnDevice,
-          // Explicit rather than plugin defaults. The defaults are 60s and 3s,
-          // and the 60s is a long time to hold the microphone open in a
-          // foreground-only feature while the user thinks; 30s is past any
-          // question anyone asks out loud. `pauseFor` is how long the engine
-          // waits after a pause before finalising, so 1.2s stops it cutting
-          // a speaker off mid-thought and still ends the turn promptly.
-          listenFor: const Duration(seconds: 30),
-          pauseFor: const Duration(milliseconds: 1200),
-          partialResults: true,
-        ),
-      );
-
-  @override
-  Future<void> stop() => _speech.stop();
-
-  @override
-  Future<void> cancel() => _speech.cancel();
-}
-
-abstract class TtsBackend {
-  Future<void> initialize({
-    VoidCallback? onStart,
-    VoidCallback? onComplete,
-    VoidCallback? onCancel,
-    void Function(dynamic message)? onError,
-  });
-  Future<void> setSpeechRate(double rate);
-  Future<void> setQueueAdd();
-  Future<void> speak(String text);
-  Future<void> stop();
-}
-
-class FlutterTtsBackend implements TtsBackend {
-  FlutterTtsBackend({FlutterTts? tts}) : _tts = tts ?? FlutterTts();
-
-  final FlutterTts _tts;
-
-  @override
-  Future<void> initialize({
-    VoidCallback? onStart,
-    VoidCallback? onComplete,
-    VoidCallback? onCancel,
-    void Function(dynamic message)? onError,
-  }) async {
-    _tts.setStartHandler(onStart ?? () {});
-    _tts.setCompletionHandler(onComplete ?? () {});
-    _tts.setCancelHandler(onCancel ?? () {});
-    if (onError != null) _tts.setErrorHandler(onError);
-    await _tts.awaitSpeakCompletion(false);
-    await _tts.setVolume(1.0);
-    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
-      try {
-        final engines = await _tts.getEngines;
-        if (engines is List && engines.contains('com.google.android.tts')) {
-          await _tts.setEngine('com.google.android.tts');
-        }
-      } catch (_) {}
-    } else if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
-      try {
-        await _tts.setIosAudioCategory(
-          IosTextToSpeechAudioCategory.playback,
-          [
-            IosTextToSpeechAudioCategoryOptions.defaultToSpeaker,
-            IosTextToSpeechAudioCategoryOptions.mixWithOthers,
-          ],
-          IosTextToSpeechAudioMode.defaultMode,
-        );
-      } catch (_) {}
-    }
-    try {
-      final tag = PlatformDispatcher.instance.locale.toLanguageTag();
-      if (await _tts.isLanguageAvailable(tag) == true) {
-        await _tts.setLanguage(tag);
-      }
-    } catch (_) {}
-    await setQueueAdd();
-    await setSpeechRate(VoiceSettingsStore.instance.speed.rate);
-  }
-
-  @override
-  Future<void> setSpeechRate(double rate) => _tts.setSpeechRate(rate);
-
-  @override
-  Future<void> setQueueAdd() => _tts.setQueueMode(1);
-
-  @override
-  Future<void> speak(String text) => _tts.speak(text, focus: true);
-
-  @override
-  Future<void> stop() => _tts.stop();
-}
-
 class VoiceChatController extends ChangeNotifier {
   VoiceChatController({
     SpeechBackend? speech,
     TtsBackend? tts,
     this.onTranscript,
-  })  : _speech = speech ?? SpeechToTextBackend(),
-        _tts = tts ?? FlutterTtsBackend();
+    String? deviceLanguage,
+  })  : _speech = speech ?? SherpaSpeechBackend(),
+        _tts = tts ?? FallbackTtsBackend(),
+        _deviceLanguage = deviceLanguage;
 
-  static final instance = VoiceChatController();
+  static final instance = VoiceChatController(
+    deviceLanguage: PlatformDispatcher.instance.locale.languageCode,
+  );
 
   final SpeechBackend _speech;
   final TtsBackend _tts;
+  final String? _deviceLanguage;
 
   VoidCallback? _onStateChangedForTest;
   bool _spokenResponses = true;
@@ -194,13 +65,29 @@ class VoiceChatController extends ChangeNotifier {
   bool _sttAvailable = false;
   bool _ttsReady = false;
   bool _suppressNextFinal = false;
-  bool _onDeviceOnly = false;
   Timer? _listenWatchdog;
   final StringBuffer _replyBuffer = StringBuffer();
-  String _spokenUpTo = '';
+  final ReplyChunker _chunker = ReplyChunker();
   bool _replyStreamOpen = false;
   bool _replyCancelled = false;
   int _queuedUtterances = 0;
+
+  // The live conversation: listen, send, think, speak, listen again.
+  bool _live = false;
+  int _liveGeneration = 0;
+  bool _spokeThisTurn = false;
+
+  /// Bumped when speech is stopped, so an utterance that was still waiting to
+  /// start does not start after the interruption.
+  int _speakEpoch = 0;
+  String? _heardLanguage;
+  Timer? _speakWatchdog;
+
+  // Where a turn's time goes, logged as `FINN_VOICE`: from the moment the
+  // transcript lands to the first text from the model and to the first sound.
+  final Stopwatch _turn = Stopwatch();
+  bool _firstTextLogged = false;
+  bool _firstAudioLogged = false;
 
   /// What the last listen session produced. Cleared when a new session starts,
   /// so the "didn't catch that" line disappears the moment the user tries
@@ -214,6 +101,10 @@ class VoiceChatController extends ChangeNotifier {
   bool get spokenResponses => _spokenResponses;
   bool get active => _state != VoiceChatState.idle;
 
+  /// True while a hands-free conversation is going: after each spoken reply
+  /// the microphone opens again by itself, until the user ends it.
+  bool get live => _live;
+
   /// True when the last listen finished without catching anything.
   bool get didNotCatchAnything => _lastListenOutcome.didCatchNothing;
 
@@ -225,31 +116,42 @@ class VoiceChatController extends ChangeNotifier {
   }
 
   Future<bool> ensureReady() async {
-    if (_sttAvailable && _ttsReady) return true;
-    if (!_sttAvailable) {
-      try {
-        _sttAvailable = await _speech.initialize(
-          onError: _onSpeechError,
-          onStatus: _onSpeechStatus,
-        );
-      } catch (_) {
-        _sttAvailable = false;
-      }
-      if (!_sttAvailable) {
-        try {
-          final granted = await _speech.hasPermission;
-          _error =
-              granted ? VoiceChatError.unavailable : VoiceChatError.micDenied;
-        } catch (_) {
-          _error = VoiceChatError.unavailable;
-        }
-        notifyListeners();
-      } else if (_error == VoiceChatError.unavailable ||
-          _error == VoiceChatError.micDenied) {
-        _error = VoiceChatError.none;
-        notifyListeners();
-      }
+    await _ensureSpeech();
+    await _ensureTts();
+    return _sttAvailable || _ttsReady;
+  }
+
+  /// Checks the microphone and the speech model. This is all listening needs,
+  /// so it is all that listening waits for.
+  Future<void> _ensureSpeech() async {
+    if (_sttAvailable) return;
+    SpeechInit init;
+    try {
+      init = await _speech.initialize(onFailure: _onSpeechFailure);
+    } catch (_) {
+      init = SpeechInit.unavailable;
     }
+    _sttAvailable = init == SpeechInit.ready;
+    final next = switch (init) {
+      SpeechInit.ready => VoiceChatError.none,
+      SpeechInit.micDenied => VoiceChatError.micDenied,
+      SpeechInit.needsModel => VoiceChatError.modelMissing,
+      SpeechInit.unavailable => VoiceChatError.unavailable,
+    };
+    if (_error != next) {
+      _error = next;
+      notifyListeners();
+    }
+  }
+
+  Future<void>? _ttsInit;
+
+  /// Sets the voice up. Started when listening starts and finished well before
+  /// there is anything to say, so it is never on the path to the first word.
+  Future<void> _ensureTts() =>
+      _ttsReady ? Future.value() : _ttsInit ??= _initTts();
+
+  Future<void> _initTts() async {
     try {
       await _tts.initialize(
         onStart: _onTtsStart,
@@ -257,16 +159,75 @@ class VoiceChatController extends ChangeNotifier {
         onCancel: _onTtsStop,
         onError: (_) => _onTtsStop(),
       );
+      _tts.level.addListener(_onTtsLevel);
       _ttsReady = true;
     } catch (_) {
       _ttsReady = false;
     }
-    return _sttAvailable || _ttsReady;
+    _ttsInit = null;
+  }
+
+  /// The state of the on-device speech model, for the sheet's download card.
+  ValueListenable<SpeechModelStatus> get speechModel => _speech.model;
+
+  /// Downloads the speech model, then starts listening.
+  Future<void> downloadSpeechModel() async {
+    try {
+      await _speech.downloadModel();
+    } catch (_) {
+      // The status already says `failed`; the sheet shows it and offers a retry.
+      return;
+    }
+    _error = VoiceChatError.none;
+    notifyListeners();
+    await startListening();
+  }
+
+  /// Starts a hands-free conversation: listens now, and again after each
+  /// spoken reply. The first call also warms the voice so the first answer is
+  /// not waiting on it.
+  Future<void> startLive() async {
+    _live = true;
+    _liveGeneration++;
+    notifyListeners();
+    unawaited(ensureReady().then((_) => _tts.prepare()).catchError((_) {}));
+    await startListening();
+    if (_error != VoiceChatError.none) _endLive();
+  }
+
+  /// Ends the conversation and lets go of the microphone and the speaker.
+  Future<void> endLive() async {
+    _endLive();
+    await reset();
+  }
+
+  void _endLive() {
+    if (!_live) return;
+    _live = false;
+    _liveGeneration++;
+    notifyListeners();
+  }
+
+  /// What a tap on the microphone means, in whatever state it finds things.
+  /// [onStopGeneration] stops the model when a reply is still being written.
+  Future<void> tapMic({VoidCallback? onStopGeneration}) async {
+    switch (_state) {
+      case VoiceChatState.listening:
+        await stopListening();
+      case VoiceChatState.speaking:
+      case VoiceChatState.thinking:
+        await interrupt();
+        onStopGeneration?.call();
+        await startListening();
+      case VoiceChatState.idle:
+        await startListening();
+    }
   }
 
   Future<void> startListening() async {
-    final ready = await ensureReady();
-    if (!ready || !_sttAvailable) {
+    await _ensureSpeech();
+    unawaited(_ensureTts());
+    if (!_sttAvailable) {
       if (_error == VoiceChatError.none) {
         _error = VoiceChatError.unavailable;
       }
@@ -277,22 +238,12 @@ class VoiceChatController extends ChangeNotifier {
     _error = VoiceChatError.none;
     _transcript = '';
     _suppressNextFinal = false;
-    _onDeviceOnly = true;
     // A fresh attempt clears the previous "didn't catch that", so the message
     // is about the last try rather than sticking to the user.
     _lastListenOutcome = VoiceListenOutcome.none;
     _lastSoundLevelAt = null;
-    await _beginListening(preferOnDevice: true);
-  }
-
-  /// Starts a recognition session and arms the listen watchdog.
-  ///
-  /// [preferOnDevice] asks the platform for offline recognition; the caller
-  /// falls back once without it when the platform cannot recognise offline.
-  Future<void> _beginListening({required bool preferOnDevice}) async {
     try {
       await _speech.listen(
-        preferOnDevice: preferOnDevice,
         onResult: _onSpeechResult,
         onSoundLevelChange: _onSoundLevel,
       );
@@ -341,7 +292,6 @@ class VoiceChatController extends ChangeNotifier {
 
   Future<void> cancelListening() async {
     _suppressNextFinal = true;
-    _onDeviceOnly = false;
     _listenWatchdog?.cancel();
     _listenWatchdog = null;
     try {
@@ -352,9 +302,12 @@ class VoiceChatController extends ChangeNotifier {
 
   void beginThinking() {
     _replyBuffer.clear();
-    _spokenUpTo = '';
+    _chunker.reset();
     _replyStreamOpen = true;
     _replyCancelled = false;
+    _spokeThisTurn = false;
+    _firstTextLogged = false;
+    _firstAudioLogged = false;
     _setState(VoiceChatState.thinking);
   }
 
@@ -363,8 +316,12 @@ class VoiceChatController extends ChangeNotifier {
     _replyBuffer
       ..clear()
       ..write(fullResponseText);
+    if (fullResponseText.trim().isNotEmpty && !_firstTextLogged) {
+      _firstTextLogged = true;
+      debugPrint('FINN_VOICE first_text_ms=${_turn.elapsedMilliseconds}');
+    }
     if (!_spokenResponses) return;
-    final pending = _nextSpeakableChunk();
+    final pending = _chunker.next(fullResponseText);
     if (pending != null) _enqueueUtterance(pending);
   }
 
@@ -377,11 +334,12 @@ class VoiceChatController extends ChangeNotifier {
       _setState(VoiceChatState.idle);
       return;
     }
-    final remainder = _unspeakableRemainder(fullResponseText).trim();
+    final remainder = _chunker.remainder(fullResponseText).trim();
     if (remainder.isNotEmpty) {
       _enqueueUtterance(remainder);
     } else if (_queuedUtterances == 0) {
       _setState(VoiceChatState.idle);
+      _afterTurn();
     }
   }
 
@@ -396,6 +354,8 @@ class VoiceChatController extends ChangeNotifier {
   }
 
   Future<void> stopSpeaking() async {
+    _speakWatchdog?.cancel();
+    _speakEpoch++;
     _queuedUtterances = 0;
     try {
       if (_ttsReady) await _tts.stop();
@@ -412,13 +372,20 @@ class VoiceChatController extends ChangeNotifier {
     _listenWatchdog?.cancel();
     _listenWatchdog = null;
     _replyStreamOpen = false;
-    _onDeviceOnly = false;
+    _endLive();
     _lastListenOutcome = VoiceListenOutcome.none;
     _lastSoundLevelAt = null;
     try {
       if (_speech.isListening) await _speech.cancel();
+      // The recogniser holds a few hundred MB while loaded, and the language
+      // model is the thing that needs that memory once voice mode closes.
+      await _speech.release();
     } catch (_) {}
+    _sttAvailable = false;
     await stopSpeaking();
+    try {
+      await _tts.release();
+    } catch (_) {}
     _transcript = '';
     _soundLevel = 0;
     _error = VoiceChatError.none;
@@ -437,10 +404,10 @@ class VoiceChatController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void _onSpeechResult(SpeechRecognitionResult result) {
-    _transcript = result.recognizedWords;
+  void _onSpeechResult(SpeechResult result) {
+    _transcript = result.words;
     notifyListeners();
-    if (!result.finalResult) return;
+    if (!result.isFinal) return;
     if (_suppressNextFinal) {
       _suppressNextFinal = false;
       return;
@@ -455,72 +422,40 @@ class VoiceChatController extends ChangeNotifier {
       _setState(VoiceChatState.idle);
       return;
     }
+    _heardLanguage = normalizeLanguage(result.language);
+    _turn
+      ..reset()
+      ..start();
+    debugPrint('FINN_VOICE transcript lang=$_heardLanguage');
     _setState(VoiceChatState.thinking);
     onTranscript?.call(_transcript.trim());
   }
 
-  void _onSpeechError(SpeechRecognitionError error) {
+  void _onSpeechFailure(SpeechFailure failure) {
     _listenWatchdog?.cancel();
     _listenWatchdog = null;
-
-    final msg = error.errorMsg.toLowerCase();
-    if (msg.contains('permission') || msg.contains('not-allowed')) {
-      _error = VoiceChatError.micDenied;
-      _setState(VoiceChatState.idle);
-      return;
-    }
-
-    // When this session asked for offline recognition and the platform cannot
-    // provide it, retry once against the platform recognizer instead of
-    // failing. Timeouts, no-match and other transient errors keep the existing
-    // handling, so silence never sends the next attempt to the network.
-    if (_onDeviceOnly &&
-        (msg.contains('unavailable') ||
-            msg.contains('recognizer') ||
-            msg.contains('not_supported'))) {
-      _onDeviceOnly = false;
-      unawaited(_beginListening(preferOnDevice: false));
-      return;
-    }
-
-    // Conversational pauses, timeouts, no-match, or client cancellations
-    // are transient speech events and should not permanently mark speech
-    // recognition as unavailable.
-    if (msg.contains('timeout') ||
-        msg.contains('no_match') ||
-        msg.contains('no-match') ||
-        msg.contains('busy') ||
-        msg.contains('client') ||
-        msg.contains('cancel')) {
-      if (_state == VoiceChatState.listening && _transcript.trim().isNotEmpty) {
-        _setState(VoiceChatState.thinking);
-        onTranscript?.call(_transcript.trim());
-      } else {
-        // A `no_match` or a pause that became a timeout is the recogniser
-        // working correctly and hearing nothing, so it is the same "didn't
-        // catch that" as a clean empty result.
+    switch (failure.kind) {
+      case SpeechFailureKind.permission:
+        _error = VoiceChatError.micDenied;
+      case SpeechFailureKind.noSpeech:
+        // Silence is the recogniser working and hearing nothing, so it is the
+        // same "didn't catch that" as a clean empty result.
         _lastListenOutcome = VoiceListenOutcome.heardNothing;
-        _setState(VoiceChatState.idle);
-      }
-      return;
+      case SpeechFailureKind.unavailable:
+        _error = VoiceChatError.unavailable;
     }
-
-    if (error.permanent) {
-      _error = VoiceChatError.unavailable;
-      _setState(VoiceChatState.idle);
-    }
-  }
-
-  void _onSpeechStatus(String status) {
-    if (status == 'done' || status == 'notListening') {
-      if (_state == VoiceChatState.listening && _transcript.trim().isEmpty) {
-        _lastListenOutcome = VoiceListenOutcome.heardNothing;
-        _setState(VoiceChatState.idle);
-      }
-    }
+    // Silence ends a hands-free conversation rather than reopening the
+    // microphone forever on someone who has walked away.
+    _endLive();
+    _setState(VoiceChatState.idle);
   }
 
   void _onTtsStart() {
+    _speakWatchdog?.cancel();
+    if (!_firstAudioLogged) {
+      _firstAudioLogged = true;
+      debugPrint('FINN_VOICE first_audio_ms=${_turn.elapsedMilliseconds}');
+    }
     _setState(VoiceChatState.speaking);
   }
 
@@ -528,62 +463,66 @@ class VoiceChatController extends ChangeNotifier {
     if (_queuedUtterances > 0) _queuedUtterances--;
     if (_queuedUtterances == 0 && !_replyStreamOpen) {
       _setState(VoiceChatState.idle);
+      _afterTurn();
     }
   }
 
   void _onTtsStop() {
+    _speakWatchdog?.cancel();
     _queuedUtterances = 0;
     if (_state == VoiceChatState.speaking) {
       _setState(VoiceChatState.idle);
     }
   }
 
-  String? _nextSpeakableChunk() {
-    final text = _replyBuffer.toString();
-    if (text.length <= _spokenUpTo.length) return null;
-    final fresh = text.substring(_spokenUpTo.length);
-    final boundary = _lastSentenceBoundary(fresh);
-    if (boundary == null) return null;
-    // Sanitize *before* deciding there is nothing to say, so a chunk that is
-    // only markup is dropped rather than read aloud character by character.
-    // A fence is not a sentence boundary, so a code block used to accumulate
-    // until the whole reply had finished and then be spoken in one go.
-    final chunk = SpeakableText.flatten(fresh.substring(0, boundary));
-    _spokenUpTo += fresh.substring(0, boundary);
-    if (chunk.isEmpty) return null;
-    return chunk;
+  /// While speaking, the orb follows the voice rather than the microphone.
+  void _onTtsLevel() {
+    if (_state == VoiceChatState.speaking) _onSoundLevel(_tts.level.value);
   }
 
-  String _unspeakableRemainder(String fullText) {
-    if (fullText.length <= _spokenUpTo.length) return '';
-    // The tail of a streaming reply can be half a word, or a dangling tag from
-    // the chat template. Speaking that is worse than not speaking it.
-    final tail = fullText.substring(_spokenUpTo.length);
-    final cleaned = SpeakableText.flatten(tail);
-    if (cleaned.isEmpty) return '';
-    return SpeakableText.stripTrailingFragment(cleaned) ?? '';
-  }
-
-  int? _lastSentenceBoundary(String text) {
-    int? boundary;
-    for (var i = 0; i < text.length; i++) {
-      final char = text[i];
-      if (char == '.' || char == '!' || char == '?' || char == '\n') {
-        final atEnd = i + 1 == text.length;
-        final next = atEnd ? ' ' : text[i + 1];
-        if (next == ' ' || next == '\n' || atEnd) {
-          boundary = i + 1;
-        }
-      }
-    }
-    return boundary;
+  /// A spoken reply is over: in a live conversation, listen again.
+  void _afterTurn() {
+    if (!_live || !_spokeThisTurn || _replyCancelled) return;
+    final generation = _liveGeneration;
+    // A beat for the room to go quiet, so the end of the reply is not heard as
+    // the start of the next question.
+    Timer(const Duration(milliseconds: 350), () {
+      if (!_live || generation != _liveGeneration) return;
+      if (_state != VoiceChatState.idle) return;
+      unawaited(startListening());
+    });
   }
 
   Future<void> _enqueueUtterance(String text) async {
+    if (!_ttsReady) await _ensureTts();
     if (!_ttsReady) return;
     _queuedUtterances++;
+    _spokeThisTurn = true;
     _setState(VoiceChatState.speaking);
+    // A voice that never starts (an engine that is missing, a hung synth)
+    // must not hold the controller in "speaking" for ever.
+    // Only until the first sound: once it is playing, a long sentence is not
+    // a hang.
+    if (!_firstAudioLogged) {
+      _speakWatchdog?.cancel();
+      _speakWatchdog = Timer(const Duration(seconds: 8), () async {
+        if (_state != VoiceChatState.speaking) return;
+        await stopSpeaking();
+        // Nothing could be spoken (no voice for this language, no engine): in
+        // a live conversation the next thing is still the user's turn.
+        if (!_replyStreamOpen) _afterTurn();
+      });
+    }
+    final epoch = _speakEpoch;
     try {
+      await _tts.setLanguage(
+        pickSpeechLanguage(
+          text,
+          heard: _heardLanguage,
+          device: _deviceLanguage,
+        ),
+      );
+      if (epoch != _speakEpoch) return;
       await _tts.speak(text);
     } catch (_) {
       // A failed utterance still has to retire its slot, and if that was the
@@ -600,11 +539,13 @@ class VoiceChatController extends ChangeNotifier {
   @override
   void dispose() {
     _listenWatchdog?.cancel();
+    _speakWatchdog?.cancel();
+    _tts.level.removeListener(_onTtsLevel);
     // Cancelling the watchdog is not enough: a disposed controller must not
     // leave the microphone open or an utterance playing, and the singleton is
     // never disposed by the app, so this is the last line of defence rather
     // than the main one.
-    unawaited(_speech.isListening ? _speech.cancel() : Future<void>.value());
+    unawaited(_speech.release());
     unawaited(stopSpeaking());
     super.dispose();
   }

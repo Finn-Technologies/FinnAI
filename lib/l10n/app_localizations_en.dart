@@ -499,7 +499,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsSpokenResponsesBody =>
-      'Finn reads replies aloud in voice mode. Your voice transcript is processed by your device\'s speech recognition, which may need internet.';
+      'Finn reads replies aloud in voice mode. What you say is turned into text on this device and never leaves it.';
 
   @override
   String get voiceMicSemantic => 'Talk to Finn';
@@ -535,6 +535,29 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get voiceUnavailable =>
       'Speech recognition isn\'t available right now. Type your message instead.';
+
+  @override
+  String voiceModelNeeded(String size) {
+    return 'Voice mode needs a one-time $size download. Your voice is turned into text on this device and never leaves it.';
+  }
+
+  @override
+  String get voiceModelDownload => 'Download';
+
+  @override
+  String voiceModelDownloading(int percent) {
+    return 'Downloading speech model… $percent%';
+  }
+
+  @override
+  String get voiceModelFailed =>
+      'The download didn\'t finish. Check your connection and try again.';
+
+  @override
+  String get voiceModelRetry => 'Try again';
+
+  @override
+  String get voiceSpeakingLive => 'Speaking…';
 
   @override
   String get voiceStopSemantic => 'Stop';

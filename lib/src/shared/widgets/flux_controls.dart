@@ -520,10 +520,8 @@ class _FluxPressScaleState extends State<FluxPressScale>
     duration: FluxMotion.pressIn,
     reverseDuration: FluxMotion.pressOut,
   );
-  late final Animation<double> _scale = Tween<double>(
-    begin: 1,
-    end: widget.scale,
-  ).animate(
+  late final Animation<double> _scale =
+      Tween<double>(begin: 1, end: widget.scale).animate(
     CurvedAnimation(
       parent: _controller,
       curve: FluxMotion.pressCurve,
@@ -545,12 +543,13 @@ class _FluxPressScaleState extends State<FluxPressScale>
 
   @override
   Widget build(BuildContext context) {
+    final scale = _scale; // made while mounted; dispose must not be first
     if (MediaQuery.disableAnimationsOf(context)) return widget.child;
     return Listener(
       onPointerDown: (_) => _press(),
       onPointerUp: _release,
       onPointerCancel: _release,
-      child: ScaleTransition(scale: _scale, child: widget.child),
+      child: ScaleTransition(scale: scale, child: widget.child),
     );
   }
 }

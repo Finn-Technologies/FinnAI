@@ -15,9 +15,10 @@ import 'package:finn_ai/src/inference/ttft_metrics.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:finn_ai/l10n/app_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:speech_to_text/speech_recognition_error.dart';
-import 'package:speech_to_text/speech_recognition_result.dart';
+import 'support/fake_speech_backend.dart';
 
 /// UX regressions for the chat shell and the voice sheet: touch targets, the
 /// busy/preparing control states, the short-window voice layout, and the
@@ -189,6 +190,125 @@ void main() {
 
       expect(tester.widget<TextField>(find.byType(TextField)).enabled, isFalse);
       expect(_sendTap(tester), isNull);
+    });
+  });
+
+  group('ChatComposer live voice', () {
+    Future<void> pumpLive(
+      WidgetTester tester,
+      VoiceChatController voice, {
+      bool busy = false,
+      VoidCallback? onEnd,
+      VoidCallback? onTap,
+    }) async {
+      final controller = TextEditingController();
+      final focusNode = FocusNode();
+      addTearDown(controller.dispose);
+      addTearDown(focusNode.dispose);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: FluxTheme.light,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: ChatComposer(
+              controller: controller,
+              focusNode: focusNode,
+              blocked: false,
+              busy: busy,
+              onSend: () {},
+              onStop: () {},
+              voiceEnabled: true,
+              voiceListening: true,
+              voice: voice,
+              onVoiceToggle: onEnd,
+              onVoiceTap: onTap,
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+    }
+
+    testWidgets('shows the live pill and a caption instead of the field', (
+      tester,
+    ) async {
+      _useMobileSize(tester);
+      final voice = VoiceChatController(
+        speech: FakeSpeechBackend(),
+        tts: _FakeTtsBackend(),
+      );
+      addTearDown(voice.dispose);
+      await voice.startListening();
+
+      await pumpLive(tester, voice);
+
+      expect(find.byKey(const ValueKey('voice-pill')), findsOneWidget);
+      expect(find.text('Listening…'), findsOneWidget);
+      expect(find.byType(TextField), findsNothing);
+      await voice.cancelListening();
+    });
+
+    testWidgets('the cross ends the conversation, the mic taps', (
+      tester,
+    ) async {
+      _useMobileSize(tester);
+      final voice = VoiceChatController(
+        speech: FakeSpeechBackend(),
+        tts: _FakeTtsBackend(),
+      );
+      addTearDown(voice.dispose);
+      var ended = 0;
+      var tapped = 0;
+
+      await pumpLive(
+        tester,
+        voice,
+        onEnd: () => ended++,
+        onTap: () => tapped++,
+      );
+      await tester.tap(find.byKey(const ValueKey('add-attachment-button')));
+      await tester.tap(find.byKey(const ValueKey('voice-toggle-surface')));
+      await tester.tap(find.byKey(const ValueKey('voice-pill')));
+
+      expect(ended, 1);
+      expect(tapped, 2, reason: 'the pill and the mic do the same thing');
+    });
+
+    testWidgets('a reply being written does not swap the mic for Stop', (
+      tester,
+    ) async {
+      _useMobileSize(tester);
+      final voice = VoiceChatController(
+        speech: FakeSpeechBackend(),
+        tts: _FakeTtsBackend(),
+      );
+      addTearDown(voice.dispose);
+
+      await pumpLive(tester, voice, busy: true);
+
+      // The live controls stay put through the whole turn; tapping the mic is
+      // how the user cuts in.
+      expect(
+          find.byKey(const ValueKey('voice-toggle-surface')), findsOneWidget);
+      expect(find.byKey(const ValueKey('stop-button-surface')), findsNothing);
+    });
+
+    testWidgets('the live bar fits a narrow phone', (tester) async {
+      _useMobileSize(tester, const Size(320, 640));
+      final voice = VoiceChatController(
+        speech: FakeSpeechBackend(),
+        tts: _FakeTtsBackend(),
+      );
+      addTearDown(voice.dispose);
+
+      await pumpLive(tester, voice);
+
+      expect(tester.takeException(), isNull);
     });
   });
 
@@ -364,9 +484,7 @@ void main() {
       _useMobileSize(tester, const Size(390, 844));
       await _pumpVoiceSheet(
         tester,
-        speech: _FakeSpeechBackend()
-          ..initializeResult = false
-          ..permissionResult = false,
+        speech: FakeSpeechBackend()..initResult = SpeechInit.micDenied,
       );
       await tester.pump();
 
@@ -382,10 +500,63 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets('a missing speech model offers the download, not an error',
+        (tester) async {
+      _useMobileSize(tester, const Size(390, 844));
+      final speech = FakeSpeechBackend()..initResult = SpeechInit.needsModel;
+      await _pumpVoiceSheet(tester, speech: speech);
+      await tester.pump();
+
+      expect(find.textContaining('one-time'), findsOneWidget);
+      expect(
+          find.byKey(const ValueKey('voice-model-download')), findsOneWidget);
+      expect(find.textContaining('Microphone access is off'), findsNothing);
+
+      await tester.tap(find.byKey(const ValueKey('voice-model-download')));
+      await tester.pump();
+      await tester.pump();
+
+      expect(speech.downloadCalls, 1);
+      expect(find.byKey(const ValueKey('voice-model-download')), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('the download shows its progress', (tester) async {
+      _useMobileSize(tester, const Size(390, 844));
+      final speech = FakeSpeechBackend()..initResult = SpeechInit.needsModel;
+      await _pumpVoiceSheet(tester, speech: speech);
+      await tester.pump();
+
+      speech.modelStatus.value = const SpeechModelStatus(
+        SpeechModelPhase.downloading,
+        progress: 0.4,
+        totalBytes: 161000000,
+      );
+      await tester.pump();
+
+      expect(find.textContaining('40%'), findsOneWidget);
+      expect(
+          find.byKey(const ValueKey('voice-model-progress')), findsOneWidget);
+    });
+
+    testWidgets('a failed download can be retried', (tester) async {
+      _useMobileSize(tester, const Size(390, 844));
+      final speech = FakeSpeechBackend()..initResult = SpeechInit.needsModel;
+      await _pumpVoiceSheet(tester, speech: speech);
+      await tester.pump();
+
+      speech.modelStatus.value =
+          const SpeechModelStatus(SpeechModelPhase.failed);
+      await tester.pump();
+
+      expect(find.textContaining("didn't finish"), findsOneWidget);
+      expect(find.text('Try again'), findsOneWidget);
+    });
+
     testWidgets('a short window scrolls instead of overflowing',
         (tester) async {
       _useMobileSize(tester, const Size(320, 280));
-      final speech = _FakeSpeechBackend();
+      final speech = FakeSpeechBackend();
       final controller = await _pumpVoiceSheet(tester, speech: speech);
 
       speech.emitResult(
@@ -472,10 +643,10 @@ VoidCallback? _sendTap(WidgetTester tester) {
 
 Future<VoiceChatController> _pumpVoiceSheet(
   WidgetTester tester, {
-  _FakeSpeechBackend? speech,
+  FakeSpeechBackend? speech,
 }) async {
   final controller = VoiceChatController(
-    speech: speech ?? _FakeSpeechBackend(),
+    speech: speech ?? FakeSpeechBackend(),
     tts: _FakeTtsBackend(),
   );
   addTearDown(controller.dispose);
@@ -579,52 +750,22 @@ class _MemoryKeyStorage implements SecureKeyStorage {
   }
 }
 
-class _FakeSpeechBackend implements SpeechBackend {
-  bool initializeResult = true;
-  bool permissionResult = true;
-  bool listening = false;
-  void Function(SpeechRecognitionResult result)? onResult;
-
-  @override
-  Future<bool> initialize({
-    void Function(SpeechRecognitionError error)? onError,
-    void Function(String status)? onStatus,
-  }) async =>
-      initializeResult;
-
-  @override
-  Future<bool> get hasPermission async => permissionResult;
-
-  @override
-  bool get isListening => listening;
-
-  @override
-  Future<void> listen({
-    void Function(SpeechRecognitionResult result)? onResult,
-    void Function(double level)? onSoundLevelChange,
-    bool preferOnDevice = false,
-  }) async {
-    this.onResult = onResult;
-    listening = true;
-  }
-
-  @override
-  Future<void> stop() async => listening = false;
-
-  @override
-  Future<void> cancel() async => listening = false;
-
-  void emitResult(String words, {required bool finalResult}) {
-    onResult?.call(
-      SpeechRecognitionResult(
-        [SpeechRecognitionWords(words, const [], 0.9)],
-        finalResult ? ResultType.finalResult.value : ResultType.partial.value,
-      ),
-    );
-  }
-}
-
 class _FakeTtsBackend implements TtsBackend {
+  @override
+  final ValueNotifier<double> level = ValueNotifier(0);
+
+  String? language;
+  int prepareCalls = 0;
+  int releaseCalls = 0;
+
+  @override
+  Future<void> setLanguage(String? language) async => this.language = language;
+
+  @override
+  Future<void> prepare() async => prepareCalls++;
+
+  @override
+  Future<void> release() async => releaseCalls++;
   @override
   Future<void> initialize({
     VoidCallback? onStart,

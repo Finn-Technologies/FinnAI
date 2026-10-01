@@ -7,6 +7,7 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:finn_ai/l10n/l10n_helper.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 import 'package:finn_ai/src/shared/widgets/ambient_background.dart';
+import 'package:finn_ai/src/features/voice/stt/stt_model_store.dart';
 import 'package:finn_ai/src/features/voice/voice_chat_controller.dart';
 
 bool get voiceSupportedOnPlatform {
@@ -226,7 +227,12 @@ class _VoiceSheetState extends State<VoiceSheet> {
                                       ),
                                     ),
                                   ],
-                                  if (voice.error != VoiceChatError.none) ...[
+                                  if (voice.error ==
+                                      VoiceChatError.modelMissing) ...[
+                                    SizedBox(height: isCompact ? 6 : 12),
+                                    _ModelCard(voice: voice),
+                                  ] else if (voice.error !=
+                                      VoiceChatError.none) ...[
                                     SizedBox(height: isCompact ? 6 : 12),
                                     Padding(
                                       padding: const EdgeInsets.symmetric(
@@ -419,6 +425,65 @@ class _VoiceOrb extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Offers the one-time speech-model download, and shows it happening.
+class _ModelCard extends StatelessWidget {
+  const _ModelCard({required this.voice});
+
+  final VoiceChatController voice;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = L10n.of(context);
+    return ValueListenableBuilder<SpeechModelStatus>(
+      valueListenable: voice.speechModel,
+      builder: (context, status, _) {
+        final downloading = status.phase == SpeechModelPhase.downloading;
+        final failed = status.phase == SpeechModelPhase.failed;
+        final percent = (status.progress * 100).round();
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                failed
+                    ? l10n.voiceModelFailed
+                    : downloading
+                        ? l10n.voiceModelDownloading(percent)
+                        : l10n.voiceModelNeeded(sttModelSizeLabel),
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: failed
+                          ? FluxColors.destructiveOf(context)
+                          : FluxColors.mutedOf(context),
+                    ),
+              ),
+              const SizedBox(height: 16),
+              if (downloading)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    key: const ValueKey('voice-model-progress'),
+                    value: status.progress,
+                    minHeight: 6,
+                  ),
+                )
+              else
+                FilledButton(
+                  key: const ValueKey('voice-model-download'),
+                  onPressed: () => unawaited(voice.downloadSpeechModel()),
+                  child: Text(
+                    failed ? l10n.voiceModelRetry : l10n.voiceModelDownload,
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

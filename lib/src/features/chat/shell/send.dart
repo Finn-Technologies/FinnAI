@@ -184,6 +184,7 @@ extension _HomeShellSend on _HomeShellState {
         groundedContext: grounding.groundedContext,
         sources: grounding.sources,
         trace: timing,
+        spoken: _spokenTurn,
       );
     } catch (e) {
       debugPrint('FINN_SEND error: $e');
@@ -209,6 +210,12 @@ extension _HomeShellSend on _HomeShellState {
   }) async {
     final plan = _searchPlanner.plan(prompt, hasAttachment: hasAttachment);
     if (!plan.search || !ContextConsentStore.instance.webLookups) {
+      return SearchTurnResult.none;
+    }
+    // A search costs several seconds before the first word. In a spoken turn
+    // that is paid only when the user asked for it or the question is about
+    // now; the speculative fact-check is not worth the wait.
+    if (_spokenTurn && plan.reason == SearchPlanReason.factCheck) {
       return SearchTurnResult.none;
     }
     _generation.noteToolActivity(

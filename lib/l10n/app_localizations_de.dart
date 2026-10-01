@@ -510,7 +510,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get settingsSpokenResponsesBody =>
-      'Finn liest Antworten im Sprachmodus vor. Dein Sprachtranskript wird von der Spracherkennung deines Geräts verarbeitet, die Internet benötigen kann.';
+      'Finn liest Antworten im Sprachmodus vor. Was du sagst, wird auf diesem Gerät in Text umgewandelt und verlässt es nie.';
 
   @override
   String get voiceMicSemantic => 'Sprich mit Finn';
@@ -547,6 +547,29 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get voiceUnavailable =>
       'Spracherkennung ist derzeit nicht verfügbar. Gib deine Nachricht stattdessen ein.';
+
+  @override
+  String voiceModelNeeded(String size) {
+    return 'Der Sprachmodus braucht einen einmaligen Download ($size). Deine Stimme wird auf diesem Gerät in Text umgewandelt und verlässt es nie.';
+  }
+
+  @override
+  String get voiceModelDownload => 'Herunterladen';
+
+  @override
+  String voiceModelDownloading(int percent) {
+    return 'Sprachmodell wird heruntergeladen… $percent %';
+  }
+
+  @override
+  String get voiceModelFailed =>
+      'Der Download wurde nicht abgeschlossen. Prüfe deine Verbindung und versuche es erneut.';
+
+  @override
+  String get voiceModelRetry => 'Erneut versuchen';
+
+  @override
+  String get voiceSpeakingLive => 'Spricht…';
 
   @override
   String get voiceStopSemantic => 'Stoppen';

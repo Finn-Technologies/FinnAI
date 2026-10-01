@@ -152,6 +152,7 @@ class ChatGenerationController extends ChangeNotifier {
     String responseSuffix = '',
     List<WebSource> sources = const [],
     TtftTrace? trace,
+    bool spoken = false,
   }) async {
     if (busy) return null;
     final timing = trace ?? createTtftTrace(conversationId);
@@ -166,10 +167,9 @@ class ChatGenerationController extends ChangeNotifier {
       generationId: generationId,
     );
     // Avoid duplicating the image turn when history already ends with the same prompt+image (bytes path).
-    final hasImageInHistory = history.isNotEmpty &&
-        history.last.imagePath == imagePath &&
-        history.last.content == prompt;
-    final effectiveHistory = hasImageInHistory
+    final effectiveHistory = history.isNotEmpty &&
+            history.last.imagePath == imagePath &&
+            history.last.content == prompt
         ? history
         : [
             ...history,
@@ -188,7 +188,7 @@ class ChatGenerationController extends ChangeNotifier {
       groundedContext: groundedContext,
       responseSuffix: responseSuffix,
       sources: sources,
-      analysis: analysis,
+      analysis: spoken ? analysis.asSpoken() : analysis,
       initialText: '',
       continuationCount: 0,
       trace: timing,

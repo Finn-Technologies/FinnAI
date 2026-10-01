@@ -1,74 +1,25 @@
 import 'package:finn_ai/src/features/voice/voice_chat_controller.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:speech_to_text/speech_recognition_error.dart';
-import 'package:speech_to_text/speech_recognition_result.dart';
 
-class FakeSpeechBackend implements SpeechBackend {
-  bool initializeResult = true;
-  bool permissionResult = true;
-  bool listening = false;
-  bool throwOnListen = false;
-  void Function(SpeechRecognitionResult result)? onResult;
-  void Function(double level)? onSoundLevel;
-  void Function(SpeechRecognitionError error)? onError;
-  void Function(String status)? onStatus;
-  final List<bool> listenRequests = [];
-  int stopCalls = 0;
-  int cancelCalls = 0;
-
-  @override
-  Future<bool> initialize({
-    void Function(SpeechRecognitionError error)? onError,
-    void Function(String status)? onStatus,
-  }) async {
-    this.onError = onError;
-    this.onStatus = onStatus;
-    return initializeResult;
-  }
-
-  @override
-  Future<bool> get hasPermission async => permissionResult;
-
-  @override
-  bool get isListening => listening;
-
-  @override
-  Future<void> listen({
-    void Function(SpeechRecognitionResult result)? onResult,
-    void Function(double level)? onSoundLevelChange,
-    bool preferOnDevice = false,
-  }) async {
-    if (throwOnListen) throw StateError('listen failed');
-    listenRequests.add(preferOnDevice);
-    this.onResult = onResult;
-    onSoundLevel = onSoundLevelChange;
-    listening = true;
-  }
-
-  @override
-  Future<void> stop() async {
-    stopCalls++;
-    listening = false;
-  }
-
-  @override
-  Future<void> cancel() async {
-    cancelCalls++;
-    listening = false;
-  }
-
-  void emitResult(String words, {required bool finalResult}) {
-    onResult?.call(
-      SpeechRecognitionResult(
-        [SpeechRecognitionWords(words, const [], 0.9)],
-        finalResult ? ResultType.finalResult.value : ResultType.partial.value,
-      ),
-    );
-  }
-}
+import 'support/fake_speech_backend.dart';
 
 class FakeTtsBackend implements TtsBackend {
+  @override
+  final ValueNotifier<double> level = ValueNotifier(0);
+
+  String? language;
+  int prepareCalls = 0;
+  int releaseCalls = 0;
+
+  @override
+  Future<void> setLanguage(String? language) async => this.language = language;
+
+  @override
+  Future<void> prepare() async => prepareCalls++;
+
+  @override
+  Future<void> release() async => releaseCalls++;
   final List<String> spoken = [];
   final List<double> rates = [];
   int queueAddCalls = 0;
@@ -126,6 +77,8 @@ VoiceChatController makeController({
   return controller;
 }
 
+Future<void> settle() => Future<void>.delayed(Duration.zero);
+
 void main() {
   group('VoiceChatController listening', () {
     test('final transcript moves listening -> thinking and fires callback',
@@ -161,26 +114,33 @@ void main() {
     });
 
     test('mic denied surfaces micDenied error', () async {
-      final speech = FakeSpeechBackend()
-        ..initializeResult = false
-        ..permissionResult = false;
+      final speech = FakeSpeechBackend()..initResult = SpeechInit.micDenied;
       final controller = makeController(speech: speech);
 
       await controller.startListening();
 
       expect(controller.error, VoiceChatError.micDenied);
       expect(controller.state, VoiceChatState.idle);
+      expect(speech.listenCalls, 0);
     });
 
-    test('init failure with permission granted surfaces unavailable', () async {
-      final speech = FakeSpeechBackend()
-        ..initializeResult = false
-        ..permissionResult = true;
+    test('an unusable recogniser surfaces unavailable', () async {
+      final speech = FakeSpeechBackend()..initResult = SpeechInit.unavailable;
       final controller = makeController(speech: speech);
 
       await controller.startListening();
 
       expect(controller.error, VoiceChatError.unavailable);
+    });
+
+    test('a failing microphone start surfaces unavailable', () async {
+      final speech = FakeSpeechBackend()..throwOnListen = true;
+      final controller = makeController(speech: speech);
+
+      await controller.startListening();
+
+      expect(controller.error, VoiceChatError.unavailable);
+      expect(controller.state, VoiceChatState.idle);
     });
 
     test('cancelListening suppresses the pending final result', () async {
@@ -197,136 +157,102 @@ void main() {
       expect(controller.state, VoiceChatState.idle);
     });
 
-    test('speech_timeout with empty transcript returns to idle with no error',
-        () async {
+    test('a silent session returns to idle with no error', () async {
       final speech = FakeSpeechBackend();
       final controller = makeController(speech: speech);
       await controller.startListening();
 
-      speech.onError?.call(
-        SpeechRecognitionError('error_speech_timeout', true),
-      );
+      speech.fail(SpeechFailureKind.noSpeech);
 
       expect(controller.state, VoiceChatState.idle);
       expect(controller.error, VoiceChatError.none);
+      expect(controller.didNotCatchAnything, isTrue);
     });
 
-    test('speech_timeout with existing transcript submits transcript',
-        () async {
-      final speech = FakeSpeechBackend();
-      final controller = makeController(speech: speech);
-      var heard = '';
-      controller.onTranscript = (text) => heard = text;
-
-      await controller.startListening();
-      speech.emitResult('transcribed partial', finalResult: false);
-
-      speech.onError?.call(
-        SpeechRecognitionError('error_speech_timeout', true),
-      );
-
-      expect(controller.state, VoiceChatState.thinking);
-      expect(heard, 'transcribed partial');
-      expect(controller.error, VoiceChatError.none);
-    });
-
-    test('transient errors (no_match, busy) return to idle with no error',
-        () async {
+    test('a permission failure mid-session sets micDenied', () async {
       final speech = FakeSpeechBackend();
       final controller = makeController(speech: speech);
       await controller.startListening();
 
-      speech.onError?.call(
-        SpeechRecognitionError('error_no_match', true),
-      );
-
-      expect(controller.state, VoiceChatState.idle);
-      expect(controller.error, VoiceChatError.none);
-    });
-
-    test('permanent mic permission error sets micDenied', () async {
-      final speech = FakeSpeechBackend();
-      final controller = makeController(speech: speech);
-      await controller.startListening();
-
-      speech.onError?.call(
-        SpeechRecognitionError('error_permission', true),
-      );
+      speech.fail(SpeechFailureKind.permission);
 
       expect(controller.state, VoiceChatState.idle);
       expect(controller.error, VoiceChatError.micDenied);
     });
+
+    test('a recogniser failure mid-session sets unavailable', () async {
+      final speech = FakeSpeechBackend();
+      final controller = makeController(speech: speech);
+      await controller.startListening();
+
+      speech.fail(SpeechFailureKind.unavailable);
+
+      expect(controller.state, VoiceChatState.idle);
+      expect(controller.error, VoiceChatError.unavailable);
+    });
+
+    test('the recogniser is released when the controller resets', () async {
+      final speech = FakeSpeechBackend();
+      final controller = makeController(speech: speech);
+      await controller.startListening();
+
+      await controller.reset();
+
+      expect(speech.releaseCalls, 1);
+      expect(controller.state, VoiceChatState.idle);
+    });
+
+    test('listening again after a reset loads the recogniser again', () async {
+      final speech = FakeSpeechBackend();
+      final controller = makeController(speech: speech);
+      await controller.startListening();
+      await controller.reset();
+
+      await controller.startListening();
+
+      expect(speech.listenCalls, 2);
+      expect(controller.state, VoiceChatState.listening);
+    });
   });
 
-  group('VoiceChatController on-device recognition', () {
-    test('the first listen attempt asks for on-device recognition', () async {
-      final speech = FakeSpeechBackend();
+  group('VoiceChatController speech model', () {
+    test('a missing model surfaces modelMissing and does not listen', () async {
+      final speech = FakeSpeechBackend()..initResult = SpeechInit.needsModel;
       final controller = makeController(speech: speech);
 
       await controller.startListening();
 
-      expect(speech.listenRequests, [true]);
-      expect(controller.state, VoiceChatState.listening);
+      expect(controller.error, VoiceChatError.modelMissing);
+      expect(controller.state, VoiceChatState.idle);
+      expect(speech.listenCalls, 0);
     });
 
-    test('an unavailable on-device recognizer retries once on the platform',
+    test('downloading the model clears the error and starts listening',
         () async {
-      final speech = FakeSpeechBackend();
+      final speech = FakeSpeechBackend()..initResult = SpeechInit.needsModel;
       final controller = makeController(speech: speech);
-
       await controller.startListening();
-      speech.onError?.call(
-        SpeechRecognitionError('error_recognizer_not_available', true),
-      );
-      await Future<void>.delayed(const Duration(milliseconds: 10));
 
-      expect(speech.listenRequests, [true, false]);
+      await controller.downloadSpeechModel();
+
+      expect(speech.downloadCalls, 1);
       expect(controller.error, VoiceChatError.none);
       expect(controller.state, VoiceChatState.listening);
     });
 
-    test('a failing platform retry surfaces unavailable', () async {
-      final speech = FakeSpeechBackend();
-      final controller = makeController(speech: speech);
-
-      await controller.startListening();
-      speech.onError?.call(
-        SpeechRecognitionError('error_recognizer_not_available', true),
-      );
-      await Future<void>.delayed(const Duration(milliseconds: 10));
-      speech.onError?.call(SpeechRecognitionError('error_audio_error', true));
-      await Future<void>.delayed(const Duration(milliseconds: 10));
-
-      expect(speech.listenRequests, [true, false]);
-      expect(controller.error, VoiceChatError.unavailable);
-      expect(controller.state, VoiceChatState.idle);
-    });
-
-    test('a successful on-device result never retries', () async {
-      final speech = FakeSpeechBackend();
-      final controller = makeController(speech: speech);
-
-      await controller.startListening();
-      speech.emitResult('hello finn', finalResult: true);
-
-      expect(speech.listenRequests, [true]);
-      expect(controller.state, VoiceChatState.thinking);
-    });
-
-    test('an on-device timeout keeps the existing transient handling',
+    test('a failed download keeps modelMissing so the sheet can retry',
         () async {
-      final speech = FakeSpeechBackend();
+      final speech = FakeSpeechBackend()
+        ..initResult = SpeechInit.needsModel
+        ..throwOnDownload = true;
       final controller = makeController(speech: speech);
-
       await controller.startListening();
-      speech.onError?.call(
-        SpeechRecognitionError('error_speech_timeout', true),
-      );
-      await Future<void>.delayed(const Duration(milliseconds: 10));
 
-      expect(speech.listenRequests, [true]);
+      await controller.downloadSpeechModel();
+
+      expect(controller.error, VoiceChatError.modelMissing);
+      expect(controller.speechModel.value.phase, SpeechModelPhase.failed);
       expect(controller.state, VoiceChatState.idle);
-      expect(controller.error, VoiceChatError.none);
     });
   });
 
@@ -338,9 +264,11 @@ void main() {
 
       controller.beginThinking();
       controller.speakReplyChunk('Hello there');
+      await settle();
       expect(tts.spoken, isEmpty);
 
       controller.speakReplyChunk('Hello there. How can I');
+      await settle();
       expect(tts.spoken, ['Hello there.']);
       expect(controller.state, VoiceChatState.speaking);
     });
@@ -398,6 +326,7 @@ void main() {
         controller.finishReply(
           'Here it is:\n\n```dart\nfinal x = 1;\n```\nThat is all.',
         );
+        await settle();
 
         final spoken = tts.spoken.join(' ');
         expect(spoken, contains('Here it is'));
@@ -418,6 +347,7 @@ void main() {
         // A line that is only bold markers, then a real sentence.
         controller.speakReplyChunk('**\nReal sentence here.');
         controller.finishReply('**\nReal sentence here.');
+        await settle();
 
         expect(tts.spoken, isNotEmpty);
         for (final chunk in tts.spoken) {
@@ -442,26 +372,14 @@ void main() {
         expect(controller.state, VoiceChatState.idle);
       });
 
-      test('a no-match error reports it', () async {
+      test('a silent session reports it', () async {
         final speech = FakeSpeechBackend();
         final controller = makeController(speech: speech);
         await controller.ensureReady();
         await controller.startListening();
         expect(controller.didNotCatchAnything, isFalse);
 
-        speech.onError?.call(SpeechRecognitionError('error_no_match', false));
-        await Future<void>.delayed(const Duration(milliseconds: 10));
-
-        expect(controller.didNotCatchAnything, isTrue);
-      });
-
-      test('a done status with nothing heard reports it', () async {
-        final speech = FakeSpeechBackend();
-        final controller = makeController(speech: speech);
-        await controller.ensureReady();
-        await controller.startListening();
-
-        speech.onStatus?.call('done');
+        speech.fail(SpeechFailureKind.noSpeech);
         await Future<void>.delayed(const Duration(milliseconds: 10));
 
         expect(controller.didNotCatchAnything, isTrue);
@@ -515,6 +433,7 @@ void main() {
 
       controller.beginThinking();
       controller.speakReplyChunk('A long reply. Still going.');
+      await settle();
       final spokenBefore = tts.spoken.length;
       await controller.interrupt();
       controller.finishReply('A long reply. Still going further.');
@@ -543,4 +462,345 @@ void main() {
       expect(voiceSpeechRate, lessThan(0.6));
     });
   });
+
+  group('VoiceChatController live conversation', () {
+    Future<void> afterBeat() =>
+        Future<void>.delayed(const Duration(milliseconds: 450));
+
+    /// One full turn: the user speaks, the model answers, Finn speaks.
+    Future<void> turn(
+      VoiceChatController controller,
+      FakeSpeechBackend speech, {
+      String heard = 'what is two plus two',
+      String reply = 'It is four. Anything else?',
+      String? language,
+    }) async {
+      speech.emitResult(heard, finalResult: true, language: language);
+      controller.beginThinking();
+      controller.speakReplyChunk(reply);
+      controller.finishReply(reply);
+      await settle();
+    }
+
+    test('startLive listens, marks the conversation live and warms the voice',
+        () async {
+      final speech = FakeSpeechBackend();
+      final tts = FakeTtsBackend();
+      final controller = makeController(speech: speech, tts: tts);
+
+      await controller.startLive();
+
+      expect(controller.live, isTrue);
+      expect(controller.state, VoiceChatState.listening);
+      await settle();
+      expect(tts.prepareCalls, greaterThanOrEqualTo(1));
+    });
+
+    test('endLive stops everything and lets go of the mic and the voice',
+        () async {
+      final speech = FakeSpeechBackend();
+      final tts = FakeTtsBackend();
+      final controller = makeController(speech: speech, tts: tts);
+      await controller.startLive();
+
+      await controller.endLive();
+
+      expect(controller.live, isFalse);
+      expect(controller.state, VoiceChatState.idle);
+      expect(speech.releaseCalls, 1);
+      expect(tts.releaseCalls, 1);
+    });
+
+    test('after a spoken reply the microphone opens again by itself', () async {
+      final speech = FakeSpeechBackend();
+      final controller = makeController(speech: speech);
+      await controller.startLive();
+      expect(speech.listenCalls, 1);
+
+      await turn(controller, speech);
+      await afterBeat();
+
+      expect(speech.listenCalls, 2);
+      expect(controller.state, VoiceChatState.listening);
+      expect(controller.live, isTrue);
+    });
+
+    test('and again after the next one: it is a conversation, not one shot',
+        () async {
+      final speech = FakeSpeechBackend();
+      final controller = makeController(speech: speech);
+      await controller.startLive();
+
+      await turn(controller, speech);
+      await afterBeat();
+      await turn(controller, speech, heard: 'and times three');
+      await afterBeat();
+
+      expect(speech.listenCalls, 3);
+    });
+
+    test('it does not listen while the reply is still being spoken', () async {
+      final speech = FakeSpeechBackend();
+      final tts = _NeverCompletingTts();
+      final controller = makeController(speech: speech, tts: tts);
+      await controller.startLive();
+
+      speech.emitResult('hello', finalResult: true);
+      controller.beginThinking();
+      controller.speakReplyChunk('Hi there. More');
+      await afterBeat();
+
+      expect(controller.state, VoiceChatState.speaking);
+      expect(speech.listenCalls, 1, reason: 'Finn would hear itself');
+    });
+
+    test('with spoken replies off it does not reopen the microphone', () async {
+      final speech = FakeSpeechBackend();
+      final controller = makeController(speech: speech);
+      controller.setSpokenResponses(false);
+      await controller.startLive();
+
+      await turn(controller, speech);
+      await afterBeat();
+
+      expect(speech.listenCalls, 1);
+    });
+
+    test('an interrupted reply does not reopen the microphone by itself',
+        () async {
+      final speech = FakeSpeechBackend();
+      final controller = makeController(speech: speech);
+      await controller.startLive();
+      speech.emitResult('tell me a story', finalResult: true);
+      controller.beginThinking();
+
+      await controller.interrupt();
+      controller.finishReply('Once upon a time. The end.');
+      await afterBeat();
+
+      expect(speech.listenCalls, 1);
+    });
+
+    test('a reply with nothing to say does not loop the microphone', () async {
+      final speech = FakeSpeechBackend();
+      final controller = makeController(speech: speech);
+      await controller.startLive();
+      speech.emitResult('hm', finalResult: true);
+      controller.beginThinking();
+
+      controller.finishReply('');
+      await afterBeat();
+
+      expect(speech.listenCalls, 1);
+      expect(controller.state, VoiceChatState.idle);
+    });
+
+    test('leaving mid-reply cancels the pending reopen', () async {
+      final speech = FakeSpeechBackend();
+      final controller = makeController(speech: speech);
+      await controller.startLive();
+      await turn(controller, speech);
+
+      await controller.endLive();
+      await afterBeat();
+
+      expect(speech.listenCalls, 1);
+      expect(controller.live, isFalse);
+    });
+
+    test('silence ends the conversation rather than listening for ever',
+        () async {
+      final speech = FakeSpeechBackend();
+      final controller = makeController(speech: speech);
+      await controller.startLive();
+
+      speech.fail(SpeechFailureKind.noSpeech);
+
+      expect(controller.live, isFalse);
+      expect(controller.state, VoiceChatState.idle);
+      expect(controller.didNotCatchAnything, isTrue);
+    });
+
+    test('a denied microphone ends it too', () async {
+      final speech = FakeSpeechBackend()..initResult = SpeechInit.micDenied;
+      final controller = makeController(speech: speech);
+
+      await controller.startLive();
+
+      expect(controller.live, isFalse);
+      expect(controller.error, VoiceChatError.micDenied);
+    });
+
+    test('so does a missing speech model', () async {
+      final speech = FakeSpeechBackend()..initResult = SpeechInit.needsModel;
+      final controller = makeController(speech: speech);
+
+      await controller.startLive();
+
+      expect(controller.live, isFalse);
+      expect(controller.error, VoiceChatError.modelMissing);
+    });
+
+    test('reset (the app was backgrounded) ends the conversation', () async {
+      final speech = FakeSpeechBackend();
+      final controller = makeController(speech: speech);
+      await controller.startLive();
+
+      await controller.reset();
+
+      expect(controller.live, isFalse);
+    });
+
+    test('listeners hear when the conversation ends on its own', () async {
+      final speech = FakeSpeechBackend();
+      final controller = makeController(speech: speech);
+      await controller.startLive();
+      var heardEnd = false;
+      controller.addListener(() {
+        if (!controller.live) heardEnd = true;
+      });
+
+      speech.fail(SpeechFailureKind.noSpeech);
+
+      expect(heardEnd, isTrue);
+    });
+  });
+
+  group('VoiceChatController tapMic', () {
+    test('while listening it finishes what was said', () async {
+      final speech = FakeSpeechBackend();
+      final controller = makeController(speech: speech);
+      await controller.startListening();
+
+      await controller.tapMic();
+
+      expect(speech.stopCalls, 1);
+    });
+
+    test('while Finn speaks it cuts in, stops the model and listens', () async {
+      final speech = FakeSpeechBackend();
+      final tts = _NeverCompletingTts();
+      final controller = makeController(speech: speech, tts: tts);
+      await controller.startLive();
+      speech.emitResult('hello', finalResult: true);
+      controller.beginThinking();
+      controller.speakReplyChunk('Hi there. More');
+      await settle();
+      expect(controller.state, VoiceChatState.speaking);
+      var stoppedModel = false;
+
+      await controller.tapMic(onStopGeneration: () => stoppedModel = true);
+
+      expect(stoppedModel, isTrue);
+      expect(tts.stopCalls, greaterThanOrEqualTo(1));
+      expect(speech.listenCalls, 2);
+      expect(controller.state, VoiceChatState.listening);
+    });
+
+    test('while thinking it stops the model and listens', () async {
+      final speech = FakeSpeechBackend();
+      final controller = makeController(speech: speech);
+      await controller.startListening();
+      speech.emitResult('hello', finalResult: true);
+      controller.beginThinking();
+      var stoppedModel = false;
+
+      await controller.tapMic(onStopGeneration: () => stoppedModel = true);
+
+      expect(stoppedModel, isTrue);
+      expect(speech.listenCalls, 2);
+    });
+
+    test('when idle it starts listening', () async {
+      final speech = FakeSpeechBackend();
+      final controller = makeController(speech: speech);
+
+      await controller.tapMic();
+
+      expect(speech.listenCalls, 1);
+    });
+  });
+
+  group('VoiceChatController speaking language', () {
+    test('a Latin reply follows the language that was heard', () async {
+      final speech = FakeSpeechBackend();
+      final tts = FakeTtsBackend();
+      final controller = makeController(speech: speech, tts: tts);
+      await controller.startListening();
+
+      speech.emitResult('wie spät ist es', finalResult: true, language: 'de');
+      controller.beginThinking();
+      controller.speakReplyChunk('Es ist drei Uhr. Noch etwas?');
+      await settle();
+
+      expect(tts.language, 'de');
+    });
+
+    test('a Russian reply is spoken in Russian whatever was heard', () async {
+      final speech = FakeSpeechBackend();
+      final tts = FakeTtsBackend();
+      final controller = makeController(speech: speech, tts: tts);
+      await controller.startListening();
+
+      speech.emitResult('hello', finalResult: true, language: 'en');
+      controller.beginThinking();
+      controller.speakReplyChunk('Столица Франции — Париж. Что-нибудь ещё?');
+      await settle();
+
+      expect(tts.language, 'ru');
+    });
+
+    test('with nothing heard it follows the phone', () async {
+      final tts = FakeTtsBackend();
+      final controller = VoiceChatController(
+        speech: FakeSpeechBackend(),
+        tts: tts,
+        deviceLanguage: 'it',
+      );
+      addTearDown(controller.dispose);
+      await controller.ensureReady();
+
+      controller.beginThinking();
+      controller.speakReplyChunk('Parigi è la capitale. Altro?');
+      await settle();
+
+      expect(tts.language, 'it');
+    });
+  });
+
+  group('VoiceChatController level', () {
+    test('while Finn speaks, the level is the voice, not the microphone',
+        () async {
+      final speech = FakeSpeechBackend();
+      final tts = FakeTtsBackend();
+      final controller = makeController(speech: speech, tts: tts);
+      await controller.startListening();
+      speech.onSoundLevel?.call(0.2);
+      expect(controller.soundLevel, closeTo(0.2, 1e-9));
+
+      speech.emitResult('hello', finalResult: true);
+      controller.beginThinking();
+      // A voice that is mid-sentence.
+      final slow = _NeverCompletingTts();
+      final speaking = makeController(speech: speech, tts: slow);
+      await speaking.ensureReady();
+      speaking.beginThinking();
+      speaking.speakReplyChunk('Hi there. More');
+      await settle();
+      slow.level.value = 0.8;
+
+      expect(speaking.state, VoiceChatState.speaking);
+      expect(speaking.soundLevel, closeTo(0.8, 1e-9));
+    });
+  });
+}
+
+/// A voice that starts and never finishes, to hold the controller in
+/// "speaking".
+class _NeverCompletingTts extends FakeTtsBackend {
+  @override
+  Future<void> speak(String text) async {
+    spoken.add(text);
+    onStart?.call();
+  }
 }

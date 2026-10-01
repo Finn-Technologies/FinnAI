@@ -184,7 +184,10 @@ extension FinnAcceleratorPrompts on FinnAccelerator {
     // stops instead of running to the end of the context.
     final contextSize = _plan?.contextSize ?? 2048;
     final desired = PromptIntentPolicy.desiredOutputTokens(analysis.intent);
-    return math.min(desired * 3, contextSize - 96);
+    final budget = math.min(desired * 3, contextSize - 96);
+    return analysis.spoken
+        ? math.min(budget, PromptIntentPolicy.spokenOutputTokens)
+        : budget;
   }
 
   @visibleForTesting

@@ -947,7 +947,7 @@ abstract class AppLocalizations {
   /// Spoken responses toggle description
   ///
   /// In en, this message translates to:
-  /// **'Finn reads replies aloud in voice mode. Your voice transcript is processed by your device\'s speech recognition, which may need internet.'**
+  /// **'Finn reads replies aloud in voice mode. What you say is turned into text on this device and never leaves it.'**
   String get settingsSpokenResponsesBody;
 
   /// Mic button semantics
@@ -1015,6 +1015,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Speech recognition isn\'t available right now. Type your message instead.'**
   String get voiceUnavailable;
+
+  /// Voice sheet: the speech model must be downloaded once
+  ///
+  /// In en, this message translates to:
+  /// **'Voice mode needs a one-time {size} download. Your voice is turned into text on this device and never leaves it.'**
+  String voiceModelNeeded(String size);
+
+  /// Button to download the speech model
+  ///
+  /// In en, this message translates to:
+  /// **'Download'**
+  String get voiceModelDownload;
+
+  /// Voice sheet: speech model download progress
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading speech model… {percent}%'**
+  String voiceModelDownloading(int percent);
+
+  /// Voice sheet: speech model download failed
+  ///
+  /// In en, this message translates to:
+  /// **'The download didn\'t finish. Check your connection and try again.'**
+  String get voiceModelFailed;
+
+  /// Button to retry the speech model download
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get voiceModelRetry;
+
+  /// Live voice: Finn is speaking the reply
+  ///
+  /// In en, this message translates to:
+  /// **'Speaking…'**
+  String get voiceSpeakingLive;
 
   /// Voice stop button semantics
   ///

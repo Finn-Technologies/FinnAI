@@ -22,7 +22,7 @@ extension _HomeShellLifecycle on _HomeShellState {
   }
 
   void _stopVoiceForLifecycle() {
-    if (!_voice.active) return;
+    if (!_voice.active && !_voice.live) return;
     unawaited(_voice.reset());
   }
 

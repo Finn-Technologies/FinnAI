@@ -609,7 +609,7 @@
   "@settingsSpokenResponses": {
     "description": "Spoken responses toggle label"
   },
-  "settingsSpokenResponsesBody": "Finn liest Antworten im Sprachmodus vor. Dein Sprachtranskript wird von der Spracherkennung deines Geräts verarbeitet, die Internet benötigen kann.",
+  "settingsSpokenResponsesBody": "Finn liest Antworten im Sprachmodus vor. Was du sagst, wird auf diesem Gerät in Text umgewandelt und verlässt es nie.",
   "@settingsSpokenResponsesBody": {
     "description": "Spoken responses toggle description"
   },
@@ -653,6 +653,40 @@
   "voiceUnavailable": "Spracherkennung ist derzeit nicht verfügbar. Gib deine Nachricht stattdessen ein.",
   "@voiceUnavailable": {
     "description": "Voice STT unavailable message"
+  },
+  "voiceModelNeeded": "Der Sprachmodus braucht einen einmaligen Download ({size}). Deine Stimme wird auf diesem Gerät in Text umgewandelt und verlässt es nie.",
+  "@voiceModelNeeded": {
+    "description": "Voice sheet: the speech model must be downloaded once",
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "voiceModelDownload": "Herunterladen",
+  "@voiceModelDownload": {
+    "description": "Button to download the speech model"
+  },
+  "voiceModelDownloading": "Sprachmodell wird heruntergeladen… {percent} %",
+  "@voiceModelDownloading": {
+    "description": "Voice sheet: speech model download progress",
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "voiceModelFailed": "Der Download wurde nicht abgeschlossen. Prüfe deine Verbindung und versuche es erneut.",
+  "@voiceModelFailed": {
+    "description": "Voice sheet: speech model download failed"
+  },
+  "voiceModelRetry": "Erneut versuchen",
+  "@voiceModelRetry": {
+    "description": "Button to retry the speech model download"
+  },
+  "voiceSpeakingLive": "Spricht…",
+  "@voiceSpeakingLive": {
+    "description": "Live voice: Finn is speaking the reply"
   },
   "voiceStopSemantic": "Stoppen",
   "@voiceStopSemantic": {

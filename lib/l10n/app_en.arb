@@ -639,7 +639,7 @@
   "@settingsSpokenResponses": {
     "description": "Spoken responses toggle label"
   },
-  "settingsSpokenResponsesBody": "Finn reads replies aloud in voice mode. Your voice transcript is processed by your device's speech recognition, which may need internet.",
+  "settingsSpokenResponsesBody": "Finn reads replies aloud in voice mode. What you say is turned into text on this device and never leaves it.",
   "@settingsSpokenResponsesBody": {
     "description": "Spoken responses toggle description"
   },
@@ -686,6 +686,40 @@
   "voiceUnavailable": "Speech recognition isn't available right now. Type your message instead.",
   "@voiceUnavailable": {
     "description": "Voice STT unavailable message"
+  },
+  "voiceModelNeeded": "Voice mode needs a one-time {size} download. Your voice is turned into text on this device and never leaves it.",
+  "@voiceModelNeeded": {
+    "description": "Voice sheet: the speech model must be downloaded once",
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "voiceModelDownload": "Download",
+  "@voiceModelDownload": {
+    "description": "Button to download the speech model"
+  },
+  "voiceModelDownloading": "Downloading speech model… {percent}%",
+  "@voiceModelDownloading": {
+    "description": "Voice sheet: speech model download progress",
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "voiceModelFailed": "The download didn't finish. Check your connection and try again.",
+  "@voiceModelFailed": {
+    "description": "Voice sheet: speech model download failed"
+  },
+  "voiceModelRetry": "Try again",
+  "@voiceModelRetry": {
+    "description": "Button to retry the speech model download"
+  },
+  "voiceSpeakingLive": "Speaking…",
+  "@voiceSpeakingLive": {
+    "description": "Live voice: Finn is speaking the reply"
   },
   "voiceStopSemantic": "Stop",
   "@voiceStopSemantic": {

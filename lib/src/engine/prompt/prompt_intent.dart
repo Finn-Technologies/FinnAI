@@ -28,6 +28,7 @@ class PromptAnalysis {
     this.advanced = false,
     this.hardwareGuidance = false,
     this.recipeDish = '',
+    this.spoken = false,
   });
 
   final PromptIntent intent;
@@ -35,6 +36,21 @@ class PromptAnalysis {
   final bool advanced;
   final bool hardwareGuidance;
   final String recipeDish;
+
+  /// The user spoke and the answer will be read aloud. Such a turn gets a
+  /// short instruction and a short answer: it is the instruction's length that
+  /// the user waits on before the first word, and the answer's length before
+  /// the last.
+  final bool spoken;
+
+  PromptAnalysis asSpoken() => PromptAnalysis(
+        intent: intent,
+        language: language,
+        advanced: advanced,
+        hardwareGuidance: hardwareGuidance,
+        recipeDish: recipeDish,
+        spoken: true,
+      );
 }
 
 /// Deterministic, multilingual policy used before any model is loaded.
@@ -517,10 +533,21 @@ class PromptIntentPolicy {
           ),
       };
 
+  /// The most a spoken answer may run to. Three sentences are about sixty
+  /// tokens; this leaves room without letting a runaway talk for a minute.
+  static const int spokenOutputTokens = 160;
+
   static String taskInstruction(PromptAnalysis analysis) {
     final language = analysis.language == PromptLanguage.unknown
         ? 'the language of the latest user message'
         : analysis.language.name;
+    if (analysis.spoken) {
+      return 'Reply in $language unless asked otherwise. The user is speaking '
+          'to you and your answer will be read aloud, so answer in at most two '
+          'short, plain sentences: no markdown, lists, headings, labels, emoji '
+          'or code, and never repeat yourself. If they need more, give the key '
+          'part and offer to go on.';
+    }
     final common = 'Reply in $language unless asked otherwise. '
         'Be warm, natural, and conversational: match the user\'s tone and length '
         'and avoid robotic preamble. ';

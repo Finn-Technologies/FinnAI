@@ -9,6 +9,8 @@ import 'package:finn_ai/src/features/creations/creation_store.dart';
 import 'package:finn_ai/src/inference/finn_inference.dart';
 import 'package:finn_ai/src/features/flows/flows_store.dart';
 import 'package:finn_ai/src/features/onboarding/context_consent_store.dart';
+import 'package:finn_ai/src/features/voice/tts/tts_voice_store.dart';
+import 'package:finn_ai/src/features/voice/stt/stt_model_store.dart';
 import 'package:finn_ai/src/features/voice/voice_settings_store.dart';
 import 'package:finn_ai/src/features/you/you_memory_store.dart';
 import 'package:finn_ai/src/features/you/you_profile_store.dart';
@@ -66,6 +68,8 @@ class AppStateStore extends ChangeNotifier {
     ActionAuditStore? actionAuditStore,
     ContextConsentStore? contextConsentStore,
     YouMemoryStore? youMemoryStore,
+    SttModelStore? sttModelStore,
+    TtsVoiceStore? ttsVoiceStore,
   }) async {
     final deleted = <String>[];
     final nonExistent = <String>[];
@@ -169,6 +173,32 @@ class AppStateStore extends ChangeNotifier {
       deleted.add('Voice settings');
     } else {
       failed.addAll(voiceFailures);
+    }
+
+    // The speech model is a download like the language model; it goes with it.
+    // Listed only when there was one, so a user who never used voice is not
+    // told something was deleted.
+    try {
+      final speechTarget = sttModelStore ?? SttModelStore.instance;
+      if (await speechTarget.isInstalled()) {
+        await speechTarget.delete();
+        deleted.add('Downloaded speech model');
+      } else {
+        await speechTarget.delete();
+      }
+    } catch (e) {
+      // Nothing to report when storage was never created (or is unreachable
+      // in a test); a model that is really stuck shows up as leftover bytes.
+    }
+
+    try {
+      final voices = ttsVoiceStore ?? TtsVoiceStore.instance;
+      if ((await voices.installedVoices()).isNotEmpty) {
+        deleted.add('Downloaded voices');
+      }
+      await voices.deleteAll();
+    } catch (e) {
+      // See the speech model above: nothing to report when there was none.
     }
 
     final consentTarget = contextConsentStore ??

@@ -32,8 +32,11 @@ dependencies:
   http: ^1.2.2
   image_picker: ^1.2.3
   file_picker: ^11.0.3
-  speech_to_text: ^7.4.0
   flutter_tts: ^4.2.5
+  sherpa_onnx: ^1.13.8
+  record: ^6.2.1
+  flutter_pcm_sound: ^3.3.3
+  ffi: ^2.2.0
 
 dev_dependencies:
   flutter_test:

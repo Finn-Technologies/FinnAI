@@ -609,7 +609,7 @@
   "@settingsSpokenResponses": {
     "description": "Spoken responses toggle label"
   },
-  "settingsSpokenResponsesBody": "Finn lit les réponses à voix haute en mode vocal. La transcription de votre voix est traitée par la reconnaissance vocale de votre appareil, qui peut avoir besoin d'internet.",
+  "settingsSpokenResponsesBody": "Finn lit les réponses à voix haute en mode vocal. Ce que vous dites est converti en texte sur cet appareil et ne le quitte jamais.",
   "@settingsSpokenResponsesBody": {
     "description": "Spoken responses toggle description"
   },
@@ -653,6 +653,40 @@
   "voiceUnavailable": "La reconnaissance vocale n'est pas disponible pour le moment. Saisissez votre message à la place.",
   "@voiceUnavailable": {
     "description": "Voice STT unavailable message"
+  },
+  "voiceModelNeeded": "Le mode vocal nécessite un téléchargement unique de {size}. Votre voix est convertie en texte sur cet appareil et ne le quitte jamais.",
+  "@voiceModelNeeded": {
+    "description": "Voice sheet: the speech model must be downloaded once",
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "voiceModelDownload": "Télécharger",
+  "@voiceModelDownload": {
+    "description": "Button to download the speech model"
+  },
+  "voiceModelDownloading": "Téléchargement du modèle vocal… {percent} %",
+  "@voiceModelDownloading": {
+    "description": "Voice sheet: speech model download progress",
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "voiceModelFailed": "Le téléchargement n'a pas abouti. Vérifiez votre connexion et réessayez.",
+  "@voiceModelFailed": {
+    "description": "Voice sheet: speech model download failed"
+  },
+  "voiceModelRetry": "Réessayer",
+  "@voiceModelRetry": {
+    "description": "Button to retry the speech model download"
+  },
+  "voiceSpeakingLive": "Parle…",
+  "@voiceSpeakingLive": {
+    "description": "Live voice: Finn is speaking the reply"
   },
   "voiceStopSemantic": "Arrêter",
   "@voiceStopSemantic": {

@@ -41,7 +41,9 @@ import 'package:finn_ai/src/features/flows/flows_page.dart';
 import 'package:finn_ai/src/features/flows/flows_store.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 import 'package:finn_ai/src/app/data_export.dart';
+import 'package:finn_ai/src/features/chat/widgets/voice_morph_bar.dart';
 import 'package:finn_ai/src/features/voice/read_aloud.dart';
+import 'package:finn_ai/src/features/voice/reply_chunker.dart';
 import 'package:finn_ai/src/features/voice/voice_chat_controller.dart';
 import 'package:finn_ai/src/features/voice/voice_settings_store.dart';
 import 'package:finn_ai/src/features/voice/voice_sheet.dart';
@@ -73,6 +75,7 @@ part 'widgets/replies.dart';
 part 'widgets/sources.dart';
 part 'widgets/dialogs.dart';
 part 'widgets/composer.dart';
+part 'widgets/composer_attachment.dart';
 part 'widgets/sidebar.dart';
 part 'widgets/sidebar_tiles.dart';
 
@@ -138,11 +141,15 @@ class _HomeShellState extends State<HomeShell>
   late final _deviceActions = widget.deviceActions ?? const ChatDeviceActions();
   late final _voice = widget.voiceController ?? VoiceChatController.instance;
   String? _voiceReplyGenerationId;
+  String? _voiceCappedGenerationId;
 
   /// True while the composer is listening for voice input inline, and what it
   /// has heard so far.
   bool _voiceListening = false;
-  String _voiceDraft = '';
+
+  /// True while a turn that was spoken is being sent, so the model is asked
+  /// for an answer that reads well aloud.
+  bool _spokenTurn = false;
   Timer? _memoryReleaseTimer;
   static const MethodChannel _memoryPressureChannel = MethodChannel(
     'finn_ai/memory.pressure',
@@ -192,6 +199,7 @@ class _HomeShellState extends State<HomeShell>
   void initState() {
     super.initState();
     _generation.addListener(_generationChanged);
+    _voice.addListener(_onVoiceChanged);
     _conversations.addListener(_conversationChanged);
     _chatScrollController.addListener(_onChatScroll);
     _startFlowScheduling();
@@ -303,6 +311,7 @@ class _HomeShellState extends State<HomeShell>
   @override
   void dispose() {
     _generation.removeListener(_generationChanged);
+    _voice.removeListener(_onVoiceChanged);
     _conversations.removeListener(_conversationChanged);
     _chatScrollController.removeListener(_onChatScroll);
     _stopFlowScheduling();
@@ -537,7 +546,8 @@ class _HomeShellState extends State<HomeShell>
                           onMic: _openVoiceMode,
                           voiceListening: _voiceListening,
                           onVoiceToggle: _endVoiceListening,
-                          onVoiceExpand: _expandVoiceMode,
+                          onVoiceTap: _tapVoice,
+                          voice: _voice,
                         ),
                       ),
                     ),

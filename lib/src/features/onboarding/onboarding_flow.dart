@@ -10,6 +10,7 @@ import 'package:finn_ai/src/features/chat/home_shell.dart';
 import 'package:finn_ai/src/features/onboarding/context_choose_page.dart';
 import 'package:finn_ai/src/features/onboarding/context_consent_store.dart';
 import 'package:finn_ai/src/inference/device_profile.dart';
+import 'package:finn_ai/src/features/onboarding/model_install.dart';
 import 'package:finn_ai/src/inference/finn_inference.dart';
 import 'package:finn_ai/src/shared/config/legal_config.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
@@ -22,10 +23,14 @@ class OnboardingFlow extends StatefulWidget {
     this.enableModelDownload = true,
     this.onComplete,
     this.consentStore,
+    this.addons = const [],
   });
 
   final bool enableModelDownload;
   final Future<void> Function()? onComplete;
+
+  /// Optional downloads fetched along with the language model.
+  final List<InstallAddon> addons;
 
   /// Overrides the process-wide [ContextConsentStore]. The consent step reads
   /// and writes it, and a widget test needs to stand one up against a
@@ -135,6 +140,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             _AutomaticModelPage(
               key: _modelInstallerKey,
               startRequested: _modelInstallRequested,
+              addons: widget.addons,
               onBack: () => _to(1),
               onNext: () => _to(3),
             ),
@@ -864,11 +870,13 @@ class _AutomaticModelPage extends StatefulWidget {
   const _AutomaticModelPage({
     super.key,
     required this.startRequested,
+    required this.addons,
     required this.onBack,
     required this.onNext,
   });
 
   final bool startRequested;
+  final List<InstallAddon> addons;
   final VoidCallback onBack;
   final VoidCallback onNext;
 
@@ -878,15 +886,20 @@ class _AutomaticModelPage extends StatefulWidget {
 
 class _AutomaticModelPageState extends State<_AutomaticModelPage> {
   final _inference = FinnInference.instance;
+  late final _install = ModelInstall(
+    addons: widget.addons,
+    onChanged: _changed,
+  );
   bool _started = false;
   bool _ready = false;
   String? _error;
-  double _progress = .02;
+
+  double get _progress => _install.progress;
 
   @override
   void initState() {
     super.initState();
-    _inference.addListener(_inferenceChanged);
+    _install.attach();
     if (widget.startRequested) {
       WidgetsBinding.instance.addPostFrameCallback((_) => start());
     }
@@ -902,22 +915,12 @@ class _AutomaticModelPageState extends State<_AutomaticModelPage> {
 
   @override
   void dispose() {
-    _inference.removeListener(_inferenceChanged);
+    _install.detach();
     super.dispose();
   }
 
-  void _inferenceChanged() {
-    if (!mounted) return;
-    setState(() {
-      final aggregate = _inference.installProgress;
-      if (aggregate != null) {
-        // Aggregate progress spans the language model AND the post-model
-        // multimodal component, so the bar keeps advancing across the
-        // artifact switch instead of jumping to ~97% with half the data
-        // still to fetch.
-        _progress = aggregate;
-      }
-    });
+  void _changed() {
+    if (mounted) setState(() {});
   }
 
   Future<void> start() async {
@@ -926,33 +929,19 @@ class _AutomaticModelPageState extends State<_AutomaticModelPage> {
     setState(() {
       _started = true;
       _error = null;
-      _progress = .02;
+      _install.progress = .02;
     });
     _inference.useAutomaticSelection();
-    final models = _inference.requiredModels;
-    debugPrint('FINN_START_MODELS: ${models.length}');
     // Resolved before the first await so no BuildContext is used across an
     // async gap.
     final verificationFailedMessage = L10n.of(
       context,
     ).onboardingInstallVerificationFailed;
     try {
-      for (var index = 0; index < models.length; index++) {
-        if (mounted) {
-          setState(() => _progress = index / models.length);
-        }
-        final model = models[index];
-        debugPrint(
-          'FINN_INSTALLING_MODEL: ${model.name} (${model.downloadUrl})',
-        );
-        // Calling install even for an existing language model also completes
-        // the post-model mmproj download after an upgrade or interrupted
-        // first run.
-        await _inference.install(model);
-        if (!await _inference.isInstalled(model)) {
-          throw FormatException(verificationFailedMessage);
-        }
-      }
+      await _install.run(
+        verificationFailedMessage: verificationFailedMessage,
+        isCancelled: () => !mounted,
+      );
       // Measure the best CPU/GPU/NPU backend now that the model is present.
       try {
         await _inference.optimizeForDevice().timeout(
@@ -963,7 +952,7 @@ class _AutomaticModelPageState extends State<_AutomaticModelPage> {
       }
       if (!mounted) return;
       setState(() {
-        _progress = 1;
+        _install.progress = 1;
         _ready = true;
       });
     } catch (e, st) {
@@ -1207,7 +1196,10 @@ TextStyle _readoutStyle(Color color) => TextStyle(
     );
 
 class SoftwareUpgradeScreen extends StatefulWidget {
-  const SoftwareUpgradeScreen({super.key});
+  const SoftwareUpgradeScreen({super.key, this.addons = const []});
+
+  /// Optional downloads fetched along with the language model.
+  final List<InstallAddon> addons;
 
   @override
   State<SoftwareUpgradeScreen> createState() => _SoftwareUpgradeScreenState();
@@ -1219,32 +1211,31 @@ class SoftwareUpgradeScreen extends StatefulWidget {
 /// continues to the home screen once the new model is installed.
 class _SoftwareUpgradeScreenState extends State<SoftwareUpgradeScreen> {
   final _inference = FinnInference.instance;
+  late final _install = ModelInstall(
+    addons: widget.addons,
+    onChanged: _changed,
+  );
   bool _started = false;
   bool _ready = false;
   String? _error;
-  double _progress = .02;
+
+  double get _progress => _install.progress;
 
   @override
   void initState() {
     super.initState();
-    _inference.addListener(_inferenceChanged);
+    _install.attach();
     WidgetsBinding.instance.addPostFrameCallback((_) => start());
   }
 
   @override
   void dispose() {
-    _inference.removeListener(_inferenceChanged);
+    _install.detach();
     super.dispose();
   }
 
-  void _inferenceChanged() {
-    if (!mounted) return;
-    setState(() {
-      final aggregate = _inference.installProgress;
-      if (aggregate != null) {
-        _progress = aggregate;
-      }
-    });
+  void _changed() {
+    if (mounted) setState(() {});
   }
 
   Future<void> start() async {
@@ -1252,7 +1243,7 @@ class _SoftwareUpgradeScreenState extends State<SoftwareUpgradeScreen> {
     setState(() {
       _started = true;
       _error = null;
-      _progress = .02;
+      _install.progress = .02;
     });
     _inference.useAutomaticSelection();
     // Resolved before the first await so no BuildContext is used across an
@@ -1261,12 +1252,10 @@ class _SoftwareUpgradeScreenState extends State<SoftwareUpgradeScreen> {
       context,
     ).onboardingInstallVerificationFailed;
     try {
-      for (final model in _inference.requiredModels) {
-        await _inference.install(model);
-        if (!await _inference.isInstalled(model)) {
-          throw FormatException(verificationFailedMessage);
-        }
-      }
+      await _install.run(
+        verificationFailedMessage: verificationFailedMessage,
+        isCancelled: () => !mounted,
+      );
       // Measure the best CPU/GPU/NPU backend now that the new model is ready.
       // Bounded like the onboarding path so a slow benchmark cannot keep the
       // upgrade screen stuck before the user can chat.
@@ -1279,7 +1268,7 @@ class _SoftwareUpgradeScreenState extends State<SoftwareUpgradeScreen> {
       }
       if (!mounted) return;
       setState(() {
-        _progress = 1;
+        _install.progress = 1;
         _ready = true;
       });
       unawaited(_inference.prewarm());

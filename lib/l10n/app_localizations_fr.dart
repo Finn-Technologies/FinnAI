@@ -513,7 +513,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get settingsSpokenResponsesBody =>
-      'Finn lit les réponses à voix haute en mode vocal. La transcription de votre voix est traitée par la reconnaissance vocale de votre appareil, qui peut avoir besoin d\'internet.';
+      'Finn lit les réponses à voix haute en mode vocal. Ce que vous dites est converti en texte sur cet appareil et ne le quitte jamais.';
 
   @override
   String get voiceMicSemantic => 'Parler à Finn';
@@ -549,6 +549,29 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get voiceUnavailable =>
       'La reconnaissance vocale n\'est pas disponible pour le moment. Saisissez votre message à la place.';
+
+  @override
+  String voiceModelNeeded(String size) {
+    return 'Le mode vocal nécessite un téléchargement unique de $size. Votre voix est convertie en texte sur cet appareil et ne le quitte jamais.';
+  }
+
+  @override
+  String get voiceModelDownload => 'Télécharger';
+
+  @override
+  String voiceModelDownloading(int percent) {
+    return 'Téléchargement du modèle vocal… $percent %';
+  }
+
+  @override
+  String get voiceModelFailed =>
+      'Le téléchargement n\'a pas abouti. Vérifiez votre connexion et réessayez.';
+
+  @override
+  String get voiceModelRetry => 'Réessayer';
+
+  @override
+  String get voiceSpeakingLive => 'Parle…';
 
   @override
   String get voiceStopSemantic => 'Arrêter';

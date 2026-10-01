@@ -213,4 +213,45 @@ void main() {
     expect(SafeMarkdownText.sanitize('a < b and c'), 'a < b and c');
     expect(SafeMarkdownText.sanitize('Titles</'), 'Titles</');
   });
+
+  group('a spoken turn', () {
+    final typed = classifier.classify('What is the capital of Italy?');
+    final spoken = typed.asSpoken();
+
+    test('keeps what was understood and only adds that it was spoken', () {
+      expect(spoken.spoken, isTrue);
+      expect(typed.spoken, isFalse);
+      expect(spoken.intent, typed.intent);
+      expect(spoken.language, typed.language);
+    });
+
+    test('gets a short instruction, not the full one', () {
+      final full = PromptIntentPolicy.taskInstruction(typed);
+      final short = PromptIntentPolicy.taskInstruction(spoken);
+
+      expect(short, contains('read aloud'));
+      expect(short, contains('at most two'));
+      // The instruction is prompt the user waits on before the first word.
+      expect(short.length, lessThan(full.length ~/ 2));
+    });
+
+    test('a typed turn is unchanged by the existence of spoken ones', () {
+      expect(
+        PromptIntentPolicy.taskInstruction(typed),
+        isNot(contains('read aloud')),
+      );
+    });
+
+    test('every intent has a spoken instruction in the same language', () {
+      for (final intent in PromptIntent.values) {
+        final analysis = PromptAnalysis(
+          intent: intent,
+          language: PromptLanguage.italian,
+        ).asSpoken();
+        final text = PromptIntentPolicy.taskInstruction(analysis);
+        expect(text, contains('italian'), reason: '$intent');
+        expect(text, contains('read aloud'), reason: '$intent');
+      }
+    });
+  });
 }
