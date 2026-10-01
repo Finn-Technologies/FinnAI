@@ -177,5 +177,24 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ---
 
-## 6. Typography & Fonts
+## 6. On-device speech recognition
+Used by voice mode; the model files are downloaded on first use.
+- **sherpa-onnx** (`sherpa_onnx` Dart package and native libraries): Apache License 2.0. https://github.com/k2-fsa/sherpa-onnx
+- **ONNX Runtime** (bundled with sherpa-onnx): MIT License. https://github.com/microsoft/onnxruntime
+- **Whisper base**, multilingual, int8 ONNX export by the sherpa-onnx project (`csukuangfj/sherpa-onnx-whisper-base`): MIT License, Copyright (c) 2022 OpenAI. https://github.com/openai/whisper
+- **Silero VAD**: MIT License, Copyright (c) 2020-present Silero Team. https://github.com/snakers4/silero-vad
+- **Piper** VITS voices, int8 builds published by the sherpa-onnx project (`k2-fsa/sherpa-onnx`, release `tts-models`): MIT License (Piper, Michael Hansen / Rhasspy). https://github.com/rhasspy/piper
+  - English: *LJ Speech* dataset, public domain.
+  - German: *Thorsten-Voice* dataset, CC0 1.0.
+  - Spanish (`es_ES-davefx`): voice dataset from OHF-Voice, CC0 1.0.
+  - Italian (`it_IT-paola`): *Voice-Dataset-Italian* by Paola Persico, CC0 1.0.
+  - Russian (`ru_RU-denis`): CC0 1.0.
+  - French (`fr_FR-siwis`): *SIWIS* French Speech Synthesis Database, University of Edinburgh, CC BY 4.0. https://datashare.is.ed.ac.uk/handle/10283/2353
+- **espeak-ng** (phonemizer): GPL-3.0-or-later. **Known licensing risk (owner decision 2026-10-01: ship version 9 as is; not a legal opinion):** the prebuilt `libsherpa-onnx-c-api.so` that the `sherpa_onnx` package ships contains espeak-ng code (confirmed by its strings), and each voice archive carries espeak-ng's data. That is GPL code inside the app. Options: get a legal opinion, build sherpa-onnx without TTS/espeak-ng, or use a text-to-speech runtime that does not need it.
+- **flutter_pcm_sound** (speaker output): MIT License. **archive** (unpacking voices): MIT License.
+- **record** (microphone capture): BSD-style licence; the full text is in the in-app Open-Source Licences page.
+
+---
+
+## 7. Typography & Fonts
 - **Instrument Sans**: SIL Open Font License, Version 1.1.

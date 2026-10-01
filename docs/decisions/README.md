@@ -9,3 +9,5 @@ Short records of why the code is shaped the way it is. Read the relevant one bef
 | [0003](0003-template-first-creations.md) | Creations are template-first | Accepted, implemented 2026-09-30 |
 | [0004](0004-lite-device-tier.md) | A Lite tier for 4 GB devices | Accepted, not yet implemented |
 | [0005](0005-single-model.md) | One model, pinned | Accepted |
+| [0006](0006-on-device-speech-recognition.md) | Speech recognition runs on the device (sherpa-onnx + Whisper), not the platform recogniser | Accepted, implemented 2026-10-01 |
+| [0007](0007-live-voice-and-spoken-replies.md) | Live voice: on-device spoken replies (Piper), a hands-free loop, short spoken answers | Accepted, implemented 2026-10-01 |

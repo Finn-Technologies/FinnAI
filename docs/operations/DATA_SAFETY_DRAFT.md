@@ -54,8 +54,11 @@ Use these answers when completing the **Data Safety** questionnaire in Google Pl
 - **Purposes**: App Functionality.
 - Voice input audio is captured from the device microphone to produce a
   transcript and is not recorded, stored, collected, or shared by the developer.
-  Transcription is performed by the device's platform speech-recognition
-  service; the resulting transcript is processed on device like typed input.
+  Transcription is performed on the device by a speech model the app
+  downloads once from Hugging Face / GitHub, together with the language model
+  during setup or an update (no audio or user data is sent in that request); the resulting transcript is processed on device like typed
+  input. The platform speech-recognition service is not used. Spoken replies
+  are produced on the device by downloaded voice models (no text is sent).
 
 ### H. Notifications and Foreground Service (Model Download)
 - **Collected**: No.

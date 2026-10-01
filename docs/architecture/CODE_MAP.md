@@ -120,7 +120,11 @@ See `docs/architecture/CREATIONS.md` for the spec DSL, the generation pipeline a
 | Personalization profile (name, style, instructions) | `lib/src/features/you/{you_profile_page,you_profile_store}.dart` |
 | Search across chats, creations and You | `lib/src/features/chat/search_page.dart` |
 | A chat's options (rename, pin, export, delete) | `lib/src/features/chat/chat_options.dart` |
-| Hands-free voice | `lib/src/features/voice/{voice_sheet,voice_chat_controller,voice_settings_store}.dart` |
+| Hands-free voice | `lib/src/features/voice/{voice_sheet,voice_chat_controller,voice_settings_store,tts_backend}.dart` |
+| Spoken replies (on-device voices, playback, language choice) | `lib/src/features/voice/tts/{sherpa_tts_backend,tts_worker,tts_events,tts_voice_catalog,tts_voice_store,pcm_output,language_pick,fallback_tts_backend}.dart`, `lib/src/features/voice/{reply_chunker,model_fetch}.dart` |
+| Live voice bar (pill, caption, chat <-> voice morph) | `lib/src/features/chat/widgets/{voice_pill,voice_morph_bar}.dart`, the composer's attachment chip in `composer_attachment.dart` |
+| Setup / upgrade download (language model + add-ons) | `lib/src/features/onboarding/model_install.dart`, `lib/src/app/speech_model_addon.dart` |
+| Speech recognition (mic, VAD, Whisper, model download) | `lib/src/features/voice/stt/{sherpa_speech_backend,stt_worker,stt_events,stt_model_store,mic_source,audio_math,transcript_filter,speech_backend}.dart` |
 | Report-an-answer dialog + backend | `lib/src/features/reporting/` |
 | Legal URLs / licence text | `lib/src/shared/config/{legal_config,licenses}.dart` |
 

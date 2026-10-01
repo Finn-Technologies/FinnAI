@@ -179,6 +179,110 @@ milestone is only "done" when it has been merged into `main` with a green gate
 (`dart format` + `verify_engine_seam.sh` + `flutter analyze --no-pub` +
 `flutter test --no-pub`) and, where it claims a behaviour change, device evidence.
 
+### 2026-10-01 — Chat <-> voice transition, version 9
+
+The message field becomes the voice pill as one motion (details and the gradient/alpha
+bug in ADR 0007). Verified on the Xiaomi by screen recording cut into frames, in both
+directions, after the first version was found to be nearly invisible on the phone (the
+gradient/alpha bug) and too front-loaded (the curve). New: 20 morph tests (frame-by-frame
+width never stutters back, the field is usable again after leaving, a long message still
+grows the field, a ticker is not left running while idle, narrow 320 dp, reduced motion).
+The two controls-sheet goldens were stale because of this work's shorter "Spoken
+responses" copy and were regenerated and looked at (clean HEAD passes them). Version
+2.0.0-beta+9. GPL: owner chose to ship as is; see ADR 0007.
+
+### 2026-10-01 — Live voice: spoken replies, hands-free loop, faster turns
+
+Spoken replies (on-device Piper voices), a hands-free listen -> send -> think -> speak ->
+listen loop, a pill that moves with what it hears, and a shorter, faster spoken turn.
+Decisions and rejected options: `docs/decisions/0007-live-voice-and-spoken-replies.md`.
+
+**Device run (same Xiaomi), debug build.** Voices downloaded on the upgrade screen
+(~21 MB, unpack 5.9 s). Spoken turn, same kind of question, before -> after:
+prompt eval 2655 -> 1141 ms (task instruction ~232 -> ~50 tokens), time to first text
+3.0 -> 1.5 s, first audio 3.7 -> 2.1-4.1 s (depends on the first sentence). Speech
+synthesis 0.30-0.65x real time (keeps up). The loop ran two questions in a row with no
+taps: the microphone reopened by itself after the spoken answer. Three-sentence cap
+verified (a five-sentence answer was cut at three). The "what is the capital of Italy"
+question no longer web-searched (it had cost 9.5 s). The pill measurably changes width
+with speech (frames: ~99 -> ~110 dp) and the caption changes with state. TTS at three
+threads slowed the model from ~16 to ~10 tokens/s; at two it is ~11-13.
+
+**Found, not fixed.** (1) espeak-ng (GPL-3.0) is statically inside
+`libsherpa-onnx-c-api.so`; owner chose to ship v9 as is, risk accepted, notices added
+(ADR 0007, THIRD_PARTY_NOTICES, in-app licences). (2) No
+redistributable Hindi voice: Hindi is understood (poorly) but not answered aloud.
+(3) Whisper base misheard "octopuses" and "capital" from a computer voice; the model then
+answered the wrong question. (4) The model ignores "two short sentences" when asked to
+"explain"; the cap is what bounds it. (5) First audio is still dominated by the first
+sentence's length and by decode speed (~11-13 tokens/s with the voice running).
+
+**Not verified.** Any voice but English (only English was heard through a real
+speaker pipeline; the others are covered by unit tests and the catalog's pinned
+digests, not run on the phone). Audio quality was not listened to by me: only logs and
+timings. Real people speaking, noise, battery, long sessions, and the first-run
+onboarding path.
+
+### 2026-10-01 — Voice: on-device speech recognition (sherpa-onnx + Whisper)
+
+Replaced `speech_to_text` (Android's `SpeechRecognizer`) with mic -> Silero VAD ->
+Whisper base on a background isolate. Why and what was rejected:
+`docs/decisions/0006-on-device-speech-recognition.md`.
+
+**Verified.** `dart format` clean; `verify_engine_seam.sh` and `verify_boundaries.sh`
+OK (the voice controller dropped from 611 to 433 lines, so its baseline line is gone);
+`dart analyze .` clean; the voice, model-store, backend and shell tests pass
+(new: 23 backend-state-machine tests with a fake mic and worker, 10 model-store
+tests against a local HTTP server incl. resume and bad-digest, 12 audio-math and
+transcript-filter tests, 3 sheet tests for the download card); `flutter build apk --debug` links
+(arm64 `libsherpa-onnx-c-api.so` + `libonnxruntime.so`, both 16 KB aligned).
+Full suite: 2 golden tests of the shared controls sheet fail (`widgets_controls_*`,
+image size mismatch) in code this change does not touch; not run on a clean HEAD.
+
+**Device run (Xiaomi 2109119DG "lisa", Snapdragon 778G, Android 16, debug build
+installed over the existing app with the language model and onboarding already done).**
+- *Upgrade path:* launching the new build showed the upgrade screen on its own, the
+  four speech files downloaded (exact pinned sizes, ~7 MB/s on Wi-Fi), and the app went
+  to chat. Relaunch did not show the screen again. About 25 s of that screen is the
+  existing language-model re-check at 0%, before the speech download starts.
+- *Offline upgrade:* with the speech files deleted and Wi-Fi/data off, the screen
+  tried, logged `addon failed (continuing)`, went to chat, wrote the `.failed` marker,
+  and the next launch skipped the screen (no install attempt).
+- *Voice, real microphone, TTS from a Mac speaker:* English "What is the capital of
+  France?" transcribed exactly and answered "Paris" through the model. Russian "Какая
+  столица Франции?" came out as "Какая столица франции?" (language auto-detected).
+  `FINN_STT`: model load 1.1-1.2 s, decode 0.57-0.70 s per ~2 s utterance, i.e. about
+  1.6 s from the end of speech to text including the 0.9 s end-of-speech silence.
+- *Hindi: FAILED.* "फ्रांस की राजधानी क्या है?" came out as "Ranski Rajbhani" (romanised
+  gibberish). Whisper base is weak on Hindi and auto-detect did not help. Try forcing
+  `language: 'hi'` from a setting, or Whisper small (~375 MB), before promising Indic.
+- *Silence:* gives up after 10 s, sends nothing. The inline voice bar does not react to
+  that (it stays until tapped); pre-existing behaviour of the bar.
+- *Memory (PSS):* 2563 MB fresh -> 2749 MB with voice listening (+186 MB) -> 2545 MB
+  after backgrounding (recogniser released).
+- *Missing-model path:* tapping the inline voice button used to show "Speech recognition
+  isn't available" with no way forward for a user who skipped the download; it now opens
+  the voice sheet's download card. Verified offline (Download -> "didn't finish" ->
+  Try again), then online: progress bar, then it started listening by itself.
+
+**Not exercised on the phone.** The first-run onboarding path (it shares
+`ModelInstall` with the upgrade path, which was run, and is covered by 11 unit tests,
+but I did not wipe the phone's data to run it); the cellular-data cost of a 161 MB
+download; accuracy beyond short TTS-voice utterances (no real speakers, no noise, no
+accents); whisper hallucination on real noise.
+
+**Pre-existing, seen while testing.** The phone has no text-to-speech engine, so after an
+answer the voice controller stays in "speaking" and the composer shows Stop; tapping it
+twice is needed to get back to the voice button.
+
+**Left as it was.** Text-to-speech is still `flutter_tts` (the platform engine);
+LFM2.5-VL cannot produce audio. The `liveTranscript` setting has nothing to show until
+a streaming model is used. Backgrounding frees the recogniser (foreground-only holds).
+
+**Setup/upgrade integration (same day).** The speech model now downloads right after the
+language model in first-run setup and on the upgrade screen, best effort (a failure
+never blocks the app). See ADR 0006 and `onboarding/model_install.dart`.
+
 ### 2026-09-30 (night) — v2 rewrite, stage 1: guardrails, search, engine/shell split, Lite
 
 Plan: `/Users/abhi/.claude/plans/` (owner-approved): staged rewrite, quality first, Android Play

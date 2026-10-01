@@ -69,6 +69,70 @@ class _LlamaCppLicenseEntry extends LicenseEntry {
   }
 }
 
+class _SpeechLicenseEntry extends LicenseEntry {
+  const _SpeechLicenseEntry();
+
+  @override
+  Iterable<String> get packages => const [
+        'sherpa-onnx',
+        'onnxruntime',
+        'whisper',
+        'silero-vad',
+        'piper',
+      ];
+
+  @override
+  Iterable<LicenseParagraph> get paragraphs sync* {
+    yield const LicenseParagraph(
+      'On-device speech recognition and spoken replies\n\n'
+      'sherpa-onnx (k2-fsa): Apache License 2.0. '
+      'https://github.com/k2-fsa/sherpa-onnx\n'
+      'ONNX Runtime (Microsoft): MIT License. '
+      'https://github.com/microsoft/onnxruntime\n'
+      'Whisper (OpenAI), the speech model: MIT License, Copyright (c) 2022 '
+      'OpenAI. https://github.com/openai/whisper\n'
+      'Silero VAD: MIT License, Copyright (c) 2020-present Silero Team. '
+      'https://github.com/snakers4/silero-vad\n'
+      'Piper (Rhasspy), the voice models: MIT License. '
+      'https://github.com/rhasspy/piper\n\n'
+      'Voice data: English "LJ Speech", public domain. German "Thorsten-Voice", '
+      'Spanish (davefx), Italian (Paola Persico) and Russian (denis), CC0 1.0. '
+      'French "SIWIS", University of Edinburgh, CC BY 4.0 '
+      '(https://datashare.is.ed.ac.uk/handle/10283/2353).',
+      0,
+    );
+  }
+}
+
+class _EspeakLicenseEntry extends LicenseEntry {
+  const _EspeakLicenseEntry();
+
+  @override
+  Iterable<String> get packages => const ['espeak-ng'];
+
+  @override
+  Iterable<LicenseParagraph> get paragraphs sync* {
+    yield const LicenseParagraph(
+      'espeak-ng\n'
+      'GNU General Public License, version 3 or later\n\n'
+      'FinnAI\'s on-device speech library (sherpa-onnx) includes espeak-ng, '
+      'which turns text into phonemes for the spoken-reply voices. espeak-ng is '
+      'free software licensed under the GNU General Public License, version 3 '
+      'or (at your option) any later version: you can redistribute it and/or '
+      'modify it under the terms of that licence, published at '
+      'https://www.gnu.org/licenses/gpl-3.0.html. It is distributed in the hope '
+      'that it will be useful, but WITHOUT ANY WARRANTY; without even the '
+      'implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR '
+      'PURPOSE.\n\n'
+      'The source code of espeak-ng is available at '
+      'https://github.com/espeak-ng/espeak-ng and of the sherpa-onnx build that '
+      'contains it at https://github.com/k2-fsa/sherpa-onnx. To ask for a copy '
+      'of the corresponding source, write to finn_org@proton.me.',
+      0,
+    );
+  }
+}
+
 /// Registers third-party AI model licenses and open-source notices.
 void registerModelLicenses() {
   LicenseRegistry.addLicense(() async* {
@@ -77,5 +141,9 @@ void registerModelLicenses() {
     // android/app/libs/llama-cpp-dart.aar and are not visible to
     // showLicensePage(), so their MIT license is registered manually here.
     yield const _LlamaCppLicenseEntry();
+    // sherpa-onnx, ONNX Runtime and espeak-ng are native libraries inside the
+    // sherpa_onnx Android packages, also invisible to showLicensePage().
+    yield const _SpeechLicenseEntry();
+    yield const _EspeakLicenseEntry();
   });
 }
