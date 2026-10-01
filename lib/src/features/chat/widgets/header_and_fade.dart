@@ -1,22 +1,29 @@
 part of '../home_shell.dart';
 
-/// The screen's top row: the menu (and close) control on the left, the
-/// conversation title beside it, and the new-chat control on the right while a
-/// conversation is on screen — exactly the arrangement in the design.
+/// The screen's top row: the conversation title beside the control slot, and
+/// the new-chat control on the right while a conversation is on screen.
+///
+/// The menu/close control itself is *not* here — it is drawn by the sidebar
+/// overlay so it can stay above the scrim and morph as the panel opens. This
+/// row keeps its [menuSlotWidth] so the title does not shift under it.
 class _HomeHeader extends StatelessWidget {
   const _HomeHeader({
-    required this.onMenu,
     this.title,
     this.onNewChat,
+    this.onTitleTap,
   });
 
-  final VoidCallback onMenu;
+  /// Width the menu/close control occupies at the row's start.
+  static const double menuSlotWidth = _SidebarToggleButton.dimension;
 
   /// Conversation title; null on the empty screen and while listening.
   final String? title;
 
   /// Starts a new conversation; null hides the control.
   final VoidCallback? onNewChat;
+
+  /// Opens the chat's options; null leaves the title inert.
+  final VoidCallback? onTitleTap;
 
   @override
   Widget build(BuildContext context) {
@@ -25,48 +32,26 @@ class _HomeHeader extends StatelessWidget {
       height: 50,
       child: Row(
         children: [
-          Tooltip(
-            message: L10n.of(context).chatOpenMenuTooltip,
-            child: Semantics(
-              button: true,
-              label: L10n.of(context).chatOpenMenuTooltip,
-              onTap: onMenu,
-              excludeSemantics: true,
-              child: FluxPressScale(
-                child: Material(
-                  color: FluxColors.controlOf(context),
-                  shape: const CircleBorder(),
-                  child: SizedBox.square(
-                    key: const ValueKey('home-menu-button'),
-                    dimension: 50,
-                    child: InkWell(
-                      onTap: onMenu,
-                      customBorder: const CircleBorder(),
-                      child: const Center(
-                        child: FigmaSvg(
-                          asset: FigmaAssets.appMenu,
-                          width: 25,
-                          height: 25,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
+          const SizedBox(width: menuSlotWidth),
           if (title != null && title.isNotEmpty) ...[
             const SizedBox(width: 20),
             Expanded(
-              child: Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontFamily: 'InstrumentSans',
-                  fontSize: 18,
-                  height: 1.2,
-                  fontWeight: FontWeight.w400,
+              child: Semantics(
+                button: onTitleTap != null,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: onTitleTap,
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontFamily: 'InstrumentSans',
+                      fontSize: 18,
+                      height: 1.2,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -106,6 +91,155 @@ class _HomeHeader extends StatelessWidget {
   }
 }
 
+/// The single control that opens the sidebar and closes it again.
+///
+/// One button, not two: the design's hamburger and its "X" are the same 25-unit
+/// grid of 2px round strokes, so the glyph is interpolated between them by
+/// [progress] rather than swapped. 0 is the menu, 1 is the close.
+class _SidebarToggleButton extends StatelessWidget {
+  const _SidebarToggleButton({
+    required this.progress,
+    required this.onToggle,
+    required this.openTooltip,
+    required this.closeTooltip,
+  });
+
+  /// Size of the circular control.
+  static const double dimension = 50;
+
+  /// Glyph edge length, matching the design's icon at both ends.
+  static const double _glyph = 25;
+
+  /// 0 = menu, 1 = close. Driven by the sidebar's own animation, so a tap and
+  /// a drag both move it.
+  final double progress;
+  final VoidCallback onToggle;
+  final String openTooltip;
+  final String closeTooltip;
+
+  @override
+  Widget build(BuildContext context) {
+    final open = progress < .5;
+    final tooltip = open ? openTooltip : closeTooltip;
+    return Tooltip(
+      message: tooltip,
+      child: Semantics(
+        button: true,
+        label: tooltip,
+        onTap: onToggle,
+        excludeSemantics: true,
+        child: FluxPressScale(
+          child: Material(
+            color: FluxColors.controlOf(context),
+            shape: const CircleBorder(),
+            child: SizedBox.square(
+              key: const ValueKey('home-menu-button'),
+              dimension: dimension,
+              child: InkWell(
+                onTap: onToggle,
+                customBorder: const CircleBorder(),
+                child: Center(
+                  child: SizedBox.square(
+                    dimension: _glyph,
+                    child: CustomPaint(
+                      painter: _SidebarGlyphPainter(
+                        progress: progress,
+                        color: FluxColors.inkOf(context),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Interpolates the hamburger/close pair in [FigmaAssets.appMenu] and
+/// [FigmaAssets.appClose].
+///
+/// Both icons are 2px round-capped strokes on the same 25-unit grid, so each
+/// pair of endpoints lerps point-for-point: the middle rule rotates into one
+/// diagonal of the cross while the top and bottom rules pull inward and rotate
+/// onto the other. Painting them keeps the two states one continuous motion
+/// rather than a cross-fade between two separate assets.
+class _SidebarGlyphPainter extends CustomPainter {
+  const _SidebarGlyphPainter({required this.progress, required this.color});
+
+  /// 0 = menu, 1 = close.
+  final double progress;
+  final Color color;
+
+  /// Half-length of the middle rule: the design's widest stroke.
+  static const double _fullHalfLength = 8.33;
+
+  /// Half-length of the menu's shorter top and bottom rules.
+  static const double _shortHalfLength = 5.21;
+
+  /// Distance of the menu's top and bottom rules from the glyph centre, and the
+  /// span the cross's endpoints settle on.
+  static const double _offset = 7.29;
+
+  /// Half of the close cross's span, matching the design's 6.25 inset.
+  static const double _crossHalfSpan = 6.25;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final centre = Offset(size.width / 2, size.height / 2);
+    final stroke = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round;
+    final t = Curves.easeInOutCubic.transform(progress.clamp(0.0, 1.0));
+    // Distance the outer rules still sit from the centre; at t=1 both have
+    // collapsed onto it, which is what lets them become the two diagonals.
+    final ruleOffset = _offset * (1 - t);
+
+    // The middle rule turns one way, the outer pair the other, so the two
+    // diagonals of the cross cross rather than lying parallel.
+    void drawRule({
+      required double verticalOffset,
+      required double angle,
+      required double halfLength,
+      required double alpha,
+    }) {
+      canvas.save();
+      canvas.translate(centre.dx, centre.dy + verticalOffset);
+      canvas.rotate(angle);
+      canvas.drawLine(
+        Offset(-halfLength, 0),
+        Offset(halfLength, 0),
+        stroke..color = color.withValues(alpha: alpha),
+      );
+      canvas.restore();
+    }
+
+    drawRule(
+      verticalOffset: 0,
+      angle: -math.pi / 4 * t,
+      halfLength: _fullHalfLength + (_crossHalfSpan - _fullHalfLength) * t,
+      alpha: 1,
+    );
+    for (final sign in const <double>[-1, 1]) {
+      drawRule(
+        verticalOffset: sign * ruleOffset,
+        angle: math.pi / 4 * t,
+        halfLength: _shortHalfLength + (_crossHalfSpan - _shortHalfLength) * t,
+        // The design draws the outer rules at half opacity; the cross does
+        // not, so they gain their opacity as they turn.
+        alpha: 0.5 + 0.5 * t,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_SidebarGlyphPainter oldDelegate) =>
+      oldDelegate.progress != progress || oldDelegate.color != color;
+}
+
 /// Height of the chat's top scroll-fade band, in logical pixels.
 ///
 /// Declared once because the gradient's opaque stretch is a fraction of it:
@@ -141,8 +275,10 @@ class _ChatEdgeFade extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = FluxColors.isDark(context);
-    final color = isDark ? FluxColors.darkCanvas : FluxColors.canvas;
+    // The fade has to end on the same colour as the surface it sits on. The chat
+    // canvas is tileOf (#18181C in dark), not canvasOf (#000000), so fading to
+    // darkCanvas left a visible black band along the header and footer.
+    final color = FluxColors.tileOf(context);
     final stops = top
         ? const <double>[
             0.0,

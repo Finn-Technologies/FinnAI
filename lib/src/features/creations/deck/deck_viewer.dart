@@ -8,6 +8,9 @@ import 'package:finn_ai/src/features/creations/spec/deck_spec.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 import 'package:finn_ai/src/shared/widgets/ambient_background.dart';
 import 'package:finn_ai/src/shared/widgets/finn_page_header.dart';
+import 'package:finn_ai/src/shared/widgets/finn_overlays.dart';
+import 'package:finn_ai/src/shared/widgets/finn_page.dart';
+import 'package:finn_ai/src/shared/widgets/finn_ui.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
 
 /// Browses a generated deck slide by slide.
@@ -54,20 +57,21 @@ class _DeckViewerState extends State<DeckViewer> {
     );
   }
 
+  Future<void> _present() => Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          fullscreenDialog: true,
+          builder: (_) => _PresentPage(
+            deck: widget.deck,
+            startAt: _index,
+          ),
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
+    final l10n = L10n.of(context);
     final slides = widget.deck.slides;
     return Scaffold(
-      floatingActionButton: widget.onExport == null
-          ? null
-          : FloatingActionButton.small(
-              onPressed: widget.onExport,
-              tooltip: L10n.of(context).creationsExportDeck,
-              backgroundColor: FluxColors.surfaceOf(context),
-              foregroundColor: FluxColors.inkOf(context),
-              elevation: 0,
-              child: const FluxIcon(icon: FluxIcons.download, size: 19),
-            ),
       body: AmbientBackground(
         intensity: .6,
         child: LayoutBuilder(
@@ -75,65 +79,102 @@ class _DeckViewerState extends State<DeckViewer> {
             final metrics = FinnPageHeaderMetrics.forHeight(
               constraints.maxHeight,
             );
+            final bottom = FluxBottomInset.bottomOf(context);
             return Stack(
               children: [
                 Positioned.fill(
                   child: Column(
                     children: [
-                      SizedBox(height: metrics.contentTop + 6),
+                      SizedBox(height: metrics.contentTop),
                       Expanded(
-                        child: PageView.builder(
-                          controller: _pageController,
-                          itemCount: slides.length,
-                          onPageChanged: (index) =>
-                              setState(() => _index = index),
-                          itemBuilder: (context, index) => Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 10,
-                            ),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Flexible(
-                                  child: DeckSlideCard(
-                                    slide: slides[index],
-                                    theme: widget.deck.theme,
-                                    index: index,
-                                  ),
+                        child: ListView(
+                          padding: const EdgeInsets.symmetric(horizontal: 25),
+                          physics: const FluxBouncingScrollPhysics(),
+                          children: [
+                            SizedBox(
+                              height: 230,
+                              child: PageView.builder(
+                                controller: _pageController,
+                                itemCount: slides.length,
+                                onPageChanged: (index) =>
+                                    setState(() => _index = index),
+                                itemBuilder: (context, index) => DeckSlideCard(
+                                  slide: slides[index],
+                                  theme: widget.deck.theme,
+                                  index: index,
                                 ),
-                                if (slides[index].notes.trim().isNotEmpty) ...[
-                                  const SizedBox(height: 14),
-                                  Text(
-                                    slides[index].notes,
-                                    textAlign: TextAlign.center,
-                                    maxLines: 3,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelMedium
-                                        ?.copyWith(
-                                          color: FluxColors.mutedOf(context),
-                                        ),
-                                  ),
-                                ],
-                              ],
+                              ),
                             ),
-                          ),
+                            const SizedBox(height: 12),
+                            FinnCaption(
+                              l10n.creationsSlideOf(_index + 1, slides.length),
+                            ),
+                            if (slides.isNotEmpty &&
+                                slides[_index].notes.trim().isNotEmpty) ...[
+                              const SizedBox(height: 12),
+                              Container(
+                                padding: const EdgeInsets.all(15),
+                                decoration: BoxDecoration(
+                                  color: FluxColors.controlOf(context),
+                                  borderRadius:
+                                      BorderRadius.circular(FluxRadius.card),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      l10n.creationsSpeakerNotes,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(
+                                            color: FluxColors.actionOf(context),
+                                          ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      slides[_index].notes,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ),
-                      _DeckFooter(
-                        index: _index,
-                        count: slides.length,
-                        onPrevious: _index == 0 ? null : () => _go(-1),
-                        onNext:
-                            _index == slides.length - 1 ? null : () => _go(1),
-                      ),
-                      // The export FAB floats over the bottom-right corner, so
-                      // the footer reserves its height when it is present.
-                      SizedBox(
-                        height: MediaQuery.paddingOf(context).bottom +
-                            (widget.onExport == null ? 18 : 64),
+                      Padding(
+                        padding: EdgeInsets.fromLTRB(25, 10, 25, 20 + bottom),
+                        child: Row(
+                          children: [
+                            Transform.rotate(
+                              angle: math.pi,
+                              child: FinnCircleButton.icon(
+                                icon: FluxIcons.arrowRight01,
+                                label: l10n.creationsPreviousSlide,
+                                onTap: _index == 0 ? null : () => _go(-1),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: FinnButton(
+                                label: l10n.creationsPresent,
+                                icon: FluxIcons.arrowRight02,
+                                onTap: slides.isEmpty ? null : _present,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            FinnCircleButton.icon(
+                              icon: FluxIcons.arrowRight01,
+                              label: l10n.creationsNextSlide,
+                              onTap: _index >= slides.length - 1
+                                  ? null
+                                  : () => _go(1),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -144,6 +185,14 @@ class _DeckViewerState extends State<DeckViewer> {
                     onBack: widget.onBack,
                     metrics: metrics,
                     scrollOffset: const RestingHeaderOffset(),
+                    actions: [
+                      if (widget.onExport != null)
+                        FinnCircleButton.icon(
+                          icon: FluxIcons.arrowUp01,
+                          label: l10n.creationsExportDeck,
+                          onTap: widget.onExport,
+                        ),
+                    ],
                   ),
                 ),
               ],
@@ -155,67 +204,65 @@ class _DeckViewerState extends State<DeckViewer> {
   }
 }
 
-class _DeckFooter extends StatelessWidget {
-  const _DeckFooter({
-    required this.index,
-    required this.count,
-    required this.onPrevious,
-    required this.onNext,
-  });
+/// Full-screen slideshow: tap or swipe to move on, back to leave.
+class _PresentPage extends StatefulWidget {
+  const _PresentPage({required this.deck, required this.startAt});
 
-  final int index;
-  final int count;
-  final VoidCallback? onPrevious;
-  final VoidCallback? onNext;
+  final DeckSpec deck;
+  final int startAt;
 
   @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Row(
-        children: [
-          // The only arrow glyph available points right, so the "previous"
-          // control mirrors it: a right-pointing arrow for stepping back read
-          // as "next".
-          Transform.rotate(
-            angle: math.pi,
-            child: FluxIconButton(
-              icon: FluxIcons.arrowRight01,
-              tooltip: L10n.of(context).creationsPreviousSlide,
-              onTap: onPrevious,
-              dark: true,
-            ),
-          ),
-          Expanded(
-            child: Semantics(
-              label: L10n.of(context).creationsSlideOf(index + 1, count),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  for (var dot = 0; dot < count; dot++)
-                    Container(
-                      width: dot == index ? 7 : 5,
-                      height: dot == index ? 7 : 5,
-                      margin: const EdgeInsets.symmetric(horizontal: 3),
-                      decoration: BoxDecoration(
-                        color: dot == index
-                            ? FluxColors.inkOf(context)
-                            : FluxColors.lineOf(context),
-                        shape: BoxShape.circle,
+  State<_PresentPage> createState() => _PresentPageState();
+}
+
+class _PresentPageState extends State<_PresentPage> {
+  late final PageController _controller =
+      PageController(initialPage: widget.startAt);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        backgroundColor: Colors.black,
+        body: SafeArea(
+          child: Stack(
+            children: [
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => _controller.nextPage(
+                  duration: const Duration(milliseconds: 240),
+                  curve: Curves.easeOutCubic,
+                ),
+                child: PageView.builder(
+                  controller: _controller,
+                  itemCount: widget.deck.slides.length,
+                  itemBuilder: (context, index) => Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Center(
+                      child: DeckSlideCard(
+                        slide: widget.deck.slides[index],
+                        theme: widget.deck.theme,
+                        index: index,
                       ),
                     ),
-                ],
+                  ),
+                ),
               ),
-            ),
+              Positioned(
+                top: 10,
+                left: 10,
+                child: IconButton(
+                  tooltip: L10n.of(context).commonClose,
+                  icon: const Icon(Icons.close, color: Colors.white),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ),
+            ],
           ),
-          FluxIconButton(
-            icon: FluxIcons.arrowRight01,
-            tooltip: L10n.of(context).creationsNextSlide,
-            onTap: onNext,
-            dark: true,
-          ),
-        ],
-      ),
-    );
-  }
+        ),
+      );
 }

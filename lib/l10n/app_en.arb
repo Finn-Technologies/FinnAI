@@ -1118,6 +1118,14 @@
       }
     }
   },
+  "creationsNoneTitle": "No Creations yet.",
+  "@creationsNoneTitle": {
+    "description": "Creations empty title"
+  },
+  "creationsNoneBody": "Your creativity lives here.\nTry making something with FinnAI Creations.",
+  "@creationsNoneBody": {
+    "description": "Creations empty body"
+  },
   "creationsTitle": "Creations",
   "@creationsTitle": {
     "description": "Creations title"
@@ -2304,5 +2312,1245 @@
   "creationsDeleteFailed": "That creation couldn't be deleted. Please try again.",
   "@creationsDeleteFailed": {
     "description": "Shown when deleting a creation could not be saved"
+  },
+  "hubModelTitle": "FinnAI Foundation",
+  "@hubModelTitle": {
+    "description": "hubModelTitle"
+  },
+  "hubModelSub": "On this device, {size}",
+  "@hubModelSub": {
+    "description": "hubModelSub",
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "hubVoiceTitle": "Voice and language",
+  "@hubVoiceTitle": {
+    "description": "hubVoiceTitle"
+  },
+  "hubVoiceSub": "{speed} speed, {language}",
+  "@hubVoiceSub": {
+    "description": "hubVoiceSub",
+    "placeholders": {
+      "speed": {
+        "type": "String"
+      },
+      "language": {
+        "type": "String"
+      }
+    }
+  },
+  "hubAccessTitle": "Device access",
+  "@hubAccessTitle": {
+    "description": "hubAccessTitle"
+  },
+  "hubAccessSub": "Calendar, contacts, files",
+  "@hubAccessSub": {
+    "description": "hubAccessSub"
+  },
+  "hubYouTitle": "You",
+  "@hubYouTitle": {
+    "description": "hubYouTitle"
+  },
+  "hubYouSub": "What FinnAI learns and uses",
+  "@hubYouSub": {
+    "description": "hubYouSub"
+  },
+  "hubDataTitle": "Privacy and data",
+  "@hubDataTitle": {
+    "description": "hubDataTitle"
+  },
+  "hubDataSub": "Storage, export, erase",
+  "@hubDataSub": {
+    "description": "hubDataSub"
+  },
+  "hubAboutTitle": "About",
+  "@hubAboutTitle": {
+    "description": "hubAboutTitle"
+  },
+  "hubAboutSub": "Version {version}",
+  "@hubAboutSub": {
+    "description": "hubAboutSub",
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "modelVersion": "Version {version}",
+  "@modelVersion": {
+    "description": "modelVersion",
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "modelStored": "{size} of your storage, downloaded on {date}.",
+  "@modelStored": {
+    "description": "modelStored",
+    "placeholders": {
+      "size": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "modelStoredNoDate": "{size} of your storage.",
+  "@modelStoredNoDate": {
+    "description": "modelStoredNoDate",
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "modelNotInstalled": "Not downloaded yet.",
+  "@modelNotInstalled": {
+    "description": "modelNotInstalled"
+  },
+  "modelOffline": "Work offline",
+  "@modelOffline": {
+    "description": "modelOffline"
+  },
+  "modelOfflineSub": "Everything runs on this device",
+  "@modelOfflineSub": {
+    "description": "modelOfflineSub"
+  },
+  "modelLookups": "Look things up online",
+  "@modelLookups": {
+    "description": "modelLookups"
+  },
+  "modelLookupsSub": "Only when a question needs it. Your chats and You stay here.",
+  "@modelLookupsSub": {
+    "description": "modelLookupsSub"
+  },
+  "modelUpdates": "Check for updates",
+  "@modelUpdates": {
+    "description": "modelUpdates"
+  },
+  "modelUpToDate": "Up to date",
+  "@modelUpToDate": {
+    "description": "modelUpToDate"
+  },
+  "modelRemove": "Remove the model",
+  "@modelRemove": {
+    "description": "modelRemove"
+  },
+  "modelRemoveSub": "Frees {size}",
+  "@modelRemoveSub": {
+    "description": "modelRemoveSub",
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "modelRemoveTitle": "Remove the model?",
+  "@modelRemoveTitle": {
+    "description": "modelRemoveTitle"
+  },
+  "modelRemoveBody": "FinnAI has to download it again before you can chat. Your chats stay.",
+  "@modelRemoveBody": {
+    "description": "modelRemoveBody"
+  },
+  "modelRemoveConfirm": "Remove",
+  "@modelRemoveConfirm": {
+    "description": "modelRemoveConfirm"
+  },
+  "voiceReadAloud": "Read replies aloud",
+  "@voiceReadAloud": {
+    "description": "voiceReadAloud"
+  },
+  "voiceReadAloudSub": "In voice chats",
+  "@voiceReadAloudSub": {
+    "description": "voiceReadAloudSub"
+  },
+  "voiceTranscript": "Show live transcript",
+  "@voiceTranscript": {
+    "description": "voiceTranscript"
+  },
+  "voiceTranscriptSub": "While you speak",
+  "@voiceTranscriptSub": {
+    "description": "voiceTranscriptSub"
+  },
+  "voiceSpeed": "Speaking speed",
+  "@voiceSpeed": {
+    "description": "voiceSpeed"
+  },
+  "voiceSpeedSlow": "Slow",
+  "@voiceSpeedSlow": {
+    "description": "voiceSpeedSlow"
+  },
+  "voiceSpeedNormal": "Normal",
+  "@voiceSpeedNormal": {
+    "description": "voiceSpeedNormal"
+  },
+  "voiceSpeedFast": "Fast",
+  "@voiceSpeedFast": {
+    "description": "voiceSpeedFast"
+  },
+  "voiceLanguage": "Language",
+  "@voiceLanguage": {
+    "description": "voiceLanguage"
+  },
+  "voiceLanguageSub": "Follows your phone",
+  "@voiceLanguageSub": {
+    "description": "voiceLanguageSub"
+  },
+  "accessIntro": "FinnAI only reads what you allow, and only on this device.",
+  "@accessIntro": {
+    "description": "accessIntro"
+  },
+  "accessMaster": "Use context from this device",
+  "@accessMaster": {
+    "description": "accessMaster"
+  },
+  "accessMasterSub": "Turn off to stop FinnAI reading anything",
+  "@accessMasterSub": {
+    "description": "accessMasterSub"
+  },
+  "accessActions": "Actions on your device",
+  "@accessActions": {
+    "description": "accessActions"
+  },
+  "accessActionsSub": "Alarms, timers, settings",
+  "@accessActionsSub": {
+    "description": "accessActionsSub"
+  },
+  "ctxCalendar": "Calendar",
+  "@ctxCalendar": {
+    "description": "ctxCalendar"
+  },
+  "ctxCalendarSub": "Events and free time",
+  "@ctxCalendarSub": {
+    "description": "ctxCalendarSub"
+  },
+  "ctxContacts": "Contacts",
+  "@ctxContacts": {
+    "description": "ctxContacts"
+  },
+  "ctxContactsSub": "Names and relationships",
+  "@ctxContactsSub": {
+    "description": "ctxContactsSub"
+  },
+  "ctxNotifications": "Notifications",
+  "@ctxNotifications": {
+    "description": "ctxNotifications"
+  },
+  "ctxNotificationsSub": "What needs your attention",
+  "@ctxNotificationsSub": {
+    "description": "ctxNotificationsSub"
+  },
+  "ctxPhotos": "Photos",
+  "@ctxPhotos": {
+    "description": "ctxPhotos"
+  },
+  "ctxPhotosSub": "Only when you attach them",
+  "@ctxPhotosSub": {
+    "description": "ctxPhotosSub"
+  },
+  "ctxFiles": "Files",
+  "@ctxFiles": {
+    "description": "ctxFiles"
+  },
+  "ctxFilesSub": "Documents you open with FinnAI",
+  "@ctxFilesSub": {
+    "description": "ctxFilesSub"
+  },
+  "ctxLocation": "Location",
+  "@ctxLocation": {
+    "description": "ctxLocation"
+  },
+  "ctxLocationSub": "Only while the app is open",
+  "@ctxLocationSub": {
+    "description": "ctxLocationSub"
+  },
+  "dataStoredHere": "Stored on this device",
+  "@dataStoredHere": {
+    "description": "dataStoredHere"
+  },
+  "dataChats": "Chats",
+  "@dataChats": {
+    "description": "dataChats"
+  },
+  "dataCreations": "Creations",
+  "@dataCreations": {
+    "description": "dataCreations"
+  },
+  "dataYou": "You",
+  "@dataYou": {
+    "description": "dataYou"
+  },
+  "dataModel": "FinnAI Foundation",
+  "@dataModel": {
+    "description": "dataModel"
+  },
+  "dataExport": "Export everything",
+  "@dataExport": {
+    "description": "dataExport"
+  },
+  "dataExportSub": "Chats, creations, flows and You",
+  "@dataExportSub": {
+    "description": "dataExportSub"
+  },
+  "dataDeleteChats": "Delete all chats",
+  "@dataDeleteChats": {
+    "description": "dataDeleteChats"
+  },
+  "dataDeleteChatsSub": "You stays as it is",
+  "@dataDeleteChatsSub": {
+    "description": "dataDeleteChatsSub"
+  },
+  "dataErase": "Erase everything",
+  "@dataErase": {
+    "description": "dataErase"
+  },
+  "dataEraseSub": "Resets FinnAI on this device",
+  "@dataEraseSub": {
+    "description": "dataEraseSub"
+  },
+  "dataExportFailed": "Could not export. Try again.",
+  "@dataExportFailed": {
+    "description": "dataExportFailed"
+  },
+  "aboutBlurb": "A private assistant that runs on your device.",
+  "@aboutBlurb": {
+    "description": "aboutBlurb"
+  },
+  "aboutPrivacy": "Privacy Policy",
+  "@aboutPrivacy": {
+    "description": "aboutPrivacy"
+  },
+  "aboutTerms": "Terms of use",
+  "@aboutTerms": {
+    "description": "aboutTerms"
+  },
+  "aboutLicences": "Open source licences",
+  "@aboutLicences": {
+    "description": "aboutLicences"
+  },
+  "aboutFeedback": "Send feedback",
+  "@aboutFeedback": {
+    "description": "aboutFeedback"
+  },
+  "chatUsedFromYou": "Used {count, plural, =1{1 thing} other{{count} things}} from You",
+  "@chatUsedFromYou": {
+    "description": "chatUsedFromYou",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "youAboutTitle": "What FinnAI knows about you",
+  "@youAboutTitle": {
+    "description": "youAboutTitle"
+  },
+  "youUpdated": "Updated {when}",
+  "@youUpdated": {
+    "description": "youUpdated",
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "youReviewTitle": "{count, plural, =1{1 new thing to review} other{{count} new things to review}}",
+  "@youReviewTitle": {
+    "description": "youReviewTitle",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "youReviewSub": "Noticed in your recent chats",
+  "@youReviewSub": {
+    "description": "youReviewSub"
+  },
+  "youCount": "{count, plural, =1{1 thing} other{{count} things}}",
+  "@youCount": {
+    "description": "youCount",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "youStoredOnly": "Stored only on this device",
+  "@youStoredOnly": {
+    "description": "youStoredOnly"
+  },
+  "youCatPeople": "People",
+  "@youCatPeople": {
+    "description": "youCatPeople"
+  },
+  "youCatWork": "Work",
+  "@youCatWork": {
+    "description": "youCatWork"
+  },
+  "youCatRoutines": "Routines",
+  "@youCatRoutines": {
+    "description": "youCatRoutines"
+  },
+  "youCatPreferences": "Preferences",
+  "@youCatPreferences": {
+    "description": "youCatPreferences"
+  },
+  "youCatPlaces": "Places",
+  "@youCatPlaces": {
+    "description": "youCatPlaces"
+  },
+  "youCatInterests": "Interests",
+  "@youCatInterests": {
+    "description": "youCatInterests"
+  },
+  "youEmptyTitle": "Still getting to know you",
+  "@youEmptyTitle": {
+    "description": "youEmptyTitle"
+  },
+  "youEmptyBody": "As you chat, FinnAI learns what helps and keeps it here, on this device. You can also write something yourself.",
+  "@youEmptyBody": {
+    "description": "youEmptyBody"
+  },
+  "youTellFinn": "Tell FinnAI about you",
+  "@youTellFinn": {
+    "description": "youTellFinn"
+  },
+  "youPrivacyTitle": "Privacy",
+  "@youPrivacyTitle": {
+    "description": "youPrivacyTitle"
+  },
+  "youCategoryIntro": "{count, plural, =1{1 thing FinnAI remembers. Tap one to see where it came from.} other{{count} things FinnAI remembers. Tap one to see where it came from.}}",
+  "@youCategoryIntro": {
+    "description": "youCategoryIntro",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "youCategoryEmpty": "Nothing here yet. Tap plus to add something.",
+  "@youCategoryEmpty": {
+    "description": "youCategoryEmpty"
+  },
+  "youSeenIn": "Seen in {where}",
+  "@youSeenIn": {
+    "description": "youSeenIn",
+    "placeholders": {
+      "where": {
+        "type": "String"
+      }
+    }
+  },
+  "youSeenInLabel": "Seen in",
+  "@youSeenInLabel": {
+    "description": "youSeenInLabel"
+  },
+  "youAddedByYou": "Added by you",
+  "@youAddedByYou": {
+    "description": "youAddedByYou"
+  },
+  "youLearnedOn": "Learned {when}. Stored on this device.",
+  "@youLearnedOn": {
+    "description": "youLearnedOn",
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "youEdit": "Edit",
+  "@youEdit": {
+    "description": "youEdit"
+  },
+  "youDoNotUse": "Do not use in chats",
+  "@youDoNotUse": {
+    "description": "youDoNotUse"
+  },
+  "youForgetThis": "Forget this",
+  "@youForgetThis": {
+    "description": "youForgetThis"
+  },
+  "youForgetTitle": "Forget this?",
+  "@youForgetTitle": {
+    "description": "youForgetTitle"
+  },
+  "youForgetBody": "FinnAI stops using it in chats. If you bring it up again, it can be learned again.",
+  "@youForgetBody": {
+    "description": "youForgetBody"
+  },
+  "youForgetConfirm": "Forget",
+  "@youForgetConfirm": {
+    "description": "youForgetConfirm"
+  },
+  "youAddLabel": "In your own words",
+  "@youAddLabel": {
+    "description": "youAddLabel"
+  },
+  "youAddHint": "Something FinnAI should remember, like how you like to work or who matters to you.",
+  "@youAddHint": {
+    "description": "youAddHint"
+  },
+  "youWhereBelongs": "Where it belongs",
+  "@youWhereBelongs": {
+    "description": "youWhereBelongs"
+  },
+  "youUseEveryChat": "Use in every chat",
+  "@youUseEveryChat": {
+    "description": "youUseEveryChat"
+  },
+  "youUseEveryChatSub": "Turn off to keep it for when you ask",
+  "@youUseEveryChatSub": {
+    "description": "youUseEveryChatSub"
+  },
+  "youSaveToYou": "Save to You",
+  "@youSaveToYou": {
+    "description": "youSaveToYou"
+  },
+  "youReviewTitleBar": "Review",
+  "@youReviewTitleBar": {
+    "description": "youReviewTitleBar"
+  },
+  "youReviewIntro": "FinnAI noticed these in recent chats. Keep what is right and forget the rest.",
+  "@youReviewIntro": {
+    "description": "youReviewIntro"
+  },
+  "youReviewEmpty": "Nothing to review right now.",
+  "@youReviewEmpty": {
+    "description": "youReviewEmpty"
+  },
+  "youKeep": "Keep",
+  "@youKeep": {
+    "description": "youKeep"
+  },
+  "youFrom": "{category}, from {chat}",
+  "@youFrom": {
+    "description": "youFrom",
+    "placeholders": {
+      "category": {
+        "type": "String"
+      },
+      "chat": {
+        "type": "String"
+      }
+    }
+  },
+  "youPrivacyNote": "Everything in You is stored on this device. FinnAI never sends it anywhere.",
+  "@youPrivacyNote": {
+    "description": "youPrivacyNote"
+  },
+  "youLearn": "Learn from conversations",
+  "@youLearn": {
+    "description": "youLearn"
+  },
+  "youLearnSub": "FinnAI suggests things to add after you chat",
+  "@youLearnSub": {
+    "description": "youLearnSub"
+  },
+  "youUseInChats": "Use You in new chats",
+  "@youUseInChats": {
+    "description": "youUseInChats"
+  },
+  "youUseInChatsSub": "You can turn it off per chat",
+  "@youUseInChatsSub": {
+    "description": "youUseInChatsSub"
+  },
+  "youLearnAbout": "Learn about",
+  "@youLearnAbout": {
+    "description": "youLearnAbout"
+  },
+  "youExport": "Export You",
+  "@youExport": {
+    "description": "youExport"
+  },
+  "youExportSub": "Save a copy as a file",
+  "@youExportSub": {
+    "description": "youExportSub"
+  },
+  "youErase": "Erase everything in You",
+  "@youErase": {
+    "description": "youErase"
+  },
+  "youEraseSub": "Removes {count, plural, =1{1 thing} other{{count} things}}",
+  "@youEraseSub": {
+    "description": "youEraseSub",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "youEraseTitle": "Erase everything in You?",
+  "@youEraseTitle": {
+    "description": "youEraseTitle"
+  },
+  "youEraseBody": "Everything FinnAI remembers is removed from this device. Your chats stay.",
+  "@youEraseBody": {
+    "description": "youEraseBody"
+  },
+  "youEraseConfirm": "Erase",
+  "@youEraseConfirm": {
+    "description": "youEraseConfirm"
+  },
+  "youPersonalise": "Reply style and instructions",
+  "@youPersonalise": {
+    "description": "youPersonalise"
+  },
+  "youPersonaliseSub": "Name, tone and custom instructions",
+  "@youPersonaliseSub": {
+    "description": "youPersonaliseSub"
+  },
+  "youRemembered": "Saved to You",
+  "@youRemembered": {
+    "description": "youRemembered"
+  },
+  "youWhenToday": "today",
+  "@youWhenToday": {
+    "description": "youWhenToday"
+  },
+  "youWhenMinutes": "{count} minutes ago",
+  "@youWhenMinutes": {
+    "description": "youWhenMinutes",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "youWhenHours": "{count} hours ago",
+  "@youWhenHours": {
+    "description": "youWhenHours",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "youWhenDays": "{count} days ago",
+  "@youWhenDays": {
+    "description": "youWhenDays",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "youWhenJustNow": "just now",
+  "@youWhenJustNow": {
+    "description": "youWhenJustNow"
+  },
+  "searchHint": "Search",
+  "@searchHint": {
+    "description": "searchHint"
+  },
+  "searchChatsHeading": "Chats",
+  "@searchChatsHeading": {
+    "description": "searchChatsHeading"
+  },
+  "searchCreationsHeading": "Creations",
+  "@searchCreationsHeading": {
+    "description": "searchCreationsHeading"
+  },
+  "searchNothing": "Nothing found",
+  "@searchNothing": {
+    "description": "searchNothing"
+  },
+  "searchPrompt": "Search your chats, creations and You.",
+  "@searchPrompt": {
+    "description": "searchPrompt"
+  },
+  "chatReadAloud": "Read aloud",
+  "@chatReadAloud": {
+    "description": "chatReadAloud"
+  },
+  "chatRememberInYou": "Remember in You",
+  "@chatRememberInYou": {
+    "description": "chatRememberInYou"
+  },
+  "chatShare": "Share",
+  "@chatShare": {
+    "description": "chatShare"
+  },
+  "plusCreate": "Create",
+  "@plusCreate": {
+    "description": "plusCreate"
+  },
+  "plusWidget": "Widget",
+  "@plusWidget": {
+    "description": "plusWidget"
+  },
+  "plusWidgetSub": "For your home screen",
+  "@plusWidgetSub": {
+    "description": "plusWidgetSub"
+  },
+  "plusMiniApp": "Mini app",
+  "@plusMiniApp": {
+    "description": "plusMiniApp"
+  },
+  "plusMiniAppSub": "A small tool",
+  "@plusMiniAppSub": {
+    "description": "plusMiniAppSub"
+  },
+  "plusPresentation": "Presentation",
+  "@plusPresentation": {
+    "description": "plusPresentation"
+  },
+  "plusPresentationSub": "Slides to share",
+  "@plusPresentationSub": {
+    "description": "plusPresentationSub"
+  },
+  "plusFlow": "Flow",
+  "@plusFlow": {
+    "description": "plusFlow"
+  },
+  "plusFlowSub": "Runs on its own",
+  "@plusFlowSub": {
+    "description": "plusFlowSub"
+  },
+  "plusAddToChat": "Add to chat",
+  "@plusAddToChat": {
+    "description": "plusAddToChat"
+  },
+  "plusPhoto": "Photo",
+  "@plusPhoto": {
+    "description": "plusPhoto"
+  },
+  "optionsStarted": "Started {when}. Stored on this device.",
+  "@optionsStarted": {
+    "description": "optionsStarted",
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "optionsPin": "Pin chat",
+  "@optionsPin": {
+    "description": "optionsPin"
+  },
+  "optionsUnpin": "Unpin chat",
+  "@optionsUnpin": {
+    "description": "optionsUnpin"
+  },
+  "optionsExport": "Export as text",
+  "@optionsExport": {
+    "description": "optionsExport"
+  },
+  "optionsDelete": "Delete chat",
+  "@optionsDelete": {
+    "description": "optionsDelete"
+  },
+  "deleteChatTitle": "Delete this chat?",
+  "@deleteChatTitle": {
+    "description": "deleteChatTitle"
+  },
+  "deleteChatBody": "It is removed from this device. What FinnAI learned from it stays in You until you forget it.",
+  "@deleteChatBody": {
+    "description": "deleteChatBody"
+  },
+  "fromYouTitle": "From You",
+  "@fromYouTitle": {
+    "description": "fromYouTitle"
+  },
+  "fromYouSub": "FinnAI used these in this chat. Nothing leaves your device.",
+  "@fromYouSub": {
+    "description": "fromYouSub"
+  },
+  "fromYouUse": "Use You in this chat",
+  "@fromYouUse": {
+    "description": "fromYouUse"
+  },
+  "fromYouOpen": "Open You",
+  "@fromYouOpen": {
+    "description": "fromYouOpen"
+  },
+  "chatRenamePrompt": "Rename chat",
+  "@chatRenamePrompt": {
+    "description": "chatRenamePrompt"
+  },
+  "flowsFilterAll": "All",
+  "@flowsFilterAll": {
+    "description": "flowsFilterAll"
+  },
+  "flowsFilterActive": "Active",
+  "@flowsFilterActive": {
+    "description": "flowsFilterActive"
+  },
+  "flowsFilterPaused": "Paused",
+  "@flowsFilterPaused": {
+    "description": "flowsFilterPaused"
+  },
+  "flowsPhoneOn": "Flows run on this device, so your phone needs to be on.",
+  "@flowsPhoneOn": {
+    "description": "flowsPhoneOn"
+  },
+  "flowsOnlyWhenAsked": "Only when I ask",
+  "@flowsOnlyWhenAsked": {
+    "description": "flowsOnlyWhenAsked"
+  },
+  "flowsLastRunLine": "Last run {when}, {result}",
+  "@flowsLastRunLine": {
+    "description": "flowsLastRunLine",
+    "placeholders": {
+      "when": {
+        "type": "String"
+      },
+      "result": {
+        "type": "String"
+      }
+    }
+  },
+  "flowsNeverRun": "Not run yet",
+  "@flowsNeverRun": {
+    "description": "flowsNeverRun"
+  },
+  "flowsPausedLine": "Paused",
+  "@flowsPausedLine": {
+    "description": "flowsPausedLine"
+  },
+  "flowsResultDone": "done",
+  "@flowsResultDone": {
+    "description": "flowsResultDone"
+  },
+  "flowsResultFailed": "failed",
+  "@flowsResultFailed": {
+    "description": "flowsResultFailed"
+  },
+  "flowsResultStopped": "stopped",
+  "@flowsResultStopped": {
+    "description": "flowsResultStopped"
+  },
+  "flowsWhenToday": "today",
+  "@flowsWhenToday": {
+    "description": "flowsWhenToday"
+  },
+  "flowsWhenYesterday": "yesterday",
+  "@flowsWhenYesterday": {
+    "description": "flowsWhenYesterday"
+  },
+  "flowsEmptyTitle": "No flows yet",
+  "@flowsEmptyTitle": {
+    "description": "flowsEmptyTitle"
+  },
+  "flowsEmptyBody": "A flow does a task for you on a schedule, or when something happens. Describe one in chat.",
+  "@flowsEmptyBody": {
+    "description": "flowsEmptyBody"
+  },
+  "flowsEmptyCreate": "Create a flow",
+  "@flowsEmptyCreate": {
+    "description": "flowsEmptyCreate"
+  },
+  "flowsNewTitle": "New flow",
+  "@flowsNewTitle": {
+    "description": "flowsNewTitle"
+  },
+  "flowsNewSub": "Start with words, a time, or an event.",
+  "@flowsNewSub": {
+    "description": "flowsNewSub"
+  },
+  "flowsNewDescribe": "Describe it",
+  "@flowsNewDescribe": {
+    "description": "flowsNewDescribe"
+  },
+  "flowsNewDescribeSub": "Tell FinnAI what should happen",
+  "@flowsNewDescribeSub": {
+    "description": "flowsNewDescribeSub"
+  },
+  "flowsNewTime": "At a set time",
+  "@flowsNewTime": {
+    "description": "flowsNewTime"
+  },
+  "flowsNewTimeSub": "Every day, week or month",
+  "@flowsNewTimeSub": {
+    "description": "flowsNewTimeSub"
+  },
+  "flowsNewEvent": "When something happens",
+  "@flowsNewEvent": {
+    "description": "flowsNewEvent"
+  },
+  "flowsNewEventSub": "Charging, arriving, a notification",
+  "@flowsNewEventSub": {
+    "description": "flowsNewEventSub"
+  },
+  "flowsDetailOn": "On, next run {when}",
+  "@flowsDetailOn": {
+    "description": "flowsDetailOn",
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "flowsDetailOnManual": "On, runs when you ask",
+  "@flowsDetailOnManual": {
+    "description": "flowsDetailOnManual"
+  },
+  "flowsDetailPaused": "Paused",
+  "@flowsDetailPaused": {
+    "description": "flowsDetailPaused"
+  },
+  "flowsWhen": "When",
+  "@flowsWhen": {
+    "description": "flowsWhen"
+  },
+  "flowsThen": "Then",
+  "@flowsThen": {
+    "description": "flowsThen"
+  },
+  "flowsRecentRuns": "Recent runs",
+  "@flowsRecentRuns": {
+    "description": "flowsRecentRuns"
+  },
+  "flowsNoRunsYet": "No runs yet",
+  "@flowsNoRunsYet": {
+    "description": "flowsNoRunsYet"
+  },
+  "flowsRunStatusDone": "Done",
+  "@flowsRunStatusDone": {
+    "description": "flowsRunStatusDone"
+  },
+  "flowsRunStatusFailed": "Could not finish",
+  "@flowsRunStatusFailed": {
+    "description": "flowsRunStatusFailed"
+  },
+  "flowsRunStatusDeclined": "Not allowed",
+  "@flowsRunStatusDeclined": {
+    "description": "flowsRunStatusDeclined"
+  },
+  "flowsRunStatusNeedsGrant": "Needs your permission",
+  "@flowsRunStatusNeedsGrant": {
+    "description": "flowsRunStatusNeedsGrant"
+  },
+  "flowsRunStatusStopped": "Stopped",
+  "@flowsRunStatusStopped": {
+    "description": "flowsRunStatusStopped"
+  },
+  "flowsMenuEdit": "Edit",
+  "@flowsMenuEdit": {
+    "description": "flowsMenuEdit"
+  },
+  "flowsMenuPause": "Pause",
+  "@flowsMenuPause": {
+    "description": "flowsMenuPause"
+  },
+  "flowsMenuResume": "Turn on",
+  "@flowsMenuResume": {
+    "description": "flowsMenuResume"
+  },
+  "flowsMenuDuplicate": "Duplicate",
+  "@flowsMenuDuplicate": {
+    "description": "flowsMenuDuplicate"
+  },
+  "flowsMenuDelete": "Delete",
+  "@flowsMenuDelete": {
+    "description": "flowsMenuDelete"
+  },
+  "flowsRunFinished": "Finished",
+  "@flowsRunFinished": {
+    "description": "flowsRunFinished"
+  },
+  "flowsRunFinishedIn": "Finished in {seconds, plural, =1{1 second} other{{seconds} seconds}}",
+  "@flowsRunFinishedIn": {
+    "description": "flowsRunFinishedIn",
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "flowsRunAgain": "Run again",
+  "@flowsRunAgain": {
+    "description": "flowsRunAgain"
+  },
+  "flowsBuilderHint": "Describe what should happen",
+  "@flowsBuilderHint": {
+    "description": "flowsBuilderHint"
+  },
+  "flowsBuilderHere": "Here is the flow. Check it, then turn it on.",
+  "@flowsBuilderHere": {
+    "description": "flowsBuilderHere"
+  },
+  "flowsBuilderNoMatch": "I can not build that one yet. Pick one of these and I will set it up.",
+  "@flowsBuilderNoMatch": {
+    "description": "flowsBuilderNoMatch"
+  },
+  "flowsBuilderTurnOn": "Turn on",
+  "@flowsBuilderTurnOn": {
+    "description": "flowsBuilderTurnOn"
+  },
+  "flowsStartWhen": "Start when",
+  "@flowsStartWhen": {
+    "description": "flowsStartWhen"
+  },
+  "flowsTriggerTime": "At a set time",
+  "@flowsTriggerTime": {
+    "description": "flowsTriggerTime"
+  },
+  "flowsTriggerTimeSub": "Every day, week or month",
+  "@flowsTriggerTimeSub": {
+    "description": "flowsTriggerTimeSub"
+  },
+  "flowsTriggerPlace": "Arriving or leaving",
+  "@flowsTriggerPlace": {
+    "description": "flowsTriggerPlace"
+  },
+  "flowsTriggerPlaceSub": "A place you choose",
+  "@flowsTriggerPlaceSub": {
+    "description": "flowsTriggerPlaceSub"
+  },
+  "flowsTriggerCharging": "Charging",
+  "@flowsTriggerCharging": {
+    "description": "flowsTriggerCharging"
+  },
+  "flowsTriggerChargingSub": "When plugged in or unplugged",
+  "@flowsTriggerChargingSub": {
+    "description": "flowsTriggerChargingSub"
+  },
+  "flowsTriggerBattery": "Battery level",
+  "@flowsTriggerBattery": {
+    "description": "flowsTriggerBattery"
+  },
+  "flowsTriggerBatterySub": "Below or above a level",
+  "@flowsTriggerBatterySub": {
+    "description": "flowsTriggerBatterySub"
+  },
+  "flowsTriggerNotification": "A notification",
+  "@flowsTriggerNotification": {
+    "description": "flowsTriggerNotification"
+  },
+  "flowsTriggerNotificationSub": "When one arrives from an app",
+  "@flowsTriggerNotificationSub": {
+    "description": "flowsTriggerNotificationSub"
+  },
+  "flowsTriggerManual": "Only when I ask",
+  "@flowsTriggerManual": {
+    "description": "flowsTriggerManual"
+  },
+  "flowsTriggerManualSub": "Start it yourself",
+  "@flowsTriggerManualSub": {
+    "description": "flowsTriggerManualSub"
+  },
+  "flowsTriggerSoon": "Not available yet",
+  "@flowsTriggerSoon": {
+    "description": "flowsTriggerSoon"
+  },
+  "flowsScheduleSheetTitle": "Schedule",
+  "@flowsScheduleSheetTitle": {
+    "description": "flowsScheduleSheetTitle"
+  },
+  "flowsScheduleSave": "Save schedule",
+  "@flowsScheduleSave": {
+    "description": "flowsScheduleSave"
+  },
+  "flowsAllowTitle": "Allow {name} to act on your phone?",
+  "@flowsAllowTitle": {
+    "description": "flowsAllowTitle",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "flowsAllowConfirm": "Allow",
+  "@flowsAllowConfirm": {
+    "description": "flowsAllowConfirm"
+  },
+  "flowsDeleteNamed": "Delete {name}?",
+  "@flowsDeleteNamed": {
+    "description": "flowsDeleteNamed",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "flowsDeleteNamedBody": "Its past runs are removed too. This can not be undone.",
+  "@flowsDeleteNamedBody": {
+    "description": "flowsDeleteNamedBody"
+  },
+  "flowsGuidesTitle": "Guides",
+  "@flowsGuidesTitle": {
+    "description": "flowsGuidesTitle"
+  },
+  "flowsStepLookUp": "Look up {query}",
+  "@flowsStepLookUp": {
+    "description": "flowsStepLookUp",
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "flowsStepWrite": "Write the answer",
+  "@flowsStepWrite": {
+    "description": "flowsStepWrite"
+  },
+  "creationsNewSheetSub": "Describe it in chat. FinnAI builds it on this device.",
+  "@creationsNewSheetSub": {
+    "description": "creationsNewSheetSub"
+  },
+  "creationsNewWidgetSub": "Small tools for your home screen",
+  "@creationsNewWidgetSub": {
+    "description": "creationsNewWidgetSub"
+  },
+  "creationsNewAppSub": "A simple tool that runs inside FinnAI",
+  "@creationsNewAppSub": {
+    "description": "creationsNewAppSub"
+  },
+  "creationsNewDeckSub": "Slides you can present or share",
+  "@creationsNewDeckSub": {
+    "description": "creationsNewDeckSub"
+  },
+  "creationsMenuEditWithFinn": "Edit with FinnAI",
+  "@creationsMenuEditWithFinn": {
+    "description": "creationsMenuEditWithFinn"
+  },
+  "creationsMenuDuplicate": "Duplicate",
+  "@creationsMenuDuplicate": {
+    "description": "creationsMenuDuplicate"
+  },
+  "creationsMenuShare": "Share",
+  "@creationsMenuShare": {
+    "description": "creationsMenuShare"
+  },
+  "creationsDeleteNamed": "Delete {name}?",
+  "@creationsDeleteNamed": {
+    "description": "creationsDeleteNamed",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "creationsDeleteNamedBody": "It is removed from Creations and from your home screen. This can not be undone.",
+  "@creationsDeleteNamedBody": {
+    "description": "creationsDeleteNamedBody"
+  },
+  "creationsSizeSmall": "Small",
+  "@creationsSizeSmall": {
+    "description": "creationsSizeSmall"
+  },
+  "creationsSizeMedium": "Medium",
+  "@creationsSizeMedium": {
+    "description": "creationsSizeMedium"
+  },
+  "creationsSizeLarge": "Large",
+  "@creationsSizeLarge": {
+    "description": "creationsSizeLarge"
+  },
+  "creationsUpdatesOnDevice": "Updates on this device. Nothing leaves your phone.",
+  "@creationsUpdatesOnDevice": {
+    "description": "creationsUpdatesOnDevice"
+  },
+  "creationsMadeInChat": "Made in chat",
+  "@creationsMadeInChat": {
+    "description": "creationsMadeInChat"
+  },
+  "creationsDataLabel": "Data",
+  "@creationsDataLabel": {
+    "description": "creationsDataLabel"
+  },
+  "creationsDataSub": "Stored inside this widget",
+  "@creationsDataSub": {
+    "description": "creationsDataSub"
+  },
+  "creationsAddHomeTitle": "Add {name} to your home screen?",
+  "@creationsAddHomeTitle": {
+    "description": "creationsAddHomeTitle",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "creationsAddHomeBody": "It sits like any other widget. You can move or remove it later.",
+  "@creationsAddHomeBody": {
+    "description": "creationsAddHomeBody"
+  },
+  "creationsAddHomeConfirm": "Add",
+  "@creationsAddHomeConfirm": {
+    "description": "creationsAddHomeConfirm"
+  },
+  "creationsBuilderTitleWidget": "New widget",
+  "@creationsBuilderTitleWidget": {
+    "description": "creationsBuilderTitleWidget"
+  },
+  "creationsBuilderTitleApp": "New mini app",
+  "@creationsBuilderTitleApp": {
+    "description": "creationsBuilderTitleApp"
+  },
+  "creationsBuilderTitleDeck": "New presentation",
+  "@creationsBuilderTitleDeck": {
+    "description": "creationsBuilderTitleDeck"
+  },
+  "creationsBuilderHint": "Describe what to build",
+  "@creationsBuilderHint": {
+    "description": "creationsBuilderHint"
+  },
+  "creationsBuilderChangeHint": "Ask for changes",
+  "@creationsBuilderChangeHint": {
+    "description": "creationsBuilderChangeHint"
+  },
+  "creationsBuilderGotIt": "Got it. I will build it on this device.",
+  "@creationsBuilderGotIt": {
+    "description": "creationsBuilderGotIt"
+  },
+  "creationsBuilderReady": "Here it is. Open it, or keep editing.",
+  "@creationsBuilderReady": {
+    "description": "creationsBuilderReady"
+  },
+  "creationsSaveToCreations": "Save to Creations",
+  "@creationsSaveToCreations": {
+    "description": "creationsSaveToCreations"
+  },
+  "creationsKeepEditing": "Keep editing",
+  "@creationsKeepEditing": {
+    "description": "creationsKeepEditing"
+  },
+  "creationsSpeakerNotes": "Speaker notes",
+  "@creationsSpeakerNotes": {
+    "description": "creationsSpeakerNotes"
+  },
+  "creationsPresent": "Present",
+  "@creationsPresent": {
+    "description": "creationsPresent"
+  },
+  "creationsDuplicated": "Duplicated.",
+  "@creationsDuplicated": {
+    "description": "creationsDuplicated"
+  },
+  "onboardingChooseTitle": "Choose what FinnAI can see",
+  "@onboardingChooseTitle": {
+    "description": "onboardingChooseTitle"
+  },
+  "onboardingChooseBody": "You can change this any time in Settings. All of it stays on this device.",
+  "@onboardingChooseBody": {
+    "description": "onboardingChooseBody"
+  },
+  "onboardingDownloadPausedTitle": "Download paused",
+  "@onboardingDownloadPausedTitle": {
+    "description": "onboardingDownloadPausedTitle"
+  },
+  "onboardingDownloadPausedBody": "Waiting for a connection, your progress is saved.",
+  "@onboardingDownloadPausedBody": {
+    "description": "onboardingDownloadPausedBody"
+  },
+  "onboardingDownloadPausedNote": "It continues when you are back online.",
+  "@onboardingDownloadPausedNote": {
+    "description": "onboardingDownloadPausedNote"
+  },
+  "flowsNewGuide": "New guide",
+  "@flowsNewGuide": {
+    "description": "flowsNewGuide"
+  },
+  "flowsStepNotifyMe": "Notify me",
+  "@flowsStepNotifyMe": {
+    "description": "flowsStepNotifyMe"
   }
 }

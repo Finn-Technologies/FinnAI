@@ -8,7 +8,9 @@ import 'package:finn_ai/src/features/conversations/conversation_store.dart';
 import 'package:finn_ai/src/features/creations/creation_store.dart';
 import 'package:finn_ai/src/inference/finn_inference.dart';
 import 'package:finn_ai/src/features/flows/flows_store.dart';
+import 'package:finn_ai/src/features/onboarding/context_consent_store.dart';
 import 'package:finn_ai/src/features/voice/voice_settings_store.dart';
+import 'package:finn_ai/src/features/you/you_memory_store.dart';
 import 'package:finn_ai/src/features/you/you_profile_store.dart';
 
 class DeletionResult {
@@ -62,6 +64,8 @@ class AppStateStore extends ChangeNotifier {
     FlowsStore? flowsStore,
     VoiceSettingsStore? voiceSettingsStore,
     ActionAuditStore? actionAuditStore,
+    ContextConsentStore? contextConsentStore,
+    YouMemoryStore? youMemoryStore,
   }) async {
     final deleted = <String>[];
     final nonExistent = <String>[];
@@ -134,6 +138,17 @@ class AppStateStore extends ChangeNotifier {
       failed.addAll(profileFailures);
     }
 
+    final memoryFailures = await (youMemoryStore ??
+            (_directoryProvider == null
+                ? YouMemoryStore.instance
+                : YouMemoryStore(directoryProvider: _directoryProvider)))
+        .deleteStorage();
+    if (memoryFailures.isEmpty) {
+      deleted.add('What FinnAI remembers');
+    } else {
+      failed.addAll(memoryFailures);
+    }
+
     final flowTarget = flowsStore ??
         (_directoryProvider == null
             ? FlowsStore.instance
@@ -154,6 +169,17 @@ class AppStateStore extends ChangeNotifier {
       deleted.add('Voice settings');
     } else {
       failed.addAll(voiceFailures);
+    }
+
+    final consentTarget = contextConsentStore ??
+        (_directoryProvider == null
+            ? ContextConsentStore.instance
+            : ContextConsentStore(directoryProvider: _directoryProvider));
+    final consentFailures = await consentTarget.deleteStorage();
+    if (consentFailures.isEmpty) {
+      deleted.add('Access choices');
+    } else {
+      failed.addAll(consentFailures);
     }
 
     // The audit log names what the app did on the phone; it goes with the rest.

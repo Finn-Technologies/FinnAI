@@ -8,6 +8,7 @@ import 'package:finn_ai/src/features/flows/flows_page.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 import 'package:finn_ai/src/features/you/you_page.dart';
 import 'package:finn_ai/src/shared/widgets/safe_markdown_text.dart';
+import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -66,12 +67,53 @@ void main() {
     await tester.tap(find.text('Yes'));
     await tester.pump();
     await moveForward();
+    // A "Yes" is followed by the choice of what FinnAI may see.
+    expect(find.text('Choose what FinnAI can see'), findsOneWidget);
+    await moveForward();
     expect(find.text('FinnAI is ready!'), findsOneWidget);
     await tester.tap(find.text('Start using FinnAI'));
     await tester.pump(const Duration(milliseconds: 220));
     await tester.pump(const Duration(milliseconds: 900));
     expect(find.byType(HomeShell), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the voice button keeps a visible glyph on its own surface', (
+    tester,
+  ) async {
+    // The mic sits on actionOf, which is near-white in dark mode, and
+    // FigmaSvg's default dark tint is also near-white: white on white, so
+    // the control vanished. Rendered dark to catch that exact pairing.
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(
+      tester.platformDispatcher.clearPlatformBrightnessTestValue,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: FluxTheme.dark,
+        home: const HomeShell(initializeServices: false),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 600));
+
+    final svg = tester.widget<FigmaSvg>(
+      find.descendant(
+        of: find.byKey(const ValueKey('mic-button-surface')),
+        matching: find.byType(FigmaSvg),
+      ),
+    );
+    expect(
+      svg.color,
+      isNotNull,
+      reason: 'the glyph must carry the action ink, not the default tint',
+    );
+    expect(svg.color,
+        FluxColors.actionInkOf(tester.element(find.byType(HomeShell))));
   });
 
   testWidgets('home and sidebar stay overflow-free', (tester) async {
@@ -477,6 +519,13 @@ void main() {
       MaterialApp(theme: FluxTheme.light, home: const CreationsPage()),
     );
     await tester.pump(const Duration(milliseconds: 100));
+    // The gallery shows the design's plus; it opens the builder and composer.
+    await tester.tap(find.bySemanticsLabel('New creation'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.tap(find.byKey(const Key('creation-kind-app')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
 
     // Creations reuses the chat composer verbatim, so the action carries the
     // same label and behaviour as the one on the home screen.
@@ -511,6 +560,123 @@ void main() {
     expect(find.byTooltip('Open menu'), findsOneWidget);
   });
 
+  testWidgets('swiping right opens the sidebar and left closes it', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(theme: FluxTheme.light, home: const HomeShell()),
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+
+    // The panel is only built after the first open, so the control that rides it
+    // is what shows the state: parked at the left edge when closed, carried
+    // across to the far side when open.
+    double toggleLeft() =>
+        tester.getTopLeft(find.byKey(const ValueKey('home-menu-button'))).dx;
+    bool isOpen() => toggleLeft() > 100;
+
+    expect(isOpen(), isFalse);
+
+    // Right opens. The panel enters from the left edge, so it must follow the
+    // finger in the same direction — not the opposite one.
+    await tester.drag(find.byType(HomeShell), const Offset(300, 0));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(isOpen(), isTrue, reason: 'a right swipe must open the sidebar');
+
+    // Left closes.
+    await tester.drag(find.byType(HomeShell), const Offset(-300, 0));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(isOpen(), isFalse, reason: 'a left swipe must close the sidebar');
+
+    // A short right drag is under the commit distance, so it must snap back.
+    await tester.drag(find.byType(HomeShell), const Offset(20, 0));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(isOpen(), isFalse, reason: 'a short swipe must not open');
+
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the menu control rides the surface to the far side', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(theme: FluxTheme.light, home: const HomeShell()),
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final closedLeft = tester.getTopLeft(
+      find.byKey(const ValueKey('home-menu-button')),
+    );
+
+    await tester.tap(find.byTooltip('Open menu'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    // The design slides the control off to the right with the home screen
+    // rather than leaving it pinned over the incoming panel.
+    final openLeft = tester.getTopLeft(
+      find.byKey(const ValueKey('home-menu-button')),
+    );
+    expect(openLeft.dx - closedLeft.dx, closeTo(390 * .76, 1));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the open panel matches the design surface and bottom bar', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(theme: FluxTheme.light, home: const HomeShell()),
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(find.byTooltip('Open menu'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    // The design draws the home sheet with a hairline and rounded corners, so
+    // the sliver beside the panel reads as an edge. Both scale with the sheet.
+    final sheet = tester.widget<DecoratedBox>(
+      find
+          .descendant(
+            of: find.byType(HomeShell),
+            matching: find.byType(DecoratedBox),
+          )
+          .first,
+    );
+    final decoration = sheet.decoration as BoxDecoration;
+    expect(decoration.borderRadius, isNotNull);
+    expect(decoration.border, isNotNull,
+        reason: 'the sheet needs its hairline');
+    expect(
+      (decoration.border! as Border).top.color,
+      FluxColors.panelEdgeOf(tester.element(find.byType(HomeShell))),
+    );
+
+    // The design leaves the two shortcuts clear of the bottom edge rather than
+    // letting the system inset alone decide.
+    final shortcuts = tester.getRect(find.byTooltip('Settings'));
+    expect(844 - shortcuts.bottom, greaterThanOrEqualTo(30));
+
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('sidebar exposes and navigates to Creations, You, and Flows', (
     tester,
   ) async {
@@ -535,7 +701,9 @@ void main() {
     }
 
     Future<void> returnHome() async {
-      await tester.tap(find.text('Back'));
+      await tester.tap(
+        find.byKey(const ValueKey('page-back-button')),
+      );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.byTooltip('Open menu'), findsOneWidget);
@@ -586,7 +754,7 @@ void main() {
       await tester.pump();
       expect(tester.takeException(), isNull);
       return (
-        tester.getTopLeft(find.text('Back')).dy,
+        tester.getTopLeft(find.byKey(const ValueKey('page-back-button'))).dy,
         tester.getTopLeft(find.text(title)).dy,
       );
     }

@@ -28,7 +28,7 @@ const List<_Screen> _screens = [
   _Screen('welcome', null),
   _Screen('onboarding_model', 2),
   _Screen('onboarding_consent', 3),
-  _Screen('onboarding_finish', 4),
+  _Screen('onboarding_finish', 5),
 ];
 
 /// The four form factors the design has to survive. The audit found a

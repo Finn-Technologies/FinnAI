@@ -36,6 +36,23 @@ extension _HomeShellNavigation on _HomeShellState {
     ).push(FinnPageRoute<void>(child: const CreationsPage()));
   }
 
+  /// Starts building something from the plus menu.
+  void _startCreate(String kind) {
+    _closeAttachmentMenu();
+    if (kind == 'flow') {
+      unawaited(_openSkills(startNew: true));
+      return;
+    }
+    final creation = switch (kind) {
+      'widget' => CreationKind.widget,
+      'presentation' => CreationKind.presentation,
+      _ => CreationKind.app,
+    };
+    Navigator.of(context).push(
+      FinnPageRoute<void>(child: CreationsPage(initialKind: creation)),
+    );
+  }
+
   Future<void> _openYou() async {
     await _closeSidebarForNavigation();
     if (!mounted) return;
@@ -46,7 +63,7 @@ extension _HomeShellNavigation on _HomeShellState {
     );
   }
 
-  Future<void> _openSkills() async {
+  Future<void> _openSkills({bool startNew = false}) async {
     await _closeSidebarForNavigation();
     if (!mounted) return;
     Navigator.of(context).push(
@@ -56,6 +73,7 @@ extension _HomeShellNavigation on _HomeShellState {
           runner: _flowRunner,
           scheduler: _flowScheduler,
           onOpenResult: _openFlowResult,
+          startNew: startNew,
         ),
       ),
     );
@@ -69,6 +87,30 @@ extension _HomeShellNavigation on _HomeShellState {
         child: SettingsPage(
           onBack: () => Navigator.of(context).pop(),
           onOpenActions: _openDeviceActions,
+          onOpenYou: _openYou,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openSearch() async {
+    await _closeSidebarForNavigation();
+    if (!mounted) return;
+    Navigator.of(context).push(
+      FinnPageRoute<void>(
+        child: FinnSearchPage(
+          onOpenChat: (id) {
+            Navigator.of(context).pop();
+            _activateConversation(id);
+          },
+          onOpenCreations: () {
+            Navigator.of(context).pop();
+            unawaited(_openCreations());
+          },
+          onOpenYou: () {
+            Navigator.of(context).pop();
+            unawaited(_openYou());
+          },
         ),
       ),
     );

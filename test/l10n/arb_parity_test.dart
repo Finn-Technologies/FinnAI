@@ -71,6 +71,22 @@ const Map<String, String> _identicalAllowlist = {
   'flowsSlotMessage': 'cognate (fr: Message)',
   'creationsAccentLime': 'cognate (it: Lime)',
   'creationsAccentViolet': 'cognate (fr: Violet)',
+  'dataChats': 'cognate or name',
+  'dataModel': 'cognate or name',
+  'hubAboutSub': 'cognate or name',
+  'hubModelTitle': 'cognate or name',
+  'modelVersion': 'cognate or name',
+  'voiceSpeedNormal': 'cognate or name',
+  'ctxContacts': 'cognate or name',
+  'ctxNotifications': 'cognate or name',
+  'ctxPhotos': 'cognate or name',
+  'plusFlow': 'cognate or name',
+  'plusWidget': 'cognate or name',
+  'searchChatsHeading': 'cognate or name',
+  'plusMiniApp': 'cognate or name',
+  'plusPhoto': 'cognate or name',
+  'youPrivacyTitle': 'cognate or name',
+  'flowsGuidesTitle': 'cognate or name',
 };
 
 void main() {

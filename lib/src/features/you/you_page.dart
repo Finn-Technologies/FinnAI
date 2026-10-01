@@ -1,439 +1,373 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
-import 'package:finn_ai/src/shared/theme/flux_theme.dart';
-import 'package:finn_ai/src/shared/widgets/ambient_background.dart';
-import 'package:finn_ai/src/shared/widgets/finn_page_header.dart';
-import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
 import 'package:finn_ai/l10n/l10n_helper.dart';
-import 'package:finn_ai/src/features/you/you_profile_store.dart';
+import 'package:finn_ai/src/features/you/you_add_page.dart';
+import 'package:finn_ai/src/features/you/you_category_page.dart';
+import 'package:finn_ai/src/features/you/you_labels.dart';
+import 'package:finn_ai/src/features/you/you_memory_store.dart';
+import 'package:finn_ai/src/features/you/you_privacy_page.dart';
+import 'package:finn_ai/src/features/you/you_review_page.dart';
+import 'package:finn_ai/src/shared/theme/flux_theme.dart';
+import 'package:finn_ai/src/shared/widgets/finn_overlays.dart';
+import 'package:finn_ai/src/shared/widgets/finn_page.dart';
+import 'package:finn_ai/src/shared/widgets/finn_page_route.dart';
+import 'package:finn_ai/src/shared/widgets/finn_ui.dart';
+import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
 
+/// "You": what FinnAI has learned about the user, sorted into six groups.
 class YouPage extends StatefulWidget {
-  const YouPage({super.key, required this.onBack, this.store});
+  const YouPage({super.key, required this.onBack});
 
   final VoidCallback onBack;
-  final YouProfileStore? store;
 
   @override
   State<YouPage> createState() => _YouPageState();
 }
 
 class _YouPageState extends State<YouPage> {
-  late final YouProfileStore _store = widget.store ?? YouProfileStore.instance;
-  final _nameController = TextEditingController();
-  final _aboutController = TextEditingController();
-  final _instructionsController = TextEditingController();
-  FinnResponseStyle _style = FinnResponseStyle.balanced;
-  bool _ready = false;
-  late final ScrollController _scrollController = ScrollController();
-  final ValueNotifier<double> _scrollOffset = ValueNotifier(0);
+  final YouMemoryStore _store = YouMemoryStore.instance;
 
   @override
   void initState() {
     super.initState();
-    _scrollController.addListener(_onScroll);
-    _load();
+    unawaited(_store.initialize());
   }
 
-  void _onScroll() {
-    if (_scrollController.hasClients) {
-      _scrollOffset.value = _scrollController.offset;
-    }
-  }
-
-  Future<void> _load() async {
-    await _store.initialize();
-    if (!mounted) return;
-    final profile = _store.profile;
-    _nameController.text = profile.preferredName;
-    _aboutController.text = profile.about;
-    _instructionsController.text = profile.customInstructions;
-    setState(() {
-      _style = profile.responseStyle;
-      _ready = true;
-    });
-  }
-
-  @override
-  void dispose() {
-    _scrollController.removeListener(_onScroll);
-    _scrollController.dispose();
-    _scrollOffset.dispose();
-    _nameController.dispose();
-    _aboutController.dispose();
-    _instructionsController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _save() async {
-    FocusManager.instance.primaryFocus?.unfocus();
-    final saved = await _store.save(
-      FinnUserProfile(
-        preferredName: _nameController.text,
-        about: _aboutController.text,
-        customInstructions: _instructionsController.text,
-        responseStyle: _style,
-      ),
-    );
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          saved ? L10n.of(context).youSaved : L10n.of(context).youSaveFailed,
-        ),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
+  void _push(Widget page) =>
+      Navigator.of(context).push(FinnPageRoute<void>(child: page));
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      resizeToAvoidBottomInset: true,
-      body: AmbientBackground(
-        intensity: 1,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final metrics = FinnPageHeaderMetrics.forHeight(
-              constraints.maxHeight,
-            );
-            return Stack(
-              children: [
-                Positioned.fill(
-                  child: !_ready
-                      ? const Center(
-                          child: SizedBox.square(
-                            dimension: 22,
-                            child: CircularProgressIndicator(strokeWidth: 1.5),
+    final l10n = L10n.of(context);
+    return ListenableBuilder(
+      listenable: _store,
+      builder: (context, _) {
+        final empty = _store.keptCount == 0 && _store.pending.isEmpty;
+        final actions = [
+          FinnCircleButton.icon(
+            icon: FluxIcons.add,
+            label: l10n.youTellFinn,
+            onTap: () => _push(const YouAddPage()),
+          ),
+          FinnCircleButton.icon(
+            icon: FluxIcons.lock,
+            label: l10n.youPrivacyTitle,
+            onTap: () => _push(const YouPrivacyPage()),
+          ),
+        ];
+        if (empty) {
+          return FinnPage(
+            title: l10n.hubYouTitle,
+            onBack: widget.onBack,
+            actions: [actions.last],
+            children: [
+              const SizedBox(height: 40),
+              FinnReveal(
+                child: Column(
+                  children: [
+                    Container(
+                      width: 96,
+                      height: 96,
+                      decoration: BoxDecoration(
+                        color: FluxColors.controlOf(context),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: FluxIcon(
+                          icon: FluxIcons.you,
+                          size: 44,
+                          strokeWidth: 1.4,
+                          color: FluxColors.actionOf(context),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 25),
+                    Text(
+                      l10n.youEmptyTitle,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      l10n.youEmptyBody,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: FluxColors.actionOf(context),
                           ),
-                        )
-                      : ListView(
-                          controller: _scrollController,
-                          keyboardDismissBehavior:
-                              ScrollViewKeyboardDismissBehavior.onDrag,
-                          physics: const FluxBouncingScrollPhysics(),
-                          padding: EdgeInsets.fromLTRB(
-                            20,
-                            metrics.contentTop + 10,
-                            20,
-                            24 + MediaQuery.viewInsetsOf(context).bottom,
-                          ),
-                          children: [
-                            Center(
-                              child: ConstrainedBox(
-                                constraints: const BoxConstraints(
-                                  maxWidth: 680,
-                                ),
-                                child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: [
-                                    _IntroCard(
-                                      icon: FluxIcons.you,
-                                      title: L10n.of(context).youIntroTitle,
-                                      body: L10n.of(context).youIntroBody,
-                                    ),
-                                    const SizedBox(height: 22),
-                                    FluxSectionLabel(
-                                        L10n.of(context).youAboutYou),
-                                    const SizedBox(height: 9),
-                                    _FinnTextField(
-                                      key: const Key('you-name-field'),
-                                      controller: _nameController,
-                                      label: L10n.of(context).youNameHint,
-                                      hint: L10n.of(context).youNamePlaceholder,
-                                      maxLength: 60,
-                                    ),
-                                    const SizedBox(height: 10),
-                                    _FinnTextField(
-                                      key: const Key('you-about-field'),
-                                      controller: _aboutController,
-                                      label: L10n.of(context).youAboutQuestion,
-                                      hint:
-                                          L10n.of(context).youAboutPlaceholder,
-                                      maxLines: 3,
-                                      maxLength: 400,
-                                    ),
-                                    const SizedBox(height: 22),
-                                    FluxSectionLabel(
-                                      L10n.of(context).youResponseStyle,
-                                    ),
-                                    const SizedBox(height: 9),
-                                    Wrap(
-                                      spacing: 8,
-                                      runSpacing: 8,
-                                      children: FinnResponseStyle.values
-                                          .map(
-                                            (style) => _StyleChip(
-                                              style: style,
-                                              selected: _style == style,
-                                              onTap: () => setState(
-                                                () => _style = style,
-                                              ),
-                                            ),
-                                          )
-                                          .toList(),
-                                    ),
-                                    const SizedBox(height: 22),
-                                    FluxSectionLabel(
-                                      L10n.of(context).youInstructionsLabel,
-                                    ),
-                                    const SizedBox(height: 9),
-                                    _FinnTextField(
-                                      key: const Key('you-instructions-field'),
-                                      controller: _instructionsController,
-                                      label: L10n.of(context)
-                                          .youInstructionsQuestion,
-                                      hint: L10n.of(
-                                        context,
-                                      ).youInstructionsPlaceholder,
-                                      maxLines: 5,
-                                      maxLength: 1000,
-                                    ),
-                                    const SizedBox(height: 16),
-                                    ListenableBuilder(
-                                      listenable: _store,
-                                      builder: (context, _) => Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.stretch,
-                                        children: [
-                                          SizedBox(
-                                            height: 48,
-                                            child: FilledButton(
-                                              key: const Key('you-save-button'),
-                                              onPressed:
-                                                  _store.saving ? null : _save,
-                                              style: FilledButton.styleFrom(
-                                                backgroundColor:
-                                                    FluxColors.inkOf(context),
-                                                foregroundColor:
-                                                    FluxColors.canvasOf(
-                                                  context,
-                                                ),
-                                                disabledBackgroundColor:
-                                                    FluxColors.inkOf(
-                                                  context,
-                                                ).withValues(alpha: .25),
-                                                shape: const StadiumBorder(),
-                                                elevation: 0,
-                                              ),
-                                              child: Text(
-                                                _store.saving
-                                                    ? L10n.of(context).youSaving
-                                                    : L10n.of(
-                                                        context,
-                                                      ).youSavePreferences,
-                                              ),
-                                            ),
-                                          ),
-                                          if (_store.storageError != null) ...[
-                                            const SizedBox(height: 10),
-                                            Text(
-                                              L10n.of(context).youSaveFailed,
-                                              style: Theme.of(context)
-                                                  .textTheme
-                                                  .labelMedium
-                                                  ?.copyWith(
-                                                    color: FluxColors
-                                                        .destructiveOf(context),
-                                                  ),
-                                            ),
-                                          ],
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              FinnButton(
+                label: l10n.youTellFinn,
+                icon: FluxIcons.add,
+                onTap: () => _push(const YouAddPage()),
+              ),
+              FinnButton(
+                label: l10n.youPrivacyTitle,
+                icon: FluxIcons.lock,
+                secondary: true,
+                onTap: () => _push(const YouPrivacyPage()),
+              ),
+            ],
+          );
+        }
+        final updated = _store.updatedAt;
+        final pending = _store.pending.length;
+        final summary = _store.summary;
+        return FinnPage(
+          title: l10n.hubYouTitle,
+          onBack: widget.onBack,
+          actions: actions,
+          children: [
+            FinnReveal(
+              child: _Hero(
+                caption: l10n.youAboutTitle,
+                text: summary.isEmpty ? l10n.youEmptyBody : summary,
+                footer: updated == null
+                    ? null
+                    : l10n.youUpdated(youWhen(l10n, updated)),
+              ),
+            ),
+            if (pending > 0)
+              FinnReveal(
+                index: 1,
+                child: Material(
+                  color: const Color(0xFFEADDFF),
+                  borderRadius: BorderRadius.circular(FluxRadius.card),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(FluxRadius.card),
+                    onTap: () => _push(const YouReviewPage()),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 15,
+                        vertical: 10,
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Center(
+                              child: FluxIcon(
+                                icon: FluxIcons.magic,
+                                size: 22,
+                                strokeWidth: 1.5,
+                                color: FluxColors.actionOf(context),
                               ),
                             ),
-                          ],
-                        ),
-                ),
-                Positioned.fill(
-                  child: FinnPageHeader(
-                    title: L10n.of(context).youTitle,
-                    onBack: widget.onBack,
-                    metrics: metrics,
-                    scrollOffset: _scrollOffset,
+                          ),
+                          const SizedBox(width: 15),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  l10n.youReviewTitle(pending),
+                                  style: Theme.of(context).textTheme.bodyMedium,
+                                ),
+                                Text(
+                                  l10n.youReviewSub,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.copyWith(
+                                        color: const Color(0xFF4F378B),
+                                      ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          FluxIcon(
+                            icon: FluxIcons.arrowRight01,
+                            size: 22,
+                            strokeWidth: 1.5,
+                            color: FluxColors.mutedOf(context),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-              ],
-            );
-          },
-        ),
-      ),
+              ),
+            FinnReveal(
+              index: 2,
+              child: GridView(
+                padding: EdgeInsets.zero,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  mainAxisSpacing: 10,
+                  crossAxisSpacing: 10,
+                  mainAxisExtent: 112,
+                ),
+                children: [
+                  for (final category in YouCategory.values)
+                    _CategoryCard(
+                      category: category,
+                      count: _store.inCategory(category).length,
+                      onTap: () => _push(YouCategoryPage(category: category)),
+                    ),
+                ],
+              ),
+            ),
+            InkWell(
+              onTap: () => _push(const YouPrivacyPage()),
+              child: SizedBox(
+                height: 44,
+                child: Row(
+                  children: [
+                    const SizedBox(width: 5),
+                    FluxIcon(
+                      icon: FluxIcons.lock,
+                      size: 18,
+                      strokeWidth: 1.5,
+                      color: FluxColors.actionOf(context),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        l10n.youStoredOnly,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: FluxColors.actionOf(context),
+                            ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
 
-class _IntroCard extends StatelessWidget {
-  const _IntroCard({
-    required this.icon,
-    required this.title,
-    required this.body,
-  });
+class _Hero extends StatelessWidget {
+  const _Hero({required this.caption, required this.text, this.footer});
 
-  final List<List<dynamic>> icon;
-  final String title;
-  final String body;
+  final String caption;
+  final String text;
+  final String? footer;
 
   @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: FluxColors.cardOf(context),
-          borderRadius: BorderRadius.circular(FluxRadius.sheet),
-          border: Border.all(color: FluxColors.lineOf(context)),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+  Widget build(BuildContext context) {
+    const light = TextStyle(color: Colors.white, fontSize: 14, height: 1.2);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(25),
+      child: SizedBox(
+        height: 232,
+        child: Stack(
+          fit: StackFit.expand,
           children: [
-            Container(
-              width: 44,
-              height: 44,
+            Image.asset(FigmaAssets.artworkFinish, fit: BoxFit.cover),
+            const DecoratedBox(
               decoration: BoxDecoration(
-                color: FluxColors.surfaceOf(context),
-                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  stops: [0, .65],
+                  colors: [Color(0x1A000000), Color(0x8C000000)],
+                ),
               ),
-              child: Center(child: FluxIcon(icon: icon, size: 22)),
             ),
-            const SizedBox(width: 14),
-            Expanded(
+            Positioned(
+              left: 20,
+              right: 20,
+              bottom: 18,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(title, style: Theme.of(context).textTheme.bodyLarge),
-                  const SizedBox(height: 4),
+                  Text(caption, style: light),
+                  const SizedBox(height: 10),
                   Text(
-                    body,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: FluxColors.mutedOf(context),
-                          height: 1.35,
-                        ),
+                    text,
+                    maxLines: 4,
+                    overflow: TextOverflow.ellipsis,
+                    style: light.copyWith(fontSize: 18, height: 1.22),
                   ),
+                  if (footer != null) ...[
+                    const SizedBox(height: 10),
+                    Text(footer!, style: light),
+                  ],
                 ],
               ),
             ),
           ],
         ),
-      );
+      ),
+    );
+  }
 }
 
-class _FinnTextField extends StatelessWidget {
-  const _FinnTextField({
-    super.key,
-    required this.controller,
-    required this.label,
-    required this.hint,
-    required this.maxLength,
-    this.maxLines = 1,
-  });
-
-  final TextEditingController controller;
-  final String label;
-  final String hint;
-  final int maxLength;
-  final int maxLines;
-
-  @override
-  Widget build(BuildContext context) => TextField(
-        controller: controller,
-        maxLines: maxLines,
-        maxLength: maxLength,
-        textCapitalization: TextCapitalization.sentences,
-        style: Theme.of(context).textTheme.bodyMedium,
-        decoration: InputDecoration(
-          labelText: label,
-          hintText: hint,
-          hintStyle: TextStyle(color: FluxColors.mutedOf(context)),
-          counterStyle: TextStyle(color: FluxColors.mutedOf(context)),
-          filled: true,
-          fillColor: FluxColors.cardOf(context),
-          contentPadding: const EdgeInsets.all(16),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(FluxRadius.md),
-            borderSide: BorderSide(color: FluxColors.lineOf(context)),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(FluxRadius.md),
-            borderSide: BorderSide(color: FluxColors.lineOf(context)),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(FluxRadius.md),
-            borderSide:
-                BorderSide(color: FluxColors.inkOf(context), width: 1.2),
-          ),
-        ),
-      );
-}
-
-class _StyleChip extends StatelessWidget {
-  const _StyleChip({
-    required this.style,
-    required this.selected,
+class _CategoryCard extends StatelessWidget {
+  const _CategoryCard({
+    required this.category,
+    required this.count,
     required this.onTap,
   });
 
-  final FinnResponseStyle style;
-  final bool selected;
+  final YouCategory category;
+  final int count;
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => Semantics(
-        button: true,
-        selected: selected,
-        label: L10n.of(
-          context,
-        ).youStyleSemantic(_styleLabel(context, style)),
+  Widget build(BuildContext context) {
+    final l10n = L10n.of(context);
+    return Semantics(
+      button: true,
+      label: youCategoryLabel(l10n, category),
+      excludeSemantics: true,
+      child: FluxPressScale(
+        scale: .97,
         child: Material(
-          color:
-              selected ? FluxColors.inkOf(context) : FluxColors.cardOf(context),
-          shape: StadiumBorder(
-            side: BorderSide(
-              color: selected
-                  ? FluxColors.inkOf(context)
-                  : FluxColors.lineOf(context),
-            ),
-          ),
+          color: FluxColors.controlOf(context),
+          borderRadius: BorderRadius.circular(FluxRadius.card),
           child: InkWell(
+            borderRadius: BorderRadius.circular(FluxRadius.card),
             onTap: onTap,
-            customBorder: const StadiumBorder(),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: 48),
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
-                // widthFactor/heightFactor make the Center shrink to the label.
-                // A plain Center expands to the widest constraint it is given,
-                // and Wrap hands its children the full line width, so each
-                // style chip stretched edge to edge and the four of them
-                // stacked into what looked like four full-width buttons
-                // instead of one row of choices.
-                child: Center(
-                  widthFactor: 1,
-                  heightFactor: 1,
-                  child: Text(
-                    _styleLabel(context, style),
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: selected
-                              ? FluxColors.canvasOf(context)
-                              : FluxColors.inkOf(context),
-                        ),
+            child: Padding(
+              padding: const EdgeInsets.all(15),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  FluxIcon(
+                    icon: youCategoryIcon(category),
+                    size: 22,
+                    strokeWidth: 1.5,
+                    color: FluxColors.actionOf(context),
                   ),
-                ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        youCategoryLabel(l10n, category),
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      Text(
+                        l10n.youCount(count),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: FluxColors.actionOf(context),
+                            ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ),
         ),
-      );
+      ),
+    );
+  }
 }
-
-/// Localized label for a response style (the enum's own label stays English
-/// data used inside prompt instructions).
-String _styleLabel(BuildContext context, FinnResponseStyle style) =>
-    switch (style) {
-      FinnResponseStyle.balanced => L10n.of(context).youResponseStyleBalanced,
-      FinnResponseStyle.concise => L10n.of(context).youResponseStyleConcise,
-      FinnResponseStyle.detailed => L10n.of(context).youResponseStyleDetailed,
-      FinnResponseStyle.conversational =>
-        L10n.of(context).youResponseStyleConversational,
-    };

@@ -240,6 +240,30 @@ class CreationsController extends ChangeNotifier {
     }
   }
 
+  /// Saves a copy of [creation] under a new id, right after the original.
+  Future<void> duplicate(FinnCreation creation) async {
+    final now = _clock();
+    final copy = FinnCreation(
+      id: '${now.microsecondsSinceEpoch}-${creation.kind.name}',
+      prompt: creation.prompt,
+      title: '${creation.title} 2',
+      summary: creation.summary,
+      artifact: creation.artifact,
+      createdAt: now,
+      template: creation.template,
+    );
+    final previous = _creations;
+    _creations = [copy, ...previous];
+    _notify();
+    try {
+      await _store.save(_creations);
+    } on Object {
+      _creations = previous;
+      _failure = CreationFailure.create;
+      _notify();
+    }
+  }
+
   void clearFailure() {
     if (_failure == null) return;
     _failure = null;

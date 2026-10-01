@@ -859,6 +859,13 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get creationsNoneTitle => 'No Creations yet.';
+
+  @override
+  String get creationsNoneBody =>
+      'Your creativity lives here.\nTry making something with FinnAI Creations.';
+
+  @override
   String get creationsTitle => 'Creations';
 
   @override
@@ -1782,4 +1789,935 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get creationsDeleteFailed =>
       'That creation couldn\'t be deleted. Please try again.';
+
+  @override
+  String get hubModelTitle => 'FinnAI Foundation';
+
+  @override
+  String hubModelSub(String size) {
+    return 'On this device, $size';
+  }
+
+  @override
+  String get hubVoiceTitle => 'Voice and language';
+
+  @override
+  String hubVoiceSub(String speed, String language) {
+    return '$speed speed, $language';
+  }
+
+  @override
+  String get hubAccessTitle => 'Device access';
+
+  @override
+  String get hubAccessSub => 'Calendar, contacts, files';
+
+  @override
+  String get hubYouTitle => 'You';
+
+  @override
+  String get hubYouSub => 'What FinnAI learns and uses';
+
+  @override
+  String get hubDataTitle => 'Privacy and data';
+
+  @override
+  String get hubDataSub => 'Storage, export, erase';
+
+  @override
+  String get hubAboutTitle => 'About';
+
+  @override
+  String hubAboutSub(String version) {
+    return 'Version $version';
+  }
+
+  @override
+  String modelVersion(String version) {
+    return 'Version $version';
+  }
+
+  @override
+  String modelStored(String size, String date) {
+    return '$size of your storage, downloaded on $date.';
+  }
+
+  @override
+  String modelStoredNoDate(String size) {
+    return '$size of your storage.';
+  }
+
+  @override
+  String get modelNotInstalled => 'Not downloaded yet.';
+
+  @override
+  String get modelOffline => 'Work offline';
+
+  @override
+  String get modelOfflineSub => 'Everything runs on this device';
+
+  @override
+  String get modelLookups => 'Look things up online';
+
+  @override
+  String get modelLookupsSub =>
+      'Only when a question needs it. Your chats and You stay here.';
+
+  @override
+  String get modelUpdates => 'Check for updates';
+
+  @override
+  String get modelUpToDate => 'Up to date';
+
+  @override
+  String get modelRemove => 'Remove the model';
+
+  @override
+  String modelRemoveSub(String size) {
+    return 'Frees $size';
+  }
+
+  @override
+  String get modelRemoveTitle => 'Remove the model?';
+
+  @override
+  String get modelRemoveBody =>
+      'FinnAI has to download it again before you can chat. Your chats stay.';
+
+  @override
+  String get modelRemoveConfirm => 'Remove';
+
+  @override
+  String get voiceReadAloud => 'Read replies aloud';
+
+  @override
+  String get voiceReadAloudSub => 'In voice chats';
+
+  @override
+  String get voiceTranscript => 'Show live transcript';
+
+  @override
+  String get voiceTranscriptSub => 'While you speak';
+
+  @override
+  String get voiceSpeed => 'Speaking speed';
+
+  @override
+  String get voiceSpeedSlow => 'Slow';
+
+  @override
+  String get voiceSpeedNormal => 'Normal';
+
+  @override
+  String get voiceSpeedFast => 'Fast';
+
+  @override
+  String get voiceLanguage => 'Language';
+
+  @override
+  String get voiceLanguageSub => 'Follows your phone';
+
+  @override
+  String get accessIntro =>
+      'FinnAI only reads what you allow, and only on this device.';
+
+  @override
+  String get accessMaster => 'Use context from this device';
+
+  @override
+  String get accessMasterSub => 'Turn off to stop FinnAI reading anything';
+
+  @override
+  String get accessActions => 'Actions on your device';
+
+  @override
+  String get accessActionsSub => 'Alarms, timers, settings';
+
+  @override
+  String get ctxCalendar => 'Calendar';
+
+  @override
+  String get ctxCalendarSub => 'Events and free time';
+
+  @override
+  String get ctxContacts => 'Contacts';
+
+  @override
+  String get ctxContactsSub => 'Names and relationships';
+
+  @override
+  String get ctxNotifications => 'Notifications';
+
+  @override
+  String get ctxNotificationsSub => 'What needs your attention';
+
+  @override
+  String get ctxPhotos => 'Photos';
+
+  @override
+  String get ctxPhotosSub => 'Only when you attach them';
+
+  @override
+  String get ctxFiles => 'Files';
+
+  @override
+  String get ctxFilesSub => 'Documents you open with FinnAI';
+
+  @override
+  String get ctxLocation => 'Location';
+
+  @override
+  String get ctxLocationSub => 'Only while the app is open';
+
+  @override
+  String get dataStoredHere => 'Stored on this device';
+
+  @override
+  String get dataChats => 'Chats';
+
+  @override
+  String get dataCreations => 'Creations';
+
+  @override
+  String get dataYou => 'You';
+
+  @override
+  String get dataModel => 'FinnAI Foundation';
+
+  @override
+  String get dataExport => 'Export everything';
+
+  @override
+  String get dataExportSub => 'Chats, creations, flows and You';
+
+  @override
+  String get dataDeleteChats => 'Delete all chats';
+
+  @override
+  String get dataDeleteChatsSub => 'You stays as it is';
+
+  @override
+  String get dataErase => 'Erase everything';
+
+  @override
+  String get dataEraseSub => 'Resets FinnAI on this device';
+
+  @override
+  String get dataExportFailed => 'Could not export. Try again.';
+
+  @override
+  String get aboutBlurb => 'A private assistant that runs on your device.';
+
+  @override
+  String get aboutPrivacy => 'Privacy Policy';
+
+  @override
+  String get aboutTerms => 'Terms of use';
+
+  @override
+  String get aboutLicences => 'Open source licences';
+
+  @override
+  String get aboutFeedback => 'Send feedback';
+
+  @override
+  String chatUsedFromYou(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count things',
+      one: '1 thing',
+    );
+    return 'Used $_temp0 from You';
+  }
+
+  @override
+  String get youAboutTitle => 'What FinnAI knows about you';
+
+  @override
+  String youUpdated(String when) {
+    return 'Updated $when';
+  }
+
+  @override
+  String youReviewTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count new things to review',
+      one: '1 new thing to review',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get youReviewSub => 'Noticed in your recent chats';
+
+  @override
+  String youCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count things',
+      one: '1 thing',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get youStoredOnly => 'Stored only on this device';
+
+  @override
+  String get youCatPeople => 'People';
+
+  @override
+  String get youCatWork => 'Work';
+
+  @override
+  String get youCatRoutines => 'Routines';
+
+  @override
+  String get youCatPreferences => 'Preferences';
+
+  @override
+  String get youCatPlaces => 'Places';
+
+  @override
+  String get youCatInterests => 'Interests';
+
+  @override
+  String get youEmptyTitle => 'Still getting to know you';
+
+  @override
+  String get youEmptyBody =>
+      'As you chat, FinnAI learns what helps and keeps it here, on this device. You can also write something yourself.';
+
+  @override
+  String get youTellFinn => 'Tell FinnAI about you';
+
+  @override
+  String get youPrivacyTitle => 'Privacy';
+
+  @override
+  String youCategoryIntro(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count things FinnAI remembers. Tap one to see where it came from.',
+      one: '1 thing FinnAI remembers. Tap one to see where it came from.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get youCategoryEmpty => 'Nothing here yet. Tap plus to add something.';
+
+  @override
+  String youSeenIn(String where) {
+    return 'Seen in $where';
+  }
+
+  @override
+  String get youSeenInLabel => 'Seen in';
+
+  @override
+  String get youAddedByYou => 'Added by you';
+
+  @override
+  String youLearnedOn(String when) {
+    return 'Learned $when. Stored on this device.';
+  }
+
+  @override
+  String get youEdit => 'Edit';
+
+  @override
+  String get youDoNotUse => 'Do not use in chats';
+
+  @override
+  String get youForgetThis => 'Forget this';
+
+  @override
+  String get youForgetTitle => 'Forget this?';
+
+  @override
+  String get youForgetBody =>
+      'FinnAI stops using it in chats. If you bring it up again, it can be learned again.';
+
+  @override
+  String get youForgetConfirm => 'Forget';
+
+  @override
+  String get youAddLabel => 'In your own words';
+
+  @override
+  String get youAddHint =>
+      'Something FinnAI should remember, like how you like to work or who matters to you.';
+
+  @override
+  String get youWhereBelongs => 'Where it belongs';
+
+  @override
+  String get youUseEveryChat => 'Use in every chat';
+
+  @override
+  String get youUseEveryChatSub => 'Turn off to keep it for when you ask';
+
+  @override
+  String get youSaveToYou => 'Save to You';
+
+  @override
+  String get youReviewTitleBar => 'Review';
+
+  @override
+  String get youReviewIntro =>
+      'FinnAI noticed these in recent chats. Keep what is right and forget the rest.';
+
+  @override
+  String get youReviewEmpty => 'Nothing to review right now.';
+
+  @override
+  String get youKeep => 'Keep';
+
+  @override
+  String youFrom(String category, String chat) {
+    return '$category, from $chat';
+  }
+
+  @override
+  String get youPrivacyNote =>
+      'Everything in You is stored on this device. FinnAI never sends it anywhere.';
+
+  @override
+  String get youLearn => 'Learn from conversations';
+
+  @override
+  String get youLearnSub => 'FinnAI suggests things to add after you chat';
+
+  @override
+  String get youUseInChats => 'Use You in new chats';
+
+  @override
+  String get youUseInChatsSub => 'You can turn it off per chat';
+
+  @override
+  String get youLearnAbout => 'Learn about';
+
+  @override
+  String get youExport => 'Export You';
+
+  @override
+  String get youExportSub => 'Save a copy as a file';
+
+  @override
+  String get youErase => 'Erase everything in You';
+
+  @override
+  String youEraseSub(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count things',
+      one: '1 thing',
+    );
+    return 'Removes $_temp0';
+  }
+
+  @override
+  String get youEraseTitle => 'Erase everything in You?';
+
+  @override
+  String get youEraseBody =>
+      'Everything FinnAI remembers is removed from this device. Your chats stay.';
+
+  @override
+  String get youEraseConfirm => 'Erase';
+
+  @override
+  String get youPersonalise => 'Reply style and instructions';
+
+  @override
+  String get youPersonaliseSub => 'Name, tone and custom instructions';
+
+  @override
+  String get youRemembered => 'Saved to You';
+
+  @override
+  String get youWhenToday => 'today';
+
+  @override
+  String youWhenMinutes(int count) {
+    return '$count minutes ago';
+  }
+
+  @override
+  String youWhenHours(int count) {
+    return '$count hours ago';
+  }
+
+  @override
+  String youWhenDays(int count) {
+    return '$count days ago';
+  }
+
+  @override
+  String get youWhenJustNow => 'just now';
+
+  @override
+  String get searchHint => 'Search';
+
+  @override
+  String get searchChatsHeading => 'Chats';
+
+  @override
+  String get searchCreationsHeading => 'Creations';
+
+  @override
+  String get searchNothing => 'Nothing found';
+
+  @override
+  String get searchPrompt => 'Search your chats, creations and You.';
+
+  @override
+  String get chatReadAloud => 'Read aloud';
+
+  @override
+  String get chatRememberInYou => 'Remember in You';
+
+  @override
+  String get chatShare => 'Share';
+
+  @override
+  String get plusCreate => 'Create';
+
+  @override
+  String get plusWidget => 'Widget';
+
+  @override
+  String get plusWidgetSub => 'For your home screen';
+
+  @override
+  String get plusMiniApp => 'Mini app';
+
+  @override
+  String get plusMiniAppSub => 'A small tool';
+
+  @override
+  String get plusPresentation => 'Presentation';
+
+  @override
+  String get plusPresentationSub => 'Slides to share';
+
+  @override
+  String get plusFlow => 'Flow';
+
+  @override
+  String get plusFlowSub => 'Runs on its own';
+
+  @override
+  String get plusAddToChat => 'Add to chat';
+
+  @override
+  String get plusPhoto => 'Photo';
+
+  @override
+  String optionsStarted(String when) {
+    return 'Started $when. Stored on this device.';
+  }
+
+  @override
+  String get optionsPin => 'Pin chat';
+
+  @override
+  String get optionsUnpin => 'Unpin chat';
+
+  @override
+  String get optionsExport => 'Export as text';
+
+  @override
+  String get optionsDelete => 'Delete chat';
+
+  @override
+  String get deleteChatTitle => 'Delete this chat?';
+
+  @override
+  String get deleteChatBody =>
+      'It is removed from this device. What FinnAI learned from it stays in You until you forget it.';
+
+  @override
+  String get fromYouTitle => 'From You';
+
+  @override
+  String get fromYouSub =>
+      'FinnAI used these in this chat. Nothing leaves your device.';
+
+  @override
+  String get fromYouUse => 'Use You in this chat';
+
+  @override
+  String get fromYouOpen => 'Open You';
+
+  @override
+  String get chatRenamePrompt => 'Rename chat';
+
+  @override
+  String get flowsFilterAll => 'All';
+
+  @override
+  String get flowsFilterActive => 'Active';
+
+  @override
+  String get flowsFilterPaused => 'Paused';
+
+  @override
+  String get flowsPhoneOn =>
+      'Flows run on this device, so your phone needs to be on.';
+
+  @override
+  String get flowsOnlyWhenAsked => 'Only when I ask';
+
+  @override
+  String flowsLastRunLine(String when, String result) {
+    return 'Last run $when, $result';
+  }
+
+  @override
+  String get flowsNeverRun => 'Not run yet';
+
+  @override
+  String get flowsPausedLine => 'Paused';
+
+  @override
+  String get flowsResultDone => 'done';
+
+  @override
+  String get flowsResultFailed => 'failed';
+
+  @override
+  String get flowsResultStopped => 'stopped';
+
+  @override
+  String get flowsWhenToday => 'today';
+
+  @override
+  String get flowsWhenYesterday => 'yesterday';
+
+  @override
+  String get flowsEmptyTitle => 'No flows yet';
+
+  @override
+  String get flowsEmptyBody =>
+      'A flow does a task for you on a schedule, or when something happens. Describe one in chat.';
+
+  @override
+  String get flowsEmptyCreate => 'Create a flow';
+
+  @override
+  String get flowsNewTitle => 'New flow';
+
+  @override
+  String get flowsNewSub => 'Start with words, a time, or an event.';
+
+  @override
+  String get flowsNewDescribe => 'Describe it';
+
+  @override
+  String get flowsNewDescribeSub => 'Tell FinnAI what should happen';
+
+  @override
+  String get flowsNewTime => 'At a set time';
+
+  @override
+  String get flowsNewTimeSub => 'Every day, week or month';
+
+  @override
+  String get flowsNewEvent => 'When something happens';
+
+  @override
+  String get flowsNewEventSub => 'Charging, arriving, a notification';
+
+  @override
+  String flowsDetailOn(String when) {
+    return 'On, next run $when';
+  }
+
+  @override
+  String get flowsDetailOnManual => 'On, runs when you ask';
+
+  @override
+  String get flowsDetailPaused => 'Paused';
+
+  @override
+  String get flowsWhen => 'When';
+
+  @override
+  String get flowsThen => 'Then';
+
+  @override
+  String get flowsRecentRuns => 'Recent runs';
+
+  @override
+  String get flowsNoRunsYet => 'No runs yet';
+
+  @override
+  String get flowsRunStatusDone => 'Done';
+
+  @override
+  String get flowsRunStatusFailed => 'Could not finish';
+
+  @override
+  String get flowsRunStatusDeclined => 'Not allowed';
+
+  @override
+  String get flowsRunStatusNeedsGrant => 'Needs your permission';
+
+  @override
+  String get flowsRunStatusStopped => 'Stopped';
+
+  @override
+  String get flowsMenuEdit => 'Edit';
+
+  @override
+  String get flowsMenuPause => 'Pause';
+
+  @override
+  String get flowsMenuResume => 'Turn on';
+
+  @override
+  String get flowsMenuDuplicate => 'Duplicate';
+
+  @override
+  String get flowsMenuDelete => 'Delete';
+
+  @override
+  String get flowsRunFinished => 'Finished';
+
+  @override
+  String flowsRunFinishedIn(int seconds) {
+    String _temp0 = intl.Intl.pluralLogic(
+      seconds,
+      locale: localeName,
+      other: '$seconds seconds',
+      one: '1 second',
+    );
+    return 'Finished in $_temp0';
+  }
+
+  @override
+  String get flowsRunAgain => 'Run again';
+
+  @override
+  String get flowsBuilderHint => 'Describe what should happen';
+
+  @override
+  String get flowsBuilderHere => 'Here is the flow. Check it, then turn it on.';
+
+  @override
+  String get flowsBuilderNoMatch =>
+      'I can not build that one yet. Pick one of these and I will set it up.';
+
+  @override
+  String get flowsBuilderTurnOn => 'Turn on';
+
+  @override
+  String get flowsStartWhen => 'Start when';
+
+  @override
+  String get flowsTriggerTime => 'At a set time';
+
+  @override
+  String get flowsTriggerTimeSub => 'Every day, week or month';
+
+  @override
+  String get flowsTriggerPlace => 'Arriving or leaving';
+
+  @override
+  String get flowsTriggerPlaceSub => 'A place you choose';
+
+  @override
+  String get flowsTriggerCharging => 'Charging';
+
+  @override
+  String get flowsTriggerChargingSub => 'When plugged in or unplugged';
+
+  @override
+  String get flowsTriggerBattery => 'Battery level';
+
+  @override
+  String get flowsTriggerBatterySub => 'Below or above a level';
+
+  @override
+  String get flowsTriggerNotification => 'A notification';
+
+  @override
+  String get flowsTriggerNotificationSub => 'When one arrives from an app';
+
+  @override
+  String get flowsTriggerManual => 'Only when I ask';
+
+  @override
+  String get flowsTriggerManualSub => 'Start it yourself';
+
+  @override
+  String get flowsTriggerSoon => 'Not available yet';
+
+  @override
+  String get flowsScheduleSheetTitle => 'Schedule';
+
+  @override
+  String get flowsScheduleSave => 'Save schedule';
+
+  @override
+  String flowsAllowTitle(String name) {
+    return 'Allow $name to act on your phone?';
+  }
+
+  @override
+  String get flowsAllowConfirm => 'Allow';
+
+  @override
+  String flowsDeleteNamed(String name) {
+    return 'Delete $name?';
+  }
+
+  @override
+  String get flowsDeleteNamedBody =>
+      'Its past runs are removed too. This can not be undone.';
+
+  @override
+  String get flowsGuidesTitle => 'Guides';
+
+  @override
+  String flowsStepLookUp(String query) {
+    return 'Look up $query';
+  }
+
+  @override
+  String get flowsStepWrite => 'Write the answer';
+
+  @override
+  String get creationsNewSheetSub =>
+      'Describe it in chat. FinnAI builds it on this device.';
+
+  @override
+  String get creationsNewWidgetSub => 'Small tools for your home screen';
+
+  @override
+  String get creationsNewAppSub => 'A simple tool that runs inside FinnAI';
+
+  @override
+  String get creationsNewDeckSub => 'Slides you can present or share';
+
+  @override
+  String get creationsMenuEditWithFinn => 'Edit with FinnAI';
+
+  @override
+  String get creationsMenuDuplicate => 'Duplicate';
+
+  @override
+  String get creationsMenuShare => 'Share';
+
+  @override
+  String creationsDeleteNamed(String name) {
+    return 'Delete $name?';
+  }
+
+  @override
+  String get creationsDeleteNamedBody =>
+      'It is removed from Creations and from your home screen. This can not be undone.';
+
+  @override
+  String get creationsSizeSmall => 'Small';
+
+  @override
+  String get creationsSizeMedium => 'Medium';
+
+  @override
+  String get creationsSizeLarge => 'Large';
+
+  @override
+  String get creationsUpdatesOnDevice =>
+      'Updates on this device. Nothing leaves your phone.';
+
+  @override
+  String get creationsMadeInChat => 'Made in chat';
+
+  @override
+  String get creationsDataLabel => 'Data';
+
+  @override
+  String get creationsDataSub => 'Stored inside this widget';
+
+  @override
+  String creationsAddHomeTitle(String name) {
+    return 'Add $name to your home screen?';
+  }
+
+  @override
+  String get creationsAddHomeBody =>
+      'It sits like any other widget. You can move or remove it later.';
+
+  @override
+  String get creationsAddHomeConfirm => 'Add';
+
+  @override
+  String get creationsBuilderTitleWidget => 'New widget';
+
+  @override
+  String get creationsBuilderTitleApp => 'New mini app';
+
+  @override
+  String get creationsBuilderTitleDeck => 'New presentation';
+
+  @override
+  String get creationsBuilderHint => 'Describe what to build';
+
+  @override
+  String get creationsBuilderChangeHint => 'Ask for changes';
+
+  @override
+  String get creationsBuilderGotIt => 'Got it. I will build it on this device.';
+
+  @override
+  String get creationsBuilderReady => 'Here it is. Open it, or keep editing.';
+
+  @override
+  String get creationsSaveToCreations => 'Save to Creations';
+
+  @override
+  String get creationsKeepEditing => 'Keep editing';
+
+  @override
+  String get creationsSpeakerNotes => 'Speaker notes';
+
+  @override
+  String get creationsPresent => 'Present';
+
+  @override
+  String get creationsDuplicated => 'Duplicated.';
+
+  @override
+  String get onboardingChooseTitle => 'Choose what FinnAI can see';
+
+  @override
+  String get onboardingChooseBody =>
+      'You can change this any time in Settings. All of it stays on this device.';
+
+  @override
+  String get onboardingDownloadPausedTitle => 'Download paused';
+
+  @override
+  String get onboardingDownloadPausedBody =>
+      'Waiting for a connection, your progress is saved.';
+
+  @override
+  String get onboardingDownloadPausedNote =>
+      'It continues when you are back online.';
+
+  @override
+  String get flowsNewGuide => 'New guide';
+
+  @override
+  String get flowsStepNotifyMe => 'Notify me';
 }

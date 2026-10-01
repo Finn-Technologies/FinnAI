@@ -7,6 +7,7 @@ import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
 import 'package:finn_ai/src/features/voice/speakable_text.dart';
+import 'package:finn_ai/src/features/voice/voice_settings_store.dart';
 
 enum VoiceChatState { idle, listening, thinking, speaking }
 
@@ -16,12 +17,10 @@ const double voiceSpeechRate = 0.45;
 
 /// Whether the last listen session heard anything.
 ///
-/// This is a state the UI can show, not an error: the recogniser finished
-/// cleanly and there was nothing in the microphone. Without it, "the mic
-/// worked but caught nothing" and "the user cancelled" were the same screen —
-/// the status line simply reverted to "tap to speak", which is why
-/// `voiceDidNotCatch` had been translated into five languages and never
-/// displayed. The sheet shows it and offers a retry.
+/// A state the UI can show, not an error: the recogniser finished cleanly and
+/// there was nothing in the microphone. Without it, "the mic worked but caught
+/// nothing" and "the user cancelled" were the same screen — the status line
+/// simply reverted to "tap to speak". The sheet shows it and offers a retry.
 enum VoiceListenOutcome { none, heardNothing }
 
 extension VoiceListenOutcomeX on VoiceListenOutcome {
@@ -157,7 +156,7 @@ class FlutterTtsBackend implements TtsBackend {
       }
     } catch (_) {}
     await setQueueAdd();
-    await setSpeechRate(voiceSpeechRate);
+    await setSpeechRate(VoiceSettingsStore.instance.speed.rate);
   }
 
   @override

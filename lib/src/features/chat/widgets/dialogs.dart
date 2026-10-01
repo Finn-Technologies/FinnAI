@@ -97,22 +97,33 @@ class _IMessageAttachmentMenu extends StatefulWidget {
     required this.onSelectCamera,
     required this.onSelectPhoto,
     required this.onSelectFile,
+    required this.onCreate,
   });
 
   final VoidCallback onSelectCamera;
   final VoidCallback onSelectPhoto;
   final VoidCallback onSelectFile;
 
+  /// Starts building something: `widget`, `app`, `presentation` or `flow`.
+  final ValueChanged<String> onCreate;
+
   @override
   State<_IMessageAttachmentMenu> createState() =>
       _IMessageAttachmentMenuState();
 }
 
+typedef _MenuEntry = ({
+  String title,
+  String? subtitle,
+  List<List<dynamic>> icon,
+  VoidCallback onTap,
+});
+
 class _IMessageAttachmentMenuState extends State<_IMessageAttachmentMenu>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 220),
+    duration: const Duration(milliseconds: 260),
   )..forward();
 
   late final Animation<double> _scaleAnimation = Tween<double>(
@@ -133,36 +144,69 @@ class _IMessageAttachmentMenuState extends State<_IMessageAttachmentMenu>
 
   @override
   Widget build(BuildContext context) {
-    final isDark = FluxColors.isDark(context);
-    final monochromeBg =
-        isDark ? FluxColors.darkCard : FluxColors.bubbleUserLight;
-    final monochromeIcon = isDark
-        ? FluxColors.bubbleAssistantLight
-        : FluxColors.bubbleAssistantDark;
-
-    final items = [
+    final l10n = L10n.of(context);
+    final create = <_MenuEntry>[
       (
-        title: L10n.of(context).attachmentCamera,
-        icon: HugeIcons.strokeRoundedCamera01,
-        iconBg: monochromeBg,
-        iconColor: monochromeIcon,
-        onTap: widget.onSelectCamera,
+        title: l10n.plusWidget,
+        subtitle: l10n.plusWidgetSub,
+        icon: FluxIcons.canvas,
+        onTap: () => widget.onCreate('widget'),
       ),
       (
-        title: L10n.of(context).attachmentPhotos,
+        title: l10n.plusMiniApp,
+        subtitle: l10n.plusMiniAppSub,
+        icon: FluxIcons.sourceCode,
+        onTap: () => widget.onCreate('app'),
+      ),
+      (
+        title: l10n.plusPresentation,
+        subtitle: l10n.plusPresentationSub,
+        icon: FluxIcons.education,
+        onTap: () => widget.onCreate('presentation'),
+      ),
+      (
+        title: l10n.plusFlow,
+        subtitle: l10n.plusFlowSub,
+        icon: FluxIcons.flows,
+        onTap: () => widget.onCreate('flow'),
+      ),
+    ];
+    final attach = <_MenuEntry>[
+      (
+        title: l10n.plusPhoto,
+        subtitle: null,
         icon: HugeIcons.strokeRoundedImage01,
-        iconBg: monochromeBg,
-        iconColor: monochromeIcon,
         onTap: widget.onSelectPhoto,
       ),
       (
-        title: L10n.of(context).attachmentFiles,
+        title: l10n.attachmentCamera,
+        subtitle: null,
+        icon: HugeIcons.strokeRoundedCamera01,
+        onTap: widget.onSelectCamera,
+      ),
+      (
+        title: l10n.attachmentFiles,
+        subtitle: null,
         icon: HugeIcons.strokeRoundedFolder01,
-        iconBg: monochromeBg,
-        iconColor: monochromeIcon,
         onTap: widget.onSelectFile,
       ),
     ];
+    var row = 0;
+    Widget group(String heading, List<_MenuEntry> entries) => Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 8, 14, 4),
+              child: Text(
+                heading,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: FluxColors.secondaryInkOf(context),
+                    ),
+              ),
+            ),
+            for (final entry in entries) _buildItemRow(row++, entry),
+          ],
+        );
 
     return AnimatedBuilder(
       animation: _controller,
@@ -174,68 +218,32 @@ class _IMessageAttachmentMenuState extends State<_IMessageAttachmentMenu>
           child: child,
         ),
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(FluxRadius.sheet),
-        child: BackdropFilter(
-          filter: ui.ImageFilter.blur(sigmaX: 28, sigmaY: 28),
-          child: Container(
-            width: 220,
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xD91E1E22) : const Color(0xEBFFFFFF),
-              borderRadius: BorderRadius.circular(FluxRadius.sheet),
-              border: Border.all(
-                color:
-                    isDark ? const Color(0x33FFFFFF) : const Color(0x1F000000),
-                width: 0.75,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.15),
-                  blurRadius: 24,
-                  spreadRadius: 2,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (var i = 0; i < items.length; i++)
-                  _buildItemRow(
-                    index: i,
-                    total: items.length,
-                    item: items[i],
-                    isDark: isDark,
-                  ),
-              ],
-            ),
-          ),
+      child: Container(
+        width: 270,
+        decoration: BoxDecoration(
+          color: FluxColors.controlOf(context),
+          borderRadius: BorderRadius.circular(FluxRadius.sheet + 1),
+        ),
+        padding: const EdgeInsets.all(8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            group(l10n.plusCreate, create),
+            group(l10n.plusAddToChat, attach),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildItemRow({
-    required int index,
-    required int total,
-    required ({
-      String title,
-      List<List<dynamic>> icon,
-      Color iconBg,
-      Color iconColor,
-      VoidCallback onTap,
-    }) item,
-    required bool isDark,
-  }) {
+  Widget _buildItemRow(int index, _MenuEntry item) {
     final start = (index * 0.06).clamp(0.0, 0.5);
     final end = (start + 0.4).clamp(0.0, 1.0);
     final rowAnimation = CurvedAnimation(
       parent: _controller,
       curve: Interval(start, end, curve: Curves.easeOutCubic),
     );
-
     return AnimatedBuilder(
       animation: rowAnimation,
       builder: (context, child) => Transform.translate(
@@ -249,42 +257,45 @@ class _IMessageAttachmentMenuState extends State<_IMessageAttachmentMenu>
         color: Colors.transparent,
         child: InkWell(
           onTap: item.onTap,
-          borderRadius: BorderRadius.circular(FluxRadius.sm),
-          splashColor:
-              isDark ? const Color(0x28FFFFFF) : const Color(0x18000000),
-          highlightColor:
-              isDark ? const Color(0x14FFFFFF) : const Color(0x0C000000),
+          borderRadius: BorderRadius.circular(17),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
             child: Row(
               children: [
                 Container(
-                  width: 36,
-                  height: 36,
+                  width: 40,
+                  height: 40,
                   decoration: BoxDecoration(
-                    color: item.iconBg,
+                    color: FluxColors.tileOf(context),
                     shape: BoxShape.circle,
                   ),
                   child: Center(
                     child: HugeIcon(
                       icon: item.icon,
-                      color: item.iconColor,
+                      color: FluxColors.actionOf(context),
                       size: 20,
+                      strokeWidth: 1.5,
                     ),
                   ),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
-                  child: Text(
-                    item.title,
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w400,
-                      letterSpacing: -0.2,
-                      color: isDark
-                          ? Colors.white
-                          : FluxColors.bubbleAssistantDark,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.title,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      if (item.subtitle != null)
+                        Text(
+                          item.subtitle!,
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: FluxColors.secondaryInkOf(context),
+                                  ),
+                        ),
+                    ],
                   ),
                 ),
               ],

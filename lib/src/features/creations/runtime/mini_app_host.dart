@@ -4,9 +4,9 @@ import 'package:finn_ai/l10n/l10n_helper.dart';
 import 'package:finn_ai/src/features/creations/runtime/mini_app_renderer.dart';
 import 'package:finn_ai/src/features/creations/runtime/mini_app_state.dart';
 import 'package:finn_ai/src/features/creations/spec/mini_app_spec.dart';
-import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 import 'package:finn_ai/src/shared/widgets/ambient_background.dart';
 import 'package:finn_ai/src/shared/widgets/finn_page_header.dart';
+import 'package:finn_ai/src/shared/widgets/finn_ui.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
 
 /// Full-screen host for a generated mini app.
@@ -44,14 +44,6 @@ class _MiniAppHostState extends State<MiniAppHost> {
   Widget build(BuildContext context) {
     return Scaffold(
       resizeToAvoidBottomInset: true,
-      floatingActionButton: FloatingActionButton.small(
-        onPressed: _state.reset,
-        tooltip: L10n.of(context).creationsResetApp,
-        backgroundColor: FluxColors.surfaceOf(context),
-        foregroundColor: FluxColors.inkOf(context),
-        elevation: 0,
-        child: const FluxIcon(icon: FluxIcons.refresh, size: 19),
-      ),
       body: AmbientBackground(
         intensity: .6,
         child: LayoutBuilder(
@@ -72,10 +64,10 @@ class _MiniAppHostState extends State<MiniAppHost> {
                           ScrollViewKeyboardDismissBehavior.onDrag,
                       physics: const FluxBouncingScrollPhysics(),
                       padding: EdgeInsets.fromLTRB(
-                        20,
-                        metrics.contentTop + 6,
-                        20,
-                        120 + MediaQuery.viewInsetsOf(context).bottom,
+                        25,
+                        metrics.contentTop,
+                        25,
+                        60 + MediaQuery.viewInsetsOf(context).bottom,
                       ),
                       child: MiniAppRenderer(state: _state),
                     ),
@@ -87,6 +79,13 @@ class _MiniAppHostState extends State<MiniAppHost> {
                     onBack: widget.onBack,
                     metrics: metrics,
                     scrollOffset: _scrollOffset,
+                    actions: [
+                      FinnCircleButton.icon(
+                        icon: FluxIcons.refresh,
+                        label: L10n.of(context).creationsResetApp,
+                        onTap: _state.reset,
+                      ),
+                    ],
                   ),
                 ),
               ],

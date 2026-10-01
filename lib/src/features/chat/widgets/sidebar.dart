@@ -2,7 +2,6 @@ part of '../home_shell.dart';
 
 class _Sidebar extends StatefulWidget {
   const _Sidebar({
-    required this.onClose,
     required this.onNewConversation,
     required this.onConversation,
     required this.conversations,
@@ -12,9 +11,9 @@ class _Sidebar extends StatefulWidget {
     required this.onFlows,
     required this.onActions,
     required this.onSettings,
+    required this.onSearch,
   });
 
-  final VoidCallback onClose;
   final VoidCallback onNewConversation;
   final ValueChanged<String> onConversation;
   final List<FinnConversation> conversations;
@@ -24,6 +23,7 @@ class _Sidebar extends StatefulWidget {
   final VoidCallback onFlows;
   final VoidCallback onActions;
   final VoidCallback onSettings;
+  final VoidCallback onSearch;
 
   @override
   State<_Sidebar> createState() => _SidebarState();
@@ -37,6 +37,13 @@ class _SidebarState extends State<_Sidebar> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    PinnedChatsStore.instance
+      ..addListener(_onPinsChanged)
+      ..initialize();
+  }
+
+  void _onPinsChanged() {
+    if (mounted) setState(() {});
   }
 
   void _onScroll() {
@@ -47,6 +54,7 @@ class _SidebarState extends State<_Sidebar> {
 
   @override
   void dispose() {
+    PinnedChatsStore.instance.removeListener(_onPinsChanged);
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     _scrollOffset.dispose();
@@ -55,7 +63,11 @@ class _SidebarState extends State<_Sidebar> {
 
   @override
   Widget build(BuildContext context) {
-    final double safeBottom = MediaQuery.paddingOf(context).bottom;
+    final double safeBottom = FluxBottomInset.bottomOf(context);
+    final ordered = PinnedChatsStore.instance.sorted(
+      widget.conversations,
+      (chat) => chat.id,
+    );
 
     return ColoredBox(
       color: FluxColors.controlOf(context),
@@ -98,7 +110,7 @@ class _SidebarState extends State<_Sidebar> {
                         top: historyTopAtRest,
                         bottom: bottomBarHeight + 40,
                       ),
-                      sliver: widget.conversations.isEmpty
+                      sliver: ordered.isEmpty
                           ? SliverToBoxAdapter(
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(
@@ -137,8 +149,7 @@ class _SidebarState extends State<_Sidebar> {
                               ),
                               delegate: SliverChildBuilderDelegate(
                                 (context, index) {
-                                  final conversation =
-                                      widget.conversations[index];
+                                  final conversation = ordered[index];
                                   final card = _SidebarConversationTile(
                                     key: ValueKey(conversation.id),
                                     conversation: conversation,
@@ -157,7 +168,7 @@ class _SidebarState extends State<_Sidebar> {
                                         )
                                       : card;
                                 },
-                                childCount: widget.conversations.length,
+                                childCount: ordered.length,
                               ),
                             ),
                     ),
@@ -197,7 +208,10 @@ class _SidebarState extends State<_Sidebar> {
                 },
               ),
 
-              // 3. Brand row with the close control.
+              // 3. Brand row. The close control is not here: the single
+              // menu/close control rides the home screen's travel and ends up
+              // on the far side of the panel, so nothing occupies this row's
+              // right edge any more.
               Positioned(
                 left: 25,
                 right: 25,
@@ -226,28 +240,30 @@ class _SidebarState extends State<_Sidebar> {
                       ),
                     );
                   },
-                  child: Row(
+                  child: Stack(
                     children: [
-                      Expanded(
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            L10n.of(context).appBrandFinnAI,
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleLarge
-                                ?.copyWith(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.w400,
-                                ),
-                          ),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          L10n.of(context).appBrandFinnAI,
+                          style:
+                              Theme.of(context).textTheme.titleLarge?.copyWith(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.w400,
+                                  ),
                         ),
                       ),
-                      _SidebarCircleButton(
-                        asset: FigmaAssets.appClose,
-                        tooltip: L10n.of(context).commonClose,
-                        background: FluxColors.controlOf(context),
-                        onTap: widget.onClose,
+                      // The home screen's close control sits at the panel's
+                      // far edge; search takes the slot beside it.
+                      Positioned(
+                        right: 0,
+                        top: 0,
+                        child: _SidebarCircleButton(
+                          icon: FluxIcons.search,
+                          tooltip: L10n.of(context).searchHint,
+                          background: FluxColors.tileOf(context),
+                          onTap: widget.onSearch,
+                        ),
                       ),
                     ],
                   ),
@@ -345,9 +361,13 @@ class _SidebarState extends State<_Sidebar> {
               ),
 
               // 6. The two shortcuts that used to sit in the header.
+              // The design leaves 38px under these circles on its 912pt canvas.
+              // That is a design-canvas gap, so it scales with everything else
+              // here, and the system inset only raises it further when the
+              // navigation bar is actually taller than the design assumed.
               Positioned(
                 left: 25,
-                bottom: safeBottom + 3,
+                bottom: math.max(safeBottom + 3, 38 * sy),
                 height: 50,
                 child: Row(
                   children: [

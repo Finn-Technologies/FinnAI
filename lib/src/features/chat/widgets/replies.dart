@@ -297,9 +297,16 @@ class _ReplyActionsState extends State<_ReplyActions> {
       );
   }
 
+  Future<void> _share() async {
+    final directory = await getTemporaryDirectory();
+    final file = File('${directory.path}/finnai-reply.txt');
+    await file.writeAsString(widget.text, flush: true);
+    await shareLocalFile(file.path, 'text/plain', 'FinnAI');
+  }
+
   void _openOverflow() {
     final regenerate = widget.onRegenerate;
-    if (regenerate == null) return;
+    final l10n = L10n.of(context);
     showFluxContextMenu<void>(
       context: context,
       targetKey: _overflowKey,
@@ -321,17 +328,49 @@ class _ReplyActionsState extends State<_ReplyActions> {
       ),
       items: <FluxContextMenuItem>[
         FluxContextMenuItem(
-          icon: FluxIcons.refresh,
-          label: L10n.of(context).chatRegenerate,
-          onTap: regenerate,
+          icon: FluxIcons.copy,
+          label: l10n.chatCopy,
+          onTap: _copy,
+        ),
+        FluxContextMenuItem(
+          icon: FluxIcons.volume,
+          label: l10n.chatReadAloud,
+          onTap: () => unawaited(ReadAloud.instance.speak(widget.text)),
+        ),
+        if (regenerate != null)
+          FluxContextMenuItem(
+            icon: FluxIcons.refresh,
+            label: l10n.chatRegenerate,
+            onTap: regenerate,
+          ),
+        FluxContextMenuItem(
+          icon: FluxIcons.you,
+          label: l10n.chatRememberInYou,
+          onTap: () => Navigator.of(context).push(
+            FinnPageRoute<void>(
+              child: YouAddPage(initialText: _firstSentences(widget.text)),
+            ),
+          ),
+        ),
+        FluxContextMenuItem(
+          icon: FluxIcons.arrowUp01,
+          label: l10n.chatShare,
+          onTap: () => unawaited(_share()),
         ),
       ],
     );
   }
 
+  /// A short, memory-sized excerpt of a reply: its first two sentences.
+  static String _firstSentences(String text) {
+    final flat = text.replaceAll(RegExp(r'\s+'), ' ').trim();
+    final sentences = RegExp(r'[^.!?]+[.!?]?').allMatches(flat).take(2);
+    final joined = sentences.map((m) => m.group(0)!.trim()).join(' ');
+    return joined.length > 280 ? joined.substring(0, 280) : joined;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final regenerate = widget.onRegenerate;
     // The row arrives with the finished reply, so it settles in rather than
     // appearing under text that was already on screen.
     return _FadeRise(
@@ -354,13 +393,12 @@ class _ReplyActionsState extends State<_ReplyActions> {
               modelTier: widget.modelTier,
             ),
           ),
-          if (regenerate != null)
-            _ReplyActionButton(
-              key: _overflowKey,
-              asset: FigmaAssets.replyMore,
-              tooltip: L10n.of(context).chatMoreActions,
-              onTap: _openOverflow,
-            ),
+          _ReplyActionButton(
+            key: _overflowKey,
+            asset: FigmaAssets.replyMore,
+            tooltip: L10n.of(context).chatMoreActions,
+            onTap: _openOverflow,
+          ),
         ],
       ),
     );

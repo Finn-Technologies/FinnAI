@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:finn_ai/src/features/chat/home_shell.dart';
+import 'package:finn_ai/src/features/onboarding/context_choose_page.dart';
 import 'package:finn_ai/src/features/onboarding/context_consent_store.dart';
 import 'package:finn_ai/src/inference/device_profile.dart';
 import 'package:finn_ai/src/inference/finn_inference.dart';
@@ -42,7 +43,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
   void _to(int page) {
     if (page < 0) return;
-    if (page > 4) {
+    if (page > 5) {
       _finish();
       return;
     }
@@ -140,7 +141,17 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             _ConsentPage(
               store: widget.consentStore,
               onBack: () => _to(2),
-              onNext: () => _to(4),
+              // Choosing what to share only makes sense after a "Yes".
+              onNext: () => _to(
+                (widget.consentStore ?? ContextConsentStore.instance).granted
+                    ? 4
+                    : 5,
+              ),
+            ),
+            ContextChoosePage(
+              store: widget.consentStore,
+              onBack: () => _to(3),
+              onNext: () => _to(5),
             ),
             _FinishPage(onDone: _finish),
           ],
@@ -831,7 +842,7 @@ class _PrivacyBodyState extends State<_PrivacyBody> {
           ),
           TextSpan(
             text: l10n.onboardingPrivacyLink,
-            style: _bodyStyle(FluxColors.link),
+            style: _bodyStyle(FluxColors.linkOf(context)),
             recognizer: _policyTap,
           ),
         ],
@@ -1025,21 +1036,25 @@ class _DownloadStatus extends StatelessWidget {
     final muted = ink.withValues(alpha: .5);
 
     if (error != null) {
+      // The design's "Download paused": progress is kept, and it resumes.
+      final pct = (progress * 100).round().clamp(0, 100);
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Text(l10n.onboardingDownloadPausedBody, style: _bodyStyle(ink)),
+          const SizedBox(height: 10),
           Text(
-            localizedEngineStatus(context, statusKey, status),
-            style: _bodyStyle(muted),
+            '${l10n.onboardingProgressPercent('$pct')} '
+            '${localizedEngineStatus(context, statusKey, status)}',
+            style: _readoutStyle(muted),
           ),
+          Text(l10n.onboardingDownloadPausedNote, style: _bodyStyle(muted)),
           const SizedBox(height: 16),
           _RetryPill(onTap: onRetry),
         ],
       );
     }
 
-    // The whole install is one honest number: language model plus multimodal
-    // component, bytes downloaded so far, and what is left.
     final totalBytes = inference.requiredModels.fold<int>(
           0,
           (sum, model) => sum + model.expectedBytes,
@@ -1063,8 +1078,6 @@ class _DownloadStatus extends StatelessWidget {
         Text.rich(
           TextSpan(
             children: [
-              // "please standby" is only true while there is something to
-              // wait for; at 100% the step says what is now available.
               TextSpan(
                 text: ready
                     ? l10n.onboardingInstallReadyForChat
@@ -1339,18 +1352,8 @@ class _ConsentPage extends StatefulWidget {
 }
 
 class _ConsentPageState extends State<_ConsentPage> {
-  /// Null until the user answers, which is what gates the step's Next control.
-  ///
-  /// This is the device-confirmed privacy bug: tapping Next with neither
-  /// answer selected advanced to Finish, so the step was passed without a
-  /// decision. The flow then completed, and because the stored choice was
-  /// never written the app fell back to [ContextConsentStore]'s default —
-  /// Settings showed "On-device context" **on**, without anyone having agreed
-  /// to it.
-  ///
-  /// The step is unanswerable unless it is answerable, so the body now says
-  /// what "context" actually is: which things would be read, and that they
-  /// never leave the device.
+  /// Null until the user answers, which gates the step's Next control: the
+  /// step cannot be passed without a decision.
   bool? _granted;
 
   ContextConsentStore get _consent =>
@@ -1377,13 +1380,8 @@ class _ConsentPageState extends State<_ConsentPage> {
       artwork: FigmaAssets.artworkConsent,
       title: l10n.onboardingConsentTitle,
       twoLineTitle: true,
-      // Measured, not guessed. `_StepPage` gives the artwork whatever the body
-      // does not use, so understating this pushes the only two tappable things
-      // off a 390x844 screen — they landed at y=877, below the fold and
-      // impossible to hit-test. This covers the explanation plus the answer
-      // row; the row is pinned at the bottom of the body region either way, so
-      // a longer translation scrolls its copy instead of pushing the answers
-      // off the screen.
+      // Measured: `_StepPage` gives the artwork whatever the body leaves, so
+      // understating this pushes the answers below the fold.
       bodyHeight: 250,
       // This body pins the answers to the bottom of the region and scrolls the
       // explanation above them, so `_StepPage` must not wrap it again.

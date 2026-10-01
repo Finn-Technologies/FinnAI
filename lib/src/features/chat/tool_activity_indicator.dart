@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'package:finn_ai/l10n/l10n_helper.dart';
+import 'package:finn_ai/src/features/chat/from_you_sheet.dart';
 import 'package:finn_ai/src/features/search/search_agent.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
@@ -33,17 +36,18 @@ class ToolActivityIndicator extends StatelessWidget {
       children: [
         for (final activity in activities)
           _ActivityRow(
-            leading: FluxIcon(
-              icon: _iconFor(activity.kind),
-              size: 21,
-              color: FluxColors.mutedOf(context),
-            ),
+            icon: _iconFor(activity.kind),
             label: labelFor(context, activity),
+            done: true,
+            onTap: activity.kind == ToolActivityKind.you
+                ? () => unawaited(showFromYouSheet(context, activity))
+                : null,
           ),
         if (busy)
           _ActivityRow(
-            leading: const _ActivitySpinner(),
+            icon: FluxIcons.search,
             label: L10n.of(context).chatSearchingInline,
+            done: false,
           ),
       ],
     );
@@ -53,6 +57,7 @@ class ToolActivityIndicator extends StatelessWidget {
         ToolActivityKind.search => FluxIcons.internet,
         ToolActivityKind.open => FluxIcons.note,
         ToolActivityKind.find => FluxIcons.search,
+        ToolActivityKind.you => FluxIcons.you,
       };
 
   /// The display line for one browser tool call.
@@ -64,44 +69,85 @@ class ToolActivityIndicator extends StatelessWidget {
           L10n.of(context).chatBrowsingOpen(activity.label),
         ToolActivityKind.find =>
           L10n.of(context).chatBrowsingFind(activity.label),
+        ToolActivityKind.you => L10n.of(context).chatUsedFromYou(
+            int.tryParse(activity.label) ?? 0,
+          ),
       };
 }
 
-/// One step row: the mark, then the muted label on the design's 15px rhythm.
+/// One step row, as the design draws it: a 24dp dark tile with a white glyph,
+/// a 14dp label, and a check once the step has finished (a spinner before).
 class _ActivityRow extends StatelessWidget {
-  const _ActivityRow({required this.leading, required this.label});
+  const _ActivityRow({
+    required this.icon,
+    required this.label,
+    required this.done,
+    this.onTap,
+  });
 
-  final Widget leading;
+  final List<List<dynamic>> icon;
   final String label;
+  final bool done;
+  final VoidCallback? onTap;
 
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 15),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            SizedBox.square(
-              dimension: 24,
-              child: Center(child: leading),
+  Widget build(BuildContext context) {
+    final ink = FluxColors.actionOf(context);
+    final row = Row(
+      children: [
+        Container(
+          width: 24,
+          height: 24,
+          decoration: BoxDecoration(
+            color: ink,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Center(
+            child: FluxIcon(
+              icon: icon,
+              size: 16,
+              strokeWidth: 1.5,
+              color: FluxColors.actionInkOf(context),
             ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                label,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontFamily: 'InstrumentSans',
-                  fontSize: 14,
-                  height: 1.2,
-                  fontWeight: FontWeight.w400,
-                  color: FluxColors.inkOf(context).withValues(alpha: .55),
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
-      );
+        const SizedBox(width: 10),
+        Flexible(
+          child: Text(
+            label,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: ink),
+          ),
+        ),
+        const SizedBox(width: 10),
+        if (done)
+          FluxIcon(
+              icon: FluxIcons.check, size: 18, strokeWidth: 1.5, color: ink)
+        else
+          const _ActivitySpinner(),
+        if (onTap != null) ...[
+          const SizedBox(width: 4),
+          FluxIcon(
+            icon: FluxIcons.arrowRight01,
+            size: 16,
+            strokeWidth: 1.5,
+            color: FluxColors.mutedOf(context),
+          ),
+        ],
+      ],
+    );
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: onTap == null
+          ? row
+          : InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(8),
+              child: row,
+            ),
+    );
+  }
 }
 
 /// The small turning mark that says "still working" next to the steps.

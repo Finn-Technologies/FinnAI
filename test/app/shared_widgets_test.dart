@@ -134,7 +134,7 @@ void main() {
   });
 
   group('48dp touch targets', () {
-    testWidgets('FluxPillButton keeps its 36dp pill inside a 48dp hit box', (
+    testWidgets('FluxPillButton keeps its 44dp pill inside a 48dp hit box', (
       tester,
     ) async {
       var taps = 0;
@@ -158,14 +158,14 @@ void main() {
       final painted = tester.getSize(
         find.descendant(of: box, matching: find.byType(SizedBox)),
       );
-      expect(painted.height, 36.0);
+      expect(painted.height, 44.0);
       expect(painted.height, lessThan(inkSize.height));
 
       await _tapAbovePainted(tester, ink);
       expect(taps, 1);
     });
 
-    testWidgets('FluxPillButton compact keeps its 30dp pill inside a 48dp box',
+    testWidgets('FluxPillButton compact keeps its 36dp pill inside a 48dp box',
         (
       tester,
     ) async {
@@ -190,7 +190,7 @@ void main() {
           matching: find.byType(SizedBox),
         ),
       );
-      expect(painted.height, 30.0);
+      expect(painted.height, 36.0);
     });
 
     testWidgets('FluxDisclosure keeps its pill inside a 48dp hit box', (

@@ -22,111 +22,84 @@ class _ArtifactCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final kind = creation.kind;
-    final accent = CreationPalette.tileFor(kind);
+    final l10n = L10n.of(context);
     return Align(
       alignment: Alignment.centerLeft,
-      child: Container(
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.sizeOf(context).width * .88,
-        ),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: FluxColors.cardOf(context),
-          borderRadius: BorderRadius.circular(FluxRadius.sheet),
-          border: Border.all(
-            color: FluxColors.lineOf(context).withValues(alpha: .8),
-          ),
-        ),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 380),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: accent,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Center(
-                    child: FluxIcon(
-                      icon: _iconFor(creation),
-                      color: CreationPalette.onPastel,
-                      size: 20,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
+            Text(
+              l10n.creationsBuilderReady,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 12),
+            Material(
+              color: FluxColors.controlOf(context),
+              borderRadius: BorderRadius.circular(FluxRadius.card),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(FluxRadius.card),
+                onTap: onOpen,
+                child: Padding(
+                  padding: const EdgeInsets.all(10),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      _CreationPreview(creation: creation),
+                      const SizedBox(height: 10),
                       Text(
                         creation.title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodyLarge
-                            ?.copyWith(fontWeight: FontWeight.w500),
+                        style: Theme.of(context).textTheme.bodyMedium,
                       ),
-                      const SizedBox(height: 2),
                       Text(
                         _artifactDescriptor(context, creation),
-                        style:
-                            Theme.of(context).textTheme.labelMedium?.copyWith(
-                                  color: FluxColors.mutedOf(context),
-                                ),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: FluxColors.actionOf(context),
+                            ),
                       ),
                     ],
                   ),
                 ),
-              ],
+              ),
             ),
             if (usedFallback) ...[
-              const SizedBox(height: 12),
-              Text(
-                L10n.of(context).creationsFallbackNote,
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: FluxColors.mutedOf(context),
-                      height: 1.35,
-                    ),
-              ),
+              const SizedBox(height: 10),
+              FinnCaption(l10n.creationsFallbackNote),
             ],
             const SizedBox(height: 14),
             Row(
               children: [
-                Flexible(
-                  child: FluxPillButton(
-                    label: L10n.of(context).commonOpen,
+                Expanded(
+                  child: FinnButton(
+                    label: l10n.commonOpen,
                     onTap: onOpen,
                   ),
                 ),
                 if (onEdit != null) ...[
-                  const SizedBox(width: 8),
-                  Flexible(
-                    child: FluxPillButton(
-                      label: L10n.of(context).creationsEdit,
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: FinnButton(
+                      label: l10n.creationsEdit,
+                      secondary: true,
                       onTap: onEdit,
                     ),
                   ),
                 ],
-                const SizedBox(width: 8),
-                FluxIconButton(
-                  icon: kind == CreationKind.presentation
-                      ? FluxIcons.download
-                      : FluxIcons.add,
-                  tooltip: kind == CreationKind.presentation
-                      ? L10n.of(context).creationsExportDeck
-                      : L10n.of(context).creationsAddToHomeScreen,
-                  onTap: kind == CreationKind.presentation
-                      ? onExport
-                      : onAddToHomeScreen,
-                ),
               ],
+            ),
+            const SizedBox(height: 10),
+            FinnButton(
+              label: creation.kind == CreationKind.presentation
+                  ? l10n.creationsExportDeck
+                  : l10n.creationsAddToHomeScreen,
+              secondary: true,
+              onTap: creation.kind == CreationKind.presentation
+                  ? onExport
+                  : onAddToHomeScreen,
             ),
           ],
         ),

@@ -4,23 +4,57 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
+/// How fast replies are read aloud.
+enum VoiceSpeed {
+  slow(.32),
+  normal(.45),
+  fast(.6);
+
+  const VoiceSpeed(this.rate);
+
+  /// The text-to-speech rate this speed maps to.
+  final double rate;
+}
+
 @immutable
 class VoiceSettings {
-  const VoiceSettings({this.spokenResponses = true});
+  const VoiceSettings({
+    this.spokenResponses = true,
+    this.speed = VoiceSpeed.normal,
+    this.liveTranscript = true,
+  });
 
   final bool spokenResponses;
+  final VoiceSpeed speed;
 
-  VoiceSettings copyWith({bool? spokenResponses}) => VoiceSettings(
+  /// Whether the words are shown on screen while the user speaks.
+  final bool liveTranscript;
+
+  VoiceSettings copyWith({
+    bool? spokenResponses,
+    VoiceSpeed? speed,
+    bool? liveTranscript,
+  }) =>
+      VoiceSettings(
         spokenResponses: spokenResponses ?? this.spokenResponses,
+        speed: speed ?? this.speed,
+        liveTranscript: liveTranscript ?? this.liveTranscript,
       );
 
   Map<String, Object?> toJson() => {
-        'version': 1,
+        'version': 2,
         'spokenResponses': spokenResponses,
+        'speed': speed.name,
+        'liveTranscript': liveTranscript,
       };
 
   factory VoiceSettings.fromJson(Map<String, Object?> json) => VoiceSettings(
         spokenResponses: json['spokenResponses'] == true,
+        speed: VoiceSpeed.values.firstWhere(
+          (value) => value.name == json['speed'],
+          orElse: () => VoiceSpeed.normal,
+        ),
+        liveTranscript: json['liveTranscript'] != false,
       );
 }
 
@@ -38,6 +72,8 @@ class VoiceSettingsStore extends ChangeNotifier {
   VoiceSettings get settings => _settings;
   bool get initialized => _initialized;
   bool get spokenResponses => _settings.spokenResponses;
+  VoiceSpeed get speed => _settings.speed;
+  bool get liveTranscript => _settings.liveTranscript;
 
   Future<void> initialize() async {
     if (_initialized) return;
@@ -68,8 +104,17 @@ class VoiceSettingsStore extends ChangeNotifier {
     }
   }
 
-  Future<bool> setSpokenResponses(bool value) async {
-    _settings = _settings.copyWith(spokenResponses: value);
+  Future<bool> setSpokenResponses(bool value) =>
+      _update(_settings.copyWith(spokenResponses: value));
+
+  Future<bool> setSpeed(VoiceSpeed value) =>
+      _update(_settings.copyWith(speed: value));
+
+  Future<bool> setLiveTranscript(bool value) =>
+      _update(_settings.copyWith(liveTranscript: value));
+
+  Future<bool> _update(VoiceSettings next) async {
+    _settings = next;
     notifyListeners();
     try {
       final file = await _file();

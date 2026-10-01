@@ -1568,6 +1568,18 @@ abstract class AppLocalizations {
   /// **'Looked for “{query}” on the page'**
   String chatBrowsingFind(String query);
 
+  /// Creations empty title
+  ///
+  /// In en, this message translates to:
+  /// **'No Creations yet.'**
+  String get creationsNoneTitle;
+
+  /// Creations empty body
+  ///
+  /// In en, this message translates to:
+  /// **'Your creativity lives here.\nTry making something with FinnAI Creations.'**
+  String get creationsNoneBody;
+
   /// Creations title
   ///
   /// In en, this message translates to:
@@ -3241,6 +3253,1638 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'That creation couldn\'t be deleted. Please try again.'**
   String get creationsDeleteFailed;
+
+  /// hubModelTitle
+  ///
+  /// In en, this message translates to:
+  /// **'FinnAI Foundation'**
+  String get hubModelTitle;
+
+  /// hubModelSub
+  ///
+  /// In en, this message translates to:
+  /// **'On this device, {size}'**
+  String hubModelSub(String size);
+
+  /// hubVoiceTitle
+  ///
+  /// In en, this message translates to:
+  /// **'Voice and language'**
+  String get hubVoiceTitle;
+
+  /// hubVoiceSub
+  ///
+  /// In en, this message translates to:
+  /// **'{speed} speed, {language}'**
+  String hubVoiceSub(String speed, String language);
+
+  /// hubAccessTitle
+  ///
+  /// In en, this message translates to:
+  /// **'Device access'**
+  String get hubAccessTitle;
+
+  /// hubAccessSub
+  ///
+  /// In en, this message translates to:
+  /// **'Calendar, contacts, files'**
+  String get hubAccessSub;
+
+  /// hubYouTitle
+  ///
+  /// In en, this message translates to:
+  /// **'You'**
+  String get hubYouTitle;
+
+  /// hubYouSub
+  ///
+  /// In en, this message translates to:
+  /// **'What FinnAI learns and uses'**
+  String get hubYouSub;
+
+  /// hubDataTitle
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy and data'**
+  String get hubDataTitle;
+
+  /// hubDataSub
+  ///
+  /// In en, this message translates to:
+  /// **'Storage, export, erase'**
+  String get hubDataSub;
+
+  /// hubAboutTitle
+  ///
+  /// In en, this message translates to:
+  /// **'About'**
+  String get hubAboutTitle;
+
+  /// hubAboutSub
+  ///
+  /// In en, this message translates to:
+  /// **'Version {version}'**
+  String hubAboutSub(String version);
+
+  /// modelVersion
+  ///
+  /// In en, this message translates to:
+  /// **'Version {version}'**
+  String modelVersion(String version);
+
+  /// modelStored
+  ///
+  /// In en, this message translates to:
+  /// **'{size} of your storage, downloaded on {date}.'**
+  String modelStored(String size, String date);
+
+  /// modelStoredNoDate
+  ///
+  /// In en, this message translates to:
+  /// **'{size} of your storage.'**
+  String modelStoredNoDate(String size);
+
+  /// modelNotInstalled
+  ///
+  /// In en, this message translates to:
+  /// **'Not downloaded yet.'**
+  String get modelNotInstalled;
+
+  /// modelOffline
+  ///
+  /// In en, this message translates to:
+  /// **'Work offline'**
+  String get modelOffline;
+
+  /// modelOfflineSub
+  ///
+  /// In en, this message translates to:
+  /// **'Everything runs on this device'**
+  String get modelOfflineSub;
+
+  /// modelLookups
+  ///
+  /// In en, this message translates to:
+  /// **'Look things up online'**
+  String get modelLookups;
+
+  /// modelLookupsSub
+  ///
+  /// In en, this message translates to:
+  /// **'Only when a question needs it. Your chats and You stay here.'**
+  String get modelLookupsSub;
+
+  /// modelUpdates
+  ///
+  /// In en, this message translates to:
+  /// **'Check for updates'**
+  String get modelUpdates;
+
+  /// modelUpToDate
+  ///
+  /// In en, this message translates to:
+  /// **'Up to date'**
+  String get modelUpToDate;
+
+  /// modelRemove
+  ///
+  /// In en, this message translates to:
+  /// **'Remove the model'**
+  String get modelRemove;
+
+  /// modelRemoveSub
+  ///
+  /// In en, this message translates to:
+  /// **'Frees {size}'**
+  String modelRemoveSub(String size);
+
+  /// modelRemoveTitle
+  ///
+  /// In en, this message translates to:
+  /// **'Remove the model?'**
+  String get modelRemoveTitle;
+
+  /// modelRemoveBody
+  ///
+  /// In en, this message translates to:
+  /// **'FinnAI has to download it again before you can chat. Your chats stay.'**
+  String get modelRemoveBody;
+
+  /// modelRemoveConfirm
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get modelRemoveConfirm;
+
+  /// voiceReadAloud
+  ///
+  /// In en, this message translates to:
+  /// **'Read replies aloud'**
+  String get voiceReadAloud;
+
+  /// voiceReadAloudSub
+  ///
+  /// In en, this message translates to:
+  /// **'In voice chats'**
+  String get voiceReadAloudSub;
+
+  /// voiceTranscript
+  ///
+  /// In en, this message translates to:
+  /// **'Show live transcript'**
+  String get voiceTranscript;
+
+  /// voiceTranscriptSub
+  ///
+  /// In en, this message translates to:
+  /// **'While you speak'**
+  String get voiceTranscriptSub;
+
+  /// voiceSpeed
+  ///
+  /// In en, this message translates to:
+  /// **'Speaking speed'**
+  String get voiceSpeed;
+
+  /// voiceSpeedSlow
+  ///
+  /// In en, this message translates to:
+  /// **'Slow'**
+  String get voiceSpeedSlow;
+
+  /// voiceSpeedNormal
+  ///
+  /// In en, this message translates to:
+  /// **'Normal'**
+  String get voiceSpeedNormal;
+
+  /// voiceSpeedFast
+  ///
+  /// In en, this message translates to:
+  /// **'Fast'**
+  String get voiceSpeedFast;
+
+  /// voiceLanguage
+  ///
+  /// In en, this message translates to:
+  /// **'Language'**
+  String get voiceLanguage;
+
+  /// voiceLanguageSub
+  ///
+  /// In en, this message translates to:
+  /// **'Follows your phone'**
+  String get voiceLanguageSub;
+
+  /// accessIntro
+  ///
+  /// In en, this message translates to:
+  /// **'FinnAI only reads what you allow, and only on this device.'**
+  String get accessIntro;
+
+  /// accessMaster
+  ///
+  /// In en, this message translates to:
+  /// **'Use context from this device'**
+  String get accessMaster;
+
+  /// accessMasterSub
+  ///
+  /// In en, this message translates to:
+  /// **'Turn off to stop FinnAI reading anything'**
+  String get accessMasterSub;
+
+  /// accessActions
+  ///
+  /// In en, this message translates to:
+  /// **'Actions on your device'**
+  String get accessActions;
+
+  /// accessActionsSub
+  ///
+  /// In en, this message translates to:
+  /// **'Alarms, timers, settings'**
+  String get accessActionsSub;
+
+  /// ctxCalendar
+  ///
+  /// In en, this message translates to:
+  /// **'Calendar'**
+  String get ctxCalendar;
+
+  /// ctxCalendarSub
+  ///
+  /// In en, this message translates to:
+  /// **'Events and free time'**
+  String get ctxCalendarSub;
+
+  /// ctxContacts
+  ///
+  /// In en, this message translates to:
+  /// **'Contacts'**
+  String get ctxContacts;
+
+  /// ctxContactsSub
+  ///
+  /// In en, this message translates to:
+  /// **'Names and relationships'**
+  String get ctxContactsSub;
+
+  /// ctxNotifications
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get ctxNotifications;
+
+  /// ctxNotificationsSub
+  ///
+  /// In en, this message translates to:
+  /// **'What needs your attention'**
+  String get ctxNotificationsSub;
+
+  /// ctxPhotos
+  ///
+  /// In en, this message translates to:
+  /// **'Photos'**
+  String get ctxPhotos;
+
+  /// ctxPhotosSub
+  ///
+  /// In en, this message translates to:
+  /// **'Only when you attach them'**
+  String get ctxPhotosSub;
+
+  /// ctxFiles
+  ///
+  /// In en, this message translates to:
+  /// **'Files'**
+  String get ctxFiles;
+
+  /// ctxFilesSub
+  ///
+  /// In en, this message translates to:
+  /// **'Documents you open with FinnAI'**
+  String get ctxFilesSub;
+
+  /// ctxLocation
+  ///
+  /// In en, this message translates to:
+  /// **'Location'**
+  String get ctxLocation;
+
+  /// ctxLocationSub
+  ///
+  /// In en, this message translates to:
+  /// **'Only while the app is open'**
+  String get ctxLocationSub;
+
+  /// dataStoredHere
+  ///
+  /// In en, this message translates to:
+  /// **'Stored on this device'**
+  String get dataStoredHere;
+
+  /// dataChats
+  ///
+  /// In en, this message translates to:
+  /// **'Chats'**
+  String get dataChats;
+
+  /// dataCreations
+  ///
+  /// In en, this message translates to:
+  /// **'Creations'**
+  String get dataCreations;
+
+  /// dataYou
+  ///
+  /// In en, this message translates to:
+  /// **'You'**
+  String get dataYou;
+
+  /// dataModel
+  ///
+  /// In en, this message translates to:
+  /// **'FinnAI Foundation'**
+  String get dataModel;
+
+  /// dataExport
+  ///
+  /// In en, this message translates to:
+  /// **'Export everything'**
+  String get dataExport;
+
+  /// dataExportSub
+  ///
+  /// In en, this message translates to:
+  /// **'Chats, creations, flows and You'**
+  String get dataExportSub;
+
+  /// dataDeleteChats
+  ///
+  /// In en, this message translates to:
+  /// **'Delete all chats'**
+  String get dataDeleteChats;
+
+  /// dataDeleteChatsSub
+  ///
+  /// In en, this message translates to:
+  /// **'You stays as it is'**
+  String get dataDeleteChatsSub;
+
+  /// dataErase
+  ///
+  /// In en, this message translates to:
+  /// **'Erase everything'**
+  String get dataErase;
+
+  /// dataEraseSub
+  ///
+  /// In en, this message translates to:
+  /// **'Resets FinnAI on this device'**
+  String get dataEraseSub;
+
+  /// dataExportFailed
+  ///
+  /// In en, this message translates to:
+  /// **'Could not export. Try again.'**
+  String get dataExportFailed;
+
+  /// aboutBlurb
+  ///
+  /// In en, this message translates to:
+  /// **'A private assistant that runs on your device.'**
+  String get aboutBlurb;
+
+  /// aboutPrivacy
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy Policy'**
+  String get aboutPrivacy;
+
+  /// aboutTerms
+  ///
+  /// In en, this message translates to:
+  /// **'Terms of use'**
+  String get aboutTerms;
+
+  /// aboutLicences
+  ///
+  /// In en, this message translates to:
+  /// **'Open source licences'**
+  String get aboutLicences;
+
+  /// aboutFeedback
+  ///
+  /// In en, this message translates to:
+  /// **'Send feedback'**
+  String get aboutFeedback;
+
+  /// chatUsedFromYou
+  ///
+  /// In en, this message translates to:
+  /// **'Used {count, plural, =1{1 thing} other{{count} things}} from You'**
+  String chatUsedFromYou(int count);
+
+  /// youAboutTitle
+  ///
+  /// In en, this message translates to:
+  /// **'What FinnAI knows about you'**
+  String get youAboutTitle;
+
+  /// youUpdated
+  ///
+  /// In en, this message translates to:
+  /// **'Updated {when}'**
+  String youUpdated(String when);
+
+  /// youReviewTitle
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 new thing to review} other{{count} new things to review}}'**
+  String youReviewTitle(int count);
+
+  /// youReviewSub
+  ///
+  /// In en, this message translates to:
+  /// **'Noticed in your recent chats'**
+  String get youReviewSub;
+
+  /// youCount
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 thing} other{{count} things}}'**
+  String youCount(int count);
+
+  /// youStoredOnly
+  ///
+  /// In en, this message translates to:
+  /// **'Stored only on this device'**
+  String get youStoredOnly;
+
+  /// youCatPeople
+  ///
+  /// In en, this message translates to:
+  /// **'People'**
+  String get youCatPeople;
+
+  /// youCatWork
+  ///
+  /// In en, this message translates to:
+  /// **'Work'**
+  String get youCatWork;
+
+  /// youCatRoutines
+  ///
+  /// In en, this message translates to:
+  /// **'Routines'**
+  String get youCatRoutines;
+
+  /// youCatPreferences
+  ///
+  /// In en, this message translates to:
+  /// **'Preferences'**
+  String get youCatPreferences;
+
+  /// youCatPlaces
+  ///
+  /// In en, this message translates to:
+  /// **'Places'**
+  String get youCatPlaces;
+
+  /// youCatInterests
+  ///
+  /// In en, this message translates to:
+  /// **'Interests'**
+  String get youCatInterests;
+
+  /// youEmptyTitle
+  ///
+  /// In en, this message translates to:
+  /// **'Still getting to know you'**
+  String get youEmptyTitle;
+
+  /// youEmptyBody
+  ///
+  /// In en, this message translates to:
+  /// **'As you chat, FinnAI learns what helps and keeps it here, on this device. You can also write something yourself.'**
+  String get youEmptyBody;
+
+  /// youTellFinn
+  ///
+  /// In en, this message translates to:
+  /// **'Tell FinnAI about you'**
+  String get youTellFinn;
+
+  /// youPrivacyTitle
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy'**
+  String get youPrivacyTitle;
+
+  /// youCategoryIntro
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 thing FinnAI remembers. Tap one to see where it came from.} other{{count} things FinnAI remembers. Tap one to see where it came from.}}'**
+  String youCategoryIntro(int count);
+
+  /// youCategoryEmpty
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing here yet. Tap plus to add something.'**
+  String get youCategoryEmpty;
+
+  /// youSeenIn
+  ///
+  /// In en, this message translates to:
+  /// **'Seen in {where}'**
+  String youSeenIn(String where);
+
+  /// youSeenInLabel
+  ///
+  /// In en, this message translates to:
+  /// **'Seen in'**
+  String get youSeenInLabel;
+
+  /// youAddedByYou
+  ///
+  /// In en, this message translates to:
+  /// **'Added by you'**
+  String get youAddedByYou;
+
+  /// youLearnedOn
+  ///
+  /// In en, this message translates to:
+  /// **'Learned {when}. Stored on this device.'**
+  String youLearnedOn(String when);
+
+  /// youEdit
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get youEdit;
+
+  /// youDoNotUse
+  ///
+  /// In en, this message translates to:
+  /// **'Do not use in chats'**
+  String get youDoNotUse;
+
+  /// youForgetThis
+  ///
+  /// In en, this message translates to:
+  /// **'Forget this'**
+  String get youForgetThis;
+
+  /// youForgetTitle
+  ///
+  /// In en, this message translates to:
+  /// **'Forget this?'**
+  String get youForgetTitle;
+
+  /// youForgetBody
+  ///
+  /// In en, this message translates to:
+  /// **'FinnAI stops using it in chats. If you bring it up again, it can be learned again.'**
+  String get youForgetBody;
+
+  /// youForgetConfirm
+  ///
+  /// In en, this message translates to:
+  /// **'Forget'**
+  String get youForgetConfirm;
+
+  /// youAddLabel
+  ///
+  /// In en, this message translates to:
+  /// **'In your own words'**
+  String get youAddLabel;
+
+  /// youAddHint
+  ///
+  /// In en, this message translates to:
+  /// **'Something FinnAI should remember, like how you like to work or who matters to you.'**
+  String get youAddHint;
+
+  /// youWhereBelongs
+  ///
+  /// In en, this message translates to:
+  /// **'Where it belongs'**
+  String get youWhereBelongs;
+
+  /// youUseEveryChat
+  ///
+  /// In en, this message translates to:
+  /// **'Use in every chat'**
+  String get youUseEveryChat;
+
+  /// youUseEveryChatSub
+  ///
+  /// In en, this message translates to:
+  /// **'Turn off to keep it for when you ask'**
+  String get youUseEveryChatSub;
+
+  /// youSaveToYou
+  ///
+  /// In en, this message translates to:
+  /// **'Save to You'**
+  String get youSaveToYou;
+
+  /// youReviewTitleBar
+  ///
+  /// In en, this message translates to:
+  /// **'Review'**
+  String get youReviewTitleBar;
+
+  /// youReviewIntro
+  ///
+  /// In en, this message translates to:
+  /// **'FinnAI noticed these in recent chats. Keep what is right and forget the rest.'**
+  String get youReviewIntro;
+
+  /// youReviewEmpty
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to review right now.'**
+  String get youReviewEmpty;
+
+  /// youKeep
+  ///
+  /// In en, this message translates to:
+  /// **'Keep'**
+  String get youKeep;
+
+  /// youFrom
+  ///
+  /// In en, this message translates to:
+  /// **'{category}, from {chat}'**
+  String youFrom(String category, String chat);
+
+  /// youPrivacyNote
+  ///
+  /// In en, this message translates to:
+  /// **'Everything in You is stored on this device. FinnAI never sends it anywhere.'**
+  String get youPrivacyNote;
+
+  /// youLearn
+  ///
+  /// In en, this message translates to:
+  /// **'Learn from conversations'**
+  String get youLearn;
+
+  /// youLearnSub
+  ///
+  /// In en, this message translates to:
+  /// **'FinnAI suggests things to add after you chat'**
+  String get youLearnSub;
+
+  /// youUseInChats
+  ///
+  /// In en, this message translates to:
+  /// **'Use You in new chats'**
+  String get youUseInChats;
+
+  /// youUseInChatsSub
+  ///
+  /// In en, this message translates to:
+  /// **'You can turn it off per chat'**
+  String get youUseInChatsSub;
+
+  /// youLearnAbout
+  ///
+  /// In en, this message translates to:
+  /// **'Learn about'**
+  String get youLearnAbout;
+
+  /// youExport
+  ///
+  /// In en, this message translates to:
+  /// **'Export You'**
+  String get youExport;
+
+  /// youExportSub
+  ///
+  /// In en, this message translates to:
+  /// **'Save a copy as a file'**
+  String get youExportSub;
+
+  /// youErase
+  ///
+  /// In en, this message translates to:
+  /// **'Erase everything in You'**
+  String get youErase;
+
+  /// youEraseSub
+  ///
+  /// In en, this message translates to:
+  /// **'Removes {count, plural, =1{1 thing} other{{count} things}}'**
+  String youEraseSub(int count);
+
+  /// youEraseTitle
+  ///
+  /// In en, this message translates to:
+  /// **'Erase everything in You?'**
+  String get youEraseTitle;
+
+  /// youEraseBody
+  ///
+  /// In en, this message translates to:
+  /// **'Everything FinnAI remembers is removed from this device. Your chats stay.'**
+  String get youEraseBody;
+
+  /// youEraseConfirm
+  ///
+  /// In en, this message translates to:
+  /// **'Erase'**
+  String get youEraseConfirm;
+
+  /// youPersonalise
+  ///
+  /// In en, this message translates to:
+  /// **'Reply style and instructions'**
+  String get youPersonalise;
+
+  /// youPersonaliseSub
+  ///
+  /// In en, this message translates to:
+  /// **'Name, tone and custom instructions'**
+  String get youPersonaliseSub;
+
+  /// youRemembered
+  ///
+  /// In en, this message translates to:
+  /// **'Saved to You'**
+  String get youRemembered;
+
+  /// youWhenToday
+  ///
+  /// In en, this message translates to:
+  /// **'today'**
+  String get youWhenToday;
+
+  /// youWhenMinutes
+  ///
+  /// In en, this message translates to:
+  /// **'{count} minutes ago'**
+  String youWhenMinutes(int count);
+
+  /// youWhenHours
+  ///
+  /// In en, this message translates to:
+  /// **'{count} hours ago'**
+  String youWhenHours(int count);
+
+  /// youWhenDays
+  ///
+  /// In en, this message translates to:
+  /// **'{count} days ago'**
+  String youWhenDays(int count);
+
+  /// youWhenJustNow
+  ///
+  /// In en, this message translates to:
+  /// **'just now'**
+  String get youWhenJustNow;
+
+  /// searchHint
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get searchHint;
+
+  /// searchChatsHeading
+  ///
+  /// In en, this message translates to:
+  /// **'Chats'**
+  String get searchChatsHeading;
+
+  /// searchCreationsHeading
+  ///
+  /// In en, this message translates to:
+  /// **'Creations'**
+  String get searchCreationsHeading;
+
+  /// searchNothing
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing found'**
+  String get searchNothing;
+
+  /// searchPrompt
+  ///
+  /// In en, this message translates to:
+  /// **'Search your chats, creations and You.'**
+  String get searchPrompt;
+
+  /// chatReadAloud
+  ///
+  /// In en, this message translates to:
+  /// **'Read aloud'**
+  String get chatReadAloud;
+
+  /// chatRememberInYou
+  ///
+  /// In en, this message translates to:
+  /// **'Remember in You'**
+  String get chatRememberInYou;
+
+  /// chatShare
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get chatShare;
+
+  /// plusCreate
+  ///
+  /// In en, this message translates to:
+  /// **'Create'**
+  String get plusCreate;
+
+  /// plusWidget
+  ///
+  /// In en, this message translates to:
+  /// **'Widget'**
+  String get plusWidget;
+
+  /// plusWidgetSub
+  ///
+  /// In en, this message translates to:
+  /// **'For your home screen'**
+  String get plusWidgetSub;
+
+  /// plusMiniApp
+  ///
+  /// In en, this message translates to:
+  /// **'Mini app'**
+  String get plusMiniApp;
+
+  /// plusMiniAppSub
+  ///
+  /// In en, this message translates to:
+  /// **'A small tool'**
+  String get plusMiniAppSub;
+
+  /// plusPresentation
+  ///
+  /// In en, this message translates to:
+  /// **'Presentation'**
+  String get plusPresentation;
+
+  /// plusPresentationSub
+  ///
+  /// In en, this message translates to:
+  /// **'Slides to share'**
+  String get plusPresentationSub;
+
+  /// plusFlow
+  ///
+  /// In en, this message translates to:
+  /// **'Flow'**
+  String get plusFlow;
+
+  /// plusFlowSub
+  ///
+  /// In en, this message translates to:
+  /// **'Runs on its own'**
+  String get plusFlowSub;
+
+  /// plusAddToChat
+  ///
+  /// In en, this message translates to:
+  /// **'Add to chat'**
+  String get plusAddToChat;
+
+  /// plusPhoto
+  ///
+  /// In en, this message translates to:
+  /// **'Photo'**
+  String get plusPhoto;
+
+  /// optionsStarted
+  ///
+  /// In en, this message translates to:
+  /// **'Started {when}. Stored on this device.'**
+  String optionsStarted(String when);
+
+  /// optionsPin
+  ///
+  /// In en, this message translates to:
+  /// **'Pin chat'**
+  String get optionsPin;
+
+  /// optionsUnpin
+  ///
+  /// In en, this message translates to:
+  /// **'Unpin chat'**
+  String get optionsUnpin;
+
+  /// optionsExport
+  ///
+  /// In en, this message translates to:
+  /// **'Export as text'**
+  String get optionsExport;
+
+  /// optionsDelete
+  ///
+  /// In en, this message translates to:
+  /// **'Delete chat'**
+  String get optionsDelete;
+
+  /// deleteChatTitle
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this chat?'**
+  String get deleteChatTitle;
+
+  /// deleteChatBody
+  ///
+  /// In en, this message translates to:
+  /// **'It is removed from this device. What FinnAI learned from it stays in You until you forget it.'**
+  String get deleteChatBody;
+
+  /// fromYouTitle
+  ///
+  /// In en, this message translates to:
+  /// **'From You'**
+  String get fromYouTitle;
+
+  /// fromYouSub
+  ///
+  /// In en, this message translates to:
+  /// **'FinnAI used these in this chat. Nothing leaves your device.'**
+  String get fromYouSub;
+
+  /// fromYouUse
+  ///
+  /// In en, this message translates to:
+  /// **'Use You in this chat'**
+  String get fromYouUse;
+
+  /// fromYouOpen
+  ///
+  /// In en, this message translates to:
+  /// **'Open You'**
+  String get fromYouOpen;
+
+  /// chatRenamePrompt
+  ///
+  /// In en, this message translates to:
+  /// **'Rename chat'**
+  String get chatRenamePrompt;
+
+  /// flowsFilterAll
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get flowsFilterAll;
+
+  /// flowsFilterActive
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get flowsFilterActive;
+
+  /// flowsFilterPaused
+  ///
+  /// In en, this message translates to:
+  /// **'Paused'**
+  String get flowsFilterPaused;
+
+  /// flowsPhoneOn
+  ///
+  /// In en, this message translates to:
+  /// **'Flows run on this device, so your phone needs to be on.'**
+  String get flowsPhoneOn;
+
+  /// flowsOnlyWhenAsked
+  ///
+  /// In en, this message translates to:
+  /// **'Only when I ask'**
+  String get flowsOnlyWhenAsked;
+
+  /// flowsLastRunLine
+  ///
+  /// In en, this message translates to:
+  /// **'Last run {when}, {result}'**
+  String flowsLastRunLine(String when, String result);
+
+  /// flowsNeverRun
+  ///
+  /// In en, this message translates to:
+  /// **'Not run yet'**
+  String get flowsNeverRun;
+
+  /// flowsPausedLine
+  ///
+  /// In en, this message translates to:
+  /// **'Paused'**
+  String get flowsPausedLine;
+
+  /// flowsResultDone
+  ///
+  /// In en, this message translates to:
+  /// **'done'**
+  String get flowsResultDone;
+
+  /// flowsResultFailed
+  ///
+  /// In en, this message translates to:
+  /// **'failed'**
+  String get flowsResultFailed;
+
+  /// flowsResultStopped
+  ///
+  /// In en, this message translates to:
+  /// **'stopped'**
+  String get flowsResultStopped;
+
+  /// flowsWhenToday
+  ///
+  /// In en, this message translates to:
+  /// **'today'**
+  String get flowsWhenToday;
+
+  /// flowsWhenYesterday
+  ///
+  /// In en, this message translates to:
+  /// **'yesterday'**
+  String get flowsWhenYesterday;
+
+  /// flowsEmptyTitle
+  ///
+  /// In en, this message translates to:
+  /// **'No flows yet'**
+  String get flowsEmptyTitle;
+
+  /// flowsEmptyBody
+  ///
+  /// In en, this message translates to:
+  /// **'A flow does a task for you on a schedule, or when something happens. Describe one in chat.'**
+  String get flowsEmptyBody;
+
+  /// flowsEmptyCreate
+  ///
+  /// In en, this message translates to:
+  /// **'Create a flow'**
+  String get flowsEmptyCreate;
+
+  /// flowsNewTitle
+  ///
+  /// In en, this message translates to:
+  /// **'New flow'**
+  String get flowsNewTitle;
+
+  /// flowsNewSub
+  ///
+  /// In en, this message translates to:
+  /// **'Start with words, a time, or an event.'**
+  String get flowsNewSub;
+
+  /// flowsNewDescribe
+  ///
+  /// In en, this message translates to:
+  /// **'Describe it'**
+  String get flowsNewDescribe;
+
+  /// flowsNewDescribeSub
+  ///
+  /// In en, this message translates to:
+  /// **'Tell FinnAI what should happen'**
+  String get flowsNewDescribeSub;
+
+  /// flowsNewTime
+  ///
+  /// In en, this message translates to:
+  /// **'At a set time'**
+  String get flowsNewTime;
+
+  /// flowsNewTimeSub
+  ///
+  /// In en, this message translates to:
+  /// **'Every day, week or month'**
+  String get flowsNewTimeSub;
+
+  /// flowsNewEvent
+  ///
+  /// In en, this message translates to:
+  /// **'When something happens'**
+  String get flowsNewEvent;
+
+  /// flowsNewEventSub
+  ///
+  /// In en, this message translates to:
+  /// **'Charging, arriving, a notification'**
+  String get flowsNewEventSub;
+
+  /// flowsDetailOn
+  ///
+  /// In en, this message translates to:
+  /// **'On, next run {when}'**
+  String flowsDetailOn(String when);
+
+  /// flowsDetailOnManual
+  ///
+  /// In en, this message translates to:
+  /// **'On, runs when you ask'**
+  String get flowsDetailOnManual;
+
+  /// flowsDetailPaused
+  ///
+  /// In en, this message translates to:
+  /// **'Paused'**
+  String get flowsDetailPaused;
+
+  /// flowsWhen
+  ///
+  /// In en, this message translates to:
+  /// **'When'**
+  String get flowsWhen;
+
+  /// flowsThen
+  ///
+  /// In en, this message translates to:
+  /// **'Then'**
+  String get flowsThen;
+
+  /// flowsRecentRuns
+  ///
+  /// In en, this message translates to:
+  /// **'Recent runs'**
+  String get flowsRecentRuns;
+
+  /// flowsNoRunsYet
+  ///
+  /// In en, this message translates to:
+  /// **'No runs yet'**
+  String get flowsNoRunsYet;
+
+  /// flowsRunStatusDone
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get flowsRunStatusDone;
+
+  /// flowsRunStatusFailed
+  ///
+  /// In en, this message translates to:
+  /// **'Could not finish'**
+  String get flowsRunStatusFailed;
+
+  /// flowsRunStatusDeclined
+  ///
+  /// In en, this message translates to:
+  /// **'Not allowed'**
+  String get flowsRunStatusDeclined;
+
+  /// flowsRunStatusNeedsGrant
+  ///
+  /// In en, this message translates to:
+  /// **'Needs your permission'**
+  String get flowsRunStatusNeedsGrant;
+
+  /// flowsRunStatusStopped
+  ///
+  /// In en, this message translates to:
+  /// **'Stopped'**
+  String get flowsRunStatusStopped;
+
+  /// flowsMenuEdit
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get flowsMenuEdit;
+
+  /// flowsMenuPause
+  ///
+  /// In en, this message translates to:
+  /// **'Pause'**
+  String get flowsMenuPause;
+
+  /// flowsMenuResume
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on'**
+  String get flowsMenuResume;
+
+  /// flowsMenuDuplicate
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate'**
+  String get flowsMenuDuplicate;
+
+  /// flowsMenuDelete
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get flowsMenuDelete;
+
+  /// flowsRunFinished
+  ///
+  /// In en, this message translates to:
+  /// **'Finished'**
+  String get flowsRunFinished;
+
+  /// flowsRunFinishedIn
+  ///
+  /// In en, this message translates to:
+  /// **'Finished in {seconds, plural, =1{1 second} other{{seconds} seconds}}'**
+  String flowsRunFinishedIn(int seconds);
+
+  /// flowsRunAgain
+  ///
+  /// In en, this message translates to:
+  /// **'Run again'**
+  String get flowsRunAgain;
+
+  /// flowsBuilderHint
+  ///
+  /// In en, this message translates to:
+  /// **'Describe what should happen'**
+  String get flowsBuilderHint;
+
+  /// flowsBuilderHere
+  ///
+  /// In en, this message translates to:
+  /// **'Here is the flow. Check it, then turn it on.'**
+  String get flowsBuilderHere;
+
+  /// flowsBuilderNoMatch
+  ///
+  /// In en, this message translates to:
+  /// **'I can not build that one yet. Pick one of these and I will set it up.'**
+  String get flowsBuilderNoMatch;
+
+  /// flowsBuilderTurnOn
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on'**
+  String get flowsBuilderTurnOn;
+
+  /// flowsStartWhen
+  ///
+  /// In en, this message translates to:
+  /// **'Start when'**
+  String get flowsStartWhen;
+
+  /// flowsTriggerTime
+  ///
+  /// In en, this message translates to:
+  /// **'At a set time'**
+  String get flowsTriggerTime;
+
+  /// flowsTriggerTimeSub
+  ///
+  /// In en, this message translates to:
+  /// **'Every day, week or month'**
+  String get flowsTriggerTimeSub;
+
+  /// flowsTriggerPlace
+  ///
+  /// In en, this message translates to:
+  /// **'Arriving or leaving'**
+  String get flowsTriggerPlace;
+
+  /// flowsTriggerPlaceSub
+  ///
+  /// In en, this message translates to:
+  /// **'A place you choose'**
+  String get flowsTriggerPlaceSub;
+
+  /// flowsTriggerCharging
+  ///
+  /// In en, this message translates to:
+  /// **'Charging'**
+  String get flowsTriggerCharging;
+
+  /// flowsTriggerChargingSub
+  ///
+  /// In en, this message translates to:
+  /// **'When plugged in or unplugged'**
+  String get flowsTriggerChargingSub;
+
+  /// flowsTriggerBattery
+  ///
+  /// In en, this message translates to:
+  /// **'Battery level'**
+  String get flowsTriggerBattery;
+
+  /// flowsTriggerBatterySub
+  ///
+  /// In en, this message translates to:
+  /// **'Below or above a level'**
+  String get flowsTriggerBatterySub;
+
+  /// flowsTriggerNotification
+  ///
+  /// In en, this message translates to:
+  /// **'A notification'**
+  String get flowsTriggerNotification;
+
+  /// flowsTriggerNotificationSub
+  ///
+  /// In en, this message translates to:
+  /// **'When one arrives from an app'**
+  String get flowsTriggerNotificationSub;
+
+  /// flowsTriggerManual
+  ///
+  /// In en, this message translates to:
+  /// **'Only when I ask'**
+  String get flowsTriggerManual;
+
+  /// flowsTriggerManualSub
+  ///
+  /// In en, this message translates to:
+  /// **'Start it yourself'**
+  String get flowsTriggerManualSub;
+
+  /// flowsTriggerSoon
+  ///
+  /// In en, this message translates to:
+  /// **'Not available yet'**
+  String get flowsTriggerSoon;
+
+  /// flowsScheduleSheetTitle
+  ///
+  /// In en, this message translates to:
+  /// **'Schedule'**
+  String get flowsScheduleSheetTitle;
+
+  /// flowsScheduleSave
+  ///
+  /// In en, this message translates to:
+  /// **'Save schedule'**
+  String get flowsScheduleSave;
+
+  /// flowsAllowTitle
+  ///
+  /// In en, this message translates to:
+  /// **'Allow {name} to act on your phone?'**
+  String flowsAllowTitle(String name);
+
+  /// flowsAllowConfirm
+  ///
+  /// In en, this message translates to:
+  /// **'Allow'**
+  String get flowsAllowConfirm;
+
+  /// flowsDeleteNamed
+  ///
+  /// In en, this message translates to:
+  /// **'Delete {name}?'**
+  String flowsDeleteNamed(String name);
+
+  /// flowsDeleteNamedBody
+  ///
+  /// In en, this message translates to:
+  /// **'Its past runs are removed too. This can not be undone.'**
+  String get flowsDeleteNamedBody;
+
+  /// flowsGuidesTitle
+  ///
+  /// In en, this message translates to:
+  /// **'Guides'**
+  String get flowsGuidesTitle;
+
+  /// flowsStepLookUp
+  ///
+  /// In en, this message translates to:
+  /// **'Look up {query}'**
+  String flowsStepLookUp(String query);
+
+  /// flowsStepWrite
+  ///
+  /// In en, this message translates to:
+  /// **'Write the answer'**
+  String get flowsStepWrite;
+
+  /// creationsNewSheetSub
+  ///
+  /// In en, this message translates to:
+  /// **'Describe it in chat. FinnAI builds it on this device.'**
+  String get creationsNewSheetSub;
+
+  /// creationsNewWidgetSub
+  ///
+  /// In en, this message translates to:
+  /// **'Small tools for your home screen'**
+  String get creationsNewWidgetSub;
+
+  /// creationsNewAppSub
+  ///
+  /// In en, this message translates to:
+  /// **'A simple tool that runs inside FinnAI'**
+  String get creationsNewAppSub;
+
+  /// creationsNewDeckSub
+  ///
+  /// In en, this message translates to:
+  /// **'Slides you can present or share'**
+  String get creationsNewDeckSub;
+
+  /// creationsMenuEditWithFinn
+  ///
+  /// In en, this message translates to:
+  /// **'Edit with FinnAI'**
+  String get creationsMenuEditWithFinn;
+
+  /// creationsMenuDuplicate
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate'**
+  String get creationsMenuDuplicate;
+
+  /// creationsMenuShare
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get creationsMenuShare;
+
+  /// creationsDeleteNamed
+  ///
+  /// In en, this message translates to:
+  /// **'Delete {name}?'**
+  String creationsDeleteNamed(String name);
+
+  /// creationsDeleteNamedBody
+  ///
+  /// In en, this message translates to:
+  /// **'It is removed from Creations and from your home screen. This can not be undone.'**
+  String get creationsDeleteNamedBody;
+
+  /// creationsSizeSmall
+  ///
+  /// In en, this message translates to:
+  /// **'Small'**
+  String get creationsSizeSmall;
+
+  /// creationsSizeMedium
+  ///
+  /// In en, this message translates to:
+  /// **'Medium'**
+  String get creationsSizeMedium;
+
+  /// creationsSizeLarge
+  ///
+  /// In en, this message translates to:
+  /// **'Large'**
+  String get creationsSizeLarge;
+
+  /// creationsUpdatesOnDevice
+  ///
+  /// In en, this message translates to:
+  /// **'Updates on this device. Nothing leaves your phone.'**
+  String get creationsUpdatesOnDevice;
+
+  /// creationsMadeInChat
+  ///
+  /// In en, this message translates to:
+  /// **'Made in chat'**
+  String get creationsMadeInChat;
+
+  /// creationsDataLabel
+  ///
+  /// In en, this message translates to:
+  /// **'Data'**
+  String get creationsDataLabel;
+
+  /// creationsDataSub
+  ///
+  /// In en, this message translates to:
+  /// **'Stored inside this widget'**
+  String get creationsDataSub;
+
+  /// creationsAddHomeTitle
+  ///
+  /// In en, this message translates to:
+  /// **'Add {name} to your home screen?'**
+  String creationsAddHomeTitle(String name);
+
+  /// creationsAddHomeBody
+  ///
+  /// In en, this message translates to:
+  /// **'It sits like any other widget. You can move or remove it later.'**
+  String get creationsAddHomeBody;
+
+  /// creationsAddHomeConfirm
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get creationsAddHomeConfirm;
+
+  /// creationsBuilderTitleWidget
+  ///
+  /// In en, this message translates to:
+  /// **'New widget'**
+  String get creationsBuilderTitleWidget;
+
+  /// creationsBuilderTitleApp
+  ///
+  /// In en, this message translates to:
+  /// **'New mini app'**
+  String get creationsBuilderTitleApp;
+
+  /// creationsBuilderTitleDeck
+  ///
+  /// In en, this message translates to:
+  /// **'New presentation'**
+  String get creationsBuilderTitleDeck;
+
+  /// creationsBuilderHint
+  ///
+  /// In en, this message translates to:
+  /// **'Describe what to build'**
+  String get creationsBuilderHint;
+
+  /// creationsBuilderChangeHint
+  ///
+  /// In en, this message translates to:
+  /// **'Ask for changes'**
+  String get creationsBuilderChangeHint;
+
+  /// creationsBuilderGotIt
+  ///
+  /// In en, this message translates to:
+  /// **'Got it. I will build it on this device.'**
+  String get creationsBuilderGotIt;
+
+  /// creationsBuilderReady
+  ///
+  /// In en, this message translates to:
+  /// **'Here it is. Open it, or keep editing.'**
+  String get creationsBuilderReady;
+
+  /// creationsSaveToCreations
+  ///
+  /// In en, this message translates to:
+  /// **'Save to Creations'**
+  String get creationsSaveToCreations;
+
+  /// creationsKeepEditing
+  ///
+  /// In en, this message translates to:
+  /// **'Keep editing'**
+  String get creationsKeepEditing;
+
+  /// creationsSpeakerNotes
+  ///
+  /// In en, this message translates to:
+  /// **'Speaker notes'**
+  String get creationsSpeakerNotes;
+
+  /// creationsPresent
+  ///
+  /// In en, this message translates to:
+  /// **'Present'**
+  String get creationsPresent;
+
+  /// creationsDuplicated
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicated.'**
+  String get creationsDuplicated;
+
+  /// onboardingChooseTitle
+  ///
+  /// In en, this message translates to:
+  /// **'Choose what FinnAI can see'**
+  String get onboardingChooseTitle;
+
+  /// onboardingChooseBody
+  ///
+  /// In en, this message translates to:
+  /// **'You can change this any time in Settings. All of it stays on this device.'**
+  String get onboardingChooseBody;
+
+  /// onboardingDownloadPausedTitle
+  ///
+  /// In en, this message translates to:
+  /// **'Download paused'**
+  String get onboardingDownloadPausedTitle;
+
+  /// onboardingDownloadPausedBody
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for a connection, your progress is saved.'**
+  String get onboardingDownloadPausedBody;
+
+  /// onboardingDownloadPausedNote
+  ///
+  /// In en, this message translates to:
+  /// **'It continues when you are back online.'**
+  String get onboardingDownloadPausedNote;
+
+  /// flowsNewGuide
+  ///
+  /// In en, this message translates to:
+  /// **'New guide'**
+  String get flowsNewGuide;
+
+  /// flowsStepNotifyMe
+  ///
+  /// In en, this message translates to:
+  /// **'Notify me'**
+  String get flowsStepNotifyMe;
 }
 
 class _AppLocalizationsDelegate

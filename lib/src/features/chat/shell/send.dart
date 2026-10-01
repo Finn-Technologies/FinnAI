@@ -34,6 +34,7 @@ extension _HomeShellSend on _HomeShellState {
         final initialization = Future.wait([
           _conversations.initialize(),
           YouProfileStore.instance.initialize(),
+          YouMemoryStore.instance.initialize(),
           FlowsStore.instance.initialize(),
         ]).timeout(
           const Duration(seconds: 12),
@@ -50,6 +51,10 @@ extension _HomeShellSend on _HomeShellState {
       }
       final systemContext = [
         YouProfileStore.instance.promptContext,
+        YouMemoryStore.instance.promptContextFor(
+          value,
+          chatId: _conversations.active?.id,
+        ),
         FlowsStore.instance.promptContextFor(value),
       ].where((item) => item.trim().isNotEmpty).join('\n\n');
 
@@ -150,6 +155,19 @@ extension _HomeShellSend on _HomeShellState {
           _upfrontSearchFailed = false;
         });
       }
+      final used = YouMemoryStore.instance.lastUsed;
+      if (used.isNotEmpty) {
+        _generation.noteToolActivity(
+          ToolActivity(
+            kind: ToolActivityKind.you,
+            label: '${used.length}',
+            detail: used.map((item) => item.text).join('\n'),
+          ),
+        );
+      }
+      unawaited(
+        YouMemoryStore.instance.observe(effectivePrompt, conversation.title),
+      );
       final grounding = await _groundTurn(
         effectivePrompt,
         hasAttachment: attached != null,
@@ -190,7 +208,9 @@ extension _HomeShellSend on _HomeShellState {
     bool hasAttachment = false,
   }) async {
     final plan = _searchPlanner.plan(prompt, hasAttachment: hasAttachment);
-    if (!plan.search) return SearchTurnResult.none;
+    if (!plan.search || !ContextConsentStore.instance.webLookups) {
+      return SearchTurnResult.none;
+    }
     _generation.noteToolActivity(
       ToolActivity(kind: ToolActivityKind.search, label: plan.query),
     );
@@ -227,6 +247,7 @@ extension _HomeShellSend on _HomeShellState {
     ];
     final systemContext = [
       YouProfileStore.instance.promptContext,
+      YouMemoryStore.instance.promptContextFor(latestUser.text),
       FlowsStore.instance.promptContextFor(latestUser.text),
     ].where((item) => item.trim().isNotEmpty).join('\n\n');
     // A continuation reuses the sources the reply was written from, so it
@@ -275,6 +296,7 @@ extension _HomeShellSend on _HomeShellState {
     ];
     final systemContext = [
       YouProfileStore.instance.promptContext,
+      YouMemoryStore.instance.promptContextFor(latestUser.text),
       FlowsStore.instance.promptContextFor(latestUser.text),
     ].where((item) => item.trim().isNotEmpty).join('\n\n');
     if (mounted) setState(() => _dismissedSearchNotice = false);
@@ -316,6 +338,7 @@ extension _HomeShellSend on _HomeShellState {
     ];
     final systemContext = [
       YouProfileStore.instance.promptContext,
+      YouMemoryStore.instance.promptContextFor(trimmed),
       FlowsStore.instance.promptContextFor(trimmed),
     ].where((item) => item.trim().isNotEmpty).join('\n\n');
     if (mounted) setState(() => _dismissedSearchNotice = false);

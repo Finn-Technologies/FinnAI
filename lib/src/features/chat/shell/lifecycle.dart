@@ -53,6 +53,7 @@ extension _HomeShellLifecycle on _HomeShellState {
     await Future.wait([
       guard('conversations', _conversations.initialize),
       guard('you', YouProfileStore.instance.initialize),
+      guard('you-memory', YouMemoryStore.instance.initialize),
       guard('flows', FlowsStore.instance.initialize),
       guard('voice', VoiceSettingsStore.instance.initialize),
       guard('consent', ContextConsentStore.instance.initialize),

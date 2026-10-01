@@ -62,18 +62,15 @@ extension _CreationsPageActions on _CreationsPageState {
   }
 
   Future<void> _showWidgetPreview(FinnCreation creation, HomeWidgetSpec spec) {
-    return showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      useSafeArea: true,
-      builder: (_) => _WidgetPreviewSheet(
-        creation: creation,
-        spec: spec,
-        onAddToHomeScreen: () {
-          Navigator.pop(context);
-          unawaited(_addToHomeScreen(creation));
-        },
+    return Navigator.of(context).push(
+      FinnPageRoute<void>(
+        child: _WidgetDetailPage(
+          creation: creation,
+          spec: spec,
+          onAddToHome: () => _confirmAddToHome(creation),
+          onEdit: () => unawaited(_editWithFinn(creation)),
+          onMenu: (anchor) => _showCreationMenu(creation, anchor),
+        ),
       ),
     );
   }
@@ -92,6 +89,115 @@ extension _CreationsPageActions on _CreationsPageState {
         },
       ),
     );
+  }
+
+  /// "Add X to your home screen?": the design asks once before it does it.
+  Future<void> _confirmAddToHome(FinnCreation creation) async {
+    final l10n = L10n.of(context);
+    final ok = await showFinnConfirm(
+      context,
+      title: l10n.creationsAddHomeTitle(creation.title),
+      body: l10n.creationsAddHomeBody,
+      confirmLabel: l10n.creationsAddHomeConfirm,
+      cancelLabel: l10n.commonNotNow,
+    );
+    if (ok == true) await _addToHomeScreen(creation);
+  }
+
+  /// The long-press menu on a creation.
+  void _showCreationMenu(FinnCreation creation, Rect anchor) {
+    final l10n = L10n.of(context);
+    final canHome = creation.kind != CreationKind.presentation;
+    unawaited(
+      showFinnMenu(
+        context,
+        anchor: anchor,
+        items: [
+          FinnMenuItem(
+            label: l10n.commonOpen,
+            icon: FluxIcons.arrowRight02,
+            onTap: () => unawaited(_open(creation)),
+          ),
+          FinnMenuItem(
+            label: l10n.creationsMenuEditWithFinn,
+            icon: FluxIcons.edit,
+            onTap: () => unawaited(_editWithFinn(creation)),
+          ),
+          if (canHome)
+            FinnMenuItem(
+              label: l10n.creationsAddToHomeScreen,
+              icon: FluxIcons.canvas,
+              onTap: () => unawaited(_confirmAddToHome(creation)),
+            ),
+          FinnMenuItem(
+            label: l10n.creationsMenuShare,
+            icon: FluxIcons.arrowUp01,
+            onTap: () => unawaited(_share(creation)),
+          ),
+          FinnMenuItem(
+            label: l10n.creationsMenuDuplicate,
+            icon: FluxIcons.copy,
+            onTap: () {
+              unawaited(_controller.duplicate(creation));
+              _snack(l10n.creationsDuplicated);
+            },
+          ),
+          FinnMenuItem(
+            label: l10n.commonDelete,
+            icon: FluxIcons.close,
+            destructive: true,
+            onTap: () => unawaited(_confirmDelete(creation)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Opens the creation for changes: its slots when it has a template, else a
+  /// fresh brief seeded with the original words.
+  Future<void> _editWithFinn(FinnCreation creation) async {
+    if (creation.template != null) {
+      await _editCreation(creation);
+      return;
+    }
+    _startBuilder();
+    _chooseKind(creation.kind);
+    _promptController.text = creation.prompt;
+  }
+
+  Future<void> _share(FinnCreation creation) async {
+    if (creation.artifact case PresentationArtifact(:final spec)) {
+      await _exportDeck(creation, spec);
+      return;
+    }
+    try {
+      final directory = await getTemporaryDirectory();
+      final file = File('${directory.path}/${creation.id}.json');
+      await file.writeAsString(
+        jsonEncode(creation.toJson()),
+        flush: true,
+      );
+      final shared = await _homeScreen.shareFile(
+        path: file.path,
+        mimeType: 'application/json',
+        label: creation.title,
+      );
+      if (!shared && mounted) _snack(L10n.of(context).creationsExportFailed);
+    } on Object {
+      if (mounted) _snack(L10n.of(context).creationsExportFailed);
+    }
+  }
+
+  Future<void> _confirmDelete(FinnCreation creation) async {
+    final l10n = L10n.of(context);
+    final ok = await showFinnConfirm(
+      context,
+      title: l10n.creationsDeleteNamed(creation.title),
+      body: l10n.creationsDeleteNamedBody,
+      confirmLabel: l10n.commonDelete,
+      destructive: true,
+    );
+    if (ok == true) await _controller.delete(creation);
   }
 
   Future<void> _addToHomeScreen(FinnCreation creation) async {

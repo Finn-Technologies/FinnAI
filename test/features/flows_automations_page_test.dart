@@ -86,19 +86,6 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
   }
 
-  /// The live binding's window is 800x600 whatever the test asks for, so a
-  /// control far down the list has to be scrolled to before it can be tapped.
-  Future<void> bringIntoView(WidgetTester tester, Finder finder) async {
-    for (var i = 0; i < 12; i++) {
-      if (finder.evaluate().isNotEmpty) {
-        final y = tester.getCenter(finder).dy;
-        if (y > 80 && y < 520) return;
-      }
-      await tester.drag(find.byType(ListView).first, const Offset(0, -240));
-      await tester.pump(const Duration(milliseconds: 100));
-    }
-  }
-
   Future<void> settle(WidgetTester tester) async {
     for (var i = 0; i < 20; i++) {
       await tester.runAsync(
@@ -108,16 +95,38 @@ void main() {
     }
   }
 
-  Future<void> createMorningBrief(WidgetTester tester) async {
-    await bringIntoView(tester, find.byKey(const Key('new-automation-button')));
-    await tester.tap(find.byKey(const Key('new-automation-button')));
+  Future<void> createMorningBrief(
+    WidgetTester tester, {
+    bool manual = false,
+  }) async {
+    await tester.tap(find.byKey(const Key('add-flow-button')));
+    await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
+    if (manual) {
+      await tester.tap(find.byKey(const Key('flow-new-event')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.ensureVisible(find.text('Only when I ask').first);
+      await tester.pump();
+      await tester.tap(find.text('Only when I ask').first);
+    } else {
+      await tester.tap(find.byKey(const Key('flow-new-time')));
+    }
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
     await tester.tap(find.byKey(const Key('flow-template-morning_brief')));
-    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
     await tester.enterText(
         find.byKey(const Key('flow-slot-topics')), 'football and tech');
     await tester.enterText(find.byKey(const Key('flow-slot-city')), 'Rome');
     await tester.pump();
+  }
+
+  Future<void> openDetail(WidgetTester tester, String name) async {
+    await tester.tap(find.text(name).first);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
   }
 
   testWidgets('a morning brief is created from a template and scheduled', (
@@ -125,11 +134,9 @@ void main() {
   ) async {
     final backend = _Backend();
     await open(tester, backend);
-    expect(find.text('No automations yet. Start with a morning brief.'),
-        findsOneWidget);
+    expect(find.text('No flows yet'), findsOneWidget);
 
     await createMorningBrief(tester);
-    // Defaults to every day at 07:30; choose "Every day" explicitly.
     await tester.tap(find.byKey(const Key('flow-automation-save')));
     await settle(tester);
 
@@ -146,7 +153,7 @@ void main() {
     expect(flow.enabled, isTrue);
     expect(backend.scheduled[flow.id], (7, 30),
         reason: 'the alarm is armed once the flow is saved');
-    expect(find.text('Every day at 07:30'), findsOneWidget);
+    expect(find.textContaining('Every day at 07:30'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -164,14 +171,15 @@ void main() {
     // Our own explanation comes first; the OS prompt has none.
     expect(find.text('Allow notifications?'), findsOneWidget);
     expect(backend.requests, 0);
-    await tester.tap(find.byKey(const Key('flow-notify-allow')));
+    await tester.tap(find.text('Allow'));
     await settle(tester);
 
     expect(backend.requests, 1);
     expect(backend.scheduled, isEmpty, reason: 'nothing armed without a grant');
     final flow = store.flows.singleWhere((f) => f.name == 'Morning brief');
     expect(flow.enabled, isTrue, reason: 'the flow stays on, just quiet');
-    expect(find.byKey(Key('flow-notify-off-${flow.id}')), findsOneWidget);
+    await openDetail(tester, 'Morning brief');
+    expect(find.textContaining("won't run by itself"), findsOneWidget);
   });
 
   testWidgets('a manual-only automation asks for no permission', (
@@ -180,9 +188,7 @@ void main() {
     final backend = _Backend(allowed: false);
     await open(tester, backend);
 
-    await createMorningBrief(tester);
-    await tester.tap(find.byKey(const Key('flow-schedule-mode-0')));
-    await tester.pump();
+    await createMorningBrief(tester, manual: true);
     await tester.tap(find.byKey(const Key('flow-automation-save')));
     await settle(tester);
 
@@ -192,7 +198,7 @@ void main() {
     expect(flow.trigger.isScheduled, isFalse);
   });
 
-  testWidgets('the schedule chip opens the editor and saves a new time rule', (
+  testWidgets('the schedule tile opens the editor and saves new days', (
     tester,
   ) async {
     final backend = _Backend();
@@ -202,11 +208,12 @@ void main() {
     await settle(tester);
 
     final flow = store.flows.singleWhere((f) => f.name == 'Morning brief');
-    final chip = find.byKey(Key('flow-schedule-${flow.id}'));
-    await bringIntoView(tester, chip);
-    await tester.tap(chip);
-    await tester.pump(const Duration(milliseconds: 400));
-    await tester.tap(find.byKey(const Key('flow-schedule-mode-2')));
+    await openDetail(tester, 'Morning brief');
+    await tester.tap(find.byKey(Key('flow-schedule-${flow.id}')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.tap(find.byKey(const Key('flow-day-6')));
+    await tester.tap(find.byKey(const Key('flow-day-7')));
     await tester.pump();
     await tester.tap(find.byKey(const Key('flow-schedule-save')));
     await settle(tester);

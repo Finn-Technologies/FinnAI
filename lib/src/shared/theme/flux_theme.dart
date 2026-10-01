@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -16,10 +18,14 @@ import 'package:flutter/services.dart';
 /// from the same constants so the numbers cannot drift from the palette.
 abstract final class FluxColors {
   // Light Palette
-  static const canvas = Color(0xFFF8F8F8);
+  static const canvas = Color(0xFFF5F5F5);
   static const ink = Color(0xFF121212);
   static const muted = Color(0xFF686966);
   static const line = Color(0xFFEAEAE7);
+
+  /// Hairline on the sidebar panel's right edge. Darker than [line]: the
+  /// design draws the panel's boundary as a visible 1px rule, not a hint.
+  static const panelEdge = Color(0xFFDCDCDC);
   static const surface = Color(0xFFF3F3F3);
   static const card = Color(0xFFFFFFFF);
   static const blue = Color(0xFF15509E);
@@ -32,6 +38,7 @@ abstract final class FluxColors {
   static const darkInk = Color(0xFFF5F5F7);
   static const darkMuted = Color(0xFF9898A0);
   static const darkLine = Color(0xFF26262D);
+  static const darkPanelEdge = Color(0xFF3A3A42);
   static const darkSurface = Color(0xFF18181B);
   static const darkCard = Color(0xFF222226);
 
@@ -90,13 +97,61 @@ abstract final class FluxColors {
   static const scrimMenuLight = Color(0x18000000);
   static const scrimMenuDark = Color(0x33000000);
 
+  // Elevation. A black shadow is a no-op on the #000000 dark canvas, so dark
+  // mode separates a raised surface with a light rim instead — the same trick
+  // a dark UI uses for a floating card. Both are declared as the *ink* colour
+  // so [elevationOf] can tint them.
+  static const double elevationRadius = 24;
+  static const double elevationOffsetY = 8;
+
+  /// The colour of an elevated surface's shadow in the active theme.
+  ///
+  /// Light mode darkens; dark mode lifts. Every elevated surface — cards,
+  /// sheets, menus, the composer pill — goes through this, because a literal
+  /// `Colors.black` shadow is invisible against the dark canvas.
+  static Color elevationOf(BuildContext context) =>
+      isDark(context) ? darkInk : Colors.black;
+
+  /// A ready-made elevated shadow.
+  ///
+  /// One call so a raised surface cannot reintroduce a literal black shadow:
+  /// this is what every card, sheet, menu and the composer pill use. [alpha] is
+  /// the light-mode strength; dark uses a fraction of it, because a lift over
+  /// black reads at a much lower contrast than a shade over white.
+  static List<BoxShadow> elevationShadow(
+    BuildContext context, {
+    double alpha = .08,
+    double blur = 24,
+    double spread = 0,
+    Offset offset = const Offset(0, 8),
+  }) =>
+      [
+        BoxShadow(
+          color: elevationOf(context).withValues(
+            alpha: isDark(context) ? alpha * 1.5 : alpha,
+          ),
+          blurRadius: blur,
+          spreadRadius: spread,
+          offset: offset,
+        ),
+      ];
+
+  /// Scrim behind a modal surface.
+  ///
+  /// Darkening a black canvas achieves nothing, so in dark the scrim *lightens*
+  /// what is behind it, which is the only way to read as "this is now modal".
+  static Color scrimOf(BuildContext context, {required double alpha}) =>
+      isDark(context)
+          ? darkInk.withValues(alpha: alpha * 0.30)
+          : Colors.black.withValues(alpha: alpha);
+
   // Bubble / surface helpers.
   //
   // `bubbleUserDark` used to be #2C2C2E — 1.51:1 against the pure-black dark
   // canvas, which is why the user bubble read as "very dark grey on black" on
   // device. #575D6E keeps >= 4.5:1 for the text on it *and* >= 3:1 against the
   // canvas, so the bubble is visible without the copy becoming unreadable.
-  static const bubbleUserLight = Color(0xFFE5E5EA);
+  static const bubbleUserLight = Color(0xFFFFFFFF);
   static const bubbleUserDark = Color(0xFF575D6E);
   static const bubbleAssistantLight = Color(0xFFF2F2F7);
   static const bubbleAssistantDark = Color(0xFF1C1C1E);
@@ -121,9 +176,13 @@ abstract final class FluxColors {
   // 3.43:1 on the light tile fill; #646464 measures 5.43:1 on the same tile.
   static const timestampLight = Color(0xFF646464);
 
-  // Listening pill behind the composer (design: Chat - Voice).
+  // Listening pill behind the composer (design: Chat - Voice). The dark pair
+  // is a deep, desaturated version: the light pastels measure ~15:1 against
+  // the black canvas, which reads as a slab of daylight pasted onto a dark UI.
   static const voiceStart = Color(0xFFC9E7A8);
   static const voiceEnd = Color(0xFFA7E9E1);
+  static const voiceStartDark = Color(0xFF24361C);
+  static const voiceEndDark = Color(0xFF16302F);
 
   /// The smallest text the app renders. Anything a user has to *read* — labels,
   /// hints, pills, section headers — goes through a text theme role that is at
@@ -132,12 +191,37 @@ abstract final class FluxColors {
   /// thickness) is unaffected.
   static const double minTextSize = 12;
 
-  /// Diagonal wash used while the composer is listening.
-  static const LinearGradient voiceGradient = LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: [voiceStart, voiceEnd],
-  );
+  /// Diagonal wash used while the composer is listening, in the active theme.
+  ///
+  /// The light pastels are the design's; the dark pair is a deep equivalent so
+  /// the listening state reads as a lit surface rather than a pasted-on slab.
+  static LinearGradient voiceGradientOf(BuildContext context) {
+    final dark = isDark(context);
+    return LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [
+        dark ? voiceStartDark : voiceStart,
+        dark ? voiceEndDark : voiceEnd,
+      ],
+    );
+  }
+
+  // The ambient green wash under an empty chat. The light pair fades *up* from
+  // transparent; on the dark canvas the same hue has to fade up from the
+  // surface colour and at a fraction of the strength, or it reads as a glow.
+  static const List<Color> ambientWashLight = <Color>[
+    Color(0x00FFFFFF),
+    Color(0x4092FF86),
+  ];
+  static const List<Color> ambientWashDark = <Color>[
+    Color(0x0018181C),
+    Color(0x1492FF86),
+  ];
+
+  /// Stops of the empty-chat ambient wash, in the active theme.
+  static List<Color> ambientWashOf(BuildContext context) =>
+      isDark(context) ? ambientWashDark : ambientWashLight;
 
   // Rows inside a reveal pill
   static const disclosureRowLight = Color(0xFFF2F2F7);
@@ -204,6 +288,12 @@ abstract final class FluxColors {
 
   static Color lineOf(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark ? darkLine : line;
+
+  /// Hairline on the sidebar panel's right edge.
+  static Color panelEdgeOf(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+          ? darkPanelEdge
+          : panelEdge;
 
   static Color surfaceOf(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark ? darkSurface : surface;
@@ -297,6 +387,43 @@ abstract final class FluxMotion {
   static const double minTapTarget = 48;
 }
 
+/// Bottom edge geometry shared by every screen that parks UI against the
+/// bottom of the display.
+///
+/// `main()` puts the app in `SystemUiMode.edgeToEdge` with transparent system
+/// bars, so every screen draws under the navigation bar and owns the space it
+/// reserves for it. `paddingOf` alone is the wrong source for that: it is
+/// `max(0, viewPadding - viewInsets)`, so it collapses to zero the moment a
+/// keyboard opens or the navigation bar hides — the case where content would
+/// otherwise sit flush on the glass. `viewPaddingOf` keeps the physical inset
+/// but reports the gesture area rather than the bar, which is not what a
+/// composer resting above the bar wants either.
+///
+/// So this resolves the bar from whichever view reports one, and floors it at
+/// [minBar] so hiding the navigation bar still leaves breathing room instead of
+/// dropping content onto the edge.
+abstract final class FluxBottomInset {
+  /// Distance kept between bottom-anchored UI and the screen edge when no
+  /// system bar is reported, and the floor for the bar's own height.
+  static const double minBar = 24;
+
+  /// The height to reserve below bottom-anchored UI, in logical pixels.
+  ///
+  /// Takes the largest of the three sources so a bar is never underestimated:
+  /// the fully hidden keyboard (`viewInsets`), the physical inset including a
+  /// gesture bar (`viewPadding`), and the visible system bar (`padding`).
+  static double bottomOf(BuildContext context) {
+    final media = MediaQuery.of(context);
+    return math.max(
+      minBar,
+      math.max(
+        media.viewInsets.bottom,
+        math.max(media.viewPadding.bottom, media.padding.bottom),
+      ),
+    );
+  }
+}
+
 abstract final class FluxRadius {
   static const double sm = 12;
   static const double md = 16;
@@ -344,16 +471,16 @@ abstract final class FluxTheme {
           letterSpacing: -0.45,
         ),
         titleLarge: TextStyle(
-          fontSize: 20,
+          fontSize: 24,
           height: 1.2,
-          fontWeight: FontWeight.w500,
-          letterSpacing: -0.3,
+          fontWeight: FontWeight.w400,
+          letterSpacing: -0.2,
         ),
         titleMedium: TextStyle(
-          fontSize: 16,
-          height: 1.25,
+          fontSize: 18,
+          height: 1.22,
           fontWeight: FontWeight.w400,
-          letterSpacing: -0.15,
+          letterSpacing: -0.1,
         ),
         titleSmall: TextStyle(
           fontSize: 14,
@@ -368,14 +495,14 @@ abstract final class FluxTheme {
           letterSpacing: -0.1,
         ),
         bodyMedium: TextStyle(
-          fontSize: 15,
-          height: 1.35,
+          fontSize: 16,
+          height: 1.25,
           fontWeight: FontWeight.w400,
           letterSpacing: -0.08,
         ),
         bodySmall: TextStyle(
-          fontSize: 13,
-          height: 1.3,
+          fontSize: 14,
+          height: 1.2,
           fontWeight: FontWeight.w400,
           letterSpacing: -0.05,
         ),
@@ -399,6 +526,30 @@ abstract final class FluxTheme {
         ),
       ).apply(bodyColor: color, displayColor: color);
 
+  static const _round = FluxRadius.sheet + 1;
+
+  static DialogThemeData _dialog(Color bg) => DialogThemeData(
+        backgroundColor: bg,
+        surfaceTintColor: Colors.transparent,
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(_round)),
+      );
+
+  static BottomSheetThemeData _sheet(Color bg) => BottomSheetThemeData(
+        backgroundColor: bg,
+        surfaceTintColor: Colors.transparent,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(_round)),
+        ),
+      );
+
+  static PopupMenuThemeData _popup(Color bg) => PopupMenuThemeData(
+        color: bg,
+        surfaceTintColor: Colors.transparent,
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(_round)),
+      );
+
   static ThemeData get light => ThemeData(
         useMaterial3: true,
         brightness: Brightness.light,
@@ -411,6 +562,9 @@ abstract final class FluxTheme {
         ),
         splashFactory: InkRipple.splashFactory,
         textTheme: _textTheme(FluxColors.ink),
+        dialogTheme: _dialog(FluxColors.controlLight),
+        bottomSheetTheme: _sheet(FluxColors.controlLight),
+        popupMenuTheme: _popup(FluxColors.controlLight),
         pageTransitionsTheme: const PageTransitionsTheme(
           builders: {TargetPlatform.android: ZoomPageTransitionsBuilder()},
         ),
@@ -428,6 +582,9 @@ abstract final class FluxTheme {
         ),
         splashFactory: InkRipple.splashFactory,
         textTheme: _textTheme(FluxColors.darkInk),
+        dialogTheme: _dialog(FluxColors.controlDark),
+        bottomSheetTheme: _sheet(FluxColors.controlDark),
+        popupMenuTheme: _popup(FluxColors.controlDark),
         pageTransitionsTheme: const PageTransitionsTheme(
           builders: {TargetPlatform.android: ZoomPageTransitionsBuilder()},
         ),

@@ -22,7 +22,7 @@ Widget _host(Widget child, {Brightness brightness = Brightness.light}) =>
 
 void main() {
   group('48dp touch targets', () {
-    testWidgets('FluxChip keeps its 32dp pill inside a 48dp hit box', (
+    testWidgets('FluxChip keeps its 44dp pill inside a 48dp hit box', (
       tester,
     ) async {
       var taps = 0;
@@ -41,7 +41,7 @@ void main() {
       final painted = tester.getSize(
         find.descendant(of: chip, matching: find.byType(SizedBox)).first,
       );
-      expect(painted.height, 32.0);
+      expect(painted.height, 44.0);
       expect(painted.height, lessThan(inkSize.height));
 
       // Tapping in the transparent margin above the pill still registers.
@@ -289,7 +289,7 @@ void main() {
       // Fully open after exactly the modal duration: no second, longer curve.
       final menu = find.ancestor(
         of: find.text('Copy'),
-        matching: find.byType(BackdropFilter),
+        matching: find.byType(ClipRRect),
       );
       expect(menu, findsWidgets);
     });

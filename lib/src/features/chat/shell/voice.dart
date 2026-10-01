@@ -22,8 +22,12 @@ extension _HomeShellVoice on _HomeShellState {
   void _onInlineTranscript(String text) {
     if (!mounted || !_voiceListening) return;
     setState(() => _voiceDraft = text);
-    _composer.text = text;
-    _composer.selection = TextSelection.collapsed(offset: text.length);
+    // The words appear in the pill while the user speaks unless they turned
+    // the live transcript off; the draft is kept either way, to be sent.
+    if (VoiceSettingsStore.instance.liveTranscript) {
+      _composer.text = text;
+      _composer.selection = TextSelection.collapsed(offset: text.length);
+    }
   }
 
   Future<void> _endVoiceListening() async {

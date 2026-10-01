@@ -281,7 +281,7 @@ class _MessageBubbleState extends State<_MessageBubble> {
           : const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: widget.user
-            ? FluxColors.controlOf(context)
+            ? FluxColors.bubbleUserOf(context)
             : FluxColors.cardOf(context),
         borderRadius: borderRadius,
         border: widget.user
@@ -358,18 +358,17 @@ class _MessageBubbleState extends State<_MessageBubble> {
           : const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: widget.user
-            ? FluxColors.controlOf(context)
+            ? FluxColors.bubbleUserOf(context)
             : FluxColors.cardOf(context),
         borderRadius: borderRadius,
         boxShadow: widget.user
             ? null
-            : [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? .28 : .04),
-                  blurRadius: isDark ? 12 : 9,
-                  offset: const Offset(0, 3),
-                ),
-              ],
+            : FluxColors.elevationShadow(
+                context,
+                alpha: .04,
+                blur: isDark ? 12 : 9,
+                offset: const Offset(0, 3),
+              ),
         border: null,
       ),
       child: widget.childBuilder(_selecting),

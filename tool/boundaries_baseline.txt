@@ -10,11 +10,10 @@ feature settings -> voice
 size lib/src/engine/adaptive/adaptive.dart 660
 size lib/src/engine/eval/eval_baseline.dart 617
 size lib/src/features/chat/chat_generation_controller.dart 919
-size lib/src/features/chat/home_shell.dart 604
+size lib/src/features/chat/home_shell.dart 571
 size lib/src/features/chat/widgets/composer.dart 648
 size lib/src/features/conversations/conversation_store.dart 1638
-size lib/src/features/onboarding/onboarding_flow.dart 1603
-size lib/src/features/settings/settings_page.dart 1618
-size lib/src/features/voice/voice_chat_controller.dart 612
-size lib/src/shared/widgets/flux_controls.dart 1026
+size lib/src/features/onboarding/onboarding_flow.dart 1601
+size lib/src/features/voice/voice_chat_controller.dart 611
+size lib/src/shared/widgets/flux_controls.dart 1021
 size lib/src/shared/widgets/safe_markdown_text.dart 673

@@ -202,17 +202,18 @@ class _ReportDialogState extends State<ReportDialog> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: isDark
-                      ? const Color(0x33F59E0B)
-                      : const Color(0x22F59E0B),
+                  // Tinted from the live warning token rather than the retired
+                  // #F59E0B literal, so the banner and its icon stay the same
+                  // hue in both themes.
+                  color: FluxColors.warningOf(context).withValues(alpha: .16),
                   borderRadius: BorderRadius.circular(FluxRadius.sm),
                 ),
                 child: Row(
                   children: [
-                    const FluxIcon(
+                    FluxIcon(
                       icon: FluxIcons.info,
                       size: 16,
-                      color: FluxColors.accentAmber,
+                      color: FluxColors.warningOf(context),
                     ),
                     const SizedBox(width: 8),
                     Expanded(

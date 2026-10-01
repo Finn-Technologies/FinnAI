@@ -248,7 +248,13 @@ class FlowTrigger {
     final hour = (json['hour'] as num?)?.toInt();
     final minute = (json['minute'] as num?)?.toInt();
     if (hour == null || minute == null) return const FlowTrigger.manual();
-    return FlowTrigger.daily(hour.clamp(0, 23), minute.clamp(0, 59));
+    final days = {
+      for (final day in (json['days'] as List<Object?>? ?? const []))
+        if (day is num && day >= 1 && day <= 7) day.toInt(),
+    };
+    return days.isEmpty
+        ? FlowTrigger.daily(hour.clamp(0, 23), minute.clamp(0, 59))
+        : FlowTrigger.weekly(hour.clamp(0, 23), minute.clamp(0, 59), days);
   }
 }
 
@@ -319,12 +325,16 @@ class FlowRun {
     required this.outcome,
     this.steps = const [],
     this.triggeredBy = 'manual',
+    this.durationMs = 0,
   });
 
   final String id;
   final String flowId;
   final DateTime startedAt;
   final FlowRunOutcome outcome;
+
+  /// How long the run took, for the run screen. 0 for older records.
+  final int durationMs;
   final List<FlowStepResult> steps;
 
   /// `manual` or `schedule`. Recorded because "it did this by itself" is a
@@ -337,6 +347,7 @@ class FlowRun {
         'startedAt': startedAt.toIso8601String(),
         'outcome': outcome.name,
         'triggeredBy': triggeredBy,
+        if (durationMs > 0) 'ms': durationMs,
         'steps': [for (final step in steps) step.toJson()],
       };
 
@@ -350,6 +361,7 @@ class FlowRun {
           orElse: () => FlowRunOutcome.failed,
         ),
         triggeredBy: json['triggeredBy']?.toString() ?? 'manual',
+        durationMs: (json['ms'] as num?)?.toInt() ?? 0,
         steps: [
           for (final step in (json['steps'] as List<Object?>? ?? const []))
             FlowStepResult.fromJson(

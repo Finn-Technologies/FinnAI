@@ -1,17 +1,21 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
-import 'dart:ui' as ui;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:finn_ai/src/features/chat/chat_options.dart';
+import 'package:finn_ai/src/features/chat/search_page.dart';
 import 'package:finn_ai/src/features/conversations/conversation_store.dart';
+import 'package:finn_ai/src/features/conversations/pinned_chats_store.dart';
 import 'package:finn_ai/src/features/conversations/conversation_timestamp.dart';
+import 'package:finn_ai/src/features/creations/creation_model.dart';
 import 'package:finn_ai/src/features/creations/creations_page.dart';
 import 'package:finn_ai/src/features/chat/chat_generation_controller.dart';
 import 'package:finn_ai/src/features/chat/tool_activity_indicator.dart';
@@ -36,12 +40,19 @@ import 'package:finn_ai/src/features/flows/flow_scheduler.dart';
 import 'package:finn_ai/src/features/flows/flows_page.dart';
 import 'package:finn_ai/src/features/flows/flows_store.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
+import 'package:finn_ai/src/app/data_export.dart';
+import 'package:finn_ai/src/features/voice/read_aloud.dart';
 import 'package:finn_ai/src/features/voice/voice_chat_controller.dart';
 import 'package:finn_ai/src/features/voice/voice_settings_store.dart';
 import 'package:finn_ai/src/features/voice/voice_sheet.dart';
 import 'package:finn_ai/src/features/you/you_page.dart';
+import 'package:finn_ai/src/features/you/you_add_page.dart';
+import 'package:finn_ai/src/features/you/you_memory_store.dart';
 import 'package:finn_ai/src/features/you/you_profile_store.dart';
+import 'package:finn_ai/src/shared/widgets/finn_page_route.dart';
 import 'package:finn_ai/src/shared/widgets/flux_context_menu.dart';
+
+export 'package:finn_ai/src/shared/widgets/finn_page_route.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
 import 'package:finn_ai/src/shared/widgets/safe_markdown_text.dart';
 import 'package:finn_ai/l10n/l10n_helper.dart';
@@ -49,6 +60,7 @@ import 'package:finn_ai/l10n/l10n_helper.dart';
 part 'shell/attachments.dart';
 part 'shell/lifecycle.dart';
 part 'shell/device_actions.dart';
+part 'shell/sidebar_surface.dart';
 part 'shell/send.dart';
 part 'shell/voice.dart';
 part 'shell/navigation.dart';
@@ -141,6 +153,10 @@ class _HomeShellState extends State<HomeShell>
   Timer? _prewarmTimer;
   bool _sidebar = false;
   bool _sidebarEverOpened = false;
+
+  /// Panel position the current drag started from, so the finger tracks from
+  /// wherever the animation already was rather than snapping to an end.
+  double _sidebarDragBase = 0;
   bool _preparing = false;
   bool _dismissedSearchNotice = false;
 
@@ -347,7 +363,10 @@ class _HomeShellState extends State<HomeShell>
         body: LayoutBuilder(
           builder: (context, constraints) {
             final sy = (constraints.maxHeight / 912).clamp(.72, 1.2);
-            final safeBottom = MediaQuery.viewPaddingOf(context).bottom;
+            final safeBottom = FluxBottomInset.bottomOf(context);
+            // Lifts the composer clear of the navigation bar, and the tray and
+            // scroll inset with it so they keep their gaps.
+            const composerLift = 10.0;
             final horizontalGutter = constraints.maxWidth < 380 ? 20.0 : 25.0;
             final contentWidth = math.min(
               760.0,
@@ -371,13 +390,16 @@ class _HomeShellState extends State<HomeShell>
                         right: 0,
                         bottom: 0,
                         height: constraints.maxHeight * 400 / 912,
-                        child: const IgnorePointer(
+                        child: IgnorePointer(
+                          // Resolved per theme: the light wash is a soft green
+                          // over a near-white canvas, and the same 25% green on
+                          // #18181C reads as a lurid glow rather than depth.
                           child: DecoratedBox(
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 begin: Alignment.topCenter,
                                 end: Alignment.bottomCenter,
-                                colors: [Color(0x00FFFFFF), Color(0x4092FF86)],
+                                colors: FluxColors.ambientWashOf(context),
                               ),
                             ),
                           ),
@@ -411,7 +433,7 @@ class _HomeShellState extends State<HomeShell>
                         // First message starts below the header; newest
                         // message sits above the composer.
                         topInset: 125 * sy,
-                        bottomInset: safeBottom + 65,
+                        bottomInset: safeBottom + composerLift + 65,
                         scrollController: _chatScrollController,
                         // The notice belongs to the turn that failed to reach
                         // the web, so it renders with that reply instead of
@@ -435,7 +457,6 @@ class _HomeShellState extends State<HomeShell>
                       width: contentWidth,
                       top: 70 * sy,
                       child: _HomeHeader(
-                        onMenu: () => _setSidebar(true),
                         // The design titles a conversation once it has
                         // messages, and hides the title again while listening.
                         title: activeMessages.isEmpty || _voiceListening
@@ -443,6 +464,10 @@ class _HomeShellState extends State<HomeShell>
                             : activeConversation?.title,
                         onNewChat:
                             activeMessages.isEmpty ? null : _newConversation,
+                        onTitleTap: activeConversation == null
+                            ? null
+                            : () =>
+                                showChatOptions(context, activeConversation),
                       ),
                     ),
                     if (_attachmentMenuOpen) ...[
@@ -458,7 +483,7 @@ class _HomeShellState extends State<HomeShell>
                         builder: (context, scrolledAway, _) =>
                             AnimatedPositioned(
                           left: contentLeft,
-                          bottom: safeBottom + 63,
+                          bottom: safeBottom + composerLift + 63,
                           duration: MediaQuery.disableAnimationsOf(context)
                               ? Duration.zero
                               : const Duration(milliseconds: 220),
@@ -469,6 +494,7 @@ class _HomeShellState extends State<HomeShell>
                               onSelectCamera: _pickFromCamera,
                               onSelectPhoto: _pickFromGallery,
                               onSelectFile: _pickFromFileSystem,
+                              onCreate: _startCreate,
                             ),
                           ),
                         ),
@@ -479,11 +505,8 @@ class _HomeShellState extends State<HomeShell>
                       valueListenable: _chatScrolledAway,
                       builder: (context, scrolledAway, _) => AnimatedPositioned(
                         left: contentLeft,
-                        // The design rests the composer just above the home
-                        // indicator; the safe-area inset already covers the
-                        // gesture bar, so only the design's own 3px of
-                        // breathing room is left over.
-                        bottom: safeBottom + 3,
+                        // Rests just above the navigation bar, per [FluxBottomInset.bottomOf].
+                        bottom: safeBottom + composerLift + 3,
                         duration: MediaQuery.disableAnimationsOf(context)
                             ? Duration.zero
                             : const Duration(milliseconds: 220),
@@ -531,7 +554,6 @@ class _HomeShellState extends State<HomeShell>
                     child: SizedBox(
                       width: sidebarWidth,
                       child: _Sidebar(
-                        onClose: () => _setSidebar(false),
                         onNewConversation: _newConversation,
                         onConversation: _activateConversation,
                         conversations: _conversations.conversations,
@@ -541,60 +563,25 @@ class _HomeShellState extends State<HomeShell>
                         onFlows: _openSkills,
                         onActions: _openDeviceActionsFromSidebar,
                         onSettings: _openSettings,
+                        onSearch: _openSearch,
                       ),
                     ),
                   );
             return AnimatedBuilder(
               animation: _sidebarAnimation,
-              builder: (context, _) {
-                final motion = _sidebarAnimation.value;
-                final radius = BorderRadius.circular(50 * motion);
-                return Stack(
-                  children: [
-                    ExcludeSemantics(
-                      excluding: _sidebar,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          borderRadius: radius,
-                          boxShadow: [
-                            if (motion > 0)
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: .10),
-                                blurRadius: 55,
-                                offset: const Offset(-10, 0),
-                              ),
-                          ],
-                        ),
-                        child: ClipRRect(
-                          borderRadius: radius,
-                          child: Transform.translate(
-                            offset: Offset(sidebarWidth * motion, 0),
-                            child: homeLayer,
-                          ),
-                        ),
-                      ),
-                    ),
-                    IgnorePointer(
-                      ignoring: !_sidebar,
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () => _setSidebar(false),
-                        child: const SizedBox.expand(),
-                      ),
-                    ),
-                    IgnorePointer(
-                      ignoring: !_sidebar,
-                      child: ExcludeSemantics(
-                        excluding: !_sidebar,
-                        child: FractionalTranslation(
-                          translation: Offset(-1 + motion, 0),
-                          child: sidebarLayer,
-                        ),
-                      ),
-                    ),
-                  ],
-                );
-              },
+              builder: (context, _) => _SidebarSurface(
+                home: homeLayer,
+                sidebar: sidebarLayer,
+                sidebarWidth: sidebarWidth,
+                progress: _sidebarAnimation.value,
+                sidebarOpen: _sidebar,
+                toggleLeft: contentLeft,
+                toggleTop: 70 * sy,
+                onToggle: () => _setSidebar(!_sidebar),
+                onDragStart: _sidebarDragStart,
+                onDragUpdate: (d) => _sidebarDragUpdate(d, sidebarWidth),
+                onDragEnd: (d) => _sidebarDragEnd(d, sidebarWidth),
+              ),
             );
           },
         ),

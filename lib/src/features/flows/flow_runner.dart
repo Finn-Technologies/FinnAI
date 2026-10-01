@@ -67,6 +67,7 @@ class FlowRunner {
   static const int maxAnswerTokens = 320;
 
   bool _running = false;
+  DateTime? _runStart;
 
   bool get isRunning => _running;
 
@@ -90,6 +91,7 @@ class FlowRunner {
       );
     }
     _running = true;
+    _runStart = clock();
     final results = <FlowStepResult>[];
     var outcome = FlowRunOutcome.completed;
     var lastAnswer = '';
@@ -385,7 +387,9 @@ class FlowRunner {
     final run = FlowRun(
       id: idFactory?.call() ?? 'run-${clock().microsecondsSinceEpoch}',
       flowId: flow.id,
-      startedAt: clock(),
+      startedAt: _runStart ?? clock(),
+      durationMs:
+          _runStart == null ? 0 : clock().difference(_runStart!).inMilliseconds,
       outcome: outcome,
       triggeredBy: triggeredBy,
       steps: [

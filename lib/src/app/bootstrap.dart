@@ -264,11 +264,15 @@ class _BootstrapErrorPage extends StatelessWidget {
                       shape: BoxShape.circle,
                       color: FluxColors.surfaceOf(context),
                     ),
-                    child: const Center(
+                    child: Center(
                       child: FluxIcon(
                         icon: FluxIcons.error,
                         size: 27,
-                        color: FluxColors.destructive,
+                        // destructiveOf, not the light constant: #B3261E
+                        // measures 3.21:1 on the dark canvas, which is the
+                        // one screen a user only sees when something is
+                        // already broken.
+                        color: FluxColors.destructiveOf(context),
                       ),
                     ),
                   ),

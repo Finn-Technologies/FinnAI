@@ -381,9 +381,11 @@ class _VoiceOrb extends StatelessWidget {
                             : const Color(0xFFE5E5EA)),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(
+                        // The orb core is near-white in dark, so a black
+                        // shadow both vanished and left it ungrounded.
+                        color: FluxColors.elevationOf(context).withValues(
                           alpha: isDark
-                              ? (listening ? 0.45 : 0.25)
+                              ? (listening ? 0.20 : 0.12)
                               : (listening ? 0.20 : 0.06),
                         ),
                         blurRadius: listening ? 32 * scale : 16 * scale,

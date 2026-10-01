@@ -146,9 +146,8 @@ class FigmaSvg extends StatelessWidget {
   final bool isNavTile;
   final bool invertForDark;
 
-  /// Render the SVG's own colors even in dark mode. Use for icons designed to
-  /// sit on light surfaces (like the white composer pill), where the automatic
-  /// dark-mode tint would make them invisible.
+  /// Render the SVG's own colors even in dark mode, for icons designed to sit
+  /// on light surfaces (like the white composer pill).
   final bool preserveColors;
 
   static const List<double> _darkNavTileMatrix = <double>[
@@ -209,7 +208,7 @@ class FigmaSvg extends StatelessWidget {
       } else if (isNavTile) {
         filter = const ColorFilter.matrix(_darkNavTileMatrix);
       } else {
-        filter = ColorFilter.mode(FluxColors.darkInk, BlendMode.srcIn);
+        filter = ColorFilter.mode(FluxColors.inkOf(context), BlendMode.srcIn);
       }
     }
 
@@ -259,10 +258,14 @@ class FluxChip extends StatelessWidget {
     this.selected = false,
     this.onTap,
     this.semanticLabel,
+    this.dense = false,
   });
 
   final String label;
   final bool selected;
+
+  /// A 36dp pill for use inside cards, on a tinted rather than white fill.
+  final bool dense;
   final VoidCallback? onTap;
 
   /// Overrides what a screen reader announces. Defaults to [label].
@@ -271,17 +274,20 @@ class FluxChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ink = FluxColors.inkOf(context);
-    final muted = FluxColors.mutedOf(context);
-    final bg = selected ? ink : FluxColors.tileOf(context);
-    final fg = selected ? FluxColors.canvasOf(context) : muted;
+    final bg = selected
+        ? FluxColors.actionOf(context)
+        : dense
+            ? FluxColors.tileOf(context)
+            : FluxColors.controlOf(context);
+    final fg = selected ? FluxColors.actionInkOf(context) : ink;
 
     final painted = Material(
       color: bg,
       borderRadius: BorderRadius.circular(FluxRadius.pill),
       child: SizedBox(
-        height: 32,
+        height: dense ? 36 : 44,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14),
+          padding: EdgeInsets.symmetric(horizontal: dense ? 16 : 20),
           // A shrink-wrapping Row, not a Center: a Center expands to the
           // incoming max width, so every chip in a Wrap would go full-bleed.
           child: Row(
@@ -294,10 +300,8 @@ class FluxChip extends StatelessWidget {
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: fg,
-                        fontWeight:
-                            selected ? FontWeight.w600 : FontWeight.w400,
                       ),
                 ),
               ),
@@ -307,7 +311,7 @@ class FluxChip extends StatelessWidget {
       ),
     );
 
-    final hit = math.max(FluxMotion.minTapTarget, 32.0);
+    final hit = math.max(FluxMotion.minTapTarget, 44.0);
     return Semantics(
       button: true,
       selected: selected,
@@ -421,18 +425,19 @@ class FluxPillButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Disabled must be quieter than enabled: ink at 25% was near-white on black.
     final bgColor = onTap == null
-        ? FluxColors.inkOf(context).withValues(alpha: .25)
-        : FluxColors.inkOf(context);
-    final fgColor = FluxColors.canvasOf(context);
+        ? FluxColors.mutedOf(context).withValues(alpha: .32)
+        : FluxColors.actionOf(context);
+    final fgColor = FluxColors.actionInkOf(context);
 
     final painted = Material(
       color: bgColor,
       borderRadius: BorderRadius.circular(FluxRadius.pill),
       child: SizedBox(
-        height: compact ? 30 : 36,
+        height: compact ? 36 : 44,
         child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: compact ? 15 : 18),
+          padding: EdgeInsets.symmetric(horizontal: compact ? 16 : 20),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -440,7 +445,7 @@ class FluxPillButton extends StatelessWidget {
                 label,
                 style: Theme.of(
                   context,
-                ).textTheme.labelMedium?.copyWith(color: fgColor),
+                ).textTheme.bodyMedium?.copyWith(color: fgColor),
               ),
               if (icon != null) ...[
                 const SizedBox(width: 7),
@@ -603,11 +608,13 @@ class BackControl extends StatelessWidget {
   }
 }
 
+/// A white 20dp card on the canvas. (Name kept from the glass era: the design
+/// has no blur or border, so this is now a flat surface.)
 class FluxGlass extends StatelessWidget {
   const FluxGlass({
     super.key,
     required this.child,
-    this.radius = FluxRadius.md,
+    this.radius = FluxRadius.card,
     this.color,
     this.borderColor,
   });
@@ -618,23 +625,14 @@ class FluxGlass extends StatelessWidget {
   final Color? borderColor;
 
   @override
-  Widget build(BuildContext context) {
-    // Routed through the theme's surface tokens instead of four raw
-    // Color(0x…) literals, so a future palette change moves the glass with it.
-    final effectiveColor =
-        color ?? FluxColors.surfaceOf(context).withValues(alpha: .80);
-    final effectiveBorder =
-        borderColor ?? FluxColors.lineOf(context).withValues(alpha: .60);
-
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: effectiveColor,
-        borderRadius: BorderRadius.circular(radius),
-        border: Border.all(color: effectiveBorder),
-      ),
-      child: child,
-    );
-  }
+  Widget build(BuildContext context) => DecoratedBox(
+        decoration: BoxDecoration(
+          color: color ?? FluxColors.controlOf(context),
+          borderRadius: BorderRadius.circular(radius),
+          border: borderColor == null ? null : Border.all(color: borderColor!),
+        ),
+        child: child,
+      );
 }
 
 /// A compact pill that reveals supporting detail beneath it.
@@ -1011,14 +1009,11 @@ class FluxSectionLabel extends StatelessWidget {
     // so the design language is unchanged in English, and every other locale now
     // shows correctly-cased text with the same weight and tracking.
     return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: 4),
+      padding: const EdgeInsets.only(left: 5, bottom: 4),
       child: Text(
         label,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1,
-              fontSize: FluxColors.minTextSize,
-              color: FluxColors.mutedOf(context),
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: FluxColors.secondaryInkOf(context),
             ),
       ),
     );

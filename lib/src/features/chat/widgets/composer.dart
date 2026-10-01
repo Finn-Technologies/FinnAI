@@ -261,10 +261,11 @@ class _ChatComposerState extends State<ChatComposer> {
                     color: FluxColors.actionOf(context),
                     label: l10n.voiceMicSemantic,
                     onTap: widget.voiceEnabled ? widget.onMic : null,
-                    child: const FigmaSvg(
+                    child: FigmaSvg(
                       asset: FigmaAssets.composerVoice,
                       width: 25,
                       height: 25,
+                      color: FluxColors.actionInkOf(context),
                     ),
                   );
     // Mic → send → stop as the field fills and the turn runs: one control that
@@ -282,7 +283,7 @@ class _ChatComposerState extends State<ChatComposer> {
       curve: Curves.easeOutCubic,
       decoration: BoxDecoration(
         color: listening ? null : FluxColors.controlOf(context),
-        gradient: listening ? FluxColors.voiceGradient : null,
+        gradient: listening ? FluxColors.voiceGradientOf(context) : null,
         borderRadius: BorderRadius.circular(
           hasAttachment ? FluxRadius.sheet : FluxRadius.pill,
         ),
@@ -290,7 +291,8 @@ class _ChatComposerState extends State<ChatComposer> {
             ? null
             : [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
+                  color: FluxColors.elevationOf(context)
+                      .withValues(alpha: isDark ? 0.14 : 0.08),
                   blurRadius: isDark ? 20 : 16,
                   offset: const Offset(0, 4),
                 ),
@@ -500,13 +502,12 @@ class _ChatComposerState extends State<ChatComposer> {
                     isDark ? const Color(0x33FFFFFF) : const Color(0x1F000000),
                 width: 1,
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+              boxShadow: FluxColors.elevationShadow(
+                context,
+                alpha: .08,
+                blur: 8,
+                offset: const Offset(0, 2),
+              ),
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(FluxRadius.sm),
@@ -550,9 +551,9 @@ class _ChatComposerState extends State<ChatComposer> {
                     color: isDark ? const Color(0xFF18181B) : Colors.white,
                     width: 1.5,
                   ),
-                  boxShadow: const [
+                  boxShadow: [
                     BoxShadow(
-                      color: Color(0x33000000),
+                      color: Color(0x1A000000),
                       blurRadius: 4,
                       offset: Offset(0, 1),
                     ),
@@ -579,15 +580,14 @@ class _ChatComposerState extends State<ChatComposer> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFEFEFF4),
+        color: FluxColors.surfaceOf(context),
         borderRadius: BorderRadius.circular(FluxRadius.pill),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: FluxColors.elevationShadow(
+          context,
+          alpha: .04,
+          blur: 8,
+          offset: const Offset(0, 2),
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -618,7 +618,7 @@ class _ChatComposerState extends State<ChatComposer> {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
-                color: isDark ? Colors.white : FluxColors.bubbleAssistantDark,
+                color: FluxColors.inkOf(context),
               ),
             ),
           ),

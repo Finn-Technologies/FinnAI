@@ -50,9 +50,9 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('previous-slide control is mirrored and clears the export FAB', (
-    tester,
-  ) async {
+  testWidgets(
+      'previous-slide control is mirrored and export sits in the header',
+      (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -74,7 +74,7 @@ void main() {
     // A right-pointing arrow on "previous" read as "next": it must be rotated.
     final transforms = tester.widgetList<Transform>(
       find.ancestor(
-        of: find.byTooltip('Previous slide'),
+        of: find.bySemanticsLabel('Previous slide'),
         matching: find.byType(Transform),
       ),
     );
@@ -84,12 +84,12 @@ void main() {
       reason: 'the previous-slide glyph should be rotated 180°',
     );
 
-    // The export FAB floats over the bottom-right corner where the footer's
-    // next control lives, so the two must not overlap.
-    expect(find.byType(FloatingActionButton), findsOneWidget);
-    final fab = tester.getRect(find.byType(FloatingActionButton));
-    final next = tester.getRect(find.byTooltip('Next slide'));
-    expect(fab.overlaps(next), isFalse);
+    // Export lives in the header now, clear of the footer's controls.
+    expect(find.byType(FloatingActionButton), findsNothing);
+    final export =
+        tester.getRect(find.bySemanticsLabel('Export as PowerPoint'));
+    final next = tester.getRect(find.bySemanticsLabel('Next slide'));
+    expect(export.overlaps(next), isFalse);
     expect(tester.takeException(), isNull);
   });
 }

@@ -16,7 +16,7 @@ class GroundedSearchResult {
 }
 
 /// Which browser tool a [ToolActivity] records.
-enum ToolActivityKind { search, open, find }
+enum ToolActivityKind { search, open, find, you }
 
 /// One step of a turn's search, as the UI shows it.
 ///

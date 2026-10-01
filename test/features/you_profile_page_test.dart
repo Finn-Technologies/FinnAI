@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:finn_ai/src/features/you/you_page.dart';
+import 'package:finn_ai/src/features/you/you_profile_page.dart';
 import 'package:finn_ai/src/features/you/you_profile_store.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 import 'package:flutter/material.dart';
@@ -23,7 +23,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: FluxTheme.light,
-        home: YouPage(onBack: () {}, store: store),
+        home: YouProfilePage(onBack: () {}, store: store),
       ),
     );
     await tester.pumpAndSettle();

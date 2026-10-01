@@ -8,6 +8,7 @@ import 'package:finn_ai/src/features/flows/flows_store.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:finn_ai/src/shared/widgets/finn_ui.dart';
 
 void main() {
   // The store reads and writes real files, which never settle under the
@@ -132,20 +133,18 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
     }
 
+    /// Opens a flow's detail page from the list.
+    Future<void> openDetail(WidgetTester tester, FinnFlow flow) async {
+      await tester.tap(find.text(flow.name).first);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+    }
+
     /// Scrolls a custom flow's card into view.
     ///
     /// The custom section sits below the four built-ins, so its run button is
     /// off-screen on a 390x844 phone — which is a fact about the page, not a
     /// test artefact.
-    Future<void> scrollTo(WidgetTester tester, FinnFlow flow) async {
-      await tester.scrollUntilVisible(
-        find.byKey(Key('flow-run-${flow.id}')),
-        120,
-        scrollable: find.byType(Scrollable).first,
-      );
-      await tester.pump();
-    }
-
     testWidgets('a prompt-only flow shows a run button and no grant switch',
         (tester) async {
       await store.upsertCustom(
@@ -156,6 +155,7 @@ void main() {
         steps: const [FlowStep(kind: FlowStepKind.prompt, text: 'Summarise')],
       );
       await open(tester);
+      await openDetail(tester, store.flows.last);
 
       expect(find.text('Run now'), findsWidgets);
       // A flow that cannot touch the phone needs no permission, so it is not
@@ -174,6 +174,7 @@ void main() {
         steps: alarmFlow().steps,
       );
       await open(tester);
+      await openDetail(tester, store.flows.last);
 
       expect(find.text('Let this run by itself'), findsOneWidget);
       expect(
@@ -182,7 +183,7 @@ void main() {
       // turning the flow on is not permission for it to act on its own.
       final flow = store.flows.last;
       expect(find.byKey(Key('flow-grant-${flow.id}')), findsOneWidget);
-      final grant = tester.widget<Switch>(
+      final grant = tester.widget<FinnSwitch>(
         find.byKey(Key('flow-grant-${flow.id}')),
       );
       expect(grant.value, isFalse, reason: 'a new flow is not pre-granted');
@@ -199,14 +200,14 @@ void main() {
         steps: alarmFlow().steps,
       );
       await open(tester);
-      await scrollTo(tester, store.flows.last);
+      await openDetail(tester, store.flows.last);
 
       await tester.tap(find.byKey(Key('flow-run-${store.flows.last.id}')));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
       expect(executor.calls, isEmpty, reason: 'nothing runs before the tap');
 
-      await tester.tap(find.byKey(const Key('flow-confirm-run')));
+      await tester.tap(find.text('Run now').last);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 
@@ -226,7 +227,7 @@ void main() {
         steps: alarmFlow().steps,
       );
       await open(tester);
-      await scrollTo(tester, store.flows.last);
+      await openDetail(tester, store.flows.last);
 
       await tester.tap(find.byKey(Key('flow-run-${store.flows.last.id}')));
       await tester.pump();
@@ -258,7 +259,13 @@ void main() {
         triggeredBy: 'schedule',
       ));
       await open(tester);
+      await openDetail(tester, store.flows.last);
 
+      await tester.scrollUntilVisible(
+        find.text('Recent runs'),
+        120,
+        scrollable: find.byType(Scrollable).first,
+      );
       expect(find.text('Recent runs'), findsOneWidget);
       expect(find.textContaining('Ran by itself'), findsOneWidget);
       expect(find.textContaining('Finished'), findsOneWidget);
@@ -283,7 +290,13 @@ void main() {
         triggeredBy: 'schedule',
       ));
       await open(tester);
+      await openDetail(tester, store.flows.last);
 
+      await tester.scrollUntilVisible(
+        find.textContaining('Needs your permission to run by itself'),
+        120,
+        scrollable: find.byType(Scrollable).first,
+      );
       expect(
         find.textContaining('Needs your permission to run by itself'),
         findsOneWidget,

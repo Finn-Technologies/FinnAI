@@ -1,12 +1,16 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter/services.dart';
 
+import 'package:path_provider/path_provider.dart';
+
+import 'package:finn_ai/l10n/app_localizations.dart';
 import 'package:finn_ai/l10n/l10n_helper.dart';
-import 'package:finn_ai/src/features/chat/home_shell.dart'
-    show ChatComposer, FinnPageRoute;
+import 'package:finn_ai/src/features/chat/home_shell.dart' show ChatComposer;
 import 'package:finn_ai/src/features/creations/creation_generator.dart';
 import 'package:finn_ai/src/features/creations/creation_model.dart';
 import 'package:finn_ai/src/features/creations/creation_palette.dart';
@@ -24,7 +28,11 @@ import 'package:finn_ai/src/features/creations/templates/template_catalog.dart';
 import 'package:finn_ai/src/shared/slots/slots.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 import 'package:finn_ai/src/shared/widgets/ambient_background.dart';
+import 'package:finn_ai/src/shared/widgets/finn_overlays.dart';
+import 'package:finn_ai/src/shared/widgets/finn_page.dart';
 import 'package:finn_ai/src/shared/widgets/finn_page_header.dart';
+import 'package:finn_ai/src/shared/widgets/finn_page_route.dart';
+import 'package:finn_ai/src/shared/widgets/finn_ui.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
 
 part 'parts/turns.dart';
@@ -37,12 +45,16 @@ part 'parts/chrome.dart';
 part 'parts/labels.dart';
 part 'parts/template_ui.dart';
 part 'parts/actions.dart';
+part 'parts/widget_detail.dart';
 
 class CreationsPage extends StatefulWidget {
-  const CreationsPage({super.key, this.controller});
+  const CreationsPage({super.key, this.controller, this.initialKind});
 
   /// Injectable for tests and alternate local generation/storage backends.
   final CreationsController? controller;
+
+  /// Opens straight into the builder with this kind already chosen.
+  final CreationKind? initialKind;
 
   @override
   State<CreationsPage> createState() => _CreationsPageState();
@@ -82,6 +94,11 @@ class _CreationsPageState extends State<CreationsPage> {
     // Applied explicitly rather than from a listener: a notifier can fire while
     // the tree is mid-build, and rebuilding there would abort the load.
     setState(_applyInitialMode);
+    final kind = widget.initialKind;
+    if (kind != null) {
+      _startBuilder();
+      _chooseKind(kind);
+    }
   }
 
   void _changed() {
@@ -96,15 +113,11 @@ class _CreationsPageState extends State<CreationsPage> {
     setState(() {});
   }
 
-  /// An install with no creations should land straight in the builder, which is
-  /// the design's empty state; one with creations should land in the gallery.
+  /// The page always opens on the gallery; with nothing saved it shows the
+  /// design's "No Creations yet" state and the plus starts the builder.
   void _applyInitialMode() {
     if (_modeChosen) return;
     _modeChosen = true;
-    if (_controller.creations.isEmpty) {
-      _mode = _Mode.builder;
-      if (_turns.isEmpty) _turns.add(const _KindQuestionTurn());
-    }
   }
 
   @override
@@ -315,12 +328,12 @@ class _CreationsPageState extends State<CreationsPage> {
                   Positioned(
                     left: 0,
                     right: 0,
-                    top: metrics.contentTop + 5,
+                    top: metrics.contentTop,
                     bottom: 0,
                     child: Column(
                       children: [
                         Padding(
-                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+                          padding: const EdgeInsets.fromLTRB(25, 0, 25, 0),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -403,24 +416,45 @@ class _CreationsPageState extends State<CreationsPage> {
                                 ? 12
                                 : MediaQuery.paddingOf(context).bottom + 20,
                           ),
-                          child: _Composer(
-                            controller: _promptController,
-                            focusNode: _focusNode,
-                            busy: _controller.generating,
-                            blocked: _controller.loading,
-                            onSubmit: _send,
-                            onStop: () => unawaited(
-                              _controller.cancelGeneration(),
-                            ),
-                            onChooseKind: () => unawaited(_pickKind()),
-                          ),
+                          child: _mode == _Mode.gallery
+                              ? Center(
+                                  heightFactor: 1,
+                                  child: _NewCreationButton(
+                                    onTap: () => unawaited(_pickKind()),
+                                  ),
+                                )
+                              : _Composer(
+                                  hint: _turns.isNotEmpty &&
+                                          _turns.last is _ArtifactTurn
+                                      ? L10n.of(context)
+                                          .creationsBuilderChangeHint
+                                      : L10n.of(context).creationsBuilderHint,
+                                  controller: _promptController,
+                                  focusNode: _focusNode,
+                                  busy: _controller.generating,
+                                  blocked: _controller.loading,
+                                  onSubmit: _send,
+                                  onStop: () => unawaited(
+                                    _controller.cancelGeneration(),
+                                  ),
+                                  onChooseKind: () => unawaited(_pickKind()),
+                                ),
                         ),
                       ],
                     ),
                   ),
                   Positioned.fill(
                     child: FinnPageHeader(
-                      title: L10n.of(context).creationsTitle,
+                      title: _mode == _Mode.builder && _pendingKind != null
+                          ? switch (_pendingKind!) {
+                              CreationKind.widget =>
+                                L10n.of(context).creationsBuilderTitleWidget,
+                              CreationKind.app =>
+                                L10n.of(context).creationsBuilderTitleApp,
+                              CreationKind.presentation =>
+                                L10n.of(context).creationsBuilderTitleDeck,
+                            }
+                          : L10n.of(context).creationsTitle,
                       onBack: _close,
                       metrics: metrics,
                       scrollOffset: _headerOffset,
@@ -435,14 +469,36 @@ class _CreationsPageState extends State<CreationsPage> {
     );
   }
 
+  /// "Create": pick what to make, then land in the builder with it chosen.
   Future<void> _pickKind() async {
-    final kind = await showModalBottomSheet<CreationKind>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (_) => const _KindPicker(),
+    final l10n = L10n.of(context);
+    final kind = await showFinnSheet<CreationKind>(
+      context,
+      title: l10n.plusCreate,
+      subtitle: l10n.creationsNewSheetSub,
+      children: (sheet) => [
+        for (final kind in [
+          CreationKind.widget,
+          CreationKind.app,
+          CreationKind.presentation,
+        ]) ...[
+          FinnTile(
+            key: Key('creation-kind-${kind.name}'),
+            icon: _kindIcon(kind),
+            title: _kindName(l10n, kind),
+            subtitle: switch (kind) {
+              CreationKind.widget => l10n.creationsNewWidgetSub,
+              CreationKind.app => l10n.creationsNewAppSub,
+              CreationKind.presentation => l10n.creationsNewDeckSub,
+            },
+            onTap: () => Navigator.pop(sheet, kind),
+          ),
+          const SizedBox(height: 10),
+        ],
+      ],
     );
     if (kind == null || !mounted) return;
+    if (_mode == _Mode.gallery) _startBuilder();
     _chooseKind(kind);
   }
 
@@ -475,16 +531,7 @@ class _CreationsPageState extends State<CreationsPage> {
     return _Gallery(
       creations: visible,
       onOpen: _open,
-      onBadgeTap: (creation) => switch (creation.artifact) {
-        PresentationArtifact(:final spec) =>
-          unawaited(_exportDeck(creation, spec)),
-        _ => unawaited(_addToHomeScreen(creation)),
-      },
-      badgeLabel: (creation) => switch (creation.artifact) {
-        PresentationArtifact() => L10n.of(context).creationsExportDeck,
-        _ => L10n.of(context).creationsAddToHomeScreen,
-      },
-      onNew: _startBuilder,
+      onMenu: _showCreationMenu,
     );
   }
 }

@@ -10,51 +10,21 @@ class _Filters extends StatelessWidget {
   Widget build(BuildContext context) {
     final values = <CreationKind?>[null, ...CreationKind.values];
     return SizedBox(
-      // 48dp keeps every filter chip at the minimum tap target.
       height: 48,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: values.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
         itemBuilder: (context, index) {
           final value = values[index];
-          final active = selected == value;
-          final radius = BorderRadius.circular(FluxRadius.pill);
-          return Semantics(
-            button: true,
-            selected: active,
-            label: L10n.of(context).creationsFilterSemantic(
-              value == null
-                  ? L10n.of(context).creationsAll
-                  : _filterLabel(context, value),
-            ),
-            child: Material(
-              color: active
-                  ? FluxColors.inkOf(context)
-                  : FluxColors.surfaceOf(context),
-              borderRadius: radius,
-              child: InkWell(
-                onTap: () => onSelected(value),
-                borderRadius: radius,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 15),
-                  child: Center(
-                    child: Text(
-                      value == null
-                          ? L10n.of(context).creationsAll
-                          : _filterLabel(context, value),
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                            color: active
-                                ? FluxColors.canvasOf(context)
-                                : FluxColors.inkOf(context),
-                            fontWeight:
-                                active ? FontWeight.w500 : FontWeight.w400,
-                          ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
+          final label = value == null
+              ? L10n.of(context).creationsAll
+              : _filterLabel(context, value);
+          return FluxChip(
+            label: label,
+            semanticLabel: L10n.of(context).creationsFilterSemantic(label),
+            selected: selected == value,
+            onTap: () => onSelected(value),
           );
         },
       ),
@@ -68,45 +38,67 @@ class _EmptyState extends StatelessWidget {
   final bool filtered;
 
   @override
-  Widget build(BuildContext context) => Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 42),
+  Widget build(BuildContext context) => !filtered
+      ? FinnReveal(
           child: Column(
-            mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 62,
-                height: 62,
-                decoration: BoxDecoration(
-                  color: FluxColors.surfaceOf(context),
-                  shape: BoxShape.circle,
-                ),
-                child: const Center(
-                  child: FluxIcon(icon: FluxIcons.canvas, size: 27),
-                ),
-              ),
-              const SizedBox(height: 17),
+              const _FanArt(),
+              const SizedBox(height: 24),
               Text(
-                filtered
-                    ? L10n.of(context).creationsEmptyFilteredTitle
-                    : L10n.of(context).creationsEmptyTitle,
-                style: Theme.of(context).textTheme.titleMedium,
+                L10n.of(context).creationsNoneTitle,
+                style: Theme.of(context).textTheme.bodyMedium,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               Text(
-                filtered
-                    ? L10n.of(context).creationsEmptyFilteredBody
-                    : L10n.of(context).creationsEmptyBody,
+                L10n.of(context).creationsNoneBody,
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: FluxColors.mutedOf(context),
-                      height: 1.4,
+                      height: 1.35,
                     ),
               ),
             ],
           ),
-        ),
-      );
+        )
+      : Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 42),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 62,
+                  height: 62,
+                  decoration: BoxDecoration(
+                    color: FluxColors.surfaceOf(context),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Center(
+                    child: FluxIcon(icon: FluxIcons.canvas, size: 27),
+                  ),
+                ),
+                const SizedBox(height: 17),
+                Text(
+                  filtered
+                      ? L10n.of(context).creationsEmptyFilteredTitle
+                      : L10n.of(context).creationsEmptyTitle,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  filtered
+                      ? L10n.of(context).creationsEmptyFilteredBody
+                      : L10n.of(context).creationsEmptyBody,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: FluxColors.mutedOf(context),
+                        height: 1.4,
+                      ),
+                ),
+              ],
+            ),
+          ),
+        );
 }
 
 class _ErrorNotice extends StatelessWidget {
@@ -119,7 +111,11 @@ class _ErrorNotice extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.fromLTRB(14, 11, 8, 11),
         decoration: BoxDecoration(
-          color: FluxColors.destructiveOf(context).withValues(alpha: .09),
+          // Tinted harder in dark: #FF9E96 at .09 over #18181B measures about
+          // 1.15:1, so the notice was visible only by its icon.
+          color: FluxColors.destructiveOf(context).withValues(
+            alpha: FluxColors.isDark(context) ? .16 : .09,
+          ),
           borderRadius: BorderRadius.circular(FluxRadius.sm),
         ),
         child: Row(
@@ -167,4 +163,96 @@ class _QuietLoader extends StatelessWidget {
           ],
         ],
       );
+}
+
+/// The centred 50dp plus that starts a new creation.
+class _NewCreationButton extends StatelessWidget {
+  const _NewCreationButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+        button: true,
+        label: L10n.of(context).creationsNewCreation,
+        excludeSemantics: true,
+        child: Material(
+          color: FluxColors.controlOf(context),
+          shape: const CircleBorder(),
+          child: InkWell(
+            onTap: onTap,
+            customBorder: const CircleBorder(),
+            child: SizedBox.square(
+              dimension: 50,
+              child: Center(
+                child: FluxIcon(
+                  icon: FluxIcons.add,
+                  size: 24,
+                  color: FluxColors.inkOf(context),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+}
+
+/// A fan of frosted pastel pills: the design's "nothing yet" artwork.
+class _FanArt extends StatelessWidget {
+  const _FanArt();
+
+  static const _colors = [
+    Color(0xFFE3F7C8),
+    Color(0xFFCFF3E4),
+    Color(0xFFCFE4F7),
+    Color(0xFFDCD3F7),
+    Color(0xFFF0D0F0),
+    Color(0xFFF7D6DC),
+  ];
+
+  @override
+  Widget build(BuildContext context) => ExcludeSemantics(
+        child: SizedBox(
+          width: double.infinity,
+          height: 200,
+          child: CustomPaint(painter: _FanPainter(_colors)),
+        ),
+      );
+}
+
+class _FanPainter extends CustomPainter {
+  const _FanPainter(this.colors);
+
+  final List<Color> colors;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final pivot = Offset(size.width / 2, size.height - 20);
+    const pillWidth = 74.0;
+    const pillHeight = 150.0;
+    final count = colors.length;
+    for (var i = 0; i < count; i++) {
+      final t = count == 1 ? 0.0 : i / (count - 1) * 2 - 1;
+      canvas
+        ..save()
+        ..translate(pivot.dx, pivot.dy)
+        ..rotate(t * 0.9)
+        ..translate(0, -pillHeight / 2 + 10);
+      final rect = RRect.fromRectAndRadius(
+        Rect.fromCenter(
+          center: Offset.zero,
+          width: pillWidth,
+          height: pillHeight,
+        ),
+        const Radius.circular(pillWidth / 2),
+      );
+      canvas
+        ..drawShadow(Path()..addRRect(rect), const Color(0x22000000), 8, true)
+        ..drawRRect(rect, Paint()..color = colors[i].withValues(alpha: .9))
+        ..restore();
+    }
+  }
+
+  @override
+  bool shouldRepaint(_FanPainter old) => false;
 }

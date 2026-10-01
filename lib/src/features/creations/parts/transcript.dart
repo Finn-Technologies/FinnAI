@@ -28,12 +28,12 @@ class _Transcript extends StatelessWidget {
         controller: scrollController,
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         physics: const FluxBouncingScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(20, 2, 20, 14),
+        padding: const EdgeInsets.fromLTRB(25, 2, 25, 14),
         itemCount: turns.length,
         itemBuilder: (context, index) {
           final turn = turns[index];
           return Padding(
-            padding: const EdgeInsets.only(bottom: 14),
+            padding: const EdgeInsets.only(bottom: 20),
             child: switch (turn) {
               _KindQuestionTurn(:final answered) => _AssistantBubble(
                   child: _KindQuestion(
@@ -91,6 +91,7 @@ class _Transcript extends StatelessWidget {
       );
 }
 
+/// The assistant's side of the builder chat: plain text, no bubble.
 class _AssistantBubble extends StatelessWidget {
   const _AssistantBubble({required this.child});
 
@@ -99,34 +100,14 @@ class _AssistantBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Align(
         alignment: Alignment.centerLeft,
-        child: Container(
-          constraints: BoxConstraints(
-            maxWidth: MediaQuery.sizeOf(context).width * .82,
-          ),
-          padding: const EdgeInsets.fromLTRB(15, 13, 15, 13),
-          decoration: BoxDecoration(
-            color: FluxColors.cardOf(context),
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(19),
-              topRight: Radius.circular(19),
-              bottomLeft: Radius.circular(5),
-              bottomRight: Radius.circular(19),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(
-                  alpha: FluxColors.isDark(context) ? .28 : .04,
-                ),
-                blurRadius: FluxColors.isDark(context) ? 12 : 9,
-                offset: const Offset(0, 3),
-              ),
-            ],
-          ),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 340),
           child: child,
         ),
       );
 }
 
+/// The user's side: a white pill, as in the chat.
 class _UserBubble extends StatelessWidget {
   const _UserBubble({required this.text});
 
@@ -134,25 +115,15 @@ class _UserBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.sizeOf(context).width * .82,
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        constraints: const BoxConstraints(maxWidth: 340),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
         decoration: BoxDecoration(
           color: FluxColors.isDark(context)
               ? FluxColors.bubbleUserDark
               : FluxColors.bubbleUserLight,
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(19),
-            topRight: Radius.circular(19),
-            bottomLeft: Radius.circular(19),
-            bottomRight: Radius.circular(5),
-          ),
+          borderRadius: BorderRadius.circular(100),
         ),
-        child: Text(
-          text,
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
+        child: Text(text, style: Theme.of(context).textTheme.bodyMedium),
       );
 }
 
@@ -209,11 +180,11 @@ class _KindAnswer extends StatelessWidget {
         selected: selected,
         label: _kindLabel(context, kind),
         child: Material(
-          color: FluxColors.surfaceOf(context),
-          borderRadius: BorderRadius.circular(FluxRadius.sm),
+          color: FluxColors.controlOf(context),
+          borderRadius: BorderRadius.circular(FluxRadius.card),
           child: InkWell(
             onTap: onTap,
-            borderRadius: BorderRadius.circular(FluxRadius.sm),
+            borderRadius: BorderRadius.circular(FluxRadius.card),
             child: Container(
               // The answer rows are the primary builder control, so they keep
               // the 48dp minimum even though the label alone is shorter.
@@ -244,6 +215,8 @@ class _KindAnswer extends StatelessWidget {
       );
 }
 
+/// The build's steps, as the design draws them: a dark tile, a line, then a
+/// check once the step is done or a spinner while it runs.
 class _StageLine extends StatelessWidget {
   const _StageLine({required this.stage});
 
@@ -251,26 +224,74 @@ class _StageLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label = switch (stage) {
-      CreationStage.designing => L10n.of(context).creationsStageDesigning,
-      CreationStage.writing => L10n.of(context).creationsStageWriting,
-      CreationStage.validating => L10n.of(context).creationsStageValidating,
-      CreationStage.repairing => L10n.of(context).creationsStageRepairing,
-      null => L10n.of(context).creationsGenerating,
+    final l10n = L10n.of(context);
+    final steps = <(CreationStage, String, List<List<dynamic>>)>[
+      (CreationStage.designing, l10n.creationsStageDesigning, FluxIcons.canvas),
+      (CreationStage.writing, l10n.creationsStageWriting, FluxIcons.edit),
+      (
+        CreationStage.validating,
+        l10n.creationsStageValidating,
+        FluxIcons.check,
+      ),
+    ];
+    final current = switch (stage) {
+      CreationStage.designing => 0,
+      CreationStage.writing => 1,
+      CreationStage.validating || CreationStage.repairing => 2,
+      null => 0,
     };
-    return Row(
+    final ink = FluxColors.actionOf(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        const _Spinner(),
-        const SizedBox(width: 10),
-        Flexible(
-          child: Text(
-            label,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: FluxColors.mutedOf(context),
+        for (var i = 0; i <= current; i++)
+          Padding(
+            padding: EdgeInsets.only(bottom: i == current ? 0 : 10),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: ink,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Center(
+                    child: FluxIcon(
+                      icon: steps[i].$3,
+                      size: 16,
+                      strokeWidth: 1.5,
+                      color: FluxColors.actionInkOf(context),
+                    ),
+                  ),
                 ),
+                const SizedBox(width: 10),
+                Flexible(
+                  child: Text(
+                    stage == CreationStage.repairing && i == current
+                        ? l10n.creationsStageRepairing
+                        : steps[i].$2,
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(color: ink),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                if (i < current)
+                  FluxIcon(
+                    icon: FluxIcons.check,
+                    size: 18,
+                    strokeWidth: 1.5,
+                    color: ink,
+                  )
+                else
+                  const _Spinner(),
+              ],
+            ),
           ),
-        ),
       ],
     );
   }

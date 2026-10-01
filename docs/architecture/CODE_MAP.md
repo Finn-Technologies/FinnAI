@@ -44,6 +44,7 @@ Use this before grepping. Paths are relative to the repository root.
 | Message bubbles, replies, sources, dialogs | `lib/src/features/chat/widgets/` (`bubbles.dart`, `replies.dart`, `sources.dart`, `dialogs.dart`, `conversation.dart`) |
 | Composer | `lib/src/features/chat/widgets/composer.dart` |
 | Sidebar | `lib/src/features/chat/widgets/sidebar.dart`, `sidebar_tiles.dart` |
+| The panel, its scrim, the menu/close morph and the open/close swipe | `lib/src/features/chat/shell/sidebar_surface.dart` (`_SidebarSurface`, `_SidebarToggleButton`), `widgets/header_and_fade.dart` (`_SidebarGlyphPainter`) |
 | Send / stop / regenerate / continue behaviour | `lib/src/features/chat/shell/send.dart` (`_send`, `_regenerateReply`, `_continueReply`), `shell/navigation.dart` (`_stopReply`) + `chat_generation_controller.dart` |
 | Streaming, cancellation, persistence of a turn | `lib/src/features/chat/chat_generation_controller.dart` |
 | Conversation storage format / encryption / history limits | `lib/src/features/conversations/conversation_store.dart` |
@@ -75,7 +76,10 @@ Use this before grepping. Paths are relative to the repository root.
 | When a scheduled flow next runs | `lib/src/features/flows/flow_schedule.dart` (mirrored in `android/app/src/main/kotlin/com/abhiflex/finnai/FlowScheduler.kt`) |
 | Arming alarms, notification permission | `lib/src/features/flows/flow_scheduler.dart` + `android/app/src/main/kotlin/com/abhiflex/finnai/FlowScheduler.kt` |
 | Tap-a-notification-to-run, alarm sync at startup | `lib/src/features/chat/shell/flows.dart` |
-| The Flows screen, template sheet, schedule editor | `lib/src/features/flows/flows_page.dart` + `parts/automations.dart` |
+| The Flows list, filters and guides | `lib/src/features/flows/flows_page.dart` |
+| A flow's detail, run log, New-flow sheet, builder, triggers, schedule sheet | `lib/src/features/flows/{flow_detail_page,flow_run_page,flow_new,flow_builder_page,flow_schedule_sheet}.dart` |
+| What the Flows screens do to a flow (run, enable, delete, notifications) | `lib/src/features/flows/flows_actions.dart` |
+| Reading a sentence into a flow | `lib/src/features/flows/flow_intent.dart` |
 
 ## Creations
 
@@ -83,7 +87,7 @@ See `docs/architecture/CREATIONS.md` for the spec DSL, the generation pipeline a
 
 | To change… | Edit |
 |---|---|
-| The creation screen (gallery tiles, builder transcript) | `lib/src/features/creations/creations_page.dart` |
+| The creation screen (gallery cards, builder transcript, widget detail) | `lib/src/features/creations/creations_page.dart` + `parts/` |
 | What a mini app may contain (the node vocabulary) | `lib/src/features/creations/spec/mini_app_spec.dart` |
 | The size caps enforced on every spec | `lib/src/features/creations/spec/spec_limits.dart` |
 | Which template a brief gets, and the template list | `lib/src/features/creations/templates/template_catalog.dart` |
@@ -109,10 +113,13 @@ See `docs/architecture/CREATIONS.md` for the spec DSL, the generation pipeline a
 |---|---|
 | Startup sequence, splash, routing decision | `lib/src/app/bootstrap.dart` |
 | Onboarding pages, install progress, upgrade screen | `lib/src/features/onboarding/onboarding_flow.dart` |
-| Settings rows, delete-all-data, licence screen | `lib/src/features/settings/settings_page.dart` |
+| Settings hub and its pages (model, voice, access, data, about) | `lib/src/features/settings/settings_*.dart` |
 | Global "delete all data" orchestration | `lib/src/app/app_state_store.dart` |
 | Skills | `lib/src/features/flows/{flows_page,flows_store}.dart` |
-| Personalization profile | `lib/src/features/you/{you_page,you_profile_store}.dart` |
+| You: what FinnAI remembers (store, pages) | `lib/src/features/you/{you_memory_store,you_page,you_category_page,you_privacy_page}.dart` |
+| Personalization profile (name, style, instructions) | `lib/src/features/you/{you_profile_page,you_profile_store}.dart` |
+| Search across chats, creations and You | `lib/src/features/chat/search_page.dart` |
+| A chat's options (rename, pin, export, delete) | `lib/src/features/chat/chat_options.dart` |
 | Hands-free voice | `lib/src/features/voice/{voice_sheet,voice_chat_controller,voice_settings_store}.dart` |
 | Report-an-answer dialog + backend | `lib/src/features/reporting/` |
 | Legal URLs / licence text | `lib/src/shared/config/{legal_config,licenses}.dart` |
@@ -122,8 +129,12 @@ See `docs/architecture/CREATIONS.md` for the spec DSL, the generation pipeline a
 | To change… | Edit |
 |---|---|
 | Colors, radii, text theme, system UI overlays | `lib/src/shared/theme/flux_theme.dart` |
+| Space reserved below bottom-anchored UI (composer, nav bar height) | `lib/src/shared/theme/flux_theme.dart` (`FluxBottomInset.bottomOf`) |
 | Buttons, pills, icon registry (`FluxIcons`), glass surfaces | `lib/src/shared/widgets/flux_controls.dart` |
 | Page header used by every sub-page | `lib/src/shared/widgets/finn_page_header.dart` |
+| Design primitives (circle button, row tile, switch, reveal animation) | `lib/src/shared/widgets/finn_ui.dart` |
+| Dialogs, sheets, popup menus, primary buttons | `lib/src/shared/widgets/finn_overlays.dart` |
+| A standard secondary page (header, scrolling column, footer) | `lib/src/shared/widgets/finn_page.dart` |
 | Long-press context menu | `lib/src/shared/widgets/flux_context_menu.dart` |
 | App background | `lib/src/shared/widgets/ambient_background.dart` |
 

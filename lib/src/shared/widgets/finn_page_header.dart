@@ -1,16 +1,16 @@
-import 'dart:math' as math;
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
+import 'package:finn_ai/src/shared/widgets/finn_ui.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
+import 'package:finn_ai/l10n/l10n_helper.dart';
 
 /// Geometry shared by Finn's secondary pages.
 ///
-/// These values intentionally mirror the established Settings page so every
-/// destination opens with the back control, title, and first content block on
-/// the same visual anchors.
+/// The design puts a 50dp circular back button and an 18dp title beside it on one
+/// row at y=71, with content starting 20dp below it. Every destination uses
+/// these anchors so the header never jumps between pages.
 @immutable
 class FinnPageHeaderMetrics {
   const FinnPageHeaderMetrics._({
@@ -24,18 +24,14 @@ class FinnPageHeaderMetrics {
 
   factory FinnPageHeaderMetrics.forHeight(double height) {
     final scaleY = (height / 844).clamp(.7, 1.3);
-    const headerHeight = 34.0;
     final headerTop = 71 * scaleY;
-    final initialTitleTop = headerTop + headerHeight + 10 * scaleY;
-    const pinnedTitleTopOffset = 0.0;
-    const titleHeight = 30.0;
     return FinnPageHeaderMetrics._(
       scaleY: scaleY,
       headerTop: headerTop,
-      initialTitleTop: initialTitleTop,
-      pinnedTitleTop: headerTop + pinnedTitleTopOffset,
-      titleTravelDistance: initialTitleTop - headerTop,
-      contentTop: initialTitleTop + titleHeight + 10,
+      initialTitleTop: headerTop,
+      pinnedTitleTop: headerTop,
+      titleTravelDistance: 0,
+      contentTop: headerTop + FinnPageHeader.barHeight + 20,
     );
   }
 
@@ -65,10 +61,11 @@ class RestingHeaderOffset implements ValueListenable<double> {
   void removeListener(VoidCallback listener) {}
 }
 
-/// Settings-aligned back control and collapsing page title.
+/// Circular back control with the page title beside it and optional actions.
 ///
 /// Place this in a full-size [Stack]. Native views and scrolling content stay
-/// outside this layer, so the animation remains inexpensive.
+/// outside this layer; once content scrolls under the bar a soft cover keeps
+/// the title legible.
 class FinnPageHeader extends StatelessWidget {
   const FinnPageHeader({
     super.key,
@@ -76,98 +73,75 @@ class FinnPageHeader extends StatelessWidget {
     required this.onBack,
     required this.metrics,
     required this.scrollOffset,
+    this.actions = const [],
   });
+
+  static const double barHeight = 50;
 
   final String title;
   final VoidCallback onBack;
   final FinnPageHeaderMetrics metrics;
   final ValueListenable<double> scrollOffset;
 
+  /// Up to two trailing circle controls (see [FinnCircleButton]).
+  final List<Widget> actions;
+
   @override
   Widget build(BuildContext context) {
-    const titleHeight = 30.0;
+    final coverHeight = metrics.headerTop + barHeight + 10;
     return Stack(
       children: [
-        ValueListenableBuilder<double>(
-          valueListenable: scrollOffset,
-          builder: (context, offset, _) {
-            final scrollUp = math.max(0.0, offset);
-            final coverProgress = (scrollUp / 24).clamp(0.0, 1.0);
-            final coverHeight = coverProgress == 0
-                ? 0.0
-                : metrics.pinnedTitleTop + titleHeight + 14 * metrics.scaleY;
-            return Positioned(
-              left: 0,
-              right: 0,
-              top: 0,
-              height: coverHeight,
-              child: IgnorePointer(
-                child: coverProgress == 0
+        Positioned(
+          left: 0,
+          right: 0,
+          top: 0,
+          height: coverHeight,
+          child: IgnorePointer(
+            child: ValueListenableBuilder<double>(
+              valueListenable: scrollOffset,
+              builder: (context, offset, _) {
+                final progress = (offset / 24).clamp(0.0, 1.0);
+                return progress == 0
                     ? const SizedBox.shrink()
                     : ColoredBox(
-                        color: FluxColors.canvasOf(
-                          context,
-                        ).withValues(alpha: .96),
-                      ),
-              ),
-            );
-          },
-        ),
-        Positioned(
-          left: 20,
-          right: 20,
-          top: metrics.headerTop,
-          height: 34,
-          child: ValueListenableBuilder<double>(
-            valueListenable: scrollOffset,
-            builder: (context, offset, child) {
-              final pullDown = offset < 0 ? -offset : 0.0;
-              final scrollUp = math.max(0.0, offset);
-              final opacity =
-                  (1 - scrollUp / math.max(1, metrics.titleTravelDistance * .5))
-                      .clamp(0.0, 1.0);
-              return IgnorePointer(
-                ignoring: opacity < .5,
-                child: Opacity(
-                  opacity: opacity,
-                  child: Transform.translate(
-                    offset: Offset(0, pullDown * .2),
-                    child: child,
-                  ),
-                ),
-              );
-            },
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: BackControl(onTap: onBack),
+                        color: FluxColors.canvasOf(context)
+                            .withValues(alpha: .94 * progress),
+                      );
+              },
             ),
           ),
         ),
         Positioned(
-          left: 20,
-          right: 20,
-          top: metrics.initialTitleTop,
-          height: titleHeight,
-          child: ValueListenableBuilder<double>(
-            valueListenable: scrollOffset,
-            builder: (context, offset, child) {
-              final shift = offset < 0
-                  ? -offset * .7
-                  : -math.min(metrics.titleTravelDistance, offset);
-              return Transform.translate(
-                offset: Offset(0, shift),
-                child: child,
-              );
-            },
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleLarge,
+          left: 25,
+          right: 25,
+          top: metrics.headerTop,
+          height: barHeight,
+          child: Row(
+            children: [
+              FinnCircleButton(
+                key: const ValueKey('page-back-button'),
+                glyph: const FigmaSvg(
+                  asset: FigmaAssets.back,
+                  width: 25,
+                  height: 25,
+                ),
+                label: L10n.of(context).commonBack,
+                onTap: onBack,
               ),
-            ),
+              const SizedBox(width: 17),
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              for (var i = 0; i < actions.length; i++) ...[
+                if (i > 0) const SizedBox(width: 10),
+                actions[i],
+              ],
+            ],
           ),
         ),
       ],

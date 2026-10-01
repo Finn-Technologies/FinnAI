@@ -1,5 +1,4 @@
 import 'dart:math' as math;
-import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -315,15 +314,13 @@ class _FluxContextMenuOverlayState extends State<_FluxContextMenuOverlay> {
               onTap: () => Navigator.of(context).pop(),
               child: AnimatedBuilder(
                 animation: curvedAnimation,
-                builder: (context, _) => BackdropFilter(
-                  filter: ui.ImageFilter.blur(
-                    sigmaX: 18.0 * curvedAnimation.value,
-                    sigmaY: 18.0 * curvedAnimation.value,
-                  ),
-                  child: ColoredBox(
-                    color: (isDark ? Colors.black : Colors.black87).withValues(
-                      alpha: (isDark ? 0.45 : 0.28) * curvedAnimation.value,
-                    ),
+                builder: (context, _) => ColoredBox(
+                  // Through [FluxColors.scrimOf]: a black scrim over the
+                  // #000000 canvas is a no-op, so in dark the menu opened
+                  // with no dimming and no sense of being modal.
+                  color: FluxColors.scrimOf(
+                    context,
+                    alpha: (isDark ? 0.45 : 0.10) * curvedAnimation.value,
                   ),
                 ),
               ),
@@ -344,8 +341,8 @@ class _FluxContextMenuOverlayState extends State<_FluxContextMenuOverlay> {
                     borderRadius: route.targetBorderRadius,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(
-                          alpha: (isDark ? 0.42 : 0.18) * curvedAnimation.value,
+                        color: FluxColors.elevationOf(context).withValues(
+                          alpha: (isDark ? 0.22 : 0.18) * curvedAnimation.value,
                         ),
                         blurRadius: 20 * curvedAnimation.value,
                         spreadRadius: 1,
@@ -392,53 +389,21 @@ class _FluxContextMenuOverlayState extends State<_FluxContextMenuOverlay> {
                 );
               },
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(FluxRadius.card),
-                child: BackdropFilter(
-                  filter: ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? FluxColors.darkCard.withValues(alpha: .92)
-                          : FluxColors.card.withValues(alpha: .96),
-                      borderRadius: BorderRadius.circular(FluxRadius.card),
-                      border: Border.all(
-                        color: isDark
-                            ? Colors.white.withValues(alpha: .20)
-                            : Colors.black.withValues(alpha: .09),
-                        width: 0.75,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(
-                            alpha: isDark ? 0.42 : 0.14,
-                          ),
-                          blurRadius: 24,
-                          spreadRadius: 1,
-                          offset: const Offset(0, 8),
-                        ),
+                borderRadius: BorderRadius.circular(FluxRadius.sheet + 1),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: FluxColors.controlOf(context),
+                    borderRadius: BorderRadius.circular(FluxRadius.sheet + 1),
+                  ),
+                  padding: const EdgeInsets.all(8),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (int i = 0; i < route.items.length; i++) ...[
+                        _ContextMenuItemTile(item: route.items[i]),
                       ],
-                    ),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        for (int i = 0; i < route.items.length; i++) ...[
-                          if (i > 0)
-                            Divider(
-                              height: 1,
-                              thickness: 0.6,
-                              indent: 10,
-                              endIndent: 10,
-                              color: isDark
-                                  ? Colors.white.withValues(alpha: .13)
-                                  : Colors.black.withValues(alpha: .08),
-                            ),
-                          _ContextMenuItemTile(item: route.items[i]),
-                        ],
-                      ],
-                    ),
+                    ],
                   ),
                 ),
               ),
@@ -466,7 +431,7 @@ class _ContextMenuItemTile extends StatelessWidget {
 
     final iconColor = item.isDestructive
         ? FluxColors.destructiveOf(context)
-        : FluxColors.mutedOf(context);
+        : FluxColors.actionOf(context);
 
     return Semantics(
       button: true,
@@ -492,20 +457,25 @@ class _ContextMenuItemTile extends StatelessWidget {
               alignment: Alignment.center,
               child: Padding(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 11,
+                  horizontal: 14,
+                  vertical: 12,
                 ),
                 child: Row(
                   children: [
-                    FluxIcon(icon: item.icon, size: 18, color: iconColor),
-                    const SizedBox(width: 12),
+                    FluxIcon(
+                      icon: item.icon,
+                      size: 22,
+                      strokeWidth: 1.5,
+                      color: iconColor,
+                    ),
+                    const SizedBox(width: 15),
                     Expanded(
                       child: Text(
                         item.label,
                         style: TextStyle(
                           fontFamily: 'InstrumentSans',
-                          fontSize: 15,
-                          fontWeight: FontWeight.w500,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w400,
                           color: textColor,
                         ),
                       ),

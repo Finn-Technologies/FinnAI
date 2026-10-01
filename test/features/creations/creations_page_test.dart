@@ -166,8 +166,26 @@ void main() {
     await tester.pump(const Duration(milliseconds: 60));
   }
 
-  Future<void> chooseKind(WidgetTester tester, String label) =>
-      tapText(tester, label);
+  /// Chooses what to make from the "Create" sheet, from the gallery's plus or
+  /// from the builder's attachment button.
+  Future<void> chooseKind(WidgetTester tester, String label) async {
+    final plus = find.bySemanticsLabel('New creation');
+    if (plus.evaluate().isNotEmpty) {
+      await tester.tap(plus);
+    } else {
+      await tester.tap(find.byKey(const ValueKey('add-attachment-button')));
+    }
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    final name = switch (label) {
+      'App' => 'app',
+      'Widget' => 'widget',
+      _ => 'presentation',
+    };
+    await tester.tap(find.byKey(Key('creation-kind-$name')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+  }
 
   /// Waits until the generation job (including its persistence write) is done.
   ///
@@ -196,17 +214,13 @@ void main() {
   }
 
   group('builder', () {
-    testWidgets('an empty store opens the kind question with three answers',
-        (tester) async {
+    testWidgets('an empty store shows the empty gallery and a plus', (
+      tester,
+    ) async {
       await pumpPage(tester, generator: FakeGenerator(artifact: _appArtifact));
 
-      expect(
-        find.text('Is your new Creation an app, a widget or a presentation?'),
-        findsOneWidget,
-      );
-      expect(find.text('App'), findsOneWidget);
-      expect(find.text('Widget'), findsOneWidget);
-      expect(find.text('Presentation'), findsOneWidget);
+      expect(find.text('No Creations yet.'), findsOneWidget);
+      expect(find.bySemanticsLabel('New creation'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
@@ -216,23 +230,6 @@ void main() {
       await chooseKind(tester, 'Widget');
 
       expect(find.text('Tell me what your Widget should do.'), findsOneWidget);
-      expect(tester.takeException(), isNull);
-    });
-
-    testWidgets('a brief sent before the kind keeps the brief and asks', (
-      tester,
-    ) async {
-      final generator = FakeGenerator(artifact: _appArtifact);
-      await pumpPage(tester, generator: generator);
-
-      await send(tester, 'a plant watering reminder');
-
-      expect(find.text('a plant watering reminder'), findsOneWidget);
-      expect(
-        find.text('Is your new Creation an app, a widget or a presentation?'),
-        findsOneWidget,
-      );
-      expect(generator.calls, 0);
       expect(tester.takeException(), isNull);
     });
 
@@ -249,21 +246,6 @@ void main() {
       expect(generator.calls, 1);
       expect(find.text('Habit Tracker'), findsWidgets);
       expect(find.text('2 elements'), findsOneWidget);
-      expect(find.text('Open'), findsOneWidget);
-      expect(tester.takeException(), isNull);
-    });
-
-    testWidgets('a brief sent first then a kind generates immediately', (
-      tester,
-    ) async {
-      final generator = FakeGenerator(artifact: _appArtifact);
-      final controller = await pumpPage(tester, generator: generator);
-
-      await send(tester, 'a habit tracker');
-      await chooseKind(tester, 'App');
-      await waitForGeneration(tester, controller);
-
-      expect(generator.calls, 1);
       expect(find.text('Open'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
@@ -285,6 +267,7 @@ void main() {
 
       generator.gate!.complete();
       await waitForGeneration(tester, controller);
+      await tester.pump(const Duration(milliseconds: 200));
 
       expect(find.text('Open'), findsOneWidget);
       expect(tester.takeException(), isNull);
@@ -374,28 +357,24 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('the new-creation action returns to the builder', (
-      tester,
-    ) async {
+    testWidgets('the plus offers the three kinds', (tester) async {
       await store.save([
         _creation(id: 'a', title: 'Flappy Bird', artifact: _appArtifact),
       ]);
       await pumpPage(tester, generator: FakeGenerator(artifact: _appArtifact));
 
-      await tapText(tester, 'New creation');
+      await tester.tap(find.bySemanticsLabel('New creation'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
 
-      expect(
-        find.text('Is your new Creation an app, a widget or a presentation?'),
-        findsOneWidget,
-      );
+      expect(find.text('Create'), findsOneWidget);
+      expect(find.text('Widget'), findsOneWidget);
+      expect(find.text('Mini app'), findsWidgets);
+      expect(find.text('Presentation'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
-    // On device this pill is the most obvious way in — it sits where the chat
-    // composer sits and is the only control above the fold once the gallery has
-    // a few tiles, because "New creation" scrolls out of view. Tapping it must
-    // open the kind picker.
-    testWidgets('the composer attachment button opens the kind picker', (
+    testWidgets('choosing a kind opens the builder with it chosen', (
       tester,
     ) async {
       await store.save([
@@ -403,14 +382,26 @@ void main() {
       ]);
       await pumpPage(tester, generator: FakeGenerator(artifact: _appArtifact));
 
-      await tester.tap(
-        find.byKey(const ValueKey('add-attachment-button')),
-      );
-      await tester.pumpAndSettle();
+      await chooseKind(tester, 'Widget');
 
-      expect(find.text('App'), findsOneWidget);
-      expect(find.text('Widget'), findsOneWidget);
-      expect(find.text('Presentation'), findsOneWidget);
+      expect(find.text('New widget'), findsOneWidget);
+      expect(find.text('Tell me what your Widget should do.'), findsOneWidget);
+    });
+
+    testWidgets('the composer attachment button opens the Create sheet', (
+      tester,
+    ) async {
+      await store.save([
+        _creation(id: 'a', title: 'Flappy Bird', artifact: _appArtifact),
+      ]);
+      await pumpPage(tester, generator: FakeGenerator(artifact: _appArtifact));
+      await chooseKind(tester, 'App');
+
+      await tester.tap(find.byKey(const ValueKey('add-attachment-button')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.text('Create'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
@@ -422,7 +413,8 @@ void main() {
       ]);
       await pumpPage(tester, generator: FakeGenerator(artifact: _appArtifact));
 
-      await tapText(tester, 'New creation');
+      await tester.tap(find.bySemanticsLabel('New creation'));
+      await tester.pump(const Duration(milliseconds: 60));
       // In the builder the "All" control switches back to the gallery.
       await tapText(tester, 'All');
 
@@ -430,9 +422,7 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('tiles stagger into two columns with a clear gutter', (
-      tester,
-    ) async {
+    testWidgets('cards sit in two columns', (tester) async {
       await store.save([
         _creation(id: 'a', title: 'Flappy Bird', artifact: _appArtifact),
         _creation(
@@ -444,18 +434,32 @@ void main() {
       ]);
       await pumpPage(tester, generator: FakeGenerator(artifact: _appArtifact));
 
-      final labels = [
-        tester.getCenter(find.text('Flappy Bird')),
-        tester.getCenter(find.text('BT Audio Receiver')),
-      ]..sort((a, b) => a.dx.compareTo(b.dx));
-      final left = labels.first;
-      final right = labels.last;
-
-      // Side by side, in separate columns rather than stacked.
-      expect(right.dx, greaterThan(left.dx + 40));
-      // The right column rides lower, as in the reference grid.
-      expect(right.dy, greaterThan(left.dy + 20));
+      final a = tester.getCenter(find.text('Flappy Bird'));
+      final b = tester.getCenter(find.text('BT Audio Receiver'));
+      expect((a.dx - b.dx).abs(), greaterThan(40));
       expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('a long press opens the creation menu', (tester) async {
+      await store.save([
+        _creation(id: 'a', title: 'Flappy Bird', artifact: _appArtifact),
+      ]);
+      await pumpPage(tester, generator: FakeGenerator(artifact: _appArtifact));
+
+      await tester.longPress(find.text('Flappy Bird'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      for (final label in [
+        'Open',
+        'Edit with FinnAI',
+        'Add to home screen',
+        'Share',
+        'Duplicate',
+        'Delete',
+      ]) {
+        expect(find.text(label), findsOneWidget, reason: label);
+      }
     });
   });
 
@@ -587,21 +591,6 @@ void main() {
   });
 
   group('tap targets', () {
-    testWidgets('the tile badge keeps a 48dp hit area around its 30dp circle',
-        (tester) async {
-      await store.save([
-        _creation(id: 'a', title: 'Flappy Bird', artifact: _appArtifact),
-      ]);
-      await pumpPage(tester, generator: FakeGenerator(artifact: _appArtifact));
-
-      final badge = find.bySemanticsLabel('Add to home screen');
-      expect(badge, findsOneWidget);
-      final size = tester.getSize(badge);
-      expect(size.width, greaterThanOrEqualTo(48));
-      expect(size.height, greaterThanOrEqualTo(48));
-      expect(tester.takeException(), isNull);
-    });
-
     testWidgets('gallery filter chips are at least 48dp tall', (tester) async {
       await store.save([
         _creation(id: 'a', title: 'Flappy Bird', artifact: _appArtifact),
@@ -614,18 +603,6 @@ void main() {
       );
       expect(chip, findsOneWidget);
       expect(tester.getSize(chip).height, greaterThanOrEqualTo(48));
-      expect(tester.takeException(), isNull);
-    });
-
-    testWidgets('the kind answers are at least 48dp tall', (tester) async {
-      await pumpPage(tester, generator: FakeGenerator(artifact: _appArtifact));
-
-      final answer = find.ancestor(
-        of: find.text('Widget'),
-        matching: find.byType(InkWell),
-      );
-      expect(answer, findsOneWidget);
-      expect(tester.getSize(answer).height, greaterThanOrEqualTo(48));
       expect(tester.takeException(), isNull);
     });
   });

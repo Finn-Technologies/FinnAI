@@ -107,10 +107,10 @@ class _DeviceActionsPageState extends State<DeviceActionsPage> {
                       controller: _scrollController,
                       physics: const FluxBouncingScrollPhysics(),
                       padding: EdgeInsets.fromLTRB(
-                        20,
-                        metrics.contentTop + 10,
-                        20,
-                        104,
+                        25,
+                        metrics.contentTop,
+                        25,
+                        40,
                       ),
                       children: [
                         Center(
@@ -367,7 +367,7 @@ class _ResultCard extends StatelessWidget {
     return _Card(
       icon: icon,
       iconColor: failed
-          ? Colors.redAccent
+          ? FluxColors.destructiveOf(context)
           : (result.isSuccess ? null : FluxColors.mutedOf(context)),
       title: DeviceActionDescriptions.resultLine(context, result),
       actions: [
