@@ -26,8 +26,10 @@ Utilisez FinnAI pour :
   tours
 - Rédiger, expliquer, résumer, faire un brainstorming et raisonner sans service
   d'IA dans le cloud
-- Transformer des idées en Creations enregistrées
-- Personnaliser les réponses via You et des Skills réutilisables
+- Transformer des idées en Creations enregistrées : widgets, mini-apps et présentations
+- Créer des Flows qui s’exécutent à heure fixe, comme un récapitulatif du matin
+- Choisir dans You ce dont FinnAI se souvient et le revoir à tout moment
+- Rechercher dans vos chats, créations et souvenirs au même endroit
 - Conserver l'historique des conversations chiffré dans le stockage local privé
   de l'appli
 - Supprimer les conversations, les modèles, les préférences et autres données

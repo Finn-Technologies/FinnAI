@@ -25,8 +25,10 @@ Nutzen Sie FinnAI, um:
 - Fragen zu stellen und natürliche Gespräche über mehrere Runden fortzuführen
 - Texte zu entwerfen, zu erklären, zusammenzufassen, Ideen zu sammeln und zu
   argumentieren – ohne Cloud-KI-Dienst
-- Ideen in gespeicherte Creations zu verwandeln
-- Antworten über You und wiederverwendbare Skills zu personalisieren
+- Ideen in gespeicherte Creations zu verwandeln: Widgets, Mini-Apps und Präsentationen
+- Flows einzurichten, die nach Zeitplan laufen, etwa ein Morgen-Briefing
+- In You festzulegen, was sich FinnAI merkt, und es jederzeit zu prüfen
+- Chats, Creations und Erinnerungen an einem Ort zu durchsuchen
 - den Gesprächsverlauf verschlüsselt im app-privaten lokalen Speicher zu behalten
 - Gespräche, Modelle, Einstellungen und andere lokale Daten in den Einstellungen
   zu löschen

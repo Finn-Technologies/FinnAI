@@ -14,7 +14,8 @@ This document demarcates automated repository preparation from manual actions re
 - [x] **Release Signing Setup**: Enforced `android/key.properties` or environment variables for release builds with Gradle validation.
 - [x] **Encrypted Local Storage**: Implemented authenticated AES-256-GCM storage (`conversations.v2.enc`) with secure key storage, atomic legacy migration, and data purge action.
 - [x] **AI Safety & Reporting**: Added the in-app Report dialog and red-team safety evaluation. Reports are prepared as user-reviewable emails addressed to `finn_org@proton.me`.
-- [x] **Production Features**: The app ships voice input, which uses the microphone and declares `RECORD_AUDIO`; the Models navigation is removed. Creations, You, and Skills are implemented, persisted locally, and covered by widget/store tests.
+- [x] **Production Features**: The app ships voice input, which uses the microphone and declares `RECORD_AUDIO`; the Models navigation is removed. Creations, You (memory), Flows, search and pinned chats are implemented, persisted locally, and covered by widget/store tests.
+- [x] **Privacy copy matches 2.0.0 Beta**: `PRIVACY_POLICY.md`, `DATA_SAFETY_DRAFT.md` and the five store listings were updated on 2026-10-01 for You memory, exports, Flows and the web-lookup switch.
 - [x] **Legal & Attribution**: Published `PRIVACY_POLICY.md`, `TERMS_OF_USE.md`, `THIRD_PARTY_NOTICES.md`, dynamic versioning, and open-source licence viewer.
 - [x] **CI & Release Verification**: Added `.github/workflows/ci.yml`, `tool/verify_release.sh`, and fail-closed `tool/build_play_release.sh`.
 - [x] **Store Copy & Assets**: Added reviewed English listing copy and graphics assets under `docs/store/`.

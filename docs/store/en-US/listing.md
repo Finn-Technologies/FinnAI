@@ -23,10 +23,12 @@ Use FinnAI to:
 
 - Ask questions and continue natural multi-turn conversations
 - Draft, explain, summarize, brainstorm, and reason without a cloud AI service
-- Turn ideas into saved Creations
-- Personalize answers through You and reusable Skills
+- Turn ideas into saved Creations: widgets, mini apps and presentations
+- Set up Flows that run on a schedule, like a morning brief
+- Choose what FinnAI remembers in You, and review it any time
+- Search your chats, creations and memories in one place
 - Keep conversation history encrypted in app-private local storage
-- Delete conversations, models, preferences, and other local data from Settings
+- Export, delete or erase conversations, the model, memories and other local data from Settings
 
 FinnAI needs at least 3 GB of RAM and a 64-bit ARM Android device. The initial
 AI model download requires an internet connection. AI responses are generated

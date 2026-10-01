@@ -1,6 +1,6 @@
 # Privacy Policy for FinnAI
 
-**Last Updated: July 27, 2026**
+**Last Updated: October 1, 2026**
 
 FinnAI ("we", "our", or "us") is committed to protecting your privacy. This Privacy Policy explains how data is handled when you use the FinnAI mobile application for Android.
 
@@ -9,7 +9,11 @@ FinnAI is designed as an on-device AI assistant. AI-generated responses are proc
 
 - **No Remote AI Servers**: Your conversations are not sent to FinnAI or third-party AI cloud inference providers.
 - **Encrypted Local Storage**: Your saved conversation history is stored strictly on your local device with authenticated AES-256-GCM encryption. Encryption keys are managed using OS-enforced secure key storage (`FlutterSecureStorage`).
-- **Other Local Features**: Creations, profile preferences, custom instructions, and Skills are stored in the app's private local storage. They are used only to provide the features you select and are not sent to an AI cloud service.
+- **Other Local Features**: Creations, Flows, profile preferences, custom instructions, pinned chats, and your access choices are stored in the app's private local storage. They are used only to provide the features you select and are not sent to an AI cloud service.
+- **You (what FinnAI remembers)**: Things you add to You, things you save from a reply with "Remember in You", and statements FinnAI notices in your own messages (for example "I am a designer") are kept in a local file on your device. Noticed statements wait in a review list until you keep them. Items you keep may be added to the on-device model's prompt, and the chats they were used in are named in the "From You" panel. You can edit, mute, forget or erase any of it, and turn learning or use off, in You > Privacy. None of it is sent anywhere.
+- **Device access choices**: The choices you make about which kinds of device context (calendar, contacts, notifications, photos, files, location) FinnAI may use are stored locally. FinnAI does not read your calendar, contacts or location.
+- **Exports and sharing**: "Export everything", "Export as text", "Share" and presentation export write a file to the app's temporary storage and hand it to the Android share sheet. FinnAI does not send these files anywhere; where they go is your choice in the app you share to.
+- **Read aloud**: "Read aloud" and spoken replies use your device's text-to-speech service.
 - **Voice Input**: Voice input uses your device microphone (the app requests the Android `RECORD_AUDIO` permission). Recognition runs on your device whenever your platform provides offline speech recognition; only when it does not, the captured audio is passed to your device's platform speech-recognition service to produce a transcript. The transcript is then processed by the on-device model like any typed message. FinnAI does not record or store your audio and does not send it to FinnAI's servers.
 
 ## Automatic Web Search
@@ -21,7 +25,7 @@ search-intent prompts; no separate confirmation step is required. When it
 searches, only the latest user request is sent over HTTPS to the search
 providers DuckDuckGo (`api.duckduckgo.com` and `html.duckduckgo.com`) and
 Wikipedia (`en.wikipedia.org`). Conversation history, saved profile data,
-custom instructions, and Skills are not included. Search requests expose the
+custom instructions, what FinnAI remembers in You, and Skills are not included. Search requests expose the
 query and ordinary network metadata such as the device IP address to those
 search providers. Retrieved excerpts are processed by the on-device model, and
 FinnAI shows the source links used. When you open one of those source links to
@@ -30,7 +34,7 @@ over HTTPS; that request exposes the page URL and ordinary network metadata such
 as the device IP address to that host. Only the search query and these page
 requests are sent for search; conversation history, saved profile data, custom
 instructions, and Skills are not included. If search is unavailable, FinnAI
-falls back to a local answer.
+falls back to a local answer. You can switch web lookups off in Settings > FinnAI Foundation > Look things up online.
 
 For questions about current news, FinnAI asks Google News's public RSS feed
 (`news.google.com`) for recent headlines, sending the topic words and your
@@ -74,8 +78,9 @@ If you explicitly choose to report an AI response via the in-app "Report" featur
 
 ## 3. Data Retention & User Controls
 You retain full control over your local data at any time:
-- **Delete All Local Data**: In the app Settings, you can tap **Delete all local data** to attempt purging conversation history, encryption keys, downloaded AI model files, creations, profile preferences, Skills, and onboarding state. Any unpurged items are explicitly reported.
-- **Purge AI Memory**: Unloads AI models from device RAM immediately.
+- **Erase everything**: In Settings > Privacy and data, **Erase everything** attempts to purge conversation history, encryption keys, downloaded AI model files, creations, Flows, what FinnAI remembers in You, profile preferences, access choices, pinned chats, voice settings, and onboarding state. Any unpurged items are explicitly reported.
+- **Delete all chats**, **Remove the model** and the **Erase everything in You** action each remove just their own data.
+- **Free up memory**: FinnAI unloads the AI model from device RAM when memory is needed.
 - **Android backups disabled**: FinnAI disables Android application backup so private local AI data is not copied into platform backup archives.
 
 ## 4. Generative AI Disclosure

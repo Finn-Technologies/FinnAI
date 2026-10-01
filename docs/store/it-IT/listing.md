@@ -25,8 +25,10 @@ Usa FinnAI per:
 - Fare domande e continuare conversazioni naturali su più turni
 - Scrivere, spiegare, riassumere, fare brainstorming e ragionare senza un
   servizio di IA nel cloud
-- Trasformare le idee in Creations salvate
-- Personalizzare le risposte tramite You e Skills riutilizzabili
+- Trasformare le idee in Creations salvate: widget, mini app e presentazioni
+- Creare Flows che partono a un orario, come un riepilogo del mattino
+- Scegliere in You cosa ricorda FinnAI e rivederlo quando vuoi
+- Cercare nelle tue chat, creazioni e ricordi in un unico posto
 - Mantenere la cronologia delle conversazioni cifrata nell'archivio locale
   privato dell'app
 - Eliminare conversazioni, modelli, preferenze e altri dati locali dalle
