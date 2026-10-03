@@ -11,3 +11,9 @@ local.properties
 *.hap
 *.hsp
 *.har
+
+# The Dart AOT snapshot the fork writes here during `flutter build hap`. Its
+# siblings in this directory are checked in on purpose (they are hand-built by
+# tool/rebuild_llama_ohos.sh); this one is regenerated on every build and must
+# never be committed.
+entry/libs/arm64-v8a/libapp.so

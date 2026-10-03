@@ -2,7 +2,7 @@
   "app": {
     "bundleName": "com.abhiflex.finnai",
     "vendor": "abhiflex",
-    "versionCode": 9,
+    "versionCode": 10,
     "versionName": "2.0.0",
     "icon": "$media:app_icon",
     "label": "$string:app_name"
