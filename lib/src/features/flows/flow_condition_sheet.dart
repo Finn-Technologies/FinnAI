@@ -5,7 +5,7 @@ import 'package:finn_ai/src/features/flows/flow_labels.dart';
 import 'package:finn_ai/src/features/flows/flow_model.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 import 'package:finn_ai/src/shared/widgets/finn_overlays.dart';
-import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
+import 'package:finn_ai/src/shared/widgets/flux_surfaces.dart';
 
 /// The user's choice in the condition sheet.
 class FlowConditionPick {

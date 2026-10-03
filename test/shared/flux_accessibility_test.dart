@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
+import 'package:finn_ai/src/shared/widgets/flux_surfaces.dart';
 import 'package:finn_ai/src/shared/widgets/flux_context_menu.dart';
 
 /// The smallest painted control the app ships, and the reason the hit-area

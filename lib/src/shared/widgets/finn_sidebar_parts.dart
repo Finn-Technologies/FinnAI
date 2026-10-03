@@ -93,6 +93,98 @@ class FinnSidebarTile extends StatelessWidget {
       );
 }
 
+/// One entry in the sidebar's history grid: a chat in FinnAI, a coding session
+/// in FinnAI Code.
+///
+/// Both apps had their own copy of this card — same fill, same radius, same
+/// press, same two-line title, same dimming rule on the corner badge — which is
+/// how the two sidebars drifted apart. Only the [badge] differs: a timestamp in
+/// FinnAI, a pin in FinnAI Code.
+class FinnSidebarHistoryTile extends StatelessWidget {
+  const FinnSidebarHistoryTile({
+    super.key,
+    required this.title,
+    required this.selected,
+    required this.onTap,
+    this.onLongPress,
+    this.badge,
+    this.badgeKey,
+  });
+
+  final String title;
+  final bool selected;
+  final VoidCallback onTap;
+  final VoidCallback? onLongPress;
+
+  /// What sits in the top-right corner. Give it [badgeInk] as its colour so a
+  /// badge on a selected tile dims with the rest of it.
+  final Widget? badge;
+
+  /// Anchors a context menu to this tile.
+  final Key? badgeKey;
+
+  /// The colour a [badge] should be painted in: the selected tile's ink at 70%,
+  /// so the badge steps back behind the title, or the timestamp grey otherwise.
+  static Color badgeInk(BuildContext context, bool selected) => selected
+      ? FluxColors.actionInkOf(context).withValues(alpha: .7)
+      : FluxColors.timestampOf(context);
+
+  @override
+  Widget build(BuildContext context) {
+    final foreground =
+        selected ? FluxColors.actionInkOf(context) : FluxColors.inkOf(context);
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: title,
+      onTap: onTap,
+      excludeSemantics: true,
+      child: FluxPressScale(
+        scale: .96,
+        child: Material(
+          color: selected
+              ? FluxColors.actionOf(context)
+              : FluxColors.tileOf(context),
+          borderRadius: BorderRadius.circular(FluxRadius.card),
+          child: InkWell(
+            key: badgeKey,
+            onTap: onTap,
+            onLongPress: onLongPress,
+            borderRadius: BorderRadius.circular(FluxRadius.card),
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Align(
+                    alignment: Alignment.topRight,
+                    // Reserves the row even with no badge, so the title keeps
+                    // the same baseline whether or not a tile is pinned.
+                    child: badge ?? const SizedBox(height: 16),
+                  ),
+                  const Spacer(),
+                  Text(
+                    title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: 'InstrumentSans',
+                      fontSize: 14,
+                      height: 1.2,
+                      fontWeight: FontWeight.w400,
+                      color: foreground,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// A circular icon-only control, e.g. close, new chat or settings.
 class FinnSidebarCircleButton extends StatelessWidget {
   const FinnSidebarCircleButton({

@@ -249,96 +249,6 @@ class FluxIcon extends StatelessWidget {
 
 /// A selectable filter pill: "All", "Apps", "Widgets", "Presentations".
 ///
-/// Creations used to carry a private copy of this, so the same control looked
-/// slightly different between the gallery and the empty state.
-class FluxChip extends StatelessWidget {
-  const FluxChip({
-    super.key,
-    required this.label,
-    this.selected = false,
-    this.onTap,
-    this.semanticLabel,
-    this.dense = false,
-  });
-
-  final String label;
-  final bool selected;
-
-  /// A 36dp pill for use inside cards, on a tinted rather than white fill.
-  final bool dense;
-  final VoidCallback? onTap;
-
-  /// Overrides what a screen reader announces. Defaults to [label].
-  final String? semanticLabel;
-
-  @override
-  Widget build(BuildContext context) {
-    final ink = FluxColors.inkOf(context);
-    final bg = selected
-        ? FluxColors.actionOf(context)
-        : dense
-            ? FluxColors.tileOf(context)
-            : FluxColors.controlOf(context);
-    final fg = selected ? FluxColors.actionInkOf(context) : ink;
-
-    final painted = Material(
-      color: bg,
-      borderRadius: BorderRadius.circular(FluxRadius.pill),
-      child: SizedBox(
-        height: dense ? 36 : 44,
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: dense ? 16 : 20),
-          // A shrink-wrapping Row, not a Center: a Center expands to the
-          // incoming max width, so every chip in a Wrap would go full-bleed.
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Flexible so a long label ellipsises instead of overflowing the
-              // row it sits in.
-              Flexible(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: fg,
-                      ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-
-    final hit = math.max(FluxMotion.minTapTarget, 44.0);
-    return Semantics(
-      button: true,
-      selected: selected,
-      label: semanticLabel ?? label,
-      onTap: onTap,
-      excludeSemantics: true,
-      child: ConstrainedBox(
-        constraints:
-            BoxConstraints(minWidth: FluxMotion.minTapTarget, minHeight: hit),
-        child: Material(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(FluxRadius.pill),
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(FluxRadius.pill),
-            child: Align(
-              widthFactor: 1,
-              heightFactor: 1,
-              alignment: Alignment.center,
-              child: painted,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 class FluxIconButton extends StatelessWidget {
   const FluxIconButton({
@@ -493,21 +403,25 @@ class FluxPillButton extends StatelessWidget {
 
 /// Scales whatever it wraps down slightly while a finger is on it.
 ///
-/// It observes pointers with a [Listener] rather than a gesture recogniser, so
-/// the wrapped control keeps its own tap handling and ink ripple — this only
-/// adds the press physics on top, the same "the button answers your thumb"
-/// feel the chat bubbles already have.
+/// Observes pointers with a [Listener] rather than a gesture recogniser, so the
+/// wrapped control keeps its own tap handling and ink ripple.
 class FluxPressScale extends StatefulWidget {
   const FluxPressScale({
     super.key,
     required this.child,
     this.scale = .94,
     this.enabled = true,
+    this.alignment = Alignment.center,
   });
 
   final Widget child;
   final double scale;
   final bool enabled;
+
+  /// The point it shrinks toward. Defaults to the centre; a control wider than
+  /// it is tall — the brand row — names an edge so the glyph does not drift
+  /// sideways on press.
+  final Alignment alignment;
 
   @override
   State<FluxPressScale> createState() => _FluxPressScaleState();
@@ -549,7 +463,11 @@ class _FluxPressScaleState extends State<FluxPressScale>
       onPointerDown: (_) => _press(),
       onPointerUp: _release,
       onPointerCancel: _release,
-      child: ScaleTransition(scale: scale, child: widget.child),
+      child: ScaleTransition(
+        scale: scale,
+        alignment: widget.alignment,
+        child: widget.child,
+      ),
     );
   }
 }
@@ -607,40 +525,12 @@ class BackControl extends StatelessWidget {
   }
 }
 
-/// A white 20dp card on the canvas. (Name kept from the glass era: the design
-/// has no blur or border, so this is now a flat surface.)
-class FluxGlass extends StatelessWidget {
-  const FluxGlass({
-    super.key,
-    required this.child,
-    this.radius = FluxRadius.card,
-    this.color,
-    this.borderColor,
-  });
-
-  final Widget child;
-  final double radius;
-  final Color? color;
-  final Color? borderColor;
-
-  @override
-  Widget build(BuildContext context) => DecoratedBox(
-        decoration: BoxDecoration(
-          color: color ?? FluxColors.controlOf(context),
-          borderRadius: BorderRadius.circular(radius),
-          border: borderColor == null ? null : Border.all(color: borderColor!),
-        ),
-        child: child,
-      );
-}
-
 /// A compact pill that reveals supporting detail beneath it.
 ///
-/// Chat replies use it for the pages a turn cited and for the browser steps it
-/// took, so both read as one disclosure affordance instead of two lookalikes.
-///
-/// The body is always laid out — clipped to an animated height factor — so its
-/// full height can be measured the first time it opens.
+/// Chat replies use it for cited pages and browser steps, so both read as one
+/// disclosure affordance instead of two lookalikes. The body is always laid out
+/// — clipped to an animated height factor — so its height can be measured the
+/// first time it opens.
 class FluxDisclosure extends StatefulWidget {
   const FluxDisclosure({
     super.key,
@@ -844,9 +734,9 @@ class _FluxDisclosureState extends State<FluxDisclosure>
   }
 }
 
-/// A row inside a [FluxDisclosure]: a leading mark, a title line, and an
-/// optional second line. Tappable — and showing its chevron — only when
-/// [onTap] is provided, so a purely informational row never looks actionable.
+/// A row inside a [FluxDisclosure]: a leading mark, a title, an optional second
+/// line. Tappable — and showing its chevron — only when [onTap] is given, so an
+/// informational row never looks actionable.
 class FluxDisclosureRow extends StatelessWidget {
   const FluxDisclosureRow({
     super.key,
@@ -986,11 +876,9 @@ class FluxBouncingScrollPhysics extends BouncingScrollPhysics {
       );
 }
 
-/// The heading above a group of related rows.
-///
-/// Every page that groups rows uses this one widget. Settings and You used to
-/// carry their own private versions of it — one in caps, one in sentence case —
-/// so the same idea looked like two different things depending on the screen.
+/// The heading above a group of related rows. Every page that groups rows uses
+/// this one widget, so the same idea does not look like two different things
+/// depending on the screen.
 class FluxSectionLabel extends StatelessWidget {
   const FluxSectionLabel(this.label, {super.key});
 

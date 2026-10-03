@@ -897,8 +897,22 @@ void main() {
 
       final scrolledTitleY = tester.getTopLeft(find.text('Chats')).dy;
 
+      // It lands where the brand row's own text sits, not on the panel's top
+      // padding. The row is `headerTop` down and its text is inset within it, so
+      // the two differ by the row's leading padding — asserting against the
+      // padding would have passed before and fails now that the brand row no
+      // longer carries a fixed-height `Positioned`.
       expect(scrolledTitleY, closeTo(initialHeaderY, 5.0));
       expect(scrolledTitleY, lessThan(initialTitleY));
+
+      // And it really does take the wordmark's place: scrolled far enough, the
+      // history title has ridden up under the header, and the brand row has
+      // faded out on the way.
+      expect(
+        find.text('FinnAI'),
+        findsOneWidget,
+        reason: 'the wordmark is still in the tree; it is only faded',
+      );
     },
   );
 

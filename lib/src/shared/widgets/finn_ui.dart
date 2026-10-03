@@ -13,6 +13,7 @@ class FinnCircleButton extends StatelessWidget {
     required this.label,
     required this.onTap,
     this.dark = false,
+    this.dimmed = false,
   });
 
   /// A 24-25dp glyph; see [FinnCircleButton.icon] for the common case.
@@ -21,12 +22,18 @@ class FinnCircleButton extends StatelessWidget {
   final VoidCallback? onTap;
   final bool dark;
 
+  /// A control that is present but not yet actionable — a send button with an
+  /// empty field. The glyph stays legible; the whole disc sits back so the two
+  /// states are told apart without the affordance disappearing.
+  final bool dimmed;
+
   factory FinnCircleButton.icon({
     Key? key,
     required List<List<dynamic>> icon,
     required String label,
     required VoidCallback? onTap,
     bool dark = false,
+    bool dimmed = false,
   }) =>
       FinnCircleButton(
         key: key,
@@ -34,6 +41,7 @@ class FinnCircleButton extends StatelessWidget {
         label: label,
         onTap: onTap,
         dark: dark,
+        dimmed: dimmed,
       );
 
   @override
@@ -55,7 +63,12 @@ class FinnCircleButton extends StatelessWidget {
               customBorder: const CircleBorder(),
               child: SizedBox.square(
                 dimension: 50,
-                child: Center(child: glyph),
+                child: Center(
+                  child: Opacity(
+                    opacity: dimmed ? .38 : 1,
+                    child: glyph,
+                  ),
+                ),
               ),
             ),
           ),

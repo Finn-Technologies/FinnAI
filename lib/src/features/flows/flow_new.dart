@@ -18,6 +18,7 @@ import 'package:finn_ai/src/shared/widgets/finn_overlays.dart';
 import 'package:finn_ai/src/shared/widgets/finn_page_route.dart';
 import 'package:finn_ai/src/shared/widgets/finn_ui.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
+import 'package:finn_ai/src/shared/widgets/flux_surfaces.dart';
 
 String flowTemplateName(BuildContext context, String id) {
   final l10n = L10n.of(context);

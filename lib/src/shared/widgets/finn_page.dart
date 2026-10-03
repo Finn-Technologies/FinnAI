@@ -128,7 +128,11 @@ class FinnCaption extends StatelessWidget {
         child: Text(
           text,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: FluxColors.actionOf(context),
+                // Secondary ink, as documented. This read through actionOf,
+                // which is the *fill* token: in dark that is near-white
+                // (#F5F5F7), so a caption came out brighter than the title above
+                // it, and in light it was #414141 rather than #121212.
+                color: FluxColors.secondaryInkOf(context),
               ),
         ),
       );

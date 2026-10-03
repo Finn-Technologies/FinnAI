@@ -9,6 +9,7 @@ import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 import 'package:finn_ai/src/shared/widgets/ambient_background.dart';
 import 'package:finn_ai/src/shared/widgets/finn_page_header.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
+import 'package:finn_ai/src/shared/widgets/flux_surfaces.dart';
 
 typedef _Example = ({
   List<List<dynamic>> icon,

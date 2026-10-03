@@ -10,6 +10,7 @@ import 'package:finn_ai/src/shared/widgets/finn_overlays.dart';
 import 'package:finn_ai/src/shared/widgets/finn_page.dart';
 import 'package:finn_ai/src/shared/widgets/finn_ui.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
+import 'package:finn_ai/src/shared/widgets/flux_surfaces.dart';
 
 /// Write something for FinnAI to remember, or edit something it already has.
 class YouAddPage extends StatefulWidget {

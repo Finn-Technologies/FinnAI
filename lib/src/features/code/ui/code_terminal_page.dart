@@ -10,6 +10,7 @@ import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 import 'package:finn_ai/src/shared/widgets/finn_page.dart';
 import 'package:finn_ai/src/shared/widgets/finn_ui.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
+import 'package:finn_ai/src/shared/widgets/flux_surfaces.dart';
 
 /// A shell in the session's project folder, for the user.
 ///
@@ -72,10 +73,8 @@ class _CodeTerminalPageState extends State<CodeTerminalPage> {
         ? Container(
             padding: const EdgeInsets.fromLTRB(17, 1, 4, 1),
             constraints: const BoxConstraints(minHeight: 50),
-            decoration: BoxDecoration(
-              color: FluxColors.controlOf(context),
-              borderRadius: BorderRadius.circular(FluxRadius.pill),
-            ),
+            // Flat with a hairline, like the chat and Code composer pills.
+            decoration: FluxSurfaces.flat(context, radius: FluxRadius.pill),
             child: Row(
               children: [
                 Text(
@@ -107,7 +106,7 @@ class _CodeTerminalPageState extends State<CodeTerminalPage> {
                       hintStyle: TextStyle(
                         fontFamily: 'monospace',
                         fontSize: 15,
-                        color: FluxColors.inkOf(context).withValues(alpha: .5),
+                        color: FluxColors.inkOf(context).withValues(alpha: .55),
                       ),
                     ),
                   ),

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -18,9 +19,12 @@ import 'package:finn_ai/src/features/code/settings/code_provider_page.dart';
 import 'package:finn_ai/src/features/code/settings/code_providers_page.dart';
 import 'package:finn_ai/src/features/code/settings/code_settings_page.dart';
 import 'package:finn_ai/src/features/code/settings/code_settings_store.dart';
+import 'package:finn_ai/src/features/code/ui/code_action_card.dart';
 import 'package:finn_ai/src/features/code/ui/code_models_page.dart';
 import 'package:finn_ai/src/shared/config/app_mode.dart';
+import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 import 'package:finn_ai/src/shared/widgets/finn_brand_switcher.dart';
+import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
 
 import 'code_fakes.dart';
 
@@ -110,6 +114,8 @@ void main() {
         ),
       );
       expect(find.text('FinnAI'), findsOneWidget);
+      // The current app's name is the title; the other one is not listed until
+      // the row is opened.
       expect(find.text('FinnAI Code'), findsNothing);
 
       await tester.tap(find.byKey(const ValueKey('brand-switcher')));
@@ -119,6 +125,242 @@ void main() {
       await tester.tap(find.text('FinnAI Code'));
       await settle(tester);
       expect(modes.mode, FinnAppMode.code);
+    });
+
+    testWidgets('the option is set in the same type as the wordmark',
+        (tester) async {
+      // The two lines are one heading: the app you are in, and the one you can
+      // go to. The option used to be 4dp smaller and a step down the text theme,
+      // which read as a lesser label rather than the equal alternative.
+      await useTallPhone(tester);
+      final modes = AppModeController(directoryProvider: () async => temp);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FinnBrandSwitcher(
+              current: FinnAppMode.chat,
+              controller: modes,
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.byKey(const ValueKey('brand-switcher')));
+      await settle(tester);
+
+      final wordmark = tester.widget<Text>(find.text('FinnAI'));
+      final option = tester.widget<Text>(
+        find.descendant(
+          of: find.byKey(const ValueKey('brand-switcher-option')),
+          matching: find.text('FinnAI Code'),
+        ),
+      );
+
+      // Same size, weight, height and colour.
+      expect(option.style?.fontSize, wordmark.style?.fontSize);
+      expect(option.style?.fontWeight, wordmark.style?.fontWeight);
+      expect(option.style?.height, wordmark.style?.height);
+      expect(option.style?.color, wordmark.style?.color);
+      expect(option.style?.letterSpacing, wordmark.style?.letterSpacing);
+      // And both are the app-name size, not the old 20dp option.
+      expect(option.style?.fontSize, 24);
+    });
+
+    testWidgets('the option is plain text, not a row with a glyph',
+        (tester) async {
+      // It used to open a popup: a filled card, two rows, an icon each and a
+      // check on the current one. The reveal carries no fill and no glyph.
+      await useTallPhone(tester);
+      final modes = AppModeController(directoryProvider: () async => temp);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: FinnBrandSwitcher(
+                current: FinnAppMode.chat,
+                controller: modes,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.byKey(const ValueKey('brand-switcher')));
+      await settle(tester);
+
+      final option = find.byKey(const ValueKey('brand-switcher-option'));
+      expect(option, findsOneWidget);
+      // No glyph inside the option row.
+      expect(
+        find.descendant(of: option, matching: find.byType(FluxIcon)),
+        findsNothing,
+      );
+      // And no filled container behind it: the only decoration in the reveal is
+      // the blur, which paints nothing of its own.
+      for (final element in find.byType(Stack).evaluate()) {
+        final stack = element.widget as Stack;
+        for (final child in stack.children) {
+          if (child is Container && child.decoration is BoxDecoration) {
+            final decoration = child.decoration as BoxDecoration;
+            expect(decoration.color,
+                isNot(FluxColors.controlOf(tester.element(option))));
+          }
+        }
+      }
+    });
+
+    testWidgets('the sidebar makes room and keeps the option legible',
+        (tester) async {
+      // The reveal pushes the destinations down rather than covering them, and
+      // while it is open the brand row stops fading — otherwise it would fade
+      // the option the user is reading, and a light history card scrolling
+      // underneath would leave the option's text on white with nothing behind
+      // it.
+      await useTallPhone(tester);
+      final modes = AppModeController(directoryProvider: () async => temp);
+      await tester.pumpWidget(
+        MaterialApp(home: CodeShell(services: services())),
+      );
+      await settle(tester);
+      await tester.tap(find.byKey(const ValueKey('home-menu-button')));
+      await settle(tester);
+
+      // This shell is FinnAI Code, so the wordmark reads "FinnAI Code" and the
+      // reveal offers the other app.
+      expect(find.text('FinnAI Code'), findsOneWidget);
+      expect(find.text('FinnAI'), findsNothing);
+
+      final before = tester.getRect(find.text('Files'));
+      await tester.tap(find.byKey(const ValueKey('brand-switcher')));
+      await settle(tester);
+
+      // The destination moved down to make room rather than being covered.
+      expect(tester.getRect(find.text('Files')).top, greaterThan(before.top));
+
+      // And the option is inside the open reveal, not merely on screen.
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('brand-switcher-option')),
+          matching: find.text('FinnAI'),
+        ),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.text('FinnAI'));
+      await settle(tester);
+      expect(modes.mode, FinnAppMode.chat);
+    });
+
+    testWidgets('while open, the option stays legible over a light card',
+        (tester) async {
+      // A chat/session card is much lighter than the panel in both themes, and
+      // it slides up under the wordmark as the history scrolls. Two things have
+      // to hold for the option to stay readable then: the brand row must stop
+      // fading (it would otherwise fade the option with it), and the panel's
+      // pinned backing must extend past the reveal so the text never sits
+      // directly on a scrolling card.
+      await useTallPhone(tester);
+      final s = services();
+      await tester.pumpWidget(MaterialApp(home: CodeShell(services: s)));
+      await settle(tester);
+      await tester.tap(find.byKey(const ValueKey('home-menu-button')));
+      await settle(tester);
+
+      await tester.tap(find.byKey(const ValueKey('brand-switcher')));
+      await settle(tester);
+      expect(find.text('FinnAI'), findsOneWidget);
+
+      // Scroll the history up under the wordmark, which is the only moment
+      // anything is behind the reveal.
+      final scrollable = tester.state<ScrollableState>(
+        find.byType(Scrollable).first,
+      );
+      scrollable.position.jumpTo(160);
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Still there, still opaque enough to read, and no render error.
+      expect(tester.takeException(), isNull);
+      final option = find.byKey(const ValueKey('brand-switcher-option'));
+      expect(option, findsOneWidget);
+
+      // The option's own opacity is 1 — it is not faded with the row.
+      final opacity = tester
+          .widgetList<Opacity>(
+            find.ancestor(
+              of: option,
+              matching: find.byType(Opacity),
+            ),
+          )
+          .toList();
+      if (opacity.isNotEmpty) {
+        expect(opacity.last.opacity, 1.0);
+      }
+    });
+
+    testWidgets('the reveal blurs what scrolls under it, ramping downward',
+        (tester) async {
+      // The band layout is load-bearing: Flutter cannot mask a backdrop blur, so
+      // the ramp is clipped bands that accumulate. Both halves are asserted, and
+      // the sigmas are equal on purpose — see FluxProgressiveBlur.
+      await useTallPhone(tester);
+      final modes = AppModeController(directoryProvider: () async => temp);
+      await tester.pumpWidget(
+        MaterialApp(
+            home: Scaffold(
+                body: FinnBrandSwitcher(
+          current: FinnAppMode.chat,
+          controller: modes,
+        ))),
+      );
+      await tester.tap(find.byKey(const ValueKey('brand-switcher')));
+      await settle(tester);
+
+      final bands = tester
+          .widgetList<BackdropFilter>(find.byType(BackdropFilter))
+          .toList();
+      expect(bands.length, greaterThan(1),
+          reason: 'a ramp needs more than one');
+
+      // Every band blurs by the same amount and covers everything below its own
+      // top edge, so strength accumulates with depth. A per-band sigma that grew
+      // with depth would compound instead.
+      final sigmas = {
+        for (final band in bands) (band.filter as ImageFilter).toString(),
+      };
+      expect(sigmas.length, 1, reason: 'bands must not each differ: $sigmas');
+
+      // The band count is what makes it a ramp, and the panel is short, so the
+      // bands must not be so few that the steps show.
+      expect(bands.length, greaterThanOrEqualTo(6));
+    });
+
+    testWidgets('reports its reveal height so the panel can make room',
+        (tester) async {
+      await useTallPhone(tester);
+      final expansion = BrandExpansion();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: FinnBrandSwitcher(
+                current: FinnAppMode.chat,
+                controller:
+                    AppModeController(directoryProvider: () async => temp),
+                expansion: expansion,
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(expansion.height, 0);
+
+      await tester.tap(find.byKey(const ValueKey('brand-switcher')));
+      await settle(tester);
+      expect(expansion.height, FinnBrandSwitcher.revealHeight);
+      expect(expansion.isOpen, isTrue);
+
+      await tester.tap(find.byKey(const ValueKey('brand-switcher')));
+      await settle(tester);
+      expect(expansion.height, 0);
+      expect(expansion.isOpen, isFalse);
     });
 
     testWidgets('shows FinnAI Code when that is the current app',
@@ -131,6 +373,26 @@ void main() {
         ),
       );
       expect(find.text('FinnAI Code'), findsOneWidget);
+      // In reverse, the reveal offers FinnAI.
+      final modes = AppModeController(directoryProvider: () async => temp);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: FinnBrandSwitcher(
+                current: FinnAppMode.code,
+                controller: modes,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.byKey(const ValueKey('brand-switcher')));
+      await settle(tester);
+      expect(find.text('FinnAI'), findsOneWidget);
+      await tester.tap(find.text('FinnAI'));
+      await settle(tester);
+      expect(modes.mode, FinnAppMode.chat);
     });
 
     test('the mode is remembered', () async {
@@ -180,6 +442,100 @@ void main() {
       expect(send.height, 50);
       expect(field.height, lessThan(30));
       expect(send.top - chip.bottom, lessThan(24));
+    });
+
+    group('dark mode matches FinnAI', () {
+      // FinnAI Code's permanent surfaces used to carry their own shadows while
+      // the rest of the app had moved to fill + a 1px hairline. Over the
+      // near-black canvas a shadow is `elevationOf` (#F5F5F7), so the pill wore
+      // a pale halo and the action card had no edge at all.
+      Future<void> pumpDark(WidgetTester tester, Widget home) async {
+        await useTallPhone(tester);
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: FluxTheme.dark,
+            home: home,
+          ),
+        );
+        await settle(tester);
+      }
+
+      /// The painted decoration of every container under [finder].
+      List<BoxDecoration> decorationsOf(WidgetTester tester, Finder finder) {
+        final found = <BoxDecoration>[];
+        for (final element in finder.evaluate()) {
+          final widget = element.widget;
+          if (widget is Container && widget.decoration is BoxDecoration) {
+            found.add(widget.decoration as BoxDecoration);
+          }
+        }
+        return found;
+      }
+
+      void expectFlatWithHairline(List<BoxDecoration> found) {
+        expect(found, isNotEmpty);
+        for (final decoration in found) {
+          expect(
+            decoration.boxShadow,
+            isNull,
+            reason: 'a permanent surface must not cast a drop shadow',
+          );
+          expect(
+            decoration.border,
+            isA<Border>(),
+            reason: 'it separates with a 1px hairline instead',
+          );
+          expect((decoration.border! as Border).top.width, 1);
+        }
+      }
+
+      testWidgets('the composer pill is flat with a hairline', (tester) async {
+        await pumpDark(tester, CodeShell(services: services()));
+
+        final pill = decorationsOf(
+          tester,
+          find.ancestor(
+            of: find.byKey(const ValueKey('code-composer-field')),
+            matching: find.byType(Container),
+          ),
+        );
+        expectFlatWithHairline(pill);
+      });
+
+      testWidgets('an action card is flat with a hairline', (tester) async {
+        await useTallPhone(tester);
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: FluxTheme.dark,
+            home: Scaffold(
+              body: CodeActionCard(
+                action: CodeAction.shell('ls -la').copyWith(
+                  status: CodeActionStatus.done,
+                  output: 'Listed.',
+                ),
+              ),
+            ),
+          ),
+        );
+        await settle(tester);
+
+        final card = find.byKey(const ValueKey('code-action-card'));
+        expect(card, findsOneWidget);
+        expectFlatWithHairline(decorationsOf(tester, card));
+      });
+
+      testWidgets('the send glyph matches the chat composer', (tester) async {
+        // FinnAI Code drew its arrow in actionInkOf — #414141 on the dark
+        // disc — where the shared button draws it in canvasOf, #101014. Same
+        // control, two different glyph colours in the same theme.
+        await pumpDark(tester, CodeShell(services: services()));
+
+        final send = find.byKey(const ValueKey('code-send-button'));
+        final glyph = tester.widget<FluxIcon>(
+          find.descendant(of: send, matching: find.byType(FluxIcon)),
+        );
+        expect(glyph.color, FluxColors.canvasOf(tester.element(send)));
+      });
     });
 
     testWidgets('a message is sent, answered and shown', (tester) async {

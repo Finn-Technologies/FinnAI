@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
+import 'package:finn_ai/src/shared/widgets/flux_surfaces.dart';
 
 /// Guards the dark-mode fixes, each of which was a real defect: a control that
 /// was invisible, text below AA, or a shadow/scrim that did nothing at all
@@ -260,6 +261,83 @@ void main() {
       expect(wash, FluxColors.ambientWashDark);
       // 25% green was the light strength; dark uses 8%.
       expect(wash.last.a, lessThan(0.15));
+    });
+  });
+
+  group('a permanent surface separates with a hairline, never a shadow', () {
+    // FinnAI Code's composer pill and action card each carried their own
+    // BoxShadow. Over the near-black canvas that is `elevationOf` — #F5F5F7 —
+    // so in dark the pill wore a pale halo and the card's 6% lift was
+    // invisible, leaving it an edgeless grey slab. The rest of the app had
+    // already moved to fill + 1px hairline for exactly this reason; Code had
+    // not been carried along.
+    testWidgets('flat() paints a hairline and no shadow', (tester) async {
+      late BoxDecoration flat;
+      await tester.pumpWidget(
+        _darkHost(
+          Builder(
+            builder: (context) {
+              flat = FluxSurfaces.flat(context, radius: FluxRadius.pill);
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
+      );
+      expect(flat.boxShadow, isNull);
+      expect(flat.border, isA<Border>());
+      expect((flat.border! as Border).top.width, 1);
+      expect((flat.border! as Border).top.color, FluxColors.darkLine);
+      expect(flat.color, FluxColors.controlDark);
+    });
+
+    testWidgets('flatCard() is the card fill with the same hairline',
+        (tester) async {
+      late BoxDecoration flat;
+      await tester.pumpWidget(
+        _darkHost(
+          Builder(
+            builder: (context) {
+              flat = FluxSurfaces.flatCard(context);
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
+      );
+      expect(flat.boxShadow, isNull);
+      expect((flat.border! as Border).top.color, FluxColors.darkLine);
+      expect(flat.color, FluxColors.darkCard);
+    });
+
+    testWidgets('the hairline is visible against the dark canvas',
+        (tester) async {
+      late Color hairline;
+      await tester.pumpWidget(
+        _darkHost(
+          Builder(
+            builder: (context) {
+              hairline = (FluxSurfaces.flat(context, radius: FluxRadius.pill)
+                      .border! as Border)
+                  .top
+                  .color;
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
+      );
+      // darkLine on darkCanvas. A shadow cannot do this job in dark: it is a
+      // wash of the same near-black that is already there.
+      expect(
+        _contrast(hairline, FluxColors.darkCanvas),
+        greaterThan(1.4),
+        reason: 'the hairline is what gives a dark surface its edge',
+      );
+      // And the hairline must not read as text, or it competes with the copy
+      // sitting on the surface.
+      expect(
+        _contrast(hairline, FluxColors.darkCard),
+        lessThan(3.0),
+        reason: 'the hairline is decoration, not copy',
+      );
     });
   });
 }

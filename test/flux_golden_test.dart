@@ -9,7 +9,9 @@ import 'package:finn_ai/src/features/chat/home_shell.dart';
 import 'package:finn_ai/src/features/reporting/report_dialog.dart';
 import 'package:finn_ai/src/features/reporting/report_service.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
+import 'package:finn_ai/src/shared/widgets/finn_sidebar_parts.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
+import 'package:finn_ai/src/shared/widgets/flux_surfaces.dart';
 
 /// The screens the app can already boot into a test without a device, a
 /// downloaded model, or a running engine.
@@ -223,8 +225,126 @@ void main() {
           onStop: _noop,
         );
 
+    /// The brand row with its reveal open, over the history it blurs.
+    ///
+    /// The reveal only blurs what scrolls beneath it, so this golden puts hard
+    /// edges — chat cards, the panel's hairline — directly behind it. Over a flat
+    /// fill there is nothing to blur and the effect would be invisible, which is
+    /// the whole reason this needed capturing rather than a token assertion.
+    Widget brandRevealSheet() => Builder(
+          builder: (context) {
+            return SizedBox(
+              width: 320,
+              height: 340,
+              child: Stack(
+                children: [
+                  // The sidebar panel.
+                  Positioned.fill(
+                    child: ColoredBox(color: FluxColors.controlOf(context)),
+                  ),
+                  // The history, in the position the app puts it at rest: the
+                  // reveal pushes the panel's content down rather than floating
+                  // over it, so nothing is behind the blur and there is no
+                  // depth cue to read. It is still legible — text over the panel.
+                  //
+                  // Mid-scroll is when the cards pass up under the wordmark and
+                  // the ramp has something to smear; that state also has the
+                  // panel's backing (the pinned cover, extended by the reveal
+                  // height) under the text, which this sheet does not reproduce.
+                  // Covered by the layout test instead.
+                  Positioned(
+                    left: 16,
+                    right: 16,
+                    top: 130,
+                    bottom: 16,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        for (final title in const [
+                          'Bicycle repair',
+                          'Trip to Lisbon',
+                          'Invoice totals',
+                        ])
+                          Flexible(
+                            child: Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: FinnSidebarHistoryTile(
+                                title: title,
+                                selected: title == 'Bicycle repair',
+                                onTap: _noop,
+                                badge: const Text(
+                                  '2m',
+                                  style: TextStyle(
+                                    fontFamily: 'InstrumentSans',
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  Positioned(
+                    left: 16,
+                    top: 12,
+                    width: 288,
+                    child: FinnBrandSwitcher(
+                      current: FinnAppMode.chat,
+                      controller: AppModeController(
+                        directoryProvider: () async =>
+                            Directory.systemTemp.createTemp('finn_golden_'),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+
+    /// Taps the brand row so the reveal is open before the capture.
+    Future<void> captureBrandReveal(
+      WidgetTester tester, {
+      required Brightness brightness,
+    }) async {
+      _applyDevice(tester, const Size(390, 560));
+      _applyBrightness(tester, brightness);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme:
+              brightness == Brightness.dark ? FluxTheme.dark : FluxTheme.light,
+          home: Scaffold(
+            body: Center(
+              child: RepaintBoundary(
+                key: const ValueKey('sheet'),
+                child: brandRevealSheet(),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('brand-switcher')));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull, reason: 'render error');
+      await expectLater(
+        find.byKey(const ValueKey('sheet')),
+        matchesGoldenFile(
+          'goldens/widgets_brand_reveal_'
+          '${brightness == Brightness.dark ? 'dark' : 'light'}.png',
+        ),
+      );
+    }
+
     for (final brightness in Brightness.values) {
       final label = brightness == Brightness.dark ? 'dark' : 'light';
+
+      testWidgets('brand reveal over the history (${brightness.name})', (
+        tester,
+      ) async {
+        await captureBrandReveal(tester, brightness: brightness);
+      });
 
       testWidgets('controls sheet (${brightness.name})', (tester) async {
         await captureSheet(

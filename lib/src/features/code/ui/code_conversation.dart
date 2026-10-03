@@ -13,6 +13,7 @@ import 'package:finn_ai/src/shared/widgets/finn_edge_fade.dart';
 import 'package:finn_ai/src/shared/widgets/finn_overlays.dart';
 import 'package:finn_ai/src/shared/widgets/finn_ui.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
+import 'package:finn_ai/src/shared/widgets/flux_surfaces.dart';
 import 'package:finn_ai/src/shared/widgets/safe_markdown_text.dart';
 
 /// The transcript of a coding session: what was asked, what the model said,
@@ -176,9 +177,12 @@ class _UserBubble extends StatelessWidget {
           maxWidth: math.min(MediaQuery.sizeOf(context).width * .82, 620),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-        decoration: BoxDecoration(
+        // The same fill + hairline a chat bubble uses. Without the hairline the
+        // user's own message had no edge in dark mode.
+        decoration: FluxSurfaces.flat(
+          context,
+          radius: FluxRadius.pill,
           color: FluxColors.bubbleUserOf(context),
-          borderRadius: BorderRadius.circular(FluxRadius.pill),
         ),
         child: SelectableText(
           text,
@@ -293,10 +297,8 @@ class _ErrorNotice extends StatelessWidget {
     return Container(
       key: const ValueKey('code-error-notice'),
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: FluxColors.cardOf(context),
-        borderRadius: BorderRadius.circular(FluxRadius.card),
-      ),
+      // Flat with a hairline, like the card above it.
+      decoration: FluxSurfaces.flatCard(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

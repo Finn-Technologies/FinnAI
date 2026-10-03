@@ -45,7 +45,8 @@ Use this before grepping. Paths are relative to the repository root.
 | Composer | `lib/src/features/chat/widgets/composer.dart` |
 | Sidebar | `lib/src/features/chat/widgets/sidebar.dart`, `sidebar_tiles.dart` |
 | The panel, its scrim, the menu/close morph and the open/close swipe (shared by FinnAI and FinnAI Code) | `lib/src/shared/widgets/finn_sidebar_surface.dart` (`FinnSidebarSurface`, `FinnSidebarToggleButton`), the chat drag logic in `lib/src/features/chat/shell/sidebar_surface.dart` |
-| The sidebar's circle destinations and buttons | `lib/src/shared/widgets/finn_sidebar_parts.dart` |
+| The sidebar's circle destinations, buttons, and the history-grid card (a chat in FinnAI, a session in FinnAI Code) | `lib/src/shared/widgets/finn_sidebar_parts.dart` (`FinnSidebarHistoryTile`) |
+| The brand row and its reveal (the other app's name, blurred, inline) | `lib/src/shared/widgets/finn_brand_switcher.dart` (`FinnBrandSwitcher`, `BrandExpansion` — both sidebars share one expansion value so they resize on the same frame) |
 | The soft top/bottom fade over a scrolling transcript | `lib/src/shared/widgets/finn_edge_fade.dart` |
 | Send / stop / regenerate / continue behaviour | `lib/src/features/chat/shell/send.dart` (`_send`, `_regenerateReply`, `_continueReply`), `shell/navigation.dart` (`_stopReply`) + `chat_generation_controller.dart` |
 | Streaming, cancellation, persistence of a turn | `lib/src/features/chat/chat_generation_controller.dart` |
@@ -180,8 +181,10 @@ A second app inside the app: its own sessions, settings and providers, in the sa
 | Colors, radii, text theme, system UI overlays | `lib/src/shared/theme/flux_theme.dart` |
 | Space reserved below bottom-anchored UI (composer, nav bar height) | `lib/src/shared/theme/flux_theme.dart` (`FluxBottomInset.bottomOf`) |
 | Buttons, pills, icon registry (`FluxIcons`), glass surfaces | `lib/src/shared/widgets/flux_controls.dart` |
+| Flat raised surfaces (fill + 1px hairline, never a shadow), the pill text field, filter chips, the progressive backdrop blur | `lib/src/shared/widgets/flux_surfaces.dart` (`FluxSurfaces`, `FluxPillField`, `FluxChip`, `FluxProgressiveBlur`, `FluxGlass`) |
 | Page header used by every sub-page | `lib/src/shared/widgets/finn_page_header.dart` |
 | Design primitives (circle button, row tile, switch, reveal animation) | `lib/src/shared/widgets/finn_ui.dart` |
+| A caption under a page title | `lib/src/shared/widgets/finn_page.dart` (`FinnCaption`) |
 | Dialogs, sheets, popup menus, primary buttons | `lib/src/shared/widgets/finn_overlays.dart` |
 | A standard secondary page (header, scrolling column, footer) | `lib/src/shared/widgets/finn_page.dart` |
 | Long-press context menu | `lib/src/shared/widgets/flux_context_menu.dart` |

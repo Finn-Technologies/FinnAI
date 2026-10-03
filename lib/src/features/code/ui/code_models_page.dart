@@ -16,6 +16,7 @@ import 'package:finn_ai/src/shared/widgets/finn_page.dart';
 import 'package:finn_ai/src/shared/widgets/finn_page_route.dart';
 import 'package:finn_ai/src/shared/widgets/finn_ui.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
+import 'package:finn_ai/src/shared/widgets/flux_surfaces.dart';
 
 /// Picks the model FinnAI Code answers with: the one on the phone, or any
 /// model of a provider that has a key, listed live and searchable.
@@ -100,10 +101,18 @@ class _CodeModelsPageState extends State<CodeModelsPage> {
           : CodeText.providerName(l10n, widget.onlyProvider!),
       onBack: widget.onBack,
       children: [
-        _SearchField(
+        FluxPillField(
+          fieldKey: const ValueKey('code-models-search'),
           controller: _search,
           hint: l10n.codeModelsSearchHint,
+          textInputAction: TextInputAction.search,
           onChanged: (value) => setState(() => _query = value.trim()),
+          leading: FluxIcon(
+            icon: FluxIcons.search,
+            size: 20,
+            strokeWidth: 1.5,
+            color: FluxColors.mutedOf(context),
+          ),
         ),
         ListenableBuilder(
           listenable: _providers,
@@ -292,62 +301,6 @@ class _Badge extends StatelessWidget {
                 color: FluxColors.successOf(context),
                 fontSize: 12,
               ),
-        ),
-      );
-}
-
-class _SearchField extends StatelessWidget {
-  const _SearchField({
-    required this.controller,
-    required this.hint,
-    required this.onChanged,
-  });
-
-  final TextEditingController controller;
-  final String hint;
-  final ValueChanged<String> onChanged;
-
-  @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 18),
-        constraints: const BoxConstraints(minHeight: 50),
-        decoration: BoxDecoration(
-          color: FluxColors.controlOf(context),
-          borderRadius: BorderRadius.circular(FluxRadius.pill),
-        ),
-        child: Row(
-          children: [
-            FluxIcon(
-              icon: FluxIcons.search,
-              size: 20,
-              strokeWidth: 1.5,
-              color: FluxColors.mutedOf(context),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: TextField(
-                key: const ValueKey('code-models-search'),
-                controller: controller,
-                onChanged: onChanged,
-                autocorrect: false,
-                textInputAction: TextInputAction.search,
-                style: TextStyle(
-                  fontFamily: 'InstrumentSans',
-                  fontSize: 16,
-                  color: FluxColors.inkOf(context),
-                ),
-                cursorColor: FluxColors.inkOf(context),
-                decoration: InputDecoration.collapsed(
-                  hintText: hint,
-                  hintStyle: TextStyle(
-                    fontFamily: 'InstrumentSans',
-                    fontSize: 16,
-                    color: FluxColors.inkOf(context).withValues(alpha: .55),
-                  ),
-                ),
-              ),
-            ),
-          ],
         ),
       );
 }

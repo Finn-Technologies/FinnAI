@@ -7,7 +7,9 @@ import 'package:finn_ai/src/features/code/ui/code_icons.dart';
 import 'package:finn_ai/src/features/code/ui/code_text.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 import 'package:finn_ai/src/shared/widgets/finn_overlays.dart';
+import 'package:finn_ai/src/shared/widgets/finn_ui.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
+import 'package:finn_ai/src/shared/widgets/flux_surfaces.dart';
 
 /// The message field of FinnAI Code: the same pill and send control as the
 /// chat composer, with the model and the permission mode as chips above it,
@@ -85,52 +87,19 @@ class _CodeComposerState extends State<CodeComposer> {
   @override
   Widget build(BuildContext context) {
     final l10n = L10n.of(context);
-    final isDark = FluxColors.isDark(context);
     final reducedMotion = MediaQuery.disableAnimationsOf(context);
     final canSend = _hasText && !widget.busy;
 
-    Widget circle({
-      required Key key,
-      required Widget child,
-      required String label,
-      VoidCallback? onTap,
-      bool dimmed = false,
-    }) =>
-        Semantics(
-          button: true,
-          enabled: onTap != null,
-          label: label,
-          onTap: onTap,
-          excludeSemantics: true,
-          child: FluxPressScale(
-            enabled: onTap != null,
-            child: Material(
-              color: FluxColors.actionOf(context),
-              shape: const CircleBorder(),
-              child: SizedBox.square(
-                key: key,
-                dimension: 50,
-                child: InkWell(
-                  onTap: onTap,
-                  customBorder: const CircleBorder(),
-                  child: Center(
-                    child: Opacity(opacity: dimmed ? .38 : 1, child: child),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-
     final trailing = widget.busy
-        ? circle(
+        ? FinnCircleButton(
             key: const ValueKey('code-stop-button'),
             label: l10n.chatStopGeneratingSemantic,
             onTap: () {
               HapticFeedback.mediumImpact();
               widget.onStop();
             },
-            child: SizedBox.square(
+            dark: true,
+            glyph: SizedBox.square(
               dimension: 14,
               child: DecoratedBox(
                 decoration: BoxDecoration(
@@ -140,34 +109,22 @@ class _CodeComposerState extends State<CodeComposer> {
               ),
             ),
           )
-        : circle(
+        : FinnCircleButton.icon(
             key: const ValueKey('code-send-button'),
+            icon: FluxIcons.arrowUp02,
             label: l10n.chatSendMessageSemantic,
             onTap: canSend ? widget.onSend : null,
+            dark: true,
             dimmed: !canSend,
-            child: FluxIcon(
-              icon: FluxIcons.arrowUp02,
-              size: 24,
-              color: FluxColors.actionInkOf(context),
-              strokeWidth: 2,
-            ),
           );
 
     final pill = Container(
       constraints: const BoxConstraints(minHeight: 50, maxHeight: 220),
       padding: const EdgeInsets.fromLTRB(17, 1, 4, 1),
-      decoration: BoxDecoration(
-        color: FluxColors.controlOf(context),
-        borderRadius: BorderRadius.circular(FluxRadius.pill),
-        boxShadow: [
-          BoxShadow(
-            color: FluxColors.elevationOf(context)
-                .withValues(alpha: isDark ? 0.14 : 0.08),
-            blurRadius: isDark ? 20 : 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+      // Flat, like the chat composer. This used to carry a hand-rolled shadow,
+      // which in dark mode is `elevationOf` — near-white — so the pill wore a
+      // pale halo instead of an edge.
+      decoration: FluxSurfaces.flat(context, radius: FluxRadius.pill),
       child: Semantics(
         label: l10n.codeComposerHint,
         textField: true,
@@ -280,23 +237,24 @@ class _Chips extends StatelessWidget {
     return Row(
       children: [
         Flexible(
-          child: _Chip(
+          child: FluxChip(
             key: const ValueKey('code-model-chip'),
             icon: modelIsLocal ? FluxIcons.chip : CodeIcons.cloud,
             label: modelLabel,
-            semantic: l10n.codeModelChipSemantic(modelLabel),
+            semanticLabel: l10n.codeModelChipSemantic(modelLabel),
             onTap: onModel,
+            trailing: CodeIcons.chevronDown,
           ),
         ),
         const SizedBox(width: 8),
         Builder(
-          builder: (anchorContext) => _Chip(
+          builder: (anchorContext) => FluxChip(
             key: const ValueKey('code-permission-chip'),
             icon: permission == CodePermissionMode.autoRun
                 ? CodeIcons.play
                 : CodeIcons.shield,
             label: permissionLabel,
-            semantic: l10n.codePermissionSemantic(permissionLabel),
+            semanticLabel: l10n.codePermissionSemantic(permissionLabel),
             onTap: () => showFinnMenu(
               context,
               anchor: finnAnchorOf(anchorContext),
@@ -314,80 +272,10 @@ class _Chips extends StatelessWidget {
                   ),
               ],
             ),
+            trailing: CodeIcons.chevronDown,
           ),
         ),
       ],
     );
   }
-}
-
-class _Chip extends StatelessWidget {
-  const _Chip({
-    super.key,
-    required this.icon,
-    required this.label,
-    required this.semantic,
-    required this.onTap,
-  });
-
-  final List<List<dynamic>> icon;
-  final String label;
-  final String semantic;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => Semantics(
-        button: true,
-        label: semantic,
-        onTap: onTap,
-        excludeSemantics: true,
-        child: FluxPressScale(
-          child: Material(
-            color: FluxColors.controlOf(context),
-            borderRadius: BorderRadius.circular(FluxRadius.pill),
-            child: InkWell(
-              onTap: onTap,
-              borderRadius: BorderRadius.circular(FluxRadius.pill),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: SizedBox(
-                  height: 36,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      FluxIcon(
-                        icon: icon,
-                        size: 18,
-                        strokeWidth: 1.5,
-                        color: FluxColors.actionOf(context),
-                      ),
-                      const SizedBox(width: 7),
-                      Flexible(
-                        child: Text(
-                          label,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontFamily: 'InstrumentSans',
-                            fontSize: 14,
-                            height: 1.2,
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      FluxIcon(
-                        icon: CodeIcons.chevronDown,
-                        size: 16,
-                        strokeWidth: 1.5,
-                        color: FluxColors.mutedOf(context),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
 }

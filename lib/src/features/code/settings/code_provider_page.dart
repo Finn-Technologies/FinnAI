@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:finn_ai/l10n/app_localizations.dart';
@@ -20,6 +19,7 @@ import 'package:finn_ai/src/shared/widgets/finn_page.dart';
 import 'package:finn_ai/src/shared/widgets/finn_page_route.dart';
 import 'package:finn_ai/src/shared/widgets/finn_ui.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
+import 'package:finn_ai/src/shared/widgets/flux_surfaces.dart';
 
 /// One provider: its key, its live model list, what is left to spend, and a
 /// test that the key works.
@@ -224,12 +224,13 @@ class _CodeProviderPageState extends State<CodeProviderPage> {
   }
 
   List<Widget> _addressSection(AppLocalizations l10n) => [
-        _Field(
+        FluxPillField(
           fieldKey: const ValueKey('code-address-field'),
           controller: _address,
           label: l10n.codeProviderAddressLabel,
           hint: l10n.codeProviderAddressHint,
           keyboardType: TextInputType.url,
+          enableSuggestions: false,
         ),
         if (_addressInvalid) FinnCaption(l10n.codeProviderAddressInvalid),
         FinnButton(
@@ -274,7 +275,7 @@ class _CodeProviderPageState extends State<CodeProviderPage> {
       ];
     }
     return [
-      _Field(
+      FluxPillField(
         fieldKey: const ValueKey('code-key-field'),
         controller: _key,
         label: l10n.codeProviderKeyLabel,
@@ -282,6 +283,7 @@ class _CodeProviderPageState extends State<CodeProviderPage> {
             ? l10n.codeProviderKeyHint
             : l10n.codeProviderKeyOptionalHint),
         obscure: true,
+        monospace: true,
       ),
       FinnButton(
         key: const ValueKey('code-key-save'),
@@ -399,6 +401,9 @@ class _CodeProviderPageState extends State<CodeProviderPage> {
   }
 }
 
+/// A short callout: a glyph and a line of copy on a card, with the same
+/// hairline-edged treatment as the notices in chat and the error card in the
+/// transcript.
 class _Note extends StatelessWidget {
   const _Note({required this.icon, required this.text, required this.color});
 
@@ -409,10 +414,7 @@ class _Note extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: FluxColors.controlOf(context),
-          borderRadius: BorderRadius.circular(FluxRadius.card),
-        ),
+        decoration: FluxSurfaces.flatCard(context),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -423,64 +425,5 @@ class _Note extends StatelessWidget {
             ),
           ],
         ),
-      );
-}
-
-/// A labelled single-line field in the design's pill.
-class _Field extends StatelessWidget {
-  const _Field({
-    required this.fieldKey,
-    required this.controller,
-    required this.label,
-    required this.hint,
-    this.obscure = false,
-    this.keyboardType,
-  });
-
-  final Key fieldKey;
-  final TextEditingController controller;
-  final String label;
-  final String hint;
-  final bool obscure;
-  final TextInputType? keyboardType;
-
-  @override
-  Widget build(BuildContext context) => Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          FluxSectionLabel(label),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 18),
-            constraints: const BoxConstraints(minHeight: 50),
-            decoration: BoxDecoration(
-              color: FluxColors.controlOf(context),
-              borderRadius: BorderRadius.circular(FluxRadius.pill),
-            ),
-            alignment: Alignment.center,
-            child: TextField(
-              key: fieldKey,
-              controller: controller,
-              obscureText: obscure,
-              autocorrect: false,
-              enableSuggestions: false,
-              keyboardType: keyboardType,
-              inputFormatters: [LengthLimitingTextInputFormatter(400)],
-              style: TextStyle(
-                fontFamily: obscure ? 'monospace' : 'InstrumentSans',
-                fontSize: 16,
-                color: FluxColors.inkOf(context),
-              ),
-              cursorColor: FluxColors.inkOf(context),
-              decoration: InputDecoration.collapsed(
-                hintText: hint,
-                hintStyle: TextStyle(
-                  fontFamily: 'InstrumentSans',
-                  fontSize: 16,
-                  color: FluxColors.inkOf(context).withValues(alpha: .55),
-                ),
-              ),
-            ),
-          ),
-        ],
       );
 }

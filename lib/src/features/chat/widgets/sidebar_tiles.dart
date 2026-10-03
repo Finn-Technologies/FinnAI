@@ -30,68 +30,23 @@ class _SidebarConversationTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final key = _getTileKey();
-    final foreground =
-        selected ? FluxColors.actionInkOf(context) : FluxColors.inkOf(context);
-    return Semantics(
-      button: true,
+    final selected = this.selected;
+    return FinnSidebarHistoryTile(
+      title: conversation.title,
       selected: selected,
-      label: conversation.title,
       onTap: onTap,
-      excludeSemantics: true,
-      child: FluxPressScale(
-        scale: .96,
-        child: Material(
-          color: selected
-              ? FluxColors.actionOf(context)
-              : FluxColors.tileOf(context),
-          borderRadius: BorderRadius.circular(FluxRadius.card),
-          child: InkWell(
-            key: key,
-            onTap: onTap,
-            onLongPress: () => _showContextMenu(context),
-            borderRadius: BorderRadius.circular(FluxRadius.card),
-            child: Container(
-              padding: const EdgeInsets.all(10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Align(
-                    alignment: Alignment.topRight,
-                    child: Text(
-                      formatConversationTimestamp(
-                          context, conversation.updatedAt),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontFamily: 'InstrumentSans',
-                        fontSize: 14,
-                        height: 1.2,
-                        fontWeight: FontWeight.w400,
-                        color: selected
-                            ? FluxColors.actionInkOf(context)
-                                .withValues(alpha: .7)
-                            : FluxColors.timestampOf(context),
-                      ),
-                    ),
-                  ),
-                  const Spacer(),
-                  Text(
-                    conversation.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontFamily: 'InstrumentSans',
-                      fontSize: 14,
-                      height: 1.2,
-                      fontWeight: FontWeight.w400,
-                      color: foreground,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+      onLongPress: () => _showContextMenu(context),
+      badgeKey: _getTileKey(),
+      badge: Text(
+        formatConversationTimestamp(context, conversation.updatedAt),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          fontFamily: 'InstrumentSans',
+          fontSize: 14,
+          height: 1.2,
+          fontWeight: FontWeight.w400,
+          color: FinnSidebarHistoryTile.badgeInk(context, selected),
         ),
       ),
     );

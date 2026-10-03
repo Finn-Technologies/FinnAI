@@ -8,6 +8,7 @@ import 'package:finn_ai/src/features/code/ui/code_text.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 import 'package:finn_ai/src/shared/widgets/finn_overlays.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
+import 'package:finn_ai/src/shared/widgets/flux_surfaces.dart';
 
 /// What the agent did, or wants to do: the command or the file, how it went,
 /// and — while it waits — the two buttons that decide it.
@@ -52,16 +53,11 @@ class _CodeActionCardState extends State<CodeActionCard> {
       child: Container(
         key: const ValueKey('code-action-card'),
         padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: FluxColors.cardOf(context),
-          borderRadius: BorderRadius.circular(FluxRadius.card),
-          boxShadow: FluxColors.elevationShadow(
-            context,
-            alpha: .04,
-            blur: FluxColors.isDark(context) ? 12 : 9,
-            offset: const Offset(0, 3),
-          ),
-        ),
+        // Flat with a hairline, like a chat bubble. This used to use
+        // elevationShadow, which is a lift for *transient* surfaces — over the
+        // dark canvas it rendered as an almost invisible 6% wash, so the card
+        // had no edge at all and read as a grey slab.
+        decoration: FluxSurfaces.flatCard(context),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -294,6 +290,9 @@ class _CodeBox extends StatelessWidget {
         decoration: BoxDecoration(
           color: FluxColors.tileOf(context),
           borderRadius: BorderRadius.circular(FluxRadius.sm),
+          // Sunk inside the card, so it reads as a well rather than another
+          // card: a hairline, not a shadow.
+          border: Border.all(color: FluxColors.lineOf(context), width: 1),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
