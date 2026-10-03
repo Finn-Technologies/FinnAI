@@ -5977,6 +5977,1086 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Male 2'**
   String get voiceStyleM2;
+
+  /// Product name of the coding app inside FinnAI
+  ///
+  /// In en, this message translates to:
+  /// **'FinnAI Code'**
+  String get appBrandFinnAICode;
+
+  /// Screen-reader hint on the brand row that switches apps
+  ///
+  /// In en, this message translates to:
+  /// **'Switch between FinnAI and FinnAI Code'**
+  String get appModeSwitchSemantic;
+
+  /// Empty-state greeting in FinnAI Code
+  ///
+  /// In en, this message translates to:
+  /// **'What shall we build?'**
+  String get codeGreeting;
+
+  /// Caption under the empty-state greeting
+  ///
+  /// In en, this message translates to:
+  /// **'Your project lives in a private folder on this phone.'**
+  String get codeGreetingCaption;
+
+  /// Placeholder of the FinnAI Code message field
+  ///
+  /// In en, this message translates to:
+  /// **'Describe what to build or fix'**
+  String get codeComposerHint;
+
+  /// New coding session button
+  ///
+  /// In en, this message translates to:
+  /// **'New session'**
+  String get codeNewSession;
+
+  /// Sidebar heading for coding sessions
+  ///
+  /// In en, this message translates to:
+  /// **'Sessions'**
+  String get codeSessionsTitle;
+
+  /// Empty sessions list
+  ///
+  /// In en, this message translates to:
+  /// **'No sessions yet'**
+  String get codeNoSessions;
+
+  /// Sidebar destination: project files
+  ///
+  /// In en, this message translates to:
+  /// **'Files'**
+  String get codeFilesTitle;
+
+  /// Sidebar destination: shell
+  ///
+  /// In en, this message translates to:
+  /// **'Terminal'**
+  String get codeTerminalTitle;
+
+  /// Sidebar destination: model picker
+  ///
+  /// In en, this message translates to:
+  /// **'Models'**
+  String get codeModelsTitle;
+
+  /// Title of FinnAI Code settings
+  ///
+  /// In en, this message translates to:
+  /// **'Code settings'**
+  String get codeSettingsTitle;
+
+  /// Model chip text when the on-device model is selected
+  ///
+  /// In en, this message translates to:
+  /// **'FinnAI · on device'**
+  String get codeLocalLabel;
+
+  /// Screen-reader label of the model chip
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a model. Current: {model}'**
+  String codeModelChipSemantic(String model);
+
+  /// Permission chip: ask before everything
+  ///
+  /// In en, this message translates to:
+  /// **'Ask first'**
+  String get codePermissionAsk;
+
+  /// Permission chip: files are written automatically
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-edit'**
+  String get codePermissionEdits;
+
+  /// Permission chip: everything runs automatically
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-run'**
+  String get codePermissionAuto;
+
+  /// Screen-reader label of the permission chip
+  ///
+  /// In en, this message translates to:
+  /// **'Change what the agent may do. Current: {mode}'**
+  String codePermissionSemantic(String mode);
+
+  /// Shown while the model is writing
+  ///
+  /// In en, this message translates to:
+  /// **'Thinking…'**
+  String get codeThinking;
+
+  /// Title of a proposed shell command
+  ///
+  /// In en, this message translates to:
+  /// **'Run command'**
+  String get codeActionRunCommand;
+
+  /// Title of a proposed file write
+  ///
+  /// In en, this message translates to:
+  /// **'Write {path}'**
+  String codeActionWriteFile(String path);
+
+  /// Button that lets a command run
+  ///
+  /// In en, this message translates to:
+  /// **'Run'**
+  String get codeActionRun;
+
+  /// Button that lets a file write happen
+  ///
+  /// In en, this message translates to:
+  /// **'Allow'**
+  String get codeActionAllow;
+
+  /// Button that declines a proposed action
+  ///
+  /// In en, this message translates to:
+  /// **'Skip'**
+  String get codeActionSkip;
+
+  /// Status of a running command
+  ///
+  /// In en, this message translates to:
+  /// **'Running…'**
+  String get codeActionRunning;
+
+  /// Status of a finished action
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get codeActionDone;
+
+  /// Status of a command that exited with an error
+  ///
+  /// In en, this message translates to:
+  /// **'Failed (exit {code})'**
+  String codeActionFailedExit(String code);
+
+  /// Status of an action that failed
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
+  String get codeActionFailed;
+
+  /// Status of a command that ran too long
+  ///
+  /// In en, this message translates to:
+  /// **'Timed out'**
+  String get codeActionTimedOut;
+
+  /// Status of an action the user declined
+  ///
+  /// In en, this message translates to:
+  /// **'Skipped'**
+  String get codeActionSkipped;
+
+  /// Status of an action the safety policy refused
+  ///
+  /// In en, this message translates to:
+  /// **'Blocked'**
+  String get codeActionDenied;
+
+  /// Heading of a command’s output
+  ///
+  /// In en, this message translates to:
+  /// **'Output'**
+  String get codeActionOutput;
+
+  /// Shown when a command printed nothing
+  ///
+  /// In en, this message translates to:
+  /// **'No output'**
+  String get codeActionNoOutput;
+
+  /// Note under a long command output
+  ///
+  /// In en, this message translates to:
+  /// **'Output was cut short'**
+  String get codeActionOutputCut;
+
+  /// Why a command was blocked
+  ///
+  /// In en, this message translates to:
+  /// **'“{program}” is not allowed here.'**
+  String codeDeniedBlockedProgram(String program);
+
+  /// Why a command was blocked
+  ///
+  /// In en, this message translates to:
+  /// **'Network commands are turned off.'**
+  String get codeDeniedNetwork;
+
+  /// Why a command or file was blocked
+  ///
+  /// In en, this message translates to:
+  /// **'{path} is outside the project folder.'**
+  String codeDeniedOutside(String path);
+
+  /// Why a command was blocked
+  ///
+  /// In en, this message translates to:
+  /// **'“..” is not allowed in paths.'**
+  String get codeDeniedParent;
+
+  /// Why a command was blocked
+  ///
+  /// In en, this message translates to:
+  /// **'That command is not allowed.'**
+  String get codeDeniedOther;
+
+  /// Shown when a request used up its steps
+  ///
+  /// In en, this message translates to:
+  /// **'Stopped at the step limit.'**
+  String get codeErrorStepLimit;
+
+  /// Shown when the model loops
+  ///
+  /// In en, this message translates to:
+  /// **'Stopped: the model kept repeating the same step.'**
+  String get codeErrorRepeating;
+
+  /// Shown when the model says nothing
+  ///
+  /// In en, this message translates to:
+  /// **'The model sent an empty reply.'**
+  String get codeErrorEmpty;
+
+  /// Shown when a reply ended inside its action
+  ///
+  /// In en, this message translates to:
+  /// **'The reply was cut off before the step finished, so nothing ran.'**
+  String get codeErrorCutOff;
+
+  /// Generic failure with a short detail
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong: {detail}'**
+  String codeErrorEngine(String detail);
+
+  /// Provider error: bad key
+  ///
+  /// In en, this message translates to:
+  /// **'The provider rejected the key. Check it in Code settings.'**
+  String get codeErrorAuth;
+
+  /// Provider error: Command Code Go plan
+  ///
+  /// In en, this message translates to:
+  /// **'Command Code’s Go plan has no API access. Upgrade to GOAT or higher to use it here.'**
+  String get codeErrorPlanNoApi;
+
+  /// Provider error: no credit
+  ///
+  /// In en, this message translates to:
+  /// **'Out of credit with this provider.'**
+  String get codeErrorPayment;
+
+  /// Provider error: rate limit
+  ///
+  /// In en, this message translates to:
+  /// **'Rate limited. Try again in a moment.'**
+  String get codeErrorRate;
+
+  /// Provider error: model not available
+  ///
+  /// In en, this message translates to:
+  /// **'This provider could not serve that model.'**
+  String get codeErrorWrongEndpoint;
+
+  /// Provider error: bad request
+  ///
+  /// In en, this message translates to:
+  /// **'The provider could not accept the request.'**
+  String get codeErrorBadRequest;
+
+  /// Provider error: server
+  ///
+  /// In en, this message translates to:
+  /// **'The provider had a problem. Try again.'**
+  String get codeErrorServer;
+
+  /// Provider error: network
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t reach the provider. Check your connection.'**
+  String get codeErrorNetwork;
+
+  /// Provider error: timeout
+  ///
+  /// In en, this message translates to:
+  /// **'The provider took too long to answer.'**
+  String get codeErrorTimeout;
+
+  /// Provider error: malformed reply
+  ///
+  /// In en, this message translates to:
+  /// **'The provider sent a reply that couldn’t be read.'**
+  String get codeErrorMalformed;
+
+  /// Provider error: unknown
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong with the provider.'**
+  String get codeErrorUnknown;
+
+  /// Session menu
+  ///
+  /// In en, this message translates to:
+  /// **'Rename'**
+  String get codeSessionRename;
+
+  /// Rename dialog title
+  ///
+  /// In en, this message translates to:
+  /// **'Rename session'**
+  String get codeSessionRenameTitle;
+
+  /// Session menu
+  ///
+  /// In en, this message translates to:
+  /// **'Pin'**
+  String get codeSessionPin;
+
+  /// Session menu
+  ///
+  /// In en, this message translates to:
+  /// **'Unpin'**
+  String get codeSessionUnpin;
+
+  /// Session menu
+  ///
+  /// In en, this message translates to:
+  /// **'Project files'**
+  String get codeSessionFiles;
+
+  /// Session menu
+  ///
+  /// In en, this message translates to:
+  /// **'Delete session'**
+  String get codeSessionDelete;
+
+  /// Delete dialog title
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this session?'**
+  String get codeSessionDeleteTitle;
+
+  /// Delete dialog body
+  ///
+  /// In en, this message translates to:
+  /// **'The conversation and its project files are removed from this phone.'**
+  String get codeSessionDeleteBody;
+
+  /// Disclosure before the first cloud model
+  ///
+  /// In en, this message translates to:
+  /// **'Use {provider}?'**
+  String codeCloudTitle(String provider);
+
+  /// Disclosure body: cloud providers receive the conversation
+  ///
+  /// In en, this message translates to:
+  /// **'{provider} runs in the cloud. What you type, and any file contents or command output the agent reads, is sent to {provider} and handled under its terms. FinnAI on this device keeps everything on the phone.'**
+  String codeCloudBody(String provider);
+
+  /// Confirm button of the disclosure
+  ///
+  /// In en, this message translates to:
+  /// **'Use {provider}'**
+  String codeCloudConfirm(String provider);
+
+  /// Search field on the models page
+  ///
+  /// In en, this message translates to:
+  /// **'Search models'**
+  String get codeModelsSearchHint;
+
+  /// On-device model row title
+  ///
+  /// In en, this message translates to:
+  /// **'FinnAI'**
+  String get codeModelsOnDeviceTitle;
+
+  /// On-device model row subtitle
+  ///
+  /// In en, this message translates to:
+  /// **'Runs on this phone. Private, free and works offline.'**
+  String get codeModelsOnDeviceSub;
+
+  /// Row that leads to provider setup
+  ///
+  /// In en, this message translates to:
+  /// **'Add a provider to use more models'**
+  String get codeModelsAddProvider;
+
+  /// Shown while a model list loads
+  ///
+  /// In en, this message translates to:
+  /// **'Loading models…'**
+  String get codeModelsLoading;
+
+  /// Button that fetches a provider’s models
+  ///
+  /// In en, this message translates to:
+  /// **'Load models'**
+  String get codeModelsLoad;
+
+  /// Empty search result
+  ///
+  /// In en, this message translates to:
+  /// **'No models match'**
+  String get codeModelsNone;
+
+  /// Badge on a free model
+  ///
+  /// In en, this message translates to:
+  /// **'Free'**
+  String get codeModelsFree;
+
+  /// Context window of a model, e.g. 128K
+  ///
+  /// In en, this message translates to:
+  /// **'{size} context'**
+  String codeModelsContext(String size);
+
+  /// Price of a model per million tokens
+  ///
+  /// In en, this message translates to:
+  /// **'{input} in · {output} out per 1M'**
+  String codeModelsPrice(String input, String output);
+
+  /// Shown when listing models failed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t load models. {reason}'**
+  String codeModelsFetchFailed(String reason);
+
+  /// Settings row
+  ///
+  /// In en, this message translates to:
+  /// **'Providers'**
+  String get codeSettingsProviders;
+
+  /// Settings row subtitle with no provider added
+  ///
+  /// In en, this message translates to:
+  /// **'FinnAI on this device'**
+  String get codeSettingsProvidersSubNone;
+
+  /// Settings row subtitle with providers added
+  ///
+  /// In en, this message translates to:
+  /// **'FinnAI plus {count} connected'**
+  String codeSettingsProvidersSub(String count);
+
+  /// Settings row
+  ///
+  /// In en, this message translates to:
+  /// **'Model'**
+  String get codeSettingsModel;
+
+  /// Settings row
+  ///
+  /// In en, this message translates to:
+  /// **'Agent'**
+  String get codeSettingsAgent;
+
+  /// Settings row
+  ///
+  /// In en, this message translates to:
+  /// **'Project folders'**
+  String get codeSettingsWorkspace;
+
+  /// Settings row subtitle
+  ///
+  /// In en, this message translates to:
+  /// **'{size} on this phone'**
+  String codeSettingsWorkspaceSub(String size);
+
+  /// Settings row
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy and data'**
+  String get codeSettingsData;
+
+  /// Settings row subtitle
+  ///
+  /// In en, this message translates to:
+  /// **'Keys, sessions and project files'**
+  String get codeSettingsDataSub;
+
+  /// Settings row
+  ///
+  /// In en, this message translates to:
+  /// **'About FinnAI Code'**
+  String get codeSettingsAbout;
+
+  /// Page title
+  ///
+  /// In en, this message translates to:
+  /// **'Providers'**
+  String get codeProvidersTitle;
+
+  /// Intro on the providers page
+  ///
+  /// In en, this message translates to:
+  /// **'FinnAI on your phone is the default. Add your own API key to use a cloud model in FinnAI Code. Keys stay in your phone’s secure storage.'**
+  String get codeProvidersIntro;
+
+  /// Provider status
+  ///
+  /// In en, this message translates to:
+  /// **'On this device'**
+  String get codeProviderStatusLocal;
+
+  /// Provider status with the last four characters of the key
+  ///
+  /// In en, this message translates to:
+  /// **'Connected · ••••{hint}'**
+  String codeProviderStatusConnected(String hint);
+
+  /// Provider status when no key is needed
+  ///
+  /// In en, this message translates to:
+  /// **'Connected'**
+  String get codeProviderStatusConnectedNoKey;
+
+  /// Provider status
+  ///
+  /// In en, this message translates to:
+  /// **'Not set up'**
+  String get codeProviderStatusNotSet;
+
+  /// Provider description
+  ///
+  /// In en, this message translates to:
+  /// **'One key for hundreds of models, free ones included.'**
+  String get codeProviderDescOpenRouter;
+
+  /// Provider description
+  ///
+  /// In en, this message translates to:
+  /// **'Command Code’s models, through your own key.'**
+  String get codeProviderDescCommandCode;
+
+  /// Provider description
+  ///
+  /// In en, this message translates to:
+  /// **'OpenCode Zen: pay-as-you-go models chosen for coding.'**
+  String get codeProviderDescZen;
+
+  /// Provider description
+  ///
+  /// In en, this message translates to:
+  /// **'OpenCode Go: a flat monthly plan of open coding models.'**
+  String get codeProviderDescGo;
+
+  /// Provider description
+  ///
+  /// In en, this message translates to:
+  /// **'Any server that speaks the OpenAI API: your own, Ollama, LM Studio and more.'**
+  String get codeProviderDescCustom;
+
+  /// Name of the custom provider
+  ///
+  /// In en, this message translates to:
+  /// **'Custom (OpenAI compatible)'**
+  String get codeProviderCustomName;
+
+  /// Field label
+  ///
+  /// In en, this message translates to:
+  /// **'API key'**
+  String get codeProviderKeyLabel;
+
+  /// Field hint
+  ///
+  /// In en, this message translates to:
+  /// **'Paste your key'**
+  String get codeProviderKeyHint;
+
+  /// Field hint for a custom server
+  ///
+  /// In en, this message translates to:
+  /// **'Paste a key if your server needs one'**
+  String get codeProviderKeyOptionalHint;
+
+  /// Button
+  ///
+  /// In en, this message translates to:
+  /// **'Save key'**
+  String get codeProviderKeySave;
+
+  /// Button
+  ///
+  /// In en, this message translates to:
+  /// **'Replace key'**
+  String get codeProviderKeyReplace;
+
+  /// Button
+  ///
+  /// In en, this message translates to:
+  /// **'Remove key'**
+  String get codeProviderKeyRemove;
+
+  /// Dialog title
+  ///
+  /// In en, this message translates to:
+  /// **'Remove this key?'**
+  String get codeProviderKeyRemoveTitle;
+
+  /// Dialog body
+  ///
+  /// In en, this message translates to:
+  /// **'FinnAI Code will stop using {provider} until you add a key again.'**
+  String codeProviderKeyRemoveBody(String provider);
+
+  /// Caption under the key field
+  ///
+  /// In en, this message translates to:
+  /// **'Stored securely on this phone'**
+  String get codeProviderKeyStored;
+
+  /// Button that opens the provider’s key page
+  ///
+  /// In en, this message translates to:
+  /// **'Get a key'**
+  String get codeProviderGetKey;
+
+  /// Button
+  ///
+  /// In en, this message translates to:
+  /// **'Test key'**
+  String get codeProviderTest;
+
+  /// Shown while a key is tested
+  ///
+  /// In en, this message translates to:
+  /// **'Testing…'**
+  String get codeProviderTesting;
+
+  /// Result of a key test
+  ///
+  /// In en, this message translates to:
+  /// **'The key works.'**
+  String get codeProviderTestOk;
+
+  /// Result of a key test
+  ///
+  /// In en, this message translates to:
+  /// **'Test failed. {reason}'**
+  String codeProviderTestFail(String reason);
+
+  /// Hint when no model is available for a test
+  ///
+  /// In en, this message translates to:
+  /// **'Load the models first, then test.'**
+  String get codeProviderTestNeedsModel;
+
+  /// Field label
+  ///
+  /// In en, this message translates to:
+  /// **'Server address'**
+  String get codeProviderAddressLabel;
+
+  /// Field hint
+  ///
+  /// In en, this message translates to:
+  /// **'https://your-server/v1'**
+  String get codeProviderAddressHint;
+
+  /// Validation message
+  ///
+  /// In en, this message translates to:
+  /// **'Use an https address, or http for a server on your own network.'**
+  String get codeProviderAddressInvalid;
+
+  /// Button
+  ///
+  /// In en, this message translates to:
+  /// **'Save address'**
+  String get codeProviderAddressSave;
+
+  /// Note on the Command Code page
+  ///
+  /// In en, this message translates to:
+  /// **'Requires the GOAT plan or higher. The Go plan has no API access and can’t be used here.'**
+  String get codeProviderPlanNote;
+
+  /// Privacy note on a provider page
+  ///
+  /// In en, this message translates to:
+  /// **'When you use one of its models, your messages, file contents and command output are sent to {provider}.'**
+  String codeProviderPrivacy(String provider);
+
+  /// Section heading
+  ///
+  /// In en, this message translates to:
+  /// **'Allowance'**
+  String get codeProviderAllowance;
+
+  /// Allowance with a cap
+  ///
+  /// In en, this message translates to:
+  /// **'{remaining} left of {limit}'**
+  String codeProviderAllowanceRemaining(String remaining, String limit);
+
+  /// Allowance without a cap
+  ///
+  /// In en, this message translates to:
+  /// **'No spending limit on this key'**
+  String get codeProviderAllowanceUnlimited;
+
+  /// Spend so far
+  ///
+  /// In en, this message translates to:
+  /// **'{used} used'**
+  String codeProviderAllowanceUsed(String used);
+
+  /// Spend today
+  ///
+  /// In en, this message translates to:
+  /// **'{amount} today'**
+  String codeProviderAllowanceToday(String amount);
+
+  /// Spend this month
+  ///
+  /// In en, this message translates to:
+  /// **'{amount} this month'**
+  String codeProviderAllowanceMonth(String amount);
+
+  /// Account balance
+  ///
+  /// In en, this message translates to:
+  /// **'Account credit {balance}'**
+  String codeProviderAllowanceBalance(String balance);
+
+  /// Badge
+  ///
+  /// In en, this message translates to:
+  /// **'Free-tier key'**
+  String get codeProviderAllowanceFree;
+
+  /// Shown for providers with no usage endpoint
+  ///
+  /// In en, this message translates to:
+  /// **'{provider} doesn’t offer a usage API. Check your balance on its dashboard.'**
+  String codeProviderAllowanceNoApi(String provider);
+
+  /// Button that opens the provider’s billing page
+  ///
+  /// In en, this message translates to:
+  /// **'Open dashboard'**
+  String get codeProviderOpenDashboard;
+
+  /// Button
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get codeProviderRefresh;
+
+  /// Number of models fetched
+  ///
+  /// In en, this message translates to:
+  /// **'{count} models available'**
+  String codeProviderModelsCount(String count);
+
+  /// Button
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh model list'**
+  String get codeProviderModelsRefresh;
+
+  /// Button
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a model'**
+  String get codeProviderChooseModel;
+
+  /// Caption under the model count
+  ///
+  /// In en, this message translates to:
+  /// **'Fetched live from {provider}'**
+  String codeProviderModelsLive(String provider);
+
+  /// Page title
+  ///
+  /// In en, this message translates to:
+  /// **'Agent'**
+  String get codeAgentTitle;
+
+  /// Section heading
+  ///
+  /// In en, this message translates to:
+  /// **'When the agent acts'**
+  String get codeAgentPermissionTitle;
+
+  /// Permission option
+  ///
+  /// In en, this message translates to:
+  /// **'Ask before everything'**
+  String get codeAgentAsk;
+
+  /// Permission option subtitle
+  ///
+  /// In en, this message translates to:
+  /// **'Every command and file write waits for your tap.'**
+  String get codeAgentAskSub;
+
+  /// Permission option
+  ///
+  /// In en, this message translates to:
+  /// **'Write files, ask for commands'**
+  String get codeAgentEdits;
+
+  /// Permission option subtitle
+  ///
+  /// In en, this message translates to:
+  /// **'Files are written as it goes. Commands wait for your tap.'**
+  String get codeAgentEditsSub;
+
+  /// Permission option
+  ///
+  /// In en, this message translates to:
+  /// **'Run everything'**
+  String get codeAgentAuto;
+
+  /// Permission option subtitle
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing waits for you. Commands still stay inside the project folder.'**
+  String get codeAgentAutoSub;
+
+  /// Setting
+  ///
+  /// In en, this message translates to:
+  /// **'Steps per request'**
+  String get codeAgentSteps;
+
+  /// Setting description
+  ///
+  /// In en, this message translates to:
+  /// **'How many actions the agent may take before it stops and asks to continue.'**
+  String get codeAgentStepsSub;
+
+  /// Setting value
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic'**
+  String get codeAgentStepsAuto;
+
+  /// Setting value
+  ///
+  /// In en, this message translates to:
+  /// **'{count} steps'**
+  String codeAgentStepsValue(String count);
+
+  /// Setting
+  ///
+  /// In en, this message translates to:
+  /// **'Allow network commands'**
+  String get codeAgentNetwork;
+
+  /// Setting description
+  ///
+  /// In en, this message translates to:
+  /// **'Lets commands like curl reach the internet. Off keeps your project from being uploaded by mistake.'**
+  String get codeAgentNetworkSub;
+
+  /// Setting
+  ///
+  /// In en, this message translates to:
+  /// **'Command time limit'**
+  String get codeAgentTimeout;
+
+  /// Setting value in seconds
+  ///
+  /// In en, this message translates to:
+  /// **'{seconds} s'**
+  String codeAgentTimeoutValue(String seconds);
+
+  /// Honest description of the command sandbox
+  ///
+  /// In en, this message translates to:
+  /// **'Commands run in a private folder on this phone, as the app’s own user, with a time limit. This is not a full Linux system: there is no python, git or compiler, and nothing can be installed.'**
+  String get codeSandboxNote;
+
+  /// Page title
+  ///
+  /// In en, this message translates to:
+  /// **'Project folders'**
+  String get codeWorkspaceTitle;
+
+  /// Storage summary
+  ///
+  /// In en, this message translates to:
+  /// **'{size} in {count} project folders'**
+  String codeWorkspaceUsed(String size, String count);
+
+  /// Button
+  ///
+  /// In en, this message translates to:
+  /// **'Delete all project files'**
+  String get codeWorkspaceClear;
+
+  /// Dialog title
+  ///
+  /// In en, this message translates to:
+  /// **'Delete all project files?'**
+  String get codeWorkspaceClearTitle;
+
+  /// Dialog body
+  ///
+  /// In en, this message translates to:
+  /// **'Every session’s project folder is emptied. Conversations stay.'**
+  String get codeWorkspaceClearBody;
+
+  /// Page title
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy and data'**
+  String get codeDataTitle;
+
+  /// Where Code data lives
+  ///
+  /// In en, this message translates to:
+  /// **'Sessions and project files are stored in this app’s private storage on your phone. API keys are kept in the system’s secure storage. With FinnAI on this device, nothing leaves the phone.'**
+  String get codeDataNote;
+
+  /// Row
+  ///
+  /// In en, this message translates to:
+  /// **'Delete FinnAI Code data'**
+  String get codeDataDelete;
+
+  /// Row subtitle
+  ///
+  /// In en, this message translates to:
+  /// **'Sessions, project files, saved keys and settings'**
+  String get codeDataDeleteSub;
+
+  /// Dialog title
+  ///
+  /// In en, this message translates to:
+  /// **'Delete FinnAI Code data?'**
+  String get codeDataDeleteTitle;
+
+  /// Dialog body
+  ///
+  /// In en, this message translates to:
+  /// **'Every session, project folder, saved key and Code setting is deleted. FinnAI chats are not touched.'**
+  String get codeDataDeleteBody;
+
+  /// Confirmation
+  ///
+  /// In en, this message translates to:
+  /// **'FinnAI Code data deleted.'**
+  String get codeDataDeleted;
+
+  /// About page body
+  ///
+  /// In en, this message translates to:
+  /// **'FinnAI Code is a coding agent. It works with the model on your phone, or with your own provider keys, and can read and write files in a private project folder and run simple commands there.'**
+  String get codeAboutBody;
+
+  /// Empty file list
+  ///
+  /// In en, this message translates to:
+  /// **'No files yet. Ask the agent to create something.'**
+  String get codeFilesEmpty;
+
+  /// Shown when no session is open
+  ///
+  /// In en, this message translates to:
+  /// **'Start a session to get a project folder.'**
+  String get codeFilesNoSession;
+
+  /// Button
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get codeFileCopy;
+
+  /// Confirmation
+  ///
+  /// In en, this message translates to:
+  /// **'Copied'**
+  String get codeFileCopied;
+
+  /// Button
+  ///
+  /// In en, this message translates to:
+  /// **'Delete file'**
+  String get codeFileDelete;
+
+  /// Dialog title
+  ///
+  /// In en, this message translates to:
+  /// **'Delete {name}?'**
+  String codeFileDeleteTitle(String name);
+
+  /// Shown for an empty file
+  ///
+  /// In en, this message translates to:
+  /// **'This file is empty.'**
+  String get codeFileEmpty;
+
+  /// Terminal input hint
+  ///
+  /// In en, this message translates to:
+  /// **'Run a command'**
+  String get codeTerminalHint;
+
+  /// Terminal caption
+  ///
+  /// In en, this message translates to:
+  /// **'Runs in this session’s project folder.'**
+  String get codeTerminalIntro;
+
+  /// Shown where no shell exists
+  ///
+  /// In en, this message translates to:
+  /// **'Commands can’t run on this device.'**
+  String get codeTerminalUnsupported;
+
+  /// Button
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get codeTerminalClear;
+
+  /// Shown when a reply held an action block that could not be used
+  ///
+  /// In en, this message translates to:
+  /// **'The model wrote an action it couldn’t use, so nothing ran.'**
+  String get codeErrorMalformedAction;
+
+  /// Disclosure title for a user’s own server
+  ///
+  /// In en, this message translates to:
+  /// **'Use this server?'**
+  String get codeCloudTitleCustom;
+
+  /// Disclosure body for a user’s own server
+  ///
+  /// In en, this message translates to:
+  /// **'What you type, and any file contents or command output the agent reads, is sent to {address}. FinnAI on this device keeps everything on the phone.'**
+  String codeCloudBodyCustom(String address);
+
+  /// Disclosure confirm button for a user’s own server
+  ///
+  /// In en, this message translates to:
+  /// **'Use this server'**
+  String get codeCloudConfirmCustom;
 }
 
 class _AppLocalizationsDelegate

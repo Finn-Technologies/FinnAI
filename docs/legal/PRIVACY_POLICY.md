@@ -1,15 +1,16 @@
 # Privacy Policy for FinnAI
 
-**Last Updated: October 1, 2026**
+**Last Updated: October 3, 2026**
 
 FinnAI ("we", "our", or "us") is committed to protecting your privacy. This Privacy Policy explains how data is handled when you use the FinnAI mobile application for Android.
 
 ## 1. On-Device AI Processing & Privacy First Design
 FinnAI is designed as an on-device AI assistant. AI-generated responses are processed locally on your Android device using mmap-backed GGUF inference engines. When automatic web search is used, the latest request is also used as described below.
 
-- **No Remote AI Servers**: Your conversations are not sent to FinnAI or third-party AI cloud inference providers.
+- **No Remote AI Servers**: Your conversations are not sent to FinnAI or third-party AI cloud inference providers. The one exception is the optional FinnAI Code mode (section 2.C): it sends data to a provider only after you add that provider's API key and choose one of its models. FinnAI Code uses the on-device model until you do.
 - **Encrypted Local Storage**: Your saved conversation history is stored strictly on your local device with authenticated AES-256-GCM encryption. Encryption keys are managed using OS-enforced secure key storage (`FlutterSecureStorage`).
 - **Other Local Features**: Creations, Flows, profile preferences, custom instructions, pinned chats, and your access choices are stored in the app's private local storage. They are used only to provide the features you select and are not sent to an AI cloud service.
+- **FinnAI Code**: Coding sessions and the project folders they work in are stored in the app's private local storage as ordinary files; they are not part of the encrypted conversation history above. API keys you add are kept in the operating system's secure key storage, and only the last four characters are stored in the app's own files.
 - **You (what FinnAI remembers)**: Things you add to You, things you save from a reply with "Remember in You", and statements FinnAI notices in your own messages (for example "I am a designer") are kept in a local file on your device. Noticed statements wait in a review list until you keep them. Items you keep may be added to the on-device model's prompt, and the chats they were used in are named in the "From You" panel. You can edit, mute, forget or erase any of it, and turn learning or use off, in You > Privacy. None of it is sent anywhere.
 - **Device access choices**: The choices you make about which kinds of device context (calendar, contacts, notifications, photos, files, location) FinnAI may use are stored locally. FinnAI does not read your calendar, contacts or location.
 - **Exports and sharing**: "Export everything", "Export as text", "Share" and presentation export write a file to the app's temporary storage and hand it to the Android share sheet. FinnAI does not send these files anywhere; where they go is your choice in the app you share to.
@@ -65,6 +66,29 @@ model files. The request necessarily exposes ordinary network metadata, such as
 an IP address, to that host, but it does not include prompts or conversation
 content. FinnAI itself is proprietary software, not an open-source application.
 
+### C. FinnAI Code Providers (optional, off by default)
+FinnAI Code can use a cloud model instead of the on-device model. This is off
+until you add an API key for OpenRouter, Command Code, OpenCode Zen or OpenCode
+Go, or the address of a server you run (a "custom" provider), and then choose one
+of that provider's models. FinnAI does not operate these services and cannot see
+your account with them.
+- **What is sent**: When you use a provider's model, your messages, the contents of
+  files the agent reads, and the output of commands it runs are sent to that
+  provider over HTTPS (or, for a server on your own network that you add by
+  address, over the connection you configured), together with your API key as an
+  authorization header. The first use of each provider shows a notice saying so.
+  The provider's own privacy policy and terms apply to what it receives.
+- **Live lists and allowance**: Opening a provider's page asks that provider for
+  its list of models and, for OpenRouter, for what is left to spend on your key.
+  These requests carry your key and expose ordinary network metadata, such as an
+  IP address, to that host. "Test key" sends a one-token request.
+- **Your key**: The key is stored only in the operating system's secure storage,
+  is never written to logs, and is removed by "Remove key" or "Delete FinnAI Code
+  data".
+- **Nothing else**: Commands the agent runs stay in a private project folder on
+  your device and cannot reach the network unless you turn that on in Code
+  settings.
+
 ### B. Optional In-App AI Response Reporting
 If you explicitly choose to report an AI response via the in-app "Report" feature:
 - Reports are prepared as emails addressed to `finn_org@proton.me`. Nothing is
@@ -78,7 +102,8 @@ If you explicitly choose to report an AI response via the in-app "Report" featur
 
 ## 3. Data Retention & User Controls
 You retain full control over your local data at any time:
-- **Erase everything**: In Settings > Privacy and data, **Erase everything** attempts to purge conversation history, encryption keys, downloaded AI model files, creations, Flows, what FinnAI remembers in You, profile preferences, access choices, pinned chats, voice settings, and onboarding state. Any unpurged items are explicitly reported.
+- **Erase everything**: In Settings > Privacy and data, **Erase everything** attempts to purge conversation history, encryption keys, downloaded AI model files, creations, Flows, what FinnAI remembers in You, profile preferences, access choices, pinned chats, voice settings, FinnAI Code sessions, project folders, API keys and settings, and onboarding state. Any unpurged items are explicitly reported.
+- **FinnAI Code**: Settings > Privacy and data in FinnAI Code has **Delete FinnAI Code data**, which removes every session, project folder, saved API key and Code setting. **Erase everything** in FinnAI includes it.
 - **Delete all chats**, **Remove the model** and the **Erase everything in You** action each remove just their own data.
 - **Free up memory**: FinnAI unloads the AI model from device RAM when memory is needed.
 - **Android backups disabled**: FinnAI disables Android application backup so private local AI data is not copied into platform backup archives.

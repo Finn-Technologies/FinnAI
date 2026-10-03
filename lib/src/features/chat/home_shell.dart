@@ -59,6 +59,9 @@ import 'package:finn_ai/src/features/you/you_add_page.dart';
 import 'package:finn_ai/src/features/you/you_memory_store.dart';
 import 'package:finn_ai/src/features/you/you_profile_store.dart';
 import 'package:finn_ai/src/shared/widgets/finn_page_route.dart';
+import 'package:finn_ai/src/shared/widgets/finn_edge_fade.dart';
+import 'package:finn_ai/src/shared/widgets/finn_sidebar_parts.dart';
+import 'package:finn_ai/src/shared/widgets/finn_sidebar_surface.dart';
 import 'package:finn_ai/src/shared/widgets/flux_context_menu.dart';
 
 export 'package:finn_ai/src/shared/widgets/finn_page_route.dart';
@@ -574,7 +577,7 @@ class _HomeShellState extends State<HomeShell>
                   );
             return AnimatedBuilder(
               animation: _sidebarController,
-              builder: (context, _) => _SidebarSurface(
+              builder: (context, _) => FinnSidebarSurface(
                 home: homeLayer,
                 sidebar: sidebarLayer,
                 sidebarWidth: sidebarWidth,

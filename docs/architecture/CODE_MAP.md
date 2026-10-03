@@ -44,7 +44,9 @@ Use this before grepping. Paths are relative to the repository root.
 | Message bubbles, replies, sources, dialogs | `lib/src/features/chat/widgets/` (`bubbles.dart`, `replies.dart`, `sources.dart`, `dialogs.dart`, `conversation.dart`) |
 | Composer | `lib/src/features/chat/widgets/composer.dart` |
 | Sidebar | `lib/src/features/chat/widgets/sidebar.dart`, `sidebar_tiles.dart` |
-| The panel, its scrim, the menu/close morph and the open/close swipe | `lib/src/features/chat/shell/sidebar_surface.dart` (`_SidebarSurface`, `_SidebarToggleButton`), `widgets/header_and_fade.dart` (`_SidebarGlyphPainter`) |
+| The panel, its scrim, the menu/close morph and the open/close swipe (shared by FinnAI and FinnAI Code) | `lib/src/shared/widgets/finn_sidebar_surface.dart` (`FinnSidebarSurface`, `FinnSidebarToggleButton`), the chat drag logic in `lib/src/features/chat/shell/sidebar_surface.dart` |
+| The sidebar's circle destinations and buttons | `lib/src/shared/widgets/finn_sidebar_parts.dart` |
+| The soft top/bottom fade over a scrolling transcript | `lib/src/shared/widgets/finn_edge_fade.dart` |
 | Send / stop / regenerate / continue behaviour | `lib/src/features/chat/shell/send.dart` (`_send`, `_regenerateReply`, `_continueReply`), `shell/navigation.dart` (`_stopReply`) + `chat_generation_controller.dart` |
 | Streaming, cancellation, persistence of a turn | `lib/src/features/chat/chat_generation_controller.dart` |
 | Conversation storage format / encryption / history limits | `lib/src/features/conversations/conversation_store.dart` |
@@ -122,6 +124,33 @@ See `docs/architecture/CREATIONS.md` for the spec DSL, the generation pipeline a
 | A mini app's saved state across launches | `lib/src/features/creations/runtime/mini_app_persistence.dart` |
 | "Make me an app / widget / deck" typed in chat | `lib/src/features/creations/creation_request.dart`, `lib/src/features/chat/shell/make.dart` |
 | The card a chat reply carries for what was made | `lib/src/features/conversations/message_card.dart`, `lib/src/features/chat/message_card_view.dart` |
+
+## FinnAI Code
+
+A second app inside the app: its own sessions, settings and providers, in the same design language. Rules: `lib/src/features/code/AGENTS.md`; decision: `docs/decisions/0010-finnai-code.md`.
+
+| To change… | Edit |
+|---|---|
+| Switching between FinnAI and FinnAI Code (the brand row, the remembered choice) | `lib/src/shared/widgets/finn_brand_switcher.dart`, `lib/src/shared/config/app_mode.dart`, `lib/src/app/app_mode_host.dart` |
+| The Code screen (sidebar, header, transcript, composer, navigation) | `lib/src/features/code/code_shell.dart`, `lib/src/features/code/ui/` |
+| What the model is told, and how its reply is read (the action protocol) | `lib/src/features/code/agent/agent_protocol.dart` |
+| The request loop: steps, approvals, stop, loop guards | `lib/src/features/code/agent/code_agent.dart` |
+| What an action does (file write, command) | `lib/src/features/code/agent/action_runner.dart` |
+| What a command may not do | `lib/src/features/code/sandbox/command_policy.dart` |
+| Running a command (timeout, size cap, environment) | `lib/src/features/code/sandbox/shell_sandbox.dart` |
+| The project folder and its path rules | `lib/src/features/code/sandbox/workspace.dart` |
+| The providers (names, URLs, key and billing pages) | `lib/src/features/code/providers/code_provider.dart` |
+| Live model lists and how each provider's list is read | `lib/src/features/code/providers/code_model.dart` |
+| Request shapes and reading a streamed reply | `lib/src/features/code/providers/code_wires.dart` |
+| Fetching models, allowance, testing a key, falling back between request shapes | `lib/src/features/code/providers/provider_client.dart` |
+| API keys, model cache, the selected model | `lib/src/features/code/providers/provider_store.dart`, `providers/secret_store.dart` |
+| On-device vs cloud model behind one interface | `lib/src/features/code/providers/gateways.dart` |
+| Sessions and their storage | `lib/src/features/code/sessions/code_session.dart`, `sessions/code_session_store.dart` |
+| Permission mode, step limit, network switch | `lib/src/features/code/settings/code_settings_store.dart`, `settings/code_agent_page.dart` |
+| Provider pages (key, allowance, models, test) | `lib/src/features/code/settings/code_provider_page.dart`, `settings/code_providers_page.dart` |
+| Model picker and the cloud disclosure | `lib/src/features/code/ui/code_models_page.dart` |
+| Error and refusal wording | `lib/src/features/code/ui/code_text.dart` |
+| What "delete all data" removes for Code | `lib/src/features/code/code_services.dart` (`deleteAll`), `lib/src/app/app_state_store.dart` |
 
 ## Apps, onboarding, settings, features
 

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'package:finn_ai/src/features/actions/action_audit_store.dart';
+import 'package:finn_ai/src/features/code/code_services.dart';
 import 'package:finn_ai/src/features/conversations/conversation_store.dart';
 import 'package:finn_ai/src/features/creations/creation_store.dart';
 import 'package:finn_ai/src/inference/finn_inference.dart';
@@ -16,6 +17,7 @@ import 'package:finn_ai/src/features/voice/stt/stt_model_store.dart';
 import 'package:finn_ai/src/features/voice/voice_settings_store.dart';
 import 'package:finn_ai/src/features/you/you_memory_store.dart';
 import 'package:finn_ai/src/features/you/you_profile_store.dart';
+import 'package:finn_ai/src/shared/config/app_mode.dart';
 
 class DeletionResult {
   const DeletionResult({
@@ -74,6 +76,7 @@ class AppStateStore extends ChangeNotifier {
     TtsVoiceStore? ttsVoiceStore,
     HomeScreenService? homeScreen,
     FlowScheduler? flowScheduler,
+    CodeServices? codeServices,
   }) async {
     final deleted = <String>[];
     final nonExistent = <String>[];
@@ -248,6 +251,23 @@ class AppStateStore extends ChangeNotifier {
                 : ActionAuditStore(directoryProvider: _directoryProvider)))
         .deleteAll();
     deleted.add('Action log');
+
+    // FinnAI Code keeps its own sessions, project folders, API keys and
+    // settings, apart from FinnAI's. Only the real app has them: a test that
+    // points at a temporary folder hands its own services or skips this.
+    final code = codeServices ??
+        (_directoryProvider == null ? CodeServices.instance : null);
+    if (code != null) {
+      final codeFailures = await code.deleteAll();
+      if (codeFailures.isEmpty) {
+        deleted.add('FinnAI Code');
+      } else {
+        failed.addAll(codeFailures);
+      }
+      if (_directoryProvider == null) {
+        await AppModeController.instance.deleteStorage();
+      }
+    }
 
     notifyListeners();
 

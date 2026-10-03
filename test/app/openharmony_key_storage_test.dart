@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:finn_ai/src/features/conversations/conversation_crypto.dart';
 import 'package:finn_ai/src/platform/openharmony_key_storage.dart';

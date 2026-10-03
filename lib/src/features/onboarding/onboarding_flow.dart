@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import 'package:finn_ai/src/features/chat/home_shell.dart';
+import 'package:finn_ai/src/app/app_mode_host.dart';
 import 'package:finn_ai/src/features/onboarding/context_choose_page.dart';
 import 'package:finn_ai/src/features/onboarding/context_consent_store.dart';
 import 'package:finn_ai/src/inference/device_profile.dart';
@@ -81,7 +81,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   void _finish() {
     final persist = widget.onComplete;
     if (persist != null) unawaited(persist());
-    Navigator.of(context).pushReplacement(_blurRoute(const HomeShell()));
+    Navigator.of(context).pushReplacement(_blurRoute(const AppModeHost()));
   }
 
   PageRouteBuilder<void> _blurRoute(Widget child) => PageRouteBuilder(
@@ -1288,7 +1288,7 @@ class _SoftwareUpgradeScreenState extends State<SoftwareUpgradeScreen> {
       PageRouteBuilder<void>(
         transitionDuration: const Duration(milliseconds: 350),
         reverseTransitionDuration: const Duration(milliseconds: 280),
-        pageBuilder: (_, animation, __) => const HomeShell(),
+        pageBuilder: (_, animation, __) => const AppModeHost(),
         transitionsBuilder: (context, animation, _, page) =>
             FadeTransition(opacity: animation, child: page),
       ),

@@ -13,3 +13,4 @@ Short records of why the code is shaped the way it is. Read the relevant one bef
 | [0007](0007-live-voice-and-spoken-replies.md) | Live voice: a hands-free loop, short spoken answers (voice parts superseded by 0008) | Accepted, implemented 2026-10-01 |
 | [0008](0008-licence-clean-voice.md) | Supertonic 3 voice, sherpa-onnx without espeak-ng | Accepted, implemented 2026-10-02 |
 | [0009](0009-flows-v3.md) | Flows v3: block tree, native triggers, background runs, authoring from a sentence | Accepted, implemented 2026-10-02 |
+| [0010](0010-finnai-code.md) | FinnAI Code: a second app inside the app (workspace shell, text-protocol agent, bring-your-own providers) | Accepted, implemented 2026-10-03 |

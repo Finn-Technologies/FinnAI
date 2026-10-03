@@ -21,7 +21,7 @@ editing. `docs/architecture/CODE_MAP.md` tells you *which file to edit for which
 | **Code must be `dart format` clean.** | CI gate. | `dart format --output=none --set-exit-if-changed .` |
 | **User-facing strings go through `L10n.of(context)`.** | The app ships 5 locales. | review |
 | **`engine/` imports nothing from `features/`, `app/`, `shared/`, `platform/`; only `chat` imports other features; no Dart file over 600 lines.** Pre-existing violations are baselined and may only shrink. | Keeps units small enough for an agent to hold in context and stops new coupling. | `bash tool/verify_boundaries.sh` (runs in CI) |
-| **A turn never runs more than one search, and the model never emits tool calls in chat** (direction, see ADR 0001; the current loop is being removed). | A 1.6B model loops on tool calls. | `docs/decisions/0001-app-driven-search.md` |
+| **A turn never runs more than one search, and the model never emits tool calls in chat** (direction, see ADR 0001; the current loop is being removed). FinnAI Code is a separate mode with its own bounded action loop (ADR 0010); it never feeds chat. | A 1.6B model loops on tool calls. | `docs/decisions/0001-app-driven-search.md`, `docs/decisions/0010-finnai-code.md` |
 
 ---
 
@@ -29,7 +29,7 @@ editing. `docs/architecture/CODE_MAP.md` tells you *which file to edit for which
 
 Root rules are here. Area rules are nested and short; read the one for the directory you edit:
 `lib/src/engine/AGENTS.md`, `lib/src/features/chat/AGENTS.md`, `lib/src/features/flows/AGENTS.md`,
-`lib/src/features/creations/AGENTS.md`, `lib/src/features/search/AGENTS.md`.
+`lib/src/features/creations/AGENTS.md`, `lib/src/features/search/AGENTS.md`, `lib/src/features/code/AGENTS.md`.
 Every `lib/src/features/<name>/` has a `README.md` (purpose, entry points, invariants).
 Why-decisions are in `docs/decisions/` — read before undoing one. `PLAN.md` is the roadmap and progress log.
 
@@ -56,6 +56,7 @@ FinnAI/
 │       │   ├── conversations/    # encrypted conversation persistence
 │       │   ├── search/           # web grounding + headless browser
 │       │   ├── settings/  flows/  you/  creations/  voice/  reporting/
+│       │   ├── code/             # FinnAI Code: a coding agent (second app in the app)
 │       ├── engine/               # ⚡ the ONLY place llama_cpp_dart is imported
 │       ├── inference/            # public re-export surface of the engine (see below)
 │       ├── platform/             # OS-specific shims (OpenHarmony)

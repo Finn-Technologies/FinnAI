@@ -4403,5 +4403,894 @@
   "voiceStyleM2": "Male 2",
   "@voiceStyleM2": {
     "description": "Speaking voice style name"
+  },
+  "appBrandFinnAICode": "FinnAI Code",
+  "@appBrandFinnAICode": {
+    "description": "Product name of the coding app inside FinnAI"
+  },
+  "appModeSwitchSemantic": "Switch between FinnAI and FinnAI Code",
+  "@appModeSwitchSemantic": {
+    "description": "Screen-reader hint on the brand row that switches apps"
+  },
+  "codeGreeting": "What shall we build?",
+  "@codeGreeting": {
+    "description": "Empty-state greeting in FinnAI Code"
+  },
+  "codeGreetingCaption": "Your project lives in a private folder on this phone.",
+  "@codeGreetingCaption": {
+    "description": "Caption under the empty-state greeting"
+  },
+  "codeComposerHint": "Describe what to build or fix",
+  "@codeComposerHint": {
+    "description": "Placeholder of the FinnAI Code message field"
+  },
+  "codeNewSession": "New session",
+  "@codeNewSession": {
+    "description": "New coding session button"
+  },
+  "codeSessionsTitle": "Sessions",
+  "@codeSessionsTitle": {
+    "description": "Sidebar heading for coding sessions"
+  },
+  "codeNoSessions": "No sessions yet",
+  "@codeNoSessions": {
+    "description": "Empty sessions list"
+  },
+  "codeFilesTitle": "Files",
+  "@codeFilesTitle": {
+    "description": "Sidebar destination: project files"
+  },
+  "codeTerminalTitle": "Terminal",
+  "@codeTerminalTitle": {
+    "description": "Sidebar destination: shell"
+  },
+  "codeModelsTitle": "Models",
+  "@codeModelsTitle": {
+    "description": "Sidebar destination: model picker"
+  },
+  "codeSettingsTitle": "Code settings",
+  "@codeSettingsTitle": {
+    "description": "Title of FinnAI Code settings"
+  },
+  "codeLocalLabel": "FinnAI · on device",
+  "@codeLocalLabel": {
+    "description": "Model chip text when the on-device model is selected"
+  },
+  "codeModelChipSemantic": "Choose a model. Current: {model}",
+  "@codeModelChipSemantic": {
+    "description": "Screen-reader label of the model chip",
+    "placeholders": {
+      "model": {
+        "type": "String"
+      }
+    }
+  },
+  "codePermissionAsk": "Ask first",
+  "@codePermissionAsk": {
+    "description": "Permission chip: ask before everything"
+  },
+  "codePermissionEdits": "Auto-edit",
+  "@codePermissionEdits": {
+    "description": "Permission chip: files are written automatically"
+  },
+  "codePermissionAuto": "Auto-run",
+  "@codePermissionAuto": {
+    "description": "Permission chip: everything runs automatically"
+  },
+  "codePermissionSemantic": "Change what the agent may do. Current: {mode}",
+  "@codePermissionSemantic": {
+    "description": "Screen-reader label of the permission chip",
+    "placeholders": {
+      "mode": {
+        "type": "String"
+      }
+    }
+  },
+  "codeThinking": "Thinking…",
+  "@codeThinking": {
+    "description": "Shown while the model is writing"
+  },
+  "codeActionRunCommand": "Run command",
+  "@codeActionRunCommand": {
+    "description": "Title of a proposed shell command"
+  },
+  "codeActionWriteFile": "Write {path}",
+  "@codeActionWriteFile": {
+    "description": "Title of a proposed file write",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "codeActionRun": "Run",
+  "@codeActionRun": {
+    "description": "Button that lets a command run"
+  },
+  "codeActionAllow": "Allow",
+  "@codeActionAllow": {
+    "description": "Button that lets a file write happen"
+  },
+  "codeActionSkip": "Skip",
+  "@codeActionSkip": {
+    "description": "Button that declines a proposed action"
+  },
+  "codeActionRunning": "Running…",
+  "@codeActionRunning": {
+    "description": "Status of a running command"
+  },
+  "codeActionDone": "Done",
+  "@codeActionDone": {
+    "description": "Status of a finished action"
+  },
+  "codeActionFailedExit": "Failed (exit {code})",
+  "@codeActionFailedExit": {
+    "description": "Status of a command that exited with an error",
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "codeActionFailed": "Failed",
+  "@codeActionFailed": {
+    "description": "Status of an action that failed"
+  },
+  "codeActionTimedOut": "Timed out",
+  "@codeActionTimedOut": {
+    "description": "Status of a command that ran too long"
+  },
+  "codeActionSkipped": "Skipped",
+  "@codeActionSkipped": {
+    "description": "Status of an action the user declined"
+  },
+  "codeActionDenied": "Blocked",
+  "@codeActionDenied": {
+    "description": "Status of an action the safety policy refused"
+  },
+  "codeActionOutput": "Output",
+  "@codeActionOutput": {
+    "description": "Heading of a command’s output"
+  },
+  "codeActionNoOutput": "No output",
+  "@codeActionNoOutput": {
+    "description": "Shown when a command printed nothing"
+  },
+  "codeActionOutputCut": "Output was cut short",
+  "@codeActionOutputCut": {
+    "description": "Note under a long command output"
+  },
+  "codeDeniedBlockedProgram": "“{program}” is not allowed here.",
+  "@codeDeniedBlockedProgram": {
+    "description": "Why a command was blocked",
+    "placeholders": {
+      "program": {
+        "type": "String"
+      }
+    }
+  },
+  "codeDeniedNetwork": "Network commands are turned off.",
+  "@codeDeniedNetwork": {
+    "description": "Why a command was blocked"
+  },
+  "codeDeniedOutside": "{path} is outside the project folder.",
+  "@codeDeniedOutside": {
+    "description": "Why a command or file was blocked",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "codeDeniedParent": "“..” is not allowed in paths.",
+  "@codeDeniedParent": {
+    "description": "Why a command was blocked"
+  },
+  "codeDeniedOther": "That command is not allowed.",
+  "@codeDeniedOther": {
+    "description": "Why a command was blocked"
+  },
+  "codeErrorStepLimit": "Stopped at the step limit.",
+  "@codeErrorStepLimit": {
+    "description": "Shown when a request used up its steps"
+  },
+  "codeErrorRepeating": "Stopped: the model kept repeating the same step.",
+  "@codeErrorRepeating": {
+    "description": "Shown when the model loops"
+  },
+  "codeErrorEmpty": "The model sent an empty reply.",
+  "@codeErrorEmpty": {
+    "description": "Shown when the model says nothing"
+  },
+  "codeErrorCutOff": "The reply was cut off before the step finished, so nothing ran.",
+  "@codeErrorCutOff": {
+    "description": "Shown when a reply ended inside its action"
+  },
+  "codeErrorEngine": "Something went wrong: {detail}",
+  "@codeErrorEngine": {
+    "description": "Generic failure with a short detail",
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "codeErrorAuth": "The provider rejected the key. Check it in Code settings.",
+  "@codeErrorAuth": {
+    "description": "Provider error: bad key"
+  },
+  "codeErrorPlanNoApi": "Command Code’s Go plan has no API access. Upgrade to GOAT or higher to use it here.",
+  "@codeErrorPlanNoApi": {
+    "description": "Provider error: Command Code Go plan"
+  },
+  "codeErrorPayment": "Out of credit with this provider.",
+  "@codeErrorPayment": {
+    "description": "Provider error: no credit"
+  },
+  "codeErrorRate": "Rate limited. Try again in a moment.",
+  "@codeErrorRate": {
+    "description": "Provider error: rate limit"
+  },
+  "codeErrorWrongEndpoint": "This provider could not serve that model.",
+  "@codeErrorWrongEndpoint": {
+    "description": "Provider error: model not available"
+  },
+  "codeErrorBadRequest": "The provider could not accept the request.",
+  "@codeErrorBadRequest": {
+    "description": "Provider error: bad request"
+  },
+  "codeErrorServer": "The provider had a problem. Try again.",
+  "@codeErrorServer": {
+    "description": "Provider error: server"
+  },
+  "codeErrorNetwork": "Couldn’t reach the provider. Check your connection.",
+  "@codeErrorNetwork": {
+    "description": "Provider error: network"
+  },
+  "codeErrorTimeout": "The provider took too long to answer.",
+  "@codeErrorTimeout": {
+    "description": "Provider error: timeout"
+  },
+  "codeErrorMalformed": "The provider sent a reply that couldn’t be read.",
+  "@codeErrorMalformed": {
+    "description": "Provider error: malformed reply"
+  },
+  "codeErrorUnknown": "Something went wrong with the provider.",
+  "@codeErrorUnknown": {
+    "description": "Provider error: unknown"
+  },
+  "codeSessionRename": "Rename",
+  "@codeSessionRename": {
+    "description": "Session menu"
+  },
+  "codeSessionRenameTitle": "Rename session",
+  "@codeSessionRenameTitle": {
+    "description": "Rename dialog title"
+  },
+  "codeSessionPin": "Pin",
+  "@codeSessionPin": {
+    "description": "Session menu"
+  },
+  "codeSessionUnpin": "Unpin",
+  "@codeSessionUnpin": {
+    "description": "Session menu"
+  },
+  "codeSessionFiles": "Project files",
+  "@codeSessionFiles": {
+    "description": "Session menu"
+  },
+  "codeSessionDelete": "Delete session",
+  "@codeSessionDelete": {
+    "description": "Session menu"
+  },
+  "codeSessionDeleteTitle": "Delete this session?",
+  "@codeSessionDeleteTitle": {
+    "description": "Delete dialog title"
+  },
+  "codeSessionDeleteBody": "The conversation and its project files are removed from this phone.",
+  "@codeSessionDeleteBody": {
+    "description": "Delete dialog body"
+  },
+  "codeCloudTitle": "Use {provider}?",
+  "@codeCloudTitle": {
+    "description": "Disclosure before the first cloud model",
+    "placeholders": {
+      "provider": {
+        "type": "String"
+      }
+    }
+  },
+  "codeCloudBody": "{provider} runs in the cloud. What you type, and any file contents or command output the agent reads, is sent to {provider} and handled under its terms. FinnAI on this device keeps everything on the phone.",
+  "@codeCloudBody": {
+    "description": "Disclosure body: cloud providers receive the conversation",
+    "placeholders": {
+      "provider": {
+        "type": "String"
+      }
+    }
+  },
+  "codeCloudConfirm": "Use {provider}",
+  "@codeCloudConfirm": {
+    "description": "Confirm button of the disclosure",
+    "placeholders": {
+      "provider": {
+        "type": "String"
+      }
+    }
+  },
+  "codeModelsSearchHint": "Search models",
+  "@codeModelsSearchHint": {
+    "description": "Search field on the models page"
+  },
+  "codeModelsOnDeviceTitle": "FinnAI",
+  "@codeModelsOnDeviceTitle": {
+    "description": "On-device model row title"
+  },
+  "codeModelsOnDeviceSub": "Runs on this phone. Private, free and works offline.",
+  "@codeModelsOnDeviceSub": {
+    "description": "On-device model row subtitle"
+  },
+  "codeModelsAddProvider": "Add a provider to use more models",
+  "@codeModelsAddProvider": {
+    "description": "Row that leads to provider setup"
+  },
+  "codeModelsLoading": "Loading models…",
+  "@codeModelsLoading": {
+    "description": "Shown while a model list loads"
+  },
+  "codeModelsLoad": "Load models",
+  "@codeModelsLoad": {
+    "description": "Button that fetches a provider’s models"
+  },
+  "codeModelsNone": "No models match",
+  "@codeModelsNone": {
+    "description": "Empty search result"
+  },
+  "codeModelsFree": "Free",
+  "@codeModelsFree": {
+    "description": "Badge on a free model"
+  },
+  "codeModelsContext": "{size} context",
+  "@codeModelsContext": {
+    "description": "Context window of a model, e.g. 128K",
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "codeModelsPrice": "{input} in · {output} out per 1M",
+  "@codeModelsPrice": {
+    "description": "Price of a model per million tokens",
+    "placeholders": {
+      "input": {
+        "type": "String"
+      },
+      "output": {
+        "type": "String"
+      }
+    }
+  },
+  "codeModelsFetchFailed": "Couldn’t load models. {reason}",
+  "@codeModelsFetchFailed": {
+    "description": "Shown when listing models failed",
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "codeSettingsProviders": "Providers",
+  "@codeSettingsProviders": {
+    "description": "Settings row"
+  },
+  "codeSettingsProvidersSubNone": "FinnAI on this device",
+  "@codeSettingsProvidersSubNone": {
+    "description": "Settings row subtitle with no provider added"
+  },
+  "codeSettingsProvidersSub": "FinnAI plus {count} connected",
+  "@codeSettingsProvidersSub": {
+    "description": "Settings row subtitle with providers added",
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "codeSettingsModel": "Model",
+  "@codeSettingsModel": {
+    "description": "Settings row"
+  },
+  "codeSettingsAgent": "Agent",
+  "@codeSettingsAgent": {
+    "description": "Settings row"
+  },
+  "codeSettingsWorkspace": "Project folders",
+  "@codeSettingsWorkspace": {
+    "description": "Settings row"
+  },
+  "codeSettingsWorkspaceSub": "{size} on this phone",
+  "@codeSettingsWorkspaceSub": {
+    "description": "Settings row subtitle",
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "codeSettingsData": "Privacy and data",
+  "@codeSettingsData": {
+    "description": "Settings row"
+  },
+  "codeSettingsDataSub": "Keys, sessions and project files",
+  "@codeSettingsDataSub": {
+    "description": "Settings row subtitle"
+  },
+  "codeSettingsAbout": "About FinnAI Code",
+  "@codeSettingsAbout": {
+    "description": "Settings row"
+  },
+  "codeProvidersTitle": "Providers",
+  "@codeProvidersTitle": {
+    "description": "Page title"
+  },
+  "codeProvidersIntro": "FinnAI on your phone is the default. Add your own API key to use a cloud model in FinnAI Code. Keys stay in your phone’s secure storage.",
+  "@codeProvidersIntro": {
+    "description": "Intro on the providers page"
+  },
+  "codeProviderStatusLocal": "On this device",
+  "@codeProviderStatusLocal": {
+    "description": "Provider status"
+  },
+  "codeProviderStatusConnected": "Connected · ••••{hint}",
+  "@codeProviderStatusConnected": {
+    "description": "Provider status with the last four characters of the key",
+    "placeholders": {
+      "hint": {
+        "type": "String"
+      }
+    }
+  },
+  "codeProviderStatusConnectedNoKey": "Connected",
+  "@codeProviderStatusConnectedNoKey": {
+    "description": "Provider status when no key is needed"
+  },
+  "codeProviderStatusNotSet": "Not set up",
+  "@codeProviderStatusNotSet": {
+    "description": "Provider status"
+  },
+  "codeProviderDescOpenRouter": "One key for hundreds of models, free ones included.",
+  "@codeProviderDescOpenRouter": {
+    "description": "Provider description"
+  },
+  "codeProviderDescCommandCode": "Command Code’s models, through your own key.",
+  "@codeProviderDescCommandCode": {
+    "description": "Provider description"
+  },
+  "codeProviderDescZen": "OpenCode Zen: pay-as-you-go models chosen for coding.",
+  "@codeProviderDescZen": {
+    "description": "Provider description"
+  },
+  "codeProviderDescGo": "OpenCode Go: a flat monthly plan of open coding models.",
+  "@codeProviderDescGo": {
+    "description": "Provider description"
+  },
+  "codeProviderDescCustom": "Any server that speaks the OpenAI API: your own, Ollama, LM Studio and more.",
+  "@codeProviderDescCustom": {
+    "description": "Provider description"
+  },
+  "codeProviderCustomName": "Custom (OpenAI compatible)",
+  "@codeProviderCustomName": {
+    "description": "Name of the custom provider"
+  },
+  "codeProviderKeyLabel": "API key",
+  "@codeProviderKeyLabel": {
+    "description": "Field label"
+  },
+  "codeProviderKeyHint": "Paste your key",
+  "@codeProviderKeyHint": {
+    "description": "Field hint"
+  },
+  "codeProviderKeyOptionalHint": "Paste a key if your server needs one",
+  "@codeProviderKeyOptionalHint": {
+    "description": "Field hint for a custom server"
+  },
+  "codeProviderKeySave": "Save key",
+  "@codeProviderKeySave": {
+    "description": "Button"
+  },
+  "codeProviderKeyReplace": "Replace key",
+  "@codeProviderKeyReplace": {
+    "description": "Button"
+  },
+  "codeProviderKeyRemove": "Remove key",
+  "@codeProviderKeyRemove": {
+    "description": "Button"
+  },
+  "codeProviderKeyRemoveTitle": "Remove this key?",
+  "@codeProviderKeyRemoveTitle": {
+    "description": "Dialog title"
+  },
+  "codeProviderKeyRemoveBody": "FinnAI Code will stop using {provider} until you add a key again.",
+  "@codeProviderKeyRemoveBody": {
+    "description": "Dialog body",
+    "placeholders": {
+      "provider": {
+        "type": "String"
+      }
+    }
+  },
+  "codeProviderKeyStored": "Stored securely on this phone",
+  "@codeProviderKeyStored": {
+    "description": "Caption under the key field"
+  },
+  "codeProviderGetKey": "Get a key",
+  "@codeProviderGetKey": {
+    "description": "Button that opens the provider’s key page"
+  },
+  "codeProviderTest": "Test key",
+  "@codeProviderTest": {
+    "description": "Button"
+  },
+  "codeProviderTesting": "Testing…",
+  "@codeProviderTesting": {
+    "description": "Shown while a key is tested"
+  },
+  "codeProviderTestOk": "The key works.",
+  "@codeProviderTestOk": {
+    "description": "Result of a key test"
+  },
+  "codeProviderTestFail": "Test failed. {reason}",
+  "@codeProviderTestFail": {
+    "description": "Result of a key test",
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "codeProviderTestNeedsModel": "Load the models first, then test.",
+  "@codeProviderTestNeedsModel": {
+    "description": "Hint when no model is available for a test"
+  },
+  "codeProviderAddressLabel": "Server address",
+  "@codeProviderAddressLabel": {
+    "description": "Field label"
+  },
+  "codeProviderAddressHint": "https://your-server/v1",
+  "@codeProviderAddressHint": {
+    "description": "Field hint"
+  },
+  "codeProviderAddressInvalid": "Use an https address, or http for a server on your own network.",
+  "@codeProviderAddressInvalid": {
+    "description": "Validation message"
+  },
+  "codeProviderAddressSave": "Save address",
+  "@codeProviderAddressSave": {
+    "description": "Button"
+  },
+  "codeProviderPlanNote": "Requires the GOAT plan or higher. The Go plan has no API access and can’t be used here.",
+  "@codeProviderPlanNote": {
+    "description": "Note on the Command Code page"
+  },
+  "codeProviderPrivacy": "When you use one of its models, your messages, file contents and command output are sent to {provider}.",
+  "@codeProviderPrivacy": {
+    "description": "Privacy note on a provider page",
+    "placeholders": {
+      "provider": {
+        "type": "String"
+      }
+    }
+  },
+  "codeProviderAllowance": "Allowance",
+  "@codeProviderAllowance": {
+    "description": "Section heading"
+  },
+  "codeProviderAllowanceRemaining": "{remaining} left of {limit}",
+  "@codeProviderAllowanceRemaining": {
+    "description": "Allowance with a cap",
+    "placeholders": {
+      "remaining": {
+        "type": "String"
+      },
+      "limit": {
+        "type": "String"
+      }
+    }
+  },
+  "codeProviderAllowanceUnlimited": "No spending limit on this key",
+  "@codeProviderAllowanceUnlimited": {
+    "description": "Allowance without a cap"
+  },
+  "codeProviderAllowanceUsed": "{used} used",
+  "@codeProviderAllowanceUsed": {
+    "description": "Spend so far",
+    "placeholders": {
+      "used": {
+        "type": "String"
+      }
+    }
+  },
+  "codeProviderAllowanceToday": "{amount} today",
+  "@codeProviderAllowanceToday": {
+    "description": "Spend today",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "codeProviderAllowanceMonth": "{amount} this month",
+  "@codeProviderAllowanceMonth": {
+    "description": "Spend this month",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "codeProviderAllowanceBalance": "Account credit {balance}",
+  "@codeProviderAllowanceBalance": {
+    "description": "Account balance",
+    "placeholders": {
+      "balance": {
+        "type": "String"
+      }
+    }
+  },
+  "codeProviderAllowanceFree": "Free-tier key",
+  "@codeProviderAllowanceFree": {
+    "description": "Badge"
+  },
+  "codeProviderAllowanceNoApi": "{provider} doesn’t offer a usage API. Check your balance on its dashboard.",
+  "@codeProviderAllowanceNoApi": {
+    "description": "Shown for providers with no usage endpoint",
+    "placeholders": {
+      "provider": {
+        "type": "String"
+      }
+    }
+  },
+  "codeProviderOpenDashboard": "Open dashboard",
+  "@codeProviderOpenDashboard": {
+    "description": "Button that opens the provider’s billing page"
+  },
+  "codeProviderRefresh": "Refresh",
+  "@codeProviderRefresh": {
+    "description": "Button"
+  },
+  "codeProviderModelsCount": "{count} models available",
+  "@codeProviderModelsCount": {
+    "description": "Number of models fetched",
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "codeProviderModelsRefresh": "Refresh model list",
+  "@codeProviderModelsRefresh": {
+    "description": "Button"
+  },
+  "codeProviderChooseModel": "Choose a model",
+  "@codeProviderChooseModel": {
+    "description": "Button"
+  },
+  "codeProviderModelsLive": "Fetched live from {provider}",
+  "@codeProviderModelsLive": {
+    "description": "Caption under the model count",
+    "placeholders": {
+      "provider": {
+        "type": "String"
+      }
+    }
+  },
+  "codeAgentTitle": "Agent",
+  "@codeAgentTitle": {
+    "description": "Page title"
+  },
+  "codeAgentPermissionTitle": "When the agent acts",
+  "@codeAgentPermissionTitle": {
+    "description": "Section heading"
+  },
+  "codeAgentAsk": "Ask before everything",
+  "@codeAgentAsk": {
+    "description": "Permission option"
+  },
+  "codeAgentAskSub": "Every command and file write waits for your tap.",
+  "@codeAgentAskSub": {
+    "description": "Permission option subtitle"
+  },
+  "codeAgentEdits": "Write files, ask for commands",
+  "@codeAgentEdits": {
+    "description": "Permission option"
+  },
+  "codeAgentEditsSub": "Files are written as it goes. Commands wait for your tap.",
+  "@codeAgentEditsSub": {
+    "description": "Permission option subtitle"
+  },
+  "codeAgentAuto": "Run everything",
+  "@codeAgentAuto": {
+    "description": "Permission option"
+  },
+  "codeAgentAutoSub": "Nothing waits for you. Commands still stay inside the project folder.",
+  "@codeAgentAutoSub": {
+    "description": "Permission option subtitle"
+  },
+  "codeAgentSteps": "Steps per request",
+  "@codeAgentSteps": {
+    "description": "Setting"
+  },
+  "codeAgentStepsSub": "How many actions the agent may take before it stops and asks to continue.",
+  "@codeAgentStepsSub": {
+    "description": "Setting description"
+  },
+  "codeAgentStepsAuto": "Automatic",
+  "@codeAgentStepsAuto": {
+    "description": "Setting value"
+  },
+  "codeAgentStepsValue": "{count} steps",
+  "@codeAgentStepsValue": {
+    "description": "Setting value",
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "codeAgentNetwork": "Allow network commands",
+  "@codeAgentNetwork": {
+    "description": "Setting"
+  },
+  "codeAgentNetworkSub": "Lets commands like curl reach the internet. Off keeps your project from being uploaded by mistake.",
+  "@codeAgentNetworkSub": {
+    "description": "Setting description"
+  },
+  "codeAgentTimeout": "Command time limit",
+  "@codeAgentTimeout": {
+    "description": "Setting"
+  },
+  "codeAgentTimeoutValue": "{seconds} s",
+  "@codeAgentTimeoutValue": {
+    "description": "Setting value in seconds",
+    "placeholders": {
+      "seconds": {
+        "type": "String"
+      }
+    }
+  },
+  "codeSandboxNote": "Commands run in a private folder on this phone, as the app’s own user, with a time limit. This is not a full Linux system: there is no python, git or compiler, and nothing can be installed.",
+  "@codeSandboxNote": {
+    "description": "Honest description of the command sandbox"
+  },
+  "codeWorkspaceTitle": "Project folders",
+  "@codeWorkspaceTitle": {
+    "description": "Page title"
+  },
+  "codeWorkspaceUsed": "{size} in {count} project folders",
+  "@codeWorkspaceUsed": {
+    "description": "Storage summary",
+    "placeholders": {
+      "size": {
+        "type": "String"
+      },
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "codeWorkspaceClear": "Delete all project files",
+  "@codeWorkspaceClear": {
+    "description": "Button"
+  },
+  "codeWorkspaceClearTitle": "Delete all project files?",
+  "@codeWorkspaceClearTitle": {
+    "description": "Dialog title"
+  },
+  "codeWorkspaceClearBody": "Every session’s project folder is emptied. Conversations stay.",
+  "@codeWorkspaceClearBody": {
+    "description": "Dialog body"
+  },
+  "codeDataTitle": "Privacy and data",
+  "@codeDataTitle": {
+    "description": "Page title"
+  },
+  "codeDataNote": "Sessions and project files are stored in this app’s private storage on your phone. API keys are kept in the system’s secure storage. With FinnAI on this device, nothing leaves the phone.",
+  "@codeDataNote": {
+    "description": "Where Code data lives"
+  },
+  "codeDataDelete": "Delete FinnAI Code data",
+  "@codeDataDelete": {
+    "description": "Row"
+  },
+  "codeDataDeleteSub": "Sessions, project files, saved keys and settings",
+  "@codeDataDeleteSub": {
+    "description": "Row subtitle"
+  },
+  "codeDataDeleteTitle": "Delete FinnAI Code data?",
+  "@codeDataDeleteTitle": {
+    "description": "Dialog title"
+  },
+  "codeDataDeleteBody": "Every session, project folder, saved key and Code setting is deleted. FinnAI chats are not touched.",
+  "@codeDataDeleteBody": {
+    "description": "Dialog body"
+  },
+  "codeDataDeleted": "FinnAI Code data deleted.",
+  "@codeDataDeleted": {
+    "description": "Confirmation"
+  },
+  "codeAboutBody": "FinnAI Code is a coding agent. It works with the model on your phone, or with your own provider keys, and can read and write files in a private project folder and run simple commands there.",
+  "@codeAboutBody": {
+    "description": "About page body"
+  },
+  "codeFilesEmpty": "No files yet. Ask the agent to create something.",
+  "@codeFilesEmpty": {
+    "description": "Empty file list"
+  },
+  "codeFilesNoSession": "Start a session to get a project folder.",
+  "@codeFilesNoSession": {
+    "description": "Shown when no session is open"
+  },
+  "codeFileCopy": "Copy",
+  "@codeFileCopy": {
+    "description": "Button"
+  },
+  "codeFileCopied": "Copied",
+  "@codeFileCopied": {
+    "description": "Confirmation"
+  },
+  "codeFileDelete": "Delete file",
+  "@codeFileDelete": {
+    "description": "Button"
+  },
+  "codeFileDeleteTitle": "Delete {name}?",
+  "@codeFileDeleteTitle": {
+    "description": "Dialog title",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "codeFileEmpty": "This file is empty.",
+  "@codeFileEmpty": {
+    "description": "Shown for an empty file"
+  },
+  "codeTerminalHint": "Run a command",
+  "@codeTerminalHint": {
+    "description": "Terminal input hint"
+  },
+  "codeTerminalIntro": "Runs in this session’s project folder.",
+  "@codeTerminalIntro": {
+    "description": "Terminal caption"
+  },
+  "codeTerminalUnsupported": "Commands can’t run on this device.",
+  "@codeTerminalUnsupported": {
+    "description": "Shown where no shell exists"
+  },
+  "codeTerminalClear": "Clear",
+  "@codeTerminalClear": {
+    "description": "Button"
+  },
+  "codeErrorMalformedAction": "The model wrote an action it couldn’t use, so nothing ran.",
+  "@codeErrorMalformedAction": {
+    "description": "Shown when a reply held an action block that could not be used"
+  },
+  "codeCloudTitleCustom": "Use this server?",
+  "@codeCloudTitleCustom": {
+    "description": "Disclosure title for a user’s own server"
+  },
+  "codeCloudBodyCustom": "What you type, and any file contents or command output the agent reads, is sent to {address}. FinnAI on this device keeps everything on the phone.",
+  "@codeCloudBodyCustom": {
+    "description": "Disclosure body for a user’s own server",
+    "placeholders": {
+      "address": {
+        "type": "String"
+      }
+    }
+  },
+  "codeCloudConfirmCustom": "Use this server",
+  "@codeCloudConfirmCustom": {
+    "description": "Disclosure confirm button for a user’s own server"
   }
 }

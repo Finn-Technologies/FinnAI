@@ -3,7 +3,6 @@ feature conversations -> actions
 feature conversations -> search
 feature creations -> chat
 feature flows -> actions
-feature onboarding -> chat
 feature settings -> conversations
 feature settings -> onboarding
 feature settings -> voice

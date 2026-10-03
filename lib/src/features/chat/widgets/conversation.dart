@@ -350,9 +350,9 @@ class _ConversationState extends State<_Conversation> {
           top: 0,
           left: 0,
           right: 0,
-          height: _chatTopFadeHeight,
+          height: finnTopFadeHeight,
           child: IgnorePointer(
-            child: const _ChatEdgeFade(
+            child: const FinnEdgeFade(
               key: ValueKey('chat-fade-top'),
               top: true,
             ),
@@ -364,7 +364,7 @@ class _ConversationState extends State<_Conversation> {
           right: 0,
           height: widget.bottomInset,
           child: IgnorePointer(
-            child: const _ChatEdgeFade(
+            child: const FinnEdgeFade(
               key: ValueKey('chat-fade-bottom'),
               top: false,
             ),
