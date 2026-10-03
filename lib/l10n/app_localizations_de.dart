@@ -3432,4 +3432,652 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get voiceStyleM2 => 'Männlich 2';
+
+  @override
+  String get appBrandFinnAICode => 'FinnAI Code';
+
+  @override
+  String get appModeSwitchSemantic =>
+      'Zwischen FinnAI und FinnAI Code wechseln';
+
+  @override
+  String get codeGreeting => 'Was bauen wir?';
+
+  @override
+  String get codeGreetingCaption =>
+      'Dein Projekt liegt in einem privaten Ordner auf diesem Telefon.';
+
+  @override
+  String get codeComposerHint =>
+      'Beschreibe, was gebaut oder repariert werden soll';
+
+  @override
+  String get codeNewSession => 'Neue Sitzung';
+
+  @override
+  String get codeSessionsTitle => 'Sitzungen';
+
+  @override
+  String get codeNoSessions => 'Noch keine Sitzungen';
+
+  @override
+  String get codeFilesTitle => 'Dateien';
+
+  @override
+  String get codeTerminalTitle => 'Terminal';
+
+  @override
+  String get codeModelsTitle => 'Modelle';
+
+  @override
+  String get codeSettingsTitle => 'Code-Einstellungen';
+
+  @override
+  String get codeLocalLabel => 'FinnAI · auf dem Gerät';
+
+  @override
+  String codeModelChipSemantic(String model) {
+    return 'Modell wählen. Aktuell: $model';
+  }
+
+  @override
+  String get codePermissionAsk => 'Erst fragen';
+
+  @override
+  String get codePermissionEdits => 'Auto-Bearbeiten';
+
+  @override
+  String get codePermissionAuto => 'Auto-Ausführen';
+
+  @override
+  String codePermissionSemantic(String mode) {
+    return 'Ändern, was der Agent darf. Aktuell: $mode';
+  }
+
+  @override
+  String get codeThinking => 'Denkt nach …';
+
+  @override
+  String get codeActionRunCommand => 'Befehl ausführen';
+
+  @override
+  String codeActionWriteFile(String path) {
+    return '$path schreiben';
+  }
+
+  @override
+  String get codeActionRun => 'Ausführen';
+
+  @override
+  String get codeActionAllow => 'Erlauben';
+
+  @override
+  String get codeActionSkip => 'Überspringen';
+
+  @override
+  String get codeActionRunning => 'Läuft …';
+
+  @override
+  String get codeActionDone => 'Fertig';
+
+  @override
+  String codeActionFailedExit(String code) {
+    return 'Fehlgeschlagen (Code $code)';
+  }
+
+  @override
+  String get codeActionFailed => 'Fehlgeschlagen';
+
+  @override
+  String get codeActionTimedOut => 'Zeitüberschreitung';
+
+  @override
+  String get codeActionSkipped => 'Übersprungen';
+
+  @override
+  String get codeActionDenied => 'Blockiert';
+
+  @override
+  String get codeActionOutput => 'Ausgabe';
+
+  @override
+  String get codeActionNoOutput => 'Keine Ausgabe';
+
+  @override
+  String get codeActionOutputCut => 'Ausgabe wurde gekürzt';
+
+  @override
+  String codeDeniedBlockedProgram(String program) {
+    return '„$program“ ist hier nicht erlaubt.';
+  }
+
+  @override
+  String get codeDeniedNetwork => 'Netzwerkbefehle sind ausgeschaltet.';
+
+  @override
+  String codeDeniedOutside(String path) {
+    return '$path liegt außerhalb des Projektordners.';
+  }
+
+  @override
+  String get codeDeniedParent => '„..“ ist in Pfaden nicht erlaubt.';
+
+  @override
+  String get codeDeniedOther => 'Dieser Befehl ist nicht erlaubt.';
+
+  @override
+  String get codeErrorStepLimit => 'Am Schrittlimit angehalten.';
+
+  @override
+  String get codeErrorRepeating =>
+      'Angehalten: Das Modell hat denselben Schritt wiederholt.';
+
+  @override
+  String get codeErrorEmpty => 'Das Modell hat eine leere Antwort gesendet.';
+
+  @override
+  String get codeErrorCutOff =>
+      'Die Antwort wurde abgeschnitten, bevor der Schritt fertig war. Es wurde nichts ausgeführt.';
+
+  @override
+  String codeErrorEngine(String detail) {
+    return 'Etwas ist schiefgelaufen: $detail';
+  }
+
+  @override
+  String get codeErrorAuth =>
+      'Der Anbieter hat den Schlüssel abgelehnt. Prüfe ihn in den Code-Einstellungen.';
+
+  @override
+  String get codeErrorPlanNoApi =>
+      'Der Go-Tarif von Command Code hat keinen API-Zugang. Wechsle zu GOAT oder höher, um ihn hier zu nutzen.';
+
+  @override
+  String get codeErrorPayment =>
+      'Bei diesem Anbieter ist kein Guthaben mehr übrig.';
+
+  @override
+  String get codeErrorRate =>
+      'Anfragelimit erreicht. Versuche es gleich noch einmal.';
+
+  @override
+  String get codeErrorWrongEndpoint =>
+      'Dieser Anbieter konnte das Modell nicht bereitstellen.';
+
+  @override
+  String get codeErrorBadRequest =>
+      'Der Anbieter konnte die Anfrage nicht annehmen.';
+
+  @override
+  String get codeErrorServer =>
+      'Beim Anbieter ist ein Problem aufgetreten. Versuche es erneut.';
+
+  @override
+  String get codeErrorNetwork =>
+      'Der Anbieter ist nicht erreichbar. Prüfe deine Verbindung.';
+
+  @override
+  String get codeErrorTimeout =>
+      'Der Anbieter hat zu lange für die Antwort gebraucht.';
+
+  @override
+  String get codeErrorMalformed =>
+      'Der Anbieter hat eine unlesbare Antwort gesendet.';
+
+  @override
+  String get codeErrorUnknown => 'Beim Anbieter ist etwas schiefgelaufen.';
+
+  @override
+  String get codeSessionRename => 'Umbenennen';
+
+  @override
+  String get codeSessionRenameTitle => 'Sitzung umbenennen';
+
+  @override
+  String get codeSessionPin => 'Anheften';
+
+  @override
+  String get codeSessionUnpin => 'Lösen';
+
+  @override
+  String get codeSessionFiles => 'Projektdateien';
+
+  @override
+  String get codeSessionDelete => 'Sitzung löschen';
+
+  @override
+  String get codeSessionDeleteTitle => 'Diese Sitzung löschen?';
+
+  @override
+  String get codeSessionDeleteBody =>
+      'Die Unterhaltung und ihre Projektdateien werden von diesem Telefon entfernt.';
+
+  @override
+  String codeCloudTitle(String provider) {
+    return '$provider verwenden?';
+  }
+
+  @override
+  String codeCloudBody(String provider) {
+    return '$provider läuft in der Cloud. Was du schreibst sowie Dateiinhalte und Befehlsausgaben, die der Agent liest, werden an $provider gesendet und unter dessen Bedingungen verarbeitet. FinnAI auf diesem Gerät behält alles auf dem Telefon.';
+  }
+
+  @override
+  String codeCloudConfirm(String provider) {
+    return '$provider verwenden';
+  }
+
+  @override
+  String get codeModelsSearchHint => 'Modelle suchen';
+
+  @override
+  String get codeModelsOnDeviceTitle => 'FinnAI';
+
+  @override
+  String get codeModelsOnDeviceSub =>
+      'Läuft auf diesem Telefon. Privat, kostenlos und offline nutzbar.';
+
+  @override
+  String get codeModelsAddProvider =>
+      'Füge einen Anbieter hinzu, um mehr Modelle zu nutzen';
+
+  @override
+  String get codeModelsLoading => 'Modelle werden geladen …';
+
+  @override
+  String get codeModelsLoad => 'Modelle laden';
+
+  @override
+  String get codeModelsNone => 'Keine passenden Modelle';
+
+  @override
+  String get codeModelsFree => 'Kostenlos';
+
+  @override
+  String codeModelsContext(String size) {
+    return '$size Kontext';
+  }
+
+  @override
+  String codeModelsPrice(String input, String output) {
+    return '$input Ein · $output Aus pro 1 Mio.';
+  }
+
+  @override
+  String codeModelsFetchFailed(String reason) {
+    return 'Modelle konnten nicht geladen werden. $reason';
+  }
+
+  @override
+  String get codeSettingsProviders => 'Anbieter';
+
+  @override
+  String get codeSettingsProvidersSubNone => 'FinnAI auf diesem Gerät';
+
+  @override
+  String codeSettingsProvidersSub(String count) {
+    return 'FinnAI plus $count verbunden';
+  }
+
+  @override
+  String get codeSettingsModel => 'Modell';
+
+  @override
+  String get codeSettingsAgent => 'Agent';
+
+  @override
+  String get codeSettingsWorkspace => 'Projektordner';
+
+  @override
+  String codeSettingsWorkspaceSub(String size) {
+    return '$size auf diesem Telefon';
+  }
+
+  @override
+  String get codeSettingsData => 'Datenschutz und Daten';
+
+  @override
+  String get codeSettingsDataSub => 'Schlüssel, Sitzungen und Projektdateien';
+
+  @override
+  String get codeSettingsAbout => 'Über FinnAI Code';
+
+  @override
+  String get codeProvidersTitle => 'Anbieter';
+
+  @override
+  String get codeProvidersIntro =>
+      'FinnAI auf deinem Telefon ist die Voreinstellung. Füge deinen eigenen API-Schlüssel hinzu, um ein Cloud-Modell in FinnAI Code zu nutzen. Schlüssel bleiben im sicheren Speicher deines Telefons.';
+
+  @override
+  String get codeProviderStatusLocal => 'Auf diesem Gerät';
+
+  @override
+  String codeProviderStatusConnected(String hint) {
+    return 'Verbunden · ••••$hint';
+  }
+
+  @override
+  String get codeProviderStatusConnectedNoKey => 'Verbunden';
+
+  @override
+  String get codeProviderStatusNotSet => 'Nicht eingerichtet';
+
+  @override
+  String get codeProviderDescOpenRouter =>
+      'Ein Schlüssel für Hunderte Modelle, auch kostenlose.';
+
+  @override
+  String get codeProviderDescCommandCode =>
+      'Die Modelle von Command Code mit deinem eigenen Schlüssel.';
+
+  @override
+  String get codeProviderDescZen =>
+      'OpenCode Zen: nutzungsbasierte Modelle, ausgewählt fürs Programmieren.';
+
+  @override
+  String get codeProviderDescGo =>
+      'OpenCode Go: ein monatlicher Pauschaltarif mit offenen Coding-Modellen.';
+
+  @override
+  String get codeProviderDescCustom =>
+      'Jeder Server mit OpenAI-API: dein eigener, Ollama, LM Studio und mehr.';
+
+  @override
+  String get codeProviderCustomName => 'Eigener (OpenAI-kompatibel)';
+
+  @override
+  String get codeProviderKeyLabel => 'API-Schlüssel';
+
+  @override
+  String get codeProviderKeyHint => 'Füge deinen Schlüssel ein';
+
+  @override
+  String get codeProviderKeyOptionalHint =>
+      'Füge einen Schlüssel ein, falls dein Server einen braucht';
+
+  @override
+  String get codeProviderKeySave => 'Schlüssel speichern';
+
+  @override
+  String get codeProviderKeyReplace => 'Schlüssel ersetzen';
+
+  @override
+  String get codeProviderKeyRemove => 'Schlüssel entfernen';
+
+  @override
+  String get codeProviderKeyRemoveTitle => 'Diesen Schlüssel entfernen?';
+
+  @override
+  String codeProviderKeyRemoveBody(String provider) {
+    return 'FinnAI Code nutzt $provider nicht mehr, bis du wieder einen Schlüssel hinzufügst.';
+  }
+
+  @override
+  String get codeProviderKeyStored => 'Sicher auf diesem Telefon gespeichert';
+
+  @override
+  String get codeProviderGetKey => 'Schlüssel besorgen';
+
+  @override
+  String get codeProviderTest => 'Schlüssel testen';
+
+  @override
+  String get codeProviderTesting => 'Wird getestet …';
+
+  @override
+  String get codeProviderTestOk => 'Der Schlüssel funktioniert.';
+
+  @override
+  String codeProviderTestFail(String reason) {
+    return 'Test fehlgeschlagen. $reason';
+  }
+
+  @override
+  String get codeProviderTestNeedsModel =>
+      'Lade zuerst die Modelle und teste dann.';
+
+  @override
+  String get codeProviderAddressLabel => 'Serveradresse';
+
+  @override
+  String get codeProviderAddressHint => 'https://dein-server/v1';
+
+  @override
+  String get codeProviderAddressInvalid =>
+      'Nutze eine https-Adresse oder http für einen Server in deinem eigenen Netzwerk.';
+
+  @override
+  String get codeProviderAddressSave => 'Adresse speichern';
+
+  @override
+  String get codeProviderPlanNote =>
+      'Erfordert den GOAT-Tarif oder höher. Der Go-Tarif hat keinen API-Zugang und kann hier nicht verwendet werden.';
+
+  @override
+  String codeProviderPrivacy(String provider) {
+    return 'Wenn du eines seiner Modelle nutzt, werden deine Nachrichten, Dateiinhalte und Befehlsausgaben an $provider gesendet.';
+  }
+
+  @override
+  String get codeProviderAllowance => 'Guthaben';
+
+  @override
+  String codeProviderAllowanceRemaining(String remaining, String limit) {
+    return '$remaining von $limit übrig';
+  }
+
+  @override
+  String get codeProviderAllowanceUnlimited =>
+      'Kein Ausgabenlimit für diesen Schlüssel';
+
+  @override
+  String codeProviderAllowanceUsed(String used) {
+    return '$used verbraucht';
+  }
+
+  @override
+  String codeProviderAllowanceToday(String amount) {
+    return '$amount heute';
+  }
+
+  @override
+  String codeProviderAllowanceMonth(String amount) {
+    return '$amount diesen Monat';
+  }
+
+  @override
+  String codeProviderAllowanceBalance(String balance) {
+    return 'Kontoguthaben $balance';
+  }
+
+  @override
+  String get codeProviderAllowanceFree => 'Schlüssel der kostenlosen Stufe';
+
+  @override
+  String codeProviderAllowanceNoApi(String provider) {
+    return '$provider bietet keine Nutzungs-API. Prüfe dein Guthaben im Dashboard.';
+  }
+
+  @override
+  String get codeProviderOpenDashboard => 'Dashboard öffnen';
+
+  @override
+  String get codeProviderRefresh => 'Aktualisieren';
+
+  @override
+  String codeProviderModelsCount(String count) {
+    return '$count Modelle verfügbar';
+  }
+
+  @override
+  String get codeProviderModelsRefresh => 'Modellliste aktualisieren';
+
+  @override
+  String get codeProviderChooseModel => 'Modell wählen';
+
+  @override
+  String codeProviderModelsLive(String provider) {
+    return 'Live von $provider abgerufen';
+  }
+
+  @override
+  String get codeAgentTitle => 'Agent';
+
+  @override
+  String get codeAgentPermissionTitle => 'Wenn der Agent handelt';
+
+  @override
+  String get codeAgentAsk => 'Vor allem fragen';
+
+  @override
+  String get codeAgentAskSub =>
+      'Jeder Befehl und jedes Schreiben einer Datei wartet auf deinen Tipp.';
+
+  @override
+  String get codeAgentEdits => 'Dateien schreiben, bei Befehlen fragen';
+
+  @override
+  String get codeAgentEditsSub =>
+      'Dateien werden direkt geschrieben. Befehle warten auf deinen Tipp.';
+
+  @override
+  String get codeAgentAuto => 'Alles ausführen';
+
+  @override
+  String get codeAgentAutoSub =>
+      'Nichts wartet auf dich. Befehle bleiben trotzdem im Projektordner.';
+
+  @override
+  String get codeAgentSteps => 'Schritte pro Anfrage';
+
+  @override
+  String get codeAgentStepsSub =>
+      'Wie viele Aktionen der Agent ausführen darf, bevor er anhält und um Fortsetzung bittet.';
+
+  @override
+  String get codeAgentStepsAuto => 'Automatisch';
+
+  @override
+  String codeAgentStepsValue(String count) {
+    return '$count Schritte';
+  }
+
+  @override
+  String get codeAgentNetwork => 'Netzwerkbefehle erlauben';
+
+  @override
+  String get codeAgentNetworkSub =>
+      'Erlaubt Befehlen wie curl den Zugriff aufs Internet. Aus verhindert, dass dein Projekt versehentlich hochgeladen wird.';
+
+  @override
+  String get codeAgentTimeout => 'Zeitlimit für Befehle';
+
+  @override
+  String codeAgentTimeoutValue(String seconds) {
+    return '$seconds s';
+  }
+
+  @override
+  String get codeSandboxNote =>
+      'Befehle laufen in einem privaten Ordner auf diesem Telefon, als Benutzer der App und mit Zeitlimit. Das ist kein vollständiges Linux-System: Es gibt weder Python noch Git noch einen Compiler, und es lässt sich nichts installieren.';
+
+  @override
+  String get codeWorkspaceTitle => 'Projektordner';
+
+  @override
+  String codeWorkspaceUsed(String size, String count) {
+    return '$size in $count Projektordnern';
+  }
+
+  @override
+  String get codeWorkspaceClear => 'Alle Projektdateien löschen';
+
+  @override
+  String get codeWorkspaceClearTitle => 'Alle Projektdateien löschen?';
+
+  @override
+  String get codeWorkspaceClearBody =>
+      'Der Projektordner jeder Sitzung wird geleert. Unterhaltungen bleiben erhalten.';
+
+  @override
+  String get codeDataTitle => 'Datenschutz und Daten';
+
+  @override
+  String get codeDataNote =>
+      'Sitzungen und Projektdateien liegen im privaten Speicher dieser App auf deinem Telefon. API-Schlüssel liegen im sicheren Systemspeicher. Mit FinnAI auf diesem Gerät verlässt nichts das Telefon.';
+
+  @override
+  String get codeDataDelete => 'FinnAI-Code-Daten löschen';
+
+  @override
+  String get codeDataDeleteSub =>
+      'Sitzungen, Projektdateien, gespeicherte Schlüssel und Einstellungen';
+
+  @override
+  String get codeDataDeleteTitle => 'FinnAI-Code-Daten löschen?';
+
+  @override
+  String get codeDataDeleteBody =>
+      'Jede Sitzung, jeder Projektordner, jeder gespeicherte Schlüssel und jede Code-Einstellung wird gelöscht. FinnAI-Chats bleiben unberührt.';
+
+  @override
+  String get codeDataDeleted => 'FinnAI-Code-Daten gelöscht.';
+
+  @override
+  String get codeAboutBody =>
+      'FinnAI Code ist ein Coding-Agent. Er arbeitet mit dem Modell auf deinem Telefon oder mit deinen eigenen Anbieter-Schlüsseln und kann in einem privaten Projektordner Dateien lesen und schreiben sowie einfache Befehle ausführen.';
+
+  @override
+  String get codeFilesEmpty =>
+      'Noch keine Dateien. Bitte den Agenten, etwas zu erstellen.';
+
+  @override
+  String get codeFilesNoSession =>
+      'Starte eine Sitzung, um einen Projektordner zu erhalten.';
+
+  @override
+  String get codeFileCopy => 'Kopieren';
+
+  @override
+  String get codeFileCopied => 'Kopiert';
+
+  @override
+  String get codeFileDelete => 'Datei löschen';
+
+  @override
+  String codeFileDeleteTitle(String name) {
+    return '$name löschen?';
+  }
+
+  @override
+  String get codeFileEmpty => 'Diese Datei ist leer.';
+
+  @override
+  String get codeTerminalHint => 'Befehl ausführen';
+
+  @override
+  String get codeTerminalIntro => 'Läuft im Projektordner dieser Sitzung.';
+
+  @override
+  String get codeTerminalUnsupported =>
+      'Befehle können auf diesem Gerät nicht ausgeführt werden.';
+
+  @override
+  String get codeTerminalClear => 'Leeren';
+
+  @override
+  String get codeErrorMalformedAction =>
+      'Das Modell hat eine unbrauchbare Aktion geschrieben, daher wurde nichts ausgeführt.';
+
+  @override
+  String get codeCloudTitleCustom => 'Diesen Server verwenden?';
+
+  @override
+  String codeCloudBodyCustom(String address) {
+    return 'Was du schreibst sowie Dateiinhalte und Befehlsausgaben, die der Agent liest, werden an $address gesendet. FinnAI auf diesem Gerät behält alles auf dem Telefon.';
+  }
+
+  @override
+  String get codeCloudConfirmCustom => 'Diesen Server verwenden';
 }

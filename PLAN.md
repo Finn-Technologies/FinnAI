@@ -621,6 +621,8 @@ in the session identity hash, attachment-preserving continue/regen.
 `tool/run_eval.sh --write-baseline` on the Xiaomi to produce the first real baseline;
 (4) begin the Phase 1 engine-side response-quality work.
 
+**FinnAI Code — 2026-10-03.** A second app inside the app (`lib/src/features/code/`, ADR 0010): a coding agent with its own sessions, settings and providers, reached from the brand row of either sidebar. Runs on the on-device model, or on the user's own OpenRouter / Command Code (GOAT+) / OpenCode Zen / OpenCode Go / OpenAI-compatible key, with live model lists and OpenRouter allowance. Commands run in a workspace shell (private folder, policy, timeout), not a VM. Verified on an Android 37 emulator with the real 1.6B model (file write, approved command, real output) and against a local OpenAI-compatible server (live model fetch, disclosure, streaming). **Not verified:** any paid provider account, iOS, OpenHarmony, a low-RAM device, or on-device model quality beyond simple tasks. Open: encryption at rest for Code sessions; a real Linux environment (ADR 0010 lists what it needs); function-calling for cloud models was left out on purpose.
+
 ---
 
 *Plan approved 2026-09-30. Phases 0-2 in progress; §10 records what is verified.*

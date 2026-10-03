@@ -2,6 +2,12 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:finn_ai/src/app/app_state_store.dart';
+import 'package:finn_ai/src/features/code/code_services.dart';
+import 'package:finn_ai/src/features/code/providers/code_provider.dart';
+import 'package:finn_ai/src/features/code/providers/provider_store.dart';
+import 'package:finn_ai/src/features/code/providers/secret_store.dart';
+import 'package:finn_ai/src/features/code/sessions/code_session_store.dart';
+import 'package:finn_ai/src/features/code/settings/code_settings_store.dart';
 import 'package:finn_ai/src/features/conversations/conversation_store.dart';
 import 'package:finn_ai/src/features/creations/creation_model.dart';
 import 'package:finn_ai/src/features/creations/creation_store.dart';
@@ -106,6 +112,50 @@ void main() {
         );
       },
     );
+
+    test(
+        'deleteAllData removes FinnAI Code sessions, folders, keys and settings',
+        () async {
+      final secrets = MemoryCodeSecretStore();
+      final sessions = CodeSessionStore(directoryProvider: () async => tempDir);
+      final providers = CodeProviderStore(
+        secrets: secrets,
+        directoryProvider: () async => tempDir,
+      );
+      final settings =
+          CodeSettingsStore(directoryProvider: () async => tempDir);
+      final code = CodeServices(
+        sessions: sessions,
+        providers: providers,
+        settings: settings,
+      );
+
+      final session = sessions.create(title: 'Private project');
+      await (await sessions.workspaceOf(session.id))
+          .writeFile('secret.txt', 'private source');
+      await providers.saveKey(CodeProvider.openRouter, 'sk-private-0001');
+      await settings.update(
+        (s) => s.copyWith(permissionMode: CodePermissionMode.autoRun),
+      );
+      await sessions.flush();
+      expect(Directory('${tempDir.path}/code').existsSync(), isTrue);
+      expect(secrets.values, isNotEmpty);
+
+      final result = await AppStateStore(
+        directoryProvider: () async => tempDir,
+      ).deleteAllData(
+        conversationStore: testConvStore,
+        codeServices: code,
+      );
+
+      expect(result.failedItems, isEmpty);
+      expect(result.deletedItems, contains('FinnAI Code'));
+      expect(Directory('${tempDir.path}/code').existsSync(), isFalse);
+      expect(secrets.values, isEmpty);
+      expect(sessions.sessions, isEmpty);
+      expect(providers.hasKey(CodeProvider.openRouter), isFalse);
+      expect(settings.settings.permissionMode, CodePermissionMode.acceptEdits);
+    });
 
     test(
       'deleteAllData purges injected creations, personalization, and flows',

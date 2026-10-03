@@ -208,7 +208,8 @@ class _SidebarState extends State<_Sidebar> {
 
               // 3. Brand row. The design has the wordmark alone: the single
               // menu/close control rides the home screen's travel and ends up
-              // on the far side of the panel.
+              // on the far side of the panel. Tapping the name switches to
+              // FinnAI Code.
               Positioned(
                 left: 25,
                 right: 25,
@@ -237,15 +238,9 @@ class _SidebarState extends State<_Sidebar> {
                       ),
                     );
                   },
-                  child: Align(
+                  child: const Align(
                     alignment: Alignment.centerLeft,
-                    child: Text(
-                      L10n.of(context).appBrandFinnAI,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w400,
-                          ),
-                    ),
+                    child: FinnBrandSwitcher(current: FinnAppMode.chat),
                   ),
                 ),
               ),
@@ -282,19 +277,19 @@ class _SidebarState extends State<_Sidebar> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _SidebarCircleTile(
+                      FinnSidebarTile(
                         asset: FigmaAssets.tileCreations,
                         label: L10n.of(context).creationsTitle,
                         onTap: widget.onCreations,
                         size: navSize,
                       ),
-                      _SidebarCircleTile(
+                      FinnSidebarTile(
                         asset: FigmaAssets.tileFlows,
                         label: L10n.of(context).flowsTitle,
                         onTap: widget.onFlows,
                         size: navSize,
                       ),
-                      _SidebarCircleTile(
+                      FinnSidebarTile(
                         asset: FigmaAssets.tileYou,
                         label: L10n.of(context).youTitle,
                         onTap: widget.onYou,
@@ -351,14 +346,14 @@ class _SidebarState extends State<_Sidebar> {
                 height: 50,
                 child: Row(
                   children: [
-                    _SidebarCircleButton(
+                    FinnSidebarCircleButton(
                       asset: FigmaAssets.appNewChat,
                       tooltip: L10n.of(context).chatNewChat,
                       background: FluxColors.tileOf(context),
                       onTap: widget.onNewConversation,
                     ),
                     const SizedBox(width: 11),
-                    _SidebarCircleButton(
+                    FinnSidebarCircleButton(
                       asset: FigmaAssets.appSettings,
                       tooltip: L10n.of(context).settingsTitle,
                       background: FluxColors.tileOf(context),

@@ -334,12 +334,16 @@ class FinnMenuItem {
     required this.icon,
     required this.onTap,
     this.destructive = false,
+    this.selected = false,
   });
 
   final String label;
   final List<List<dynamic>> icon;
   final VoidCallback onTap;
   final bool destructive;
+
+  /// Marks the row as the current choice, with a check on its trailing edge.
+  final bool selected;
 }
 
 /// A 260dp white popup anchored under [anchor] (usually a header action), with
@@ -401,6 +405,7 @@ Future<void> showFinnMenu(
                       for (final item in items)
                         Semantics(
                           button: true,
+                          selected: item.selected,
                           label: item.label,
                           excludeSemantics: true,
                           child: InkWell(
@@ -441,6 +446,13 @@ Future<void> showFinnMenu(
                                             ),
                                       ),
                                     ),
+                                    if (item.selected)
+                                      FluxIcon(
+                                        icon: FluxIcons.check,
+                                        size: 20,
+                                        strokeWidth: 1.5,
+                                        color: FluxColors.actionOf(context),
+                                      ),
                                   ],
                                 ),
                               ),

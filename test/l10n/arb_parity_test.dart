@@ -35,6 +35,14 @@ Set<String> _tokens(Object? value) {
 /// names, technology terms, format-only templates, and words that are spelled
 /// the same in the target language (e.g. French "Instructions").
 const Map<String, String> _identicalAllowlist = {
+  'appBrandFinnAICode': 'product name',
+  'codeTerminalTitle': 'technology term (de/es/fr)',
+  'codeModelsOnDeviceTitle': 'product name',
+  'codeSettingsAgent': 'loanword (de/fr)',
+  'codeAgentTitle': 'loanword (de/fr)',
+  'codeActionOutput': 'loanword (it)',
+  'codeAgentTimeoutValue': 'unit-only template',
+  'codeSessionsTitle': 'cognate (fr)',
   'appBrandFinnAI': 'product name',
   'appTitle': 'product name',
   'chatFinnAI': 'product name',

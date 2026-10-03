@@ -23,6 +23,7 @@ Hugging Face and never leave the device.
 | Image understanding via the vision projector | `lib/src/engine/`, `lib/src/features/chat/` |
 | Optional web grounding (explicit, per-query) | `lib/src/features/search/` |
 | Skills, personalization, creations, hands-free voice | `lib/src/features/{skills,you,creations,voice}/` |
+| FinnAI Code: a coding agent (files + a workspace shell) on the on-device model, or on your own OpenRouter / Command Code / OpenCode Zen / OpenCode Go / OpenAI-compatible key | `lib/src/features/code/` |
 | Share selected text into the app ("Ask Finn AI") | `android/…/MainActivity.kt` + `chat/home_shell.dart` |
 
 Everything user-visible is localized (EN / DE / ES / FR / IT) from `lib/l10n/app_*.arb`.

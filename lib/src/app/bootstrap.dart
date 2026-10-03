@@ -10,10 +10,11 @@ import 'package:finn_ai/l10n/l10n_helper.dart';
 import 'package:finn_ai/src/app/app_state_store.dart';
 import 'package:finn_ai/src/app/speech_model_addon.dart';
 import 'package:finn_ai/src/app/tts_voices_addon.dart';
-import 'package:finn_ai/src/features/chat/home_shell.dart';
+import 'package:finn_ai/src/app/app_mode_host.dart';
 import 'package:finn_ai/src/features/onboarding/model_install.dart';
 import 'package:finn_ai/src/features/onboarding/onboarding_flow.dart';
 import 'package:finn_ai/src/inference/finn_inference.dart';
+import 'package:finn_ai/src/shared/config/app_mode.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 import 'package:finn_ai/src/shared/widgets/ambient_background.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
@@ -45,6 +46,9 @@ class _FinnBootstrapState extends State<FinnBootstrap> {
     await Future.wait([
       AppStateStore.instance.initialize(),
       FinnInference.instance.initialize(),
+      // Which of FinnAI and FinnAI Code was last open, so the first frame is
+      // the right one.
+      AppModeController.instance.initialize(),
     ]);
 
     final inference = FinnInference.instance;
@@ -202,7 +206,7 @@ class FluxApp extends StatelessWidget {
       home: FinnInference.instance.isDeviceSupported
           ? onboardingComplete
               ? modelInstalled
-                  ? const HomeShell()
+                  ? const AppModeHost()
                   : SoftwareUpgradeScreen(addons: addons)
               : OnboardingFlow(
                   enableModelDownload: enableModelDownload,
