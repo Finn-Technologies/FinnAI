@@ -38,6 +38,12 @@ dependencies:
   flutter_pcm_sound: ^3.3.3
   ffi: ^2.2.0
 
+dependency_overrides:
+  # Upstream's prebuilt libsherpa-onnx-c-api.so links espeak-ng (GPL-3.0). This
+  # copy is built from the same source with TTS compiled out.
+  sherpa_onnx_android_arm64:
+    path: third_party/sherpa_onnx_android_arm64
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

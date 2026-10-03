@@ -13,6 +13,9 @@ abstract final class FlowSchedule {
   /// saving change moves the flow with the wall clock: 7:00 stays 7:00.
   static DateTime? nextRun(FlowTrigger trigger, DateTime now) {
     if (!trigger.isScheduled) return null;
+    if (trigger.kind == FlowTriggerKind.interval) {
+      return now.add(Duration(minutes: trigger.intervalMinutes));
+    }
     for (var offset = 0; offset <= 7; offset++) {
       final candidate = DateTime(
         now.year,

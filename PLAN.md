@@ -179,6 +179,21 @@ milestone is only "done" when it has been merged into `main` with a green gate
 (`dart format` + `verify_engine_seam.sh` + `flutter analyze --no-pub` +
 `flutter test --no-pub`) and, where it claims a behaviour change, device evidence.
 
+### 2026-10-02 — Reply-prompt A/B: shorter-by-default reverted
+
+Six interleaved full-suite eval runs on the Xiaomi (NEW x3: 0.594/0.781/0.563;
+OLD x3: 0.656/0.750/0.719; 34 cases each, every run gated against the committed
+baseline). NEW average 0.646 < OLD average 0.708 − 0.03, and NEW replies were
+slightly longer (median 49 vs 45 toks), so per the agreed rule the OLD length
+instruction is back; only the NEW word "preambles" was kept (tree differs from
+HEAD by that word). Per-run spread (±0.1) dwarfs the gap, so sampling noise
+cannot be excluded. Full table: `eval/RESULTS_2026-10-02.md`. Incidental fix:
+every earlier gate run had `"baseline":null` (the script pushed to
+`/sdcard/…`, unreadable to the app — only the 3 absolute gates ran); baseline
+and `--prompts` files are now staged through `run-as`, and the harness logs
+`FINN_EVAL_ERROR` when the baseline is missing. Verified: all 6 A/B runs show
+a loaded baseline; `test/engine` 237 pass.
+
 ### 2026-10-01 — Chat <-> voice transition, version 9
 
 The message field becomes the voice pill as one motion (details and the gradient/alpha
@@ -190,6 +205,16 @@ grows the field, a ticker is not left running while idle, narrow 320 dp, reduced
 The two controls-sheet goldens were stale because of this work's shorter "Spoken
 responses" copy and were regenerated and looked at (clean HEAD passes them). Version
 2.0.0-beta+9. GPL: owner chose to ship as is; see ADR 0007.
+
+### 2026-10-02 — Beta feedback round: widgets, flows v3, mini-apps, chat creation, voice licence, transitions
+
+Interactive home-screen widgets (counter, checklist, tracker; taps work with the app closed),
+full-screen persistent mini-apps, a rebuilt Flows system (block tree with branches, triggers for
+time and device events, conditions, a standing grant, background runs, a flowchart editor, authoring
+from a sentence), apps/widgets/flows made from chat (a card in the thread), a shorter-by-default
+reply prompt, and one page transition that no longer passes through the home screen.
+Voice: Piper and espeak-ng removed; Supertonic 3 via our own ONNX Runtime shim and a source-built
+sherpa-onnx without TTS (ADR 0008). Measured on the Xiaomi: load 1.3 s, RTF 0.42-0.48.
 
 ### 2026-10-01 — Live voice: spoken replies, hands-free loop, faster turns
 
@@ -211,7 +236,7 @@ threads slowed the model from ~16 to ~10 tokens/s; at two it is ~11-13.
 **Found, not fixed.** (1) espeak-ng (GPL-3.0) is statically inside
 `libsherpa-onnx-c-api.so`; owner chose to ship v9 as is, risk accepted, notices added
 (ADR 0007, THIRD_PARTY_NOTICES, in-app licences). (2) No
-redistributable Hindi voice: Hindi is understood (poorly) but not answered aloud.
+redistributable Hindi voice (fixed 2026-10-02 by Supertonic).
 (3) Whisper base misheard "octopuses" and "capital" from a computer voice; the model then
 answered the wrong question. (4) The model ignores "two short sentences" when asked to
 "explain"; the cap is what bounds it. (5) First audio is still dominated by the first

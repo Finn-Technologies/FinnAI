@@ -63,7 +63,7 @@ class _WidgetDetailPageState extends State<_WidgetDetailPage> {
               curve: FluxMotion.revealCurve,
               width: width == double.infinity ? 300 : width,
               constraints: const BoxConstraints(minHeight: 130),
-              child: _WidgetSurface(spec: widget.spec),
+              child: HomeWidgetPreview(spec: widget.spec),
             ),
           ),
         ),

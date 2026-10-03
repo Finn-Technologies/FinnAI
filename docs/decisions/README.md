@@ -10,4 +10,6 @@ Short records of why the code is shaped the way it is. Read the relevant one bef
 | [0004](0004-lite-device-tier.md) | A Lite tier for 4 GB devices | Accepted, not yet implemented |
 | [0005](0005-single-model.md) | One model, pinned | Accepted |
 | [0006](0006-on-device-speech-recognition.md) | Speech recognition runs on the device (sherpa-onnx + Whisper), not the platform recogniser | Accepted, implemented 2026-10-01 |
-| [0007](0007-live-voice-and-spoken-replies.md) | Live voice: on-device spoken replies (Piper), a hands-free loop, short spoken answers | Accepted, implemented 2026-10-01 |
+| [0007](0007-live-voice-and-spoken-replies.md) | Live voice: a hands-free loop, short spoken answers (voice parts superseded by 0008) | Accepted, implemented 2026-10-01 |
+| [0008](0008-licence-clean-voice.md) | Supertonic 3 voice, sherpa-onnx without espeak-ng | Accepted, implemented 2026-10-02 |
+| [0009](0009-flows-v3.md) | Flows v3: block tree, native triggers, background runs, authoring from a sentence | Accepted, implemented 2026-10-02 |

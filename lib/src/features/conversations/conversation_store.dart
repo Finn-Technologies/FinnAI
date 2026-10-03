@@ -8,6 +8,8 @@ import 'package:path_provider/path_provider.dart';
 
 import 'package:finn_ai/src/features/actions/device_action.dart';
 import 'package:finn_ai/src/features/conversations/conversation_crypto.dart';
+import 'package:finn_ai/src/features/conversations/conversation_json.dart';
+import 'package:finn_ai/src/features/conversations/message_card.dart';
 import 'package:finn_ai/src/features/search/search_agent.dart';
 import 'package:finn_ai/src/features/search/web_search_service.dart';
 
@@ -40,6 +42,7 @@ class ConversationMessage {
     this.sources = const [],
     this.toolActivities = const [],
     this.pendingAction,
+    this.card,
   });
 
   final String id;
@@ -62,6 +65,10 @@ class ConversationMessage {
   /// once it runs or is dismissed, so a stored reply never offers a stale card.
   final DeviceActionInvocation? pendingAction;
 
+  /// Something FinnAI made in this reply (a creation or a flow), shown as a
+  /// card under the text.
+  final MessageCard? card;
+
   ConversationMessage copyWith({
     String? text,
     String? imagePath,
@@ -78,6 +85,7 @@ class ConversationMessage {
     bool clearToolActivities = false,
     DeviceActionInvocation? pendingAction,
     bool clearPendingAction = false,
+    MessageCard? card,
   }) =>
       ConversationMessage(
         id: id,
@@ -97,6 +105,7 @@ class ConversationMessage {
             : toolActivities ?? this.toolActivities,
         pendingAction:
             clearPendingAction ? null : pendingAction ?? this.pendingAction,
+        card: card ?? this.card,
       );
 
   Map<String, Object?> toJson() => {
@@ -130,6 +139,7 @@ class ConversationMessage {
               },
           ],
         if (pendingAction != null) 'pendingAction': pendingAction!.toJson(),
+        if (card != null) 'card': card!.toJson(),
       };
 
   factory ConversationMessage.fromJson(Map<String, Object?> json) =>
@@ -147,53 +157,11 @@ class ConversationMessage {
         generationId: json['generationId'] as String?,
         finishReason: json['finishReason'] as String?,
         continuationCount: (json['continuationCount'] as int?) ?? 0,
-        sources: _sourcesFromJson(json['sources']),
-        toolActivities: _toolActivitiesFromJson(json['toolActivities']),
+        sources: sourcesFromJson(json['sources']),
+        toolActivities: toolActivitiesFromJson(json['toolActivities']),
         pendingAction: DeviceActionInvocation.fromJson(json['pendingAction']),
+        card: MessageCard.fromJson(json['card']),
       );
-}
-
-List<ToolActivity> _toolActivitiesFromJson(Object? raw) {
-  if (raw is! List) return const [];
-  final activities = <ToolActivity>[];
-  for (final item in raw) {
-    if (item is! Map) continue;
-    final label = item['label'];
-    if (label is! String || label.isEmpty) continue;
-    final kind = ToolActivityKind.values
-        .where((value) => value.name == item['kind'])
-        .firstOrNull;
-    if (kind == null) continue;
-    final detail = item['detail'];
-    activities.add(
-      ToolActivity(
-        kind: kind,
-        label: label,
-        detail: detail is String ? detail : '',
-      ),
-    );
-  }
-  return activities;
-}
-
-List<WebSource> _sourcesFromJson(Object? raw) {
-  if (raw is! List) return const [];
-  return [
-    for (final item in raw)
-      if (item is Map &&
-          item['title'] is String &&
-          item['url'] is String &&
-          item['snippet'] is String)
-        if (Uri.tryParse(item['url'] as String) case final uri?
-            when uri.scheme == 'https' && uri.host.isNotEmpty)
-          WebSource(
-            title: item['title'] as String,
-            url: uri,
-            snippet: item['snippet'] as String,
-            imageUrl:
-                item['imageUrl'] is String ? item['imageUrl'] as String : null,
-          ),
-  ];
 }
 
 @immutable
@@ -930,6 +898,7 @@ class ConversationStore extends ChangeNotifier {
     List<ToolActivity>? toolActivities,
     DeviceActionInvocation? pendingAction,
     bool clearPendingAction = false,
+    MessageCard? card,
     bool persistSoon = false,
     bool notify = true,
   }) {
@@ -956,6 +925,7 @@ class ConversationStore extends ChangeNotifier {
       toolActivities: toolActivities,
       pendingAction: pendingAction,
       clearPendingAction: clearPendingAction,
+      card: card,
     );
     _replace(
       conversation.copyWith(updatedAt: DateTime.now(), messages: messages),

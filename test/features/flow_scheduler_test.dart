@@ -9,9 +9,13 @@ class _Backend implements FlowScheduleBackend {
   bool allowed;
   bool grantOnRequest = true;
   int requests = 0;
-  final scheduled = <String, (int, int, List<int>)>{};
-  final cancelled = <String>[];
+  List<FlowTriggerSpec> alarms = const [];
+  List<FlowTriggerSpec> events = const [];
+  int syncs = 0;
   final notified = <(String, String, String)>[];
+
+  Set<String> get alarmIds => {for (final a in alarms) a.flowId};
+  Set<String> get eventIds => {for (final e in events) e.flowId};
 
   @override
   Future<bool> notificationsAllowed() async => allowed;
@@ -24,23 +28,20 @@ class _Backend implements FlowScheduleBackend {
   }
 
   @override
-  Future<void> schedule({
-    required String flowId,
-    required String name,
-    required int hour,
-    required int minute,
-    required List<int> days,
-  }) async =>
-      scheduled[flowId] = (hour, minute, days);
-
-  @override
-  Future<void> cancel(String flowId) async {
-    cancelled.add(flowId);
-    scheduled.remove(flowId);
+  Future<void> sync({
+    required List<FlowTriggerSpec> alarms,
+    required List<FlowTriggerSpec> events,
+  }) async {
+    syncs++;
+    this.alarms = alarms;
+    this.events = events;
   }
 
   @override
-  Future<void> cancelAll() async => scheduled.clear();
+  Future<void> cancelAll() async {
+    alarms = const [];
+    events = const [];
+  }
 
   @override
   Future<void> notify({
@@ -57,7 +58,9 @@ class _Backend implements FlowScheduleBackend {
 FinnFlow _flow(
   String id, {
   bool enabled = true,
-  FlowTrigger trigger = const FlowTrigger.daily(7, 30),
+  List<FlowTrigger> triggers = const [FlowTrigger.daily(7, 30)],
+  List<FlowBlock> blocks = const [FlowBlock.notify('hi')],
+  bool granted = false,
 }) =>
     FinnFlow(
       id: id,
@@ -66,8 +69,9 @@ FinnFlow _flow(
       instructions: '',
       category: 'Automation',
       enabled: enabled,
-      trigger: trigger,
-      steps: const [FlowStep(kind: FlowStepKind.notify, text: 'hi')],
+      triggers: triggers,
+      blocks: blocks,
+      granted: granted,
     );
 
 void main() {
@@ -76,13 +80,63 @@ void main() {
     await FlowScheduler(backend: backend).sync([
       _flow('a'),
       _flow('b', enabled: false),
-      _flow('c', trigger: const FlowTrigger.manual()),
-      _flow('d', trigger: const FlowTrigger.weekly(9, 0, {5, 1})),
+      _flow('c', triggers: const []),
+      _flow('d', triggers: const [
+        FlowTrigger.weekly(9, 0, {5, 1})
+      ]),
     ]);
-    expect(backend.scheduled.keys.toSet(), {'a', 'd'});
-    expect(backend.scheduled['d']!.$1, 9);
-    expect(backend.scheduled['d']!.$2, 0);
-    expect(backend.scheduled['d']!.$3, [1, 5], reason: 'days are sorted');
+    expect(backend.alarmIds, {'a', 'd'});
+    final d = backend.alarms.firstWhere((a) => a.flowId == 'd');
+    expect(d.trigger.hour, 9);
+    expect(d.trigger.minute, 0);
+    expect(d.toMap()['days'], [1, 5], reason: 'days are sorted');
+  });
+
+  test('a flow with two times keeps two alarms', () async {
+    final backend = _Backend();
+    await FlowScheduler(backend: backend).sync([
+      _flow(
+        'a',
+        triggers: const [FlowTrigger.daily(7, 0), FlowTrigger.daily(19, 0)],
+      ),
+    ]);
+    expect(backend.alarms.map((a) => a.slot), [0, 1]);
+  });
+
+  test('device events go to the listener, not to an alarm', () async {
+    final backend = _Backend();
+    await FlowScheduler(backend: backend).sync([
+      _flow(
+        'a',
+        triggers: const [FlowTrigger.event(FlowTriggerKind.chargerConnected)],
+      ),
+      _flow('b', triggers: const [FlowTrigger.batteryLow(15)]),
+    ]);
+    expect(backend.alarms, isEmpty);
+    expect(backend.eventIds, {'a', 'b'});
+    expect(backend.events.last.toMap()['level'], 15);
+  });
+
+  test('a repeating flow is an alarm with an interval', () async {
+    final backend = _Backend();
+    await FlowScheduler(backend: backend).sync([
+      _flow('a', triggers: const [FlowTrigger.every(30)]),
+    ]);
+    expect(backend.alarms.single.toMap()['every'], 30);
+  });
+
+  test('a trigger may run unattended only when the flow may', () async {
+    final backend = _Backend();
+    const act = [
+      FlowBlock.action('torch', {'on': 'true'})
+    ];
+    await FlowScheduler(backend: backend).sync([
+      _flow('plain'),
+      _flow('ungranted', blocks: act),
+      _flow('granted', blocks: act, granted: true),
+    ]);
+    final auto = {for (final a in backend.alarms) a.flowId: a.auto};
+    expect(auto, {'plain': true, 'ungranted': false, 'granted': true});
   });
 
   test('disabling or removing a flow disarms it', () async {
@@ -90,8 +144,7 @@ void main() {
     final scheduler = FlowScheduler(backend: backend);
     await scheduler.sync([_flow('a'), _flow('b')]);
     await scheduler.sync([_flow('a', enabled: false)]);
-    expect(backend.scheduled, isEmpty);
-    expect(backend.cancelled.toSet(), {'a', 'b'});
+    expect(backend.alarms, isEmpty);
     expect(scheduler.armed, isEmpty);
   });
 
@@ -99,13 +152,13 @@ void main() {
     final backend = _Backend(allowed: false);
     final scheduler = FlowScheduler(backend: backend);
     await scheduler.sync([_flow('a')]);
-    expect(backend.scheduled, isEmpty);
+    expect(backend.alarms, isEmpty);
     expect(scheduler.armed, isEmpty);
 
     // Granting it later and syncing again arms the flow.
     backend.allowed = true;
     await scheduler.sync([_flow('a')]);
-    expect(backend.scheduled.keys, ['a']);
+    expect(backend.alarmIds, {'a'});
   });
 
   test('revoking permission disarms what was armed', () async {
@@ -114,16 +167,15 @@ void main() {
     await scheduler.sync([_flow('a')]);
     backend.allowed = false;
     await scheduler.sync([_flow('a')]);
-    expect(backend.scheduled, isEmpty);
+    expect(backend.alarms, isEmpty);
   });
 
-  test('syncing twice is idempotent', () async {
+  test('a guide never arms anything', () async {
     final backend = _Backend();
-    final scheduler = FlowScheduler(backend: backend);
-    await scheduler.sync([_flow('a')]);
-    await scheduler.sync([_flow('a')]);
-    expect(backend.scheduled.keys, ['a']);
-    expect(backend.cancelled, isEmpty);
+    await FlowScheduler(backend: backend).sync([
+      _flow('guide', blocks: const []),
+    ]);
+    expect(backend.alarms, isEmpty);
   });
 
   test('ensurePermission asks once, and only when needed', () async {

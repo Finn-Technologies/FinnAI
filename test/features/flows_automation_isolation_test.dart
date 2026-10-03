@@ -31,8 +31,8 @@ void main() {
       description: flow.description,
       instructions: '',
       category: flow.category,
-      steps: flow.steps,
-      trigger: flow.trigger,
+      blocks: flow.blocks,
+      triggers: flow.triggers,
     );
     return store.flows.firstWhere((f) => f.name == flow.name);
   }

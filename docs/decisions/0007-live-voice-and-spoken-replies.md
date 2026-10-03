@@ -1,6 +1,6 @@
 # 0007 — Live voice: spoken replies on the device, a hands-free loop, short answers
 
-**Status.** Accepted 2026-10-01. Implemented; measured on a Xiaomi 2109119DG (Snapdragon 778G). Extends [0006](0006-on-device-speech-recognition.md).
+**Status.** Accepted 2026-10-01. **The text-to-speech and licence parts are superseded by [0008](0008-licence-clean-voice.md)** (Piper and espeak-ng removed). Implemented; measured on a Xiaomi 2109119DG (Snapdragon 778G). Extends [0006](0006-on-device-speech-recognition.md).
 
 **Context.** After 0006 the user could speak, but had to tap to send, and the phone had no text-to-speech engine at all, so answers were silent. A voice turn also took ~3.7 s to the first sound, most of it the language model reading a 440-token prompt.
 

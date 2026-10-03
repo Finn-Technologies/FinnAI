@@ -677,12 +677,11 @@ packages:
     source: hosted
     version: "1.13.8"
   sherpa_onnx_android_arm64:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      name: sherpa_onnx_android_arm64
-      sha256: "29db5572735afb1bc29f0f95ab160f7fb38b4b3f926f48e9113457fd740264f4"
-      url: "https://pub.dev"
-    source: hosted
+      path: "third_party/sherpa_onnx_android_arm64"
+      relative: true
+    source: path
     version: "1.13.8"
   sherpa_onnx_android_armeabi:
     dependency: transitive

@@ -10,7 +10,10 @@ extension _CreationsPageActions on _CreationsPageState {
             child: MiniAppHost(
               title: creation.title,
               spec: spec,
+              creationId: creation.id,
               onBack: () => Navigator.of(context).pop(),
+              onAddToHome: () => unawaited(_confirmAddToHome(creation)),
+              onEdit: () => unawaited(_editWithFinn(creation)),
             ),
           ),
         );
@@ -43,7 +46,14 @@ extension _CreationsPageActions on _CreationsPageState {
         creation: creation,
         onSave: (slots) async {
           final updated = await _controller.editSlots(creation, slots);
-          if (updated == null || !mounted) return;
+          if (updated == null) return;
+          // A widget already on the home screen shows the edit too.
+          if (updated.artifact case WidgetArtifact(:final spec)) {
+            unawaited(
+              _homeScreen.updateWidget(creationId: updated.id, spec: spec),
+            );
+          }
+          if (!mounted) return;
           // The transcript card shows the edited creation, not the old one.
           setState(() {
             for (var i = 0; i < _turns.length; i++) {

@@ -11,7 +11,6 @@ class _Sidebar extends StatefulWidget {
     required this.onFlows,
     required this.onActions,
     required this.onSettings,
-    required this.onSearch,
   });
 
   final VoidCallback onNewConversation;
@@ -23,7 +22,6 @@ class _Sidebar extends StatefulWidget {
   final VoidCallback onFlows;
   final VoidCallback onActions;
   final VoidCallback onSettings;
-  final VoidCallback onSearch;
 
   @override
   State<_Sidebar> createState() => _SidebarState();
@@ -208,10 +206,9 @@ class _SidebarState extends State<_Sidebar> {
                 },
               ),
 
-              // 3. Brand row. The close control is not here: the single
+              // 3. Brand row. The design has the wordmark alone: the single
               // menu/close control rides the home screen's travel and ends up
-              // on the far side of the panel, so nothing occupies this row's
-              // right edge any more.
+              // on the far side of the panel.
               Positioned(
                 left: 25,
                 right: 25,
@@ -240,32 +237,15 @@ class _SidebarState extends State<_Sidebar> {
                       ),
                     );
                   },
-                  child: Stack(
-                    children: [
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          L10n.of(context).appBrandFinnAI,
-                          style:
-                              Theme.of(context).textTheme.titleLarge?.copyWith(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.w400,
-                                  ),
-                        ),
-                      ),
-                      // The home screen's close control sits at the panel's
-                      // far edge; search takes the slot beside it.
-                      Positioned(
-                        right: 0,
-                        top: 0,
-                        child: _SidebarCircleButton(
-                          icon: FluxIcons.search,
-                          tooltip: L10n.of(context).searchHint,
-                          background: FluxColors.tileOf(context),
-                          onTap: widget.onSearch,
-                        ),
-                      ),
-                    ],
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      L10n.of(context).appBrandFinnAI,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w400,
+                          ),
+                    ),
                   ),
                 ),
               ),

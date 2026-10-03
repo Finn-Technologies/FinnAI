@@ -6,8 +6,8 @@ document:
 
 | Kind | What it is | Where it runs |
 |---|---|---|
-| **App** | A sandboxed declarative screen spec | `MiniAppHost`, rendered as real Flutter widgets |
-| **Widget** | A small label/value layout | A native Android launcher widget, via `RemoteViews` |
+| **App** | A sandboxed declarative screen spec | `MiniAppHost`, a full-screen page (no app bar), its state saved between launches |
+| **Widget** | A small layout with a *kind* (display, counter, checklist, tracker) | A native Android launcher widget, via `RemoteViews`; interactive kinds work with the app closed |
 | **Presentation** | A slide deck | The in-app deck viewer, and exported as a real `.pptx` |
 
 Everything is local. Nothing a creation does leaves the device.
@@ -89,7 +89,7 @@ starter outline.
 | Kind | Templates | What the model fills |
 |---|---|---|
 | App | `counter` (goal + progress), `checklist`, `list` (type to add), `scoreboard` | title, unit/goal/emoji, items, names, accent |
-| Widget | `stat` (one big number), `rows` (up to four `Label: value` lines) | title, label/value, rows, footer, accent |
+| Widget | `stat` (one big number), `rows` (up to four `Label: value` lines), `counter_widget` (− / + and a goal), `checklist_widget` (tap to tick), `tracker_widget` (tap a row to add a step) | title, label/value, rows, goal/step, footer, accent |
 | Deck | (themes + layouts) `paper`, `midnight`, `mint`, `sunset`, `mono` × `title`, `bullets`, `section`, `quote` | slides |
 
 A template-made creation stores `template: {id, slots}` beside its artifact, so **Edit** rebuilds it
@@ -123,7 +123,19 @@ stays reserved for genuinely corrupt JSON.
 
 The launcher renders `RemoteViews`, which understands text, images, a progress bar and a click
 intent — no arbitrary widgets, and no generated code. So the widget spec is deliberately narrow
-(`spec/widget_spec.dart`): a title, up to four label/value rows, a footer.
+(`spec/widget_spec.dart`): a title, up to four label/value rows, a footer, and a **kind**
+(`HomeWidgetKind`: `display`, `counter`, `checklist`, `tracker`).
+
+**Interactive widgets.** `RemoteViews` cannot run our code but it can send a tap to a receiver. Each
+interactive control is a `PendingIntent` broadcast (`FinnHomeWidgetActions.ACTION_TAP`, extra
+`finn_widget_op`: `OP_MINUS`=1, `OP_PLUS`=2, `OP_RESET`=3, `OP_ROW`+index for a row). The receiver
+applies the op to a small state record kept in `SharedPreferences` (`FinnHomeWidgetStore`) and redraws
+from it — it never calls into Dart, so it works with the app closed and after the process is killed
+(not after the user force-stops the app: Android withholds broadcasts until the next launch). The
+rules (a counter never goes below zero, a reset returns to the definition) are pure functions in
+`FinnHomeWidgetActions.apply`. Editing a creation bumps a `rev` so a placed widget re-reads its
+definition and resets state; `HomeScreenService.updateWidget` refreshes it. Pinning an app uses a
+launcher shortcut, which opens the creation through `takeLaunchCreation` / `listenForShortcuts`.
 
 ```
 Dart                                        Kotlin

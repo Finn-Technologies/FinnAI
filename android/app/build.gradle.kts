@@ -78,10 +78,25 @@ android {
             // The local inference runtime targets 64-bit ARM.
             abiFilters += listOf("arm64-v8a")
         }
+        externalNativeBuild {
+            cmake {
+                // The voice shim links the arm64 ONNX Runtime the app ships.
+                abiFilters += listOf("arm64-v8a")
+            }
+        }
     }
 
     buildFeatures {
         buildConfig = true
+    }
+
+    // The text-to-speech shim (src/main/cpp): a small C wrapper around ONNX
+    // Runtime that runs the Supertonic voice models.
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
     }
 
     packaging {

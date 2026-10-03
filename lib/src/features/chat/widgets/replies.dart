@@ -148,6 +148,7 @@ class _CompleteReply extends StatelessWidget {
     this.sources = const [],
     this.toolActivities = const [],
     this.pendingAction,
+    this.card,
     this.onRunAction,
     this.onDismissAction,
     this.onSourcesHeightDelta,
@@ -168,6 +169,9 @@ class _CompleteReply extends StatelessWidget {
   /// A device action this reply is proposing. While it is set the reply shows
   /// its confirm controls and nothing has touched the device yet.
   final DeviceActionInvocation? pendingAction;
+
+  /// What this reply made (a creation or a flow), shown under the text.
+  final Widget? card;
   final VoidCallback? onRunAction;
   final VoidCallback? onDismissAction;
 
@@ -194,6 +198,7 @@ class _CompleteReply extends StatelessWidget {
         // The assistant answer sits directly on the canvas — no bubble — and its
         // text is natively selectable.
         SelectionArea(child: SafeMarkdownText(text: text)),
+        if (card != null) card!,
         // The confirm controls sit directly under the sentence they confirm, so
         // what is about to happen and the button that does it are read together.
         if (pendingAction != null) ...[

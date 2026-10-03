@@ -52,13 +52,39 @@ class HomeScreenService {
       'title': spec.title,
       // Resolved here so Kotlin needs no colour table of its own.
       'accent': CreationPalette.pastel(spec.accent).toARGB32(),
+      'kind': spec.kind.name,
+      'step': spec.step,
+      'goal': spec.goal,
       'rows': [
         for (final row in spec.rows) {'label': row.label, 'value': row.value},
       ],
       'footer': spec.footer,
     };
+    // The launcher keeps what the user has ticked or counted itself. A change
+    // to the definition has to start that over, or an edited checklist would
+    // show ticks that belong to the old one: `rev` is how native tells.
+    payload['rev'] = _revision(jsonEncode(payload));
     await file.writeAsString(jsonEncode(payload), flush: true);
     return file.path;
+  }
+
+  /// Rewrites the spec of a widget that may already be on the home screen and
+  /// asks the launcher to redraw it. Used after the creation was edited.
+  Future<void> updateWidget({
+    required String creationId,
+    required HomeWidgetSpec spec,
+  }) async {
+    await writeWidgetSpec(creationId: creationId, spec: spec);
+    await refreshWidgets();
+  }
+
+  /// A short, stable fingerprint of a definition (FNV-1a, 32 bit).
+  static String _revision(String source) {
+    var hash = 0x811c9dc5;
+    for (final unit in source.codeUnits) {
+      hash = ((hash ^ unit) * 0x01000193) & 0xffffffff;
+    }
+    return hash.toRadixString(16);
   }
 
   /// Pins a widget to the launcher, using [spec] as its content.
@@ -90,6 +116,27 @@ class HomeScreenService {
           'label': label,
         }) ??
         false;
+  }
+
+  /// The creation a pinned app shortcut asked for, once, or null.
+  Future<String?> takeLaunchCreation() => _invoke<String>('takeLaunchCreation');
+
+  /// Calls [onShortcut] when a pinned shortcut is tapped while the app runs.
+  void listenForShortcuts(void Function(String creationId) onShortcut) {
+    _channel.setMethodCallHandler((call) async {
+      if (call.method != 'onCreationShortcut') return null;
+      final id = (call.arguments as Map?)?['creationId'];
+      if (id is String && id.isNotEmpty) onShortcut(id);
+      return null;
+    });
+  }
+
+  void stopListeningForShortcuts() => _channel.setMethodCallHandler(null);
+
+  /// Forgets what the user did to placed widgets (counts, ticks), for
+  /// "delete all data".
+  Future<void> clearWidgetState() async {
+    await _invoke<bool>('clearWidgetState');
   }
 
   /// Asks every placed widget to re-render from its stored spec.

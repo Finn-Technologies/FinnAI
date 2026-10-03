@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Widget layout. Rows are declared up front rather than added dynamically: the
-  spec allows at most four, and unused rows are simply hidden, which avoids
-  nested RemoteViews entirely.
+  Widget layout for display, checklist and tracker widgets. Rows are declared
+  up front rather than added dynamically: the spec allows at most four, and
+  unused rows are simply hidden, which avoids nested RemoteViews entirely.
+  Each row can carry a tick mark (checklist) or a plus pill (tracker); both
+  are hidden unless the kind asks for them.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/finn_widget_root"
@@ -24,20 +26,43 @@
         android:layout_marginBottom="10dp"
         android:background="#7DFFCD" />
 
-    <TextView
-        android:id="@+id/finn_widget_title"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:maxLines="1"
-        android:ellipsize="end"
-        android:textSize="15sp"
-        android:textStyle="bold"
-        android:textColor="#121212"
-        android:text="@string/finn_widget_label" />
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/finn_widget_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:textColor="#121212"
+            android:text="@string/finn_widget_label" />
+
+        <TextView
+            android:id="@+id/finn_widget_progress_text"
+            style="@style/FinnWidgetHeaderText"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/finn_widget_reset"
+            style="@style/FinnWidgetReset"
+            android:visibility="gone" />
+    </LinearLayout>
 
     <LinearLayout
         android:id="@+id/finn_widget_row_1"
         style="@style/FinnWidgetRow">
+
+        <TextView
+            android:id="@+id/finn_widget_mark_1"
+            style="@style/FinnWidgetRowMark"
+            android:visibility="gone" />
 
         <TextView
             android:id="@+id/finn_widget_label_1"
@@ -46,11 +71,39 @@
         <TextView
             android:id="@+id/finn_widget_value_1"
             style="@style/FinnWidgetRowValue" />
+
+        <FrameLayout
+            android:id="@+id/finn_widget_plus_1"
+            android:layout_width="26dp"
+            android:layout_height="22dp"
+            android:layout_marginStart="8dp"
+            android:visibility="gone">
+
+            <ImageView
+                android:id="@+id/finn_widget_plusbg_1"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:src="@drawable/finn_widget_pill" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:text="+"
+                android:textColor="#121212"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+        </FrameLayout>
     </LinearLayout>
 
     <LinearLayout
         android:id="@+id/finn_widget_row_2"
         style="@style/FinnWidgetRow">
+
+        <TextView
+            android:id="@+id/finn_widget_mark_2"
+            style="@style/FinnWidgetRowMark"
+            android:visibility="gone" />
 
         <TextView
             android:id="@+id/finn_widget_label_2"
@@ -59,11 +112,39 @@
         <TextView
             android:id="@+id/finn_widget_value_2"
             style="@style/FinnWidgetRowValue" />
+
+        <FrameLayout
+            android:id="@+id/finn_widget_plus_2"
+            android:layout_width="26dp"
+            android:layout_height="22dp"
+            android:layout_marginStart="8dp"
+            android:visibility="gone">
+
+            <ImageView
+                android:id="@+id/finn_widget_plusbg_2"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:src="@drawable/finn_widget_pill" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:text="+"
+                android:textColor="#121212"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+        </FrameLayout>
     </LinearLayout>
 
     <LinearLayout
         android:id="@+id/finn_widget_row_3"
         style="@style/FinnWidgetRow">
+
+        <TextView
+            android:id="@+id/finn_widget_mark_3"
+            style="@style/FinnWidgetRowMark"
+            android:visibility="gone" />
 
         <TextView
             android:id="@+id/finn_widget_label_3"
@@ -72,11 +153,39 @@
         <TextView
             android:id="@+id/finn_widget_value_3"
             style="@style/FinnWidgetRowValue" />
+
+        <FrameLayout
+            android:id="@+id/finn_widget_plus_3"
+            android:layout_width="26dp"
+            android:layout_height="22dp"
+            android:layout_marginStart="8dp"
+            android:visibility="gone">
+
+            <ImageView
+                android:id="@+id/finn_widget_plusbg_3"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:src="@drawable/finn_widget_pill" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:text="+"
+                android:textColor="#121212"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+        </FrameLayout>
     </LinearLayout>
 
     <LinearLayout
         android:id="@+id/finn_widget_row_4"
         style="@style/FinnWidgetRow">
+
+        <TextView
+            android:id="@+id/finn_widget_mark_4"
+            style="@style/FinnWidgetRowMark"
+            android:visibility="gone" />
 
         <TextView
             android:id="@+id/finn_widget_label_4"
@@ -85,6 +194,29 @@
         <TextView
             android:id="@+id/finn_widget_value_4"
             style="@style/FinnWidgetRowValue" />
+
+        <FrameLayout
+            android:id="@+id/finn_widget_plus_4"
+            android:layout_width="26dp"
+            android:layout_height="22dp"
+            android:layout_marginStart="8dp"
+            android:visibility="gone">
+
+            <ImageView
+                android:id="@+id/finn_widget_plusbg_4"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:src="@drawable/finn_widget_pill" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:text="+"
+                android:textColor="#121212"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+        </FrameLayout>
     </LinearLayout>
 
     <TextView

@@ -35,6 +35,35 @@
         <item name="android:textColor">#4A4A48</item>
     </style>
 
+    <!-- Tick mark at the start of a checklist row. -->
+    <style name="FinnWidgetRowMark">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginEnd">8dp</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:textColor">#121212</item>
+    </style>
+
+    <style name="FinnWidgetHeaderText">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginStart">8dp</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">#4A4A48</item>
+    </style>
+
+    <!-- "Start over" on an interactive widget. A 36dp touch target so it can
+         be hit on purpose and not by accident. -->
+    <style name="FinnWidgetReset">
+        <item name="android:layout_width">36dp</item>
+        <item name="android:layout_height">28dp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:text">↺</item>
+        <item name="android:textSize">18sp</item>
+        <item name="android:textColor">#4A4A48</item>
+    </style>
+
     <style name="FinnWidgetRowValue">
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">wrap_content</item>

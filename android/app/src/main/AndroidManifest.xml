@@ -3,6 +3,12 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Flows: the listener service for phone events, a short buzz as an
+         action, and reading whether Wi-Fi is up for a condition. All normal
+         permissions, granted at install. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <!-- Re-arms scheduled Flows after a reboot (alarms do not survive one). -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
@@ -61,6 +67,17 @@
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
+        <!-- Listens for the phone events a Flow can start from (charger,
+             battery, headphones, Wi-Fi). It runs only while an enabled flow
+             needs it and shows one quiet notification. -->
+        <service
+            android:name=".FlowTriggerService"
+            android:foregroundServiceType="specialUse"
+            android:exported="false">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Listens for phone events (charger, battery, headphones, Wi-Fi) that the user chose as triggers for their on-device automations." />
+        </service>
         <service
             android:name=".ModelDownloadService"
             android:foregroundServiceType="dataSync"

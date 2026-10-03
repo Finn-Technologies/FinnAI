@@ -26,7 +26,6 @@ cd "$(dirname "$0")/.."
 
 PACKAGE="com.abhiflex.finnai"
 ACTIVITY="${PACKAGE}/.MainActivity"
-REMOTE_DIR="/sdcard/Android/data/${PACKAGE}/files"
 BASELINE_SLUG="${BASELINE_SLUG:-$(git config user.name 2>/dev/null | tr -d ' ')-device}"
 
 SUITES=""
@@ -70,8 +69,14 @@ else
     echo "measure one first:  ./tool/run_eval.sh --write-baseline" >&2
     exit 1
   fi
-  adb push "eval/${BASELINE_NAME}" "${REMOTE_DIR}/${BASELINE_NAME}" >/dev/null
-  DEFINES+=(--dart-define=FINN_EVAL_BASELINE="${REMOTE_DIR}/${BASELINE_NAME}")
+  # The app cannot read its own external app-specific directory through a raw
+  # file path (scoped storage denies it even for its own package), so the
+  # baseline travels the same road as --image: staged through run-as into the
+  # app's internal files directory, which File() can always read.
+  adb push "eval/${BASELINE_NAME}" "/data/local/tmp/${BASELINE_NAME}" >/dev/null
+  adb shell run-as "$PACKAGE" mkdir -p files
+  adb shell run-as "$PACKAGE" cp "/data/local/tmp/${BASELINE_NAME}" "files/${BASELINE_NAME}"
+  DEFINES+=(--dart-define=FINN_EVAL_BASELINE="/data/user/0/${PACKAGE}/files/${BASELINE_NAME}")
 fi
 
 [[ "$LITE" -eq 1 ]] && DEFINES+=(--dart-define=FINN_FORCE_LITE=true)
@@ -88,9 +93,13 @@ fi
 
 if [[ -n "$PROMPT_FILE" ]]; then
   # Non-Latin prompts cannot survive `adb shell input text`, so they travel
-  # as a file the app reads instead.
-  adb push "$PROMPT_FILE" "${REMOTE_DIR}/$(basename "$PROMPT_FILE")" >/dev/null
-  DEFINES+=(--dart-define=FINN_EVAL_PROMPT_FILE="${REMOTE_DIR}/$(basename "$PROMPT_FILE")")
+  # as a file the app reads instead. Like the baseline, the file is staged
+  # through run-as: the app cannot read its own external directory raw.
+  PROMPT_NAME="$(basename "$PROMPT_FILE")"
+  adb push "$PROMPT_FILE" "/data/local/tmp/${PROMPT_NAME}" >/dev/null
+  adb shell run-as "$PACKAGE" mkdir -p files
+  adb shell run-as "$PACKAGE" cp "/data/local/tmp/${PROMPT_NAME}" "files/${PROMPT_NAME}"
+  DEFINES+=(--dart-define=FINN_EVAL_PROMPT_FILE="/data/user/0/${PACKAGE}/files/${PROMPT_NAME}")
 fi
 
 if [[ "$SKIP_BUILD" -eq 0 ]]; then

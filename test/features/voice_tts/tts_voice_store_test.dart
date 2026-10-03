@@ -1,47 +1,50 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:archive/archive.dart';
 import 'package:crypto/crypto.dart';
 import 'package:finn_ai/src/features/voice/tts/tts_voice_catalog.dart';
 import 'package:finn_ai/src/features/voice/tts/tts_voice_store.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// A `.tar.bz2` shaped like the sherpa-onnx voice archives.
-List<int> voiceArchive(String id, {bool withModel = true}) {
-  final archive = Archive()
-    ..addFile(ArchiveFile.bytes('$id/', const []))
-    ..addFile(ArchiveFile.string('$id/tokens.txt', '_ 0\na 1\n'))
-    ..addFile(ArchiveFile.string('$id/MODEL_CARD', 'not needed'))
-    ..addFile(ArchiveFile.string('$id/espeak-ng-data/phontab', 'phonemes'))
-    ..addFile(ArchiveFile.string('$id/espeak-ng-data/lang/en/x', 'lang'));
-  if (withModel) {
-    archive.addFile(ArchiveFile.bytes('$id/model.onnx', List.filled(300, 7)));
-  }
-  return BZip2Encoder().encode(TarEncoder().encode(archive));
-}
-
-TtsVoice voiceFor(String id, String language, List<int> bytes) => TtsVoice(
-      language: language,
-      id: id,
+TtsFile fileOf(String path, List<int> bytes) => TtsFile(
+      path: path,
       bytes: bytes.length,
       sha256Digest: sha256.convert(bytes).toString(),
     );
 
+/// A small voice shaped like the real one: a few files in two folders.
+({TtsVoice voice, Map<String, List<int>> bodies}) smallVoice({
+  String id = 'v-test',
+}) {
+  final bodies = <String, List<int>>{
+    'onnx/a.onnx': List.filled(300, 1),
+    'onnx/tts.json': List.filled(40, 2),
+    'voice_styles/F1.json': List.filled(25, 3),
+  };
+  return (
+    voice: TtsVoice(
+      id: id,
+      repository: 'owner/$id',
+      files: [for (final e in bodies.entries) fileOf(e.key, e.value)],
+    ),
+    bodies: bodies,
+  );
+}
+
 void main() {
   late Directory root;
   late HttpServer server;
-  late Map<String, List<int>> bodies;
+  late Map<String, List<int>> served;
   var requests = 0;
 
   setUp(() async {
     root = await Directory.systemTemp.createTemp('tts_store_test');
-    bodies = {};
+    served = {};
     requests = 0;
     server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
     unawaited(server.forEach((request) async {
       requests++;
-      final body = bodies[request.uri.path];
+      final body = served[request.uri.path];
       if (body == null) {
         request.response.statusCode = HttpStatus.notFound;
       } else {
@@ -56,119 +59,128 @@ void main() {
     if (await root.exists()) await root.delete(recursive: true);
   });
 
-  test('installs a voice: model and tokens in place, data shared', () async {
-    final bytes = voiceArchive('v-en');
-    final voice = voiceFor('v-en', 'en', bytes);
-    bodies['/${voice.id}.tar.bz2'] = bytes;
-    final store = _LocalStore(root, server.port);
+  _LocalStore store() => _LocalStore(root, server.port);
 
-    expect(await store.isInstalled(voice), isFalse);
-    await store.install(voice);
+  test('installs a voice: every file in its folder, then the marker', () async {
+    final v = smallVoice();
+    served = {for (final e in v.bodies.entries) '/${e.key}': e.value};
 
-    expect(await store.isInstalled(voice), isTrue);
-    final paths = (await store.paths(voice))!;
-    expect(File(paths.model).existsSync(), isTrue);
-    expect(paths.model, endsWith('.onnx'));
-    expect(File(paths.tokens).readAsStringSync(), contains('a 1'));
-    expect(File('${paths.dataDir}/phontab').existsSync(), isTrue);
-    expect(File('${paths.dataDir}/lang/en/x').existsSync(), isTrue);
-    // Only what is used is kept.
-    expect(File('${root.path}/voices/v-en/MODEL_CARD').existsSync(), isFalse);
-    // The archive is not kept: it would double the disk cost.
-    expect(Directory('${root.path}/archives').listSync(), isEmpty);
+    final s = store();
+    expect(await s.isInstalled(v.voice), isFalse);
+    await s.install(v.voice);
+
+    expect(await s.isInstalled(v.voice), isTrue);
+    final paths = (await s.paths(v.voice))!;
+    expect(File('${paths.modelDirectory}/a.onnx').existsSync(), isTrue);
+    expect(File(paths.config).existsSync(), isTrue);
+    expect(File(paths.style('F1')).existsSync(), isTrue);
+    expect(paths.modelDirectory, endsWith('/onnx'));
   });
 
-  test('a second voice reuses the shared espeak data', () async {
-    final a = voiceArchive('v-en');
-    final b = voiceArchive('v-de');
-    final en = voiceFor('v-en', 'en', a);
-    final de = voiceFor('v-de', 'de', b);
-    bodies['/v-en.tar.bz2'] = a;
-    bodies['/v-de.tar.bz2'] = b;
-    final store = _LocalStore(root, server.port);
+  test('a voice with a missing file is not installed', () async {
+    final v = smallVoice();
+    served = {for (final e in v.bodies.entries) '/${e.key}': e.value};
+    final s = store();
+    await s.install(v.voice);
 
-    await store.install(en);
-    final marker = File('${root.path}/espeak-ng-data/phontab')
-      ..writeAsStringSync('first copy wins');
-    await store.install(de);
+    File('${root.path}/voices/${v.voice.id}/onnx/a.onnx').deleteSync();
 
-    expect(await store.isInstalled(en), isTrue);
-    expect(await store.isInstalled(de), isTrue);
-    expect(marker.readAsStringSync(), 'first copy wins',
-        reason: 'the shared data is unpacked once, not once per voice');
+    expect(await s.isInstalled(v.voice), isFalse);
+  });
+
+  test('a file of the wrong size is not installed', () async {
+    final v = smallVoice();
+    served = {for (final e in v.bodies.entries) '/${e.key}': e.value};
+    final s = store();
+    await s.install(v.voice);
+
+    File('${root.path}/voices/${v.voice.id}/onnx/a.onnx')
+        .writeAsBytesSync([1, 2, 3]);
+
+    expect(await s.isInstalled(v.voice), isFalse);
   });
 
   test('installing twice downloads once', () async {
-    final bytes = voiceArchive('v-en');
-    final voice = voiceFor('v-en', 'en', bytes);
-    bodies['/v-en.tar.bz2'] = bytes;
-    final store = _LocalStore(root, server.port);
+    final v = smallVoice();
+    served = {for (final e in v.bodies.entries) '/${e.key}': e.value};
+    final s = store();
 
-    await Future.wait([store.install(voice), store.install(voice)]);
+    await Future.wait([s.install(v.voice), s.install(v.voice)]);
     final after = requests;
-    await store.install(voice);
+    await s.install(v.voice);
 
-    expect(after, 1);
-    expect(requests, 1, reason: 'an installed voice is not fetched again');
+    expect(after, v.voice.files.length);
+    expect(requests, after, reason: 'an installed voice is not fetched again');
   });
 
-  test('progress is reported while downloading', () async {
-    final bytes = voiceArchive('v-en');
-    final voice = voiceFor('v-en', 'en', bytes);
-    bodies['/v-en.tar.bz2'] = bytes;
-    final store = _LocalStore(root, server.port);
+  test('a file that is already there is not fetched again', () async {
+    final v = smallVoice();
+    served = {for (final e in v.bodies.entries) '/${e.key}': e.value};
+    final s = store();
+    // A first attempt that stopped before the last file.
+    final dir = Directory('${root.path}/voices/${v.voice.id}/onnx')
+      ..createSync(recursive: true);
+    File('${dir.path}/a.onnx').writeAsBytesSync(v.bodies['onnx/a.onnx']!);
+
+    await s.install(v.voice);
+
+    expect(requests, v.voice.files.length - 1);
+    expect(await s.isInstalled(v.voice), isTrue);
+  });
+
+  test('progress runs across all the files, to the total', () async {
+    final v = smallVoice();
+    served = {for (final e in v.bodies.entries) '/${e.key}': e.value};
     final seen = <int>[];
 
-    await store.install(voice, onProgress: seen.add);
+    await store().install(v.voice, onProgress: seen.add);
 
     expect(seen, isNotEmpty);
-    expect(seen.last, bytes.length);
+    expect(seen.last, v.voice.bytes);
+    expect(seen, orderedEquals([...seen]..sort()), reason: 'never goes back');
   });
 
   test('a download that fails verification installs nothing', () async {
-    final bytes = voiceArchive('v-en');
-    final voice = TtsVoice(
-      language: 'en',
-      id: 'v-en',
-      bytes: bytes.length,
-      sha256Digest: sha256.convert([1, 2, 3]).toString(),
+    final v = smallVoice();
+    served = {for (final e in v.bodies.entries) '/${e.key}': e.value};
+    final tampered = TtsVoice(
+      id: v.voice.id,
+      repository: v.voice.repository,
+      files: [
+        for (final f in v.voice.files)
+          TtsFile(
+            path: f.path,
+            bytes: f.bytes,
+            sha256Digest: f.path.endsWith('tts.json')
+                ? sha256.convert([9, 9, 9]).toString()
+                : f.sha256Digest,
+          ),
+      ],
     );
-    bodies['/v-en.tar.bz2'] = bytes;
-    final store = _LocalStore(root, server.port);
+    final s = store();
 
-    await expectLater(store.install(voice), throwsA(isA<HttpException>()));
+    await expectLater(s.install(tampered), throwsA(isA<HttpException>()));
 
-    expect(await store.isInstalled(voice), isFalse);
-  });
-
-  test('an archive without a model is refused, not half-installed', () async {
-    final bytes = voiceArchive('v-en', withModel: false);
-    final voice = voiceFor('v-en', 'en', bytes);
-    bodies['/v-en.tar.bz2'] = bytes;
-    final store = _LocalStore(root, server.port);
-
-    await expectLater(store.install(voice), throwsA(isA<StateError>()));
-
-    expect(await store.isInstalled(voice), isFalse);
+    expect(await s.isInstalled(tampered), isFalse);
   });
 
   test('a missing file reports the status', () async {
-    final voice = voiceFor('absent', 'en', [1]);
-    final store = _LocalStore(root, server.port);
+    final v = smallVoice();
+    final s = store();
 
     await expectLater(
-      store.install(voice),
+      s.install(v.voice),
       throwsA(predicate((e) => '$e'.contains('404'))),
     );
   });
 
   test('a voice that is no longer in the catalog is pruned', () async {
-    final store = _LocalStore(root, server.port);
+    final s = store();
     Directory('${root.path}/voices/old-voice').createSync(recursive: true);
     Directory('${root.path}/voices/kept-voice').createSync(recursive: true);
     File('${root.path}/voices/stray.txt').createSync();
 
-    await store.pruneRetired(keep: {'kept-voice'});
+    await s.pruneRetired(keep: {'kept-voice'});
 
     expect(Directory('${root.path}/voices/old-voice').existsSync(), isFalse);
     expect(Directory('${root.path}/voices/kept-voice').existsSync(), isTrue);
@@ -176,58 +188,61 @@ void main() {
         reason: 'only voice folders are touched');
   });
 
-  test('the failed marker is set, cleared by deleteAll', () async {
-    final store = _LocalStore(root, server.port);
-    expect(await store.installFailedBefore(), isFalse);
+  test('the retired Piper data is cleaned from an upgraded phone', () async {
+    final s = store();
+    Directory('${root.path}/voices/vits-piper-en_US-ljspeech-medium-int8')
+        .createSync(recursive: true);
+    Directory('${root.path}/espeak-ng-data').createSync(recursive: true);
+    File('${root.path}/espeak-ng-data/phontab').writeAsStringSync('gpl data');
+    Directory('${root.path}/archives').createSync(recursive: true);
 
-    await store.markInstallFailed();
-    expect(await store.installFailedBefore(), isTrue);
+    await s.pruneRetired();
 
-    await store.clearInstallFailed();
-    expect(await store.installFailedBefore(), isFalse);
-
-    await store.markInstallFailed();
-    await store.deleteAll();
-    expect(await store.installFailedBefore(), isFalse);
+    expect(Directory('${root.path}/espeak-ng-data').existsSync(), isFalse,
+        reason: 'GPL phoneme data must not stay on the device');
+    expect(Directory('${root.path}/archives').existsSync(), isFalse);
+    expect(
+      Directory('${root.path}/voices/vits-piper-en_US-ljspeech-medium-int8')
+          .existsSync(),
+      isFalse,
+    );
   });
 
-  test('deleteAll removes voices and shared data', () async {
-    final bytes = voiceArchive('v-en');
-    final voice = voiceFor('v-en', 'en', bytes);
-    bodies['/v-en.tar.bz2'] = bytes;
-    final store = _LocalStore(root, server.port);
-    await store.install(voice);
+  test('the failed marker is set, cleared by deleteAll', () async {
+    final s = store();
+    expect(await s.installFailedBefore(), isFalse);
 
-    await store.deleteAll();
+    await s.markInstallFailed();
+    expect(await s.installFailedBefore(), isTrue);
+
+    await s.clearInstallFailed();
+    expect(await s.installFailedBefore(), isFalse);
+
+    await s.markInstallFailed();
+    await s.deleteAll();
+    expect(await s.installFailedBefore(), isFalse);
+  });
+
+  test('deleteAll removes the voice', () async {
+    final v = smallVoice();
+    served = {for (final e in v.bodies.entries) '/${e.key}': e.value};
+    final s = store();
+    await s.install(v.voice);
+
+    await s.deleteAll();
 
     expect(await root.exists(), isFalse);
-    expect(await store.isInstalled(voice), isFalse);
-  });
-
-  test('the real extractor unpacks on another isolate', () async {
-    final bytes = voiceArchive('v-en');
-    final file = File('${root.path}/a.tar.bz2')..writeAsBytesSync(bytes);
-
-    await extractTtsArchive(
-      file.path,
-      '${root.path}/out/voice',
-      '${root.path}/out/data',
-    );
-
-    expect(File('${root.path}/out/voice/model.onnx').existsSync(), isTrue);
-    expect(File('${root.path}/out/data/phontab').existsSync(), isTrue);
-    expect(Directory('${root.path}/out/voice.tmp').existsSync(), isFalse);
-    expect(Directory('${root.path}/out/data.tmp').existsSync(), isFalse);
+    expect(await s.isInstalled(v.voice), isFalse);
   });
 }
 
 /// A [TtsVoiceStore] that fetches from a local server, whatever the voice's
-/// URL says.
+/// repository says.
 class _LocalStore extends TtsVoiceStore {
   _LocalStore(Directory root, int port)
       : super(
           root: root,
-          urlFor: (voice) => 'http://127.0.0.1:$port/${voice.id}.tar.bz2',
+          urlFor: (voice, file) => 'http://127.0.0.1:$port/${file.path}',
           // The test voices are not in the catalog and must not be pruned.
           pruneAfterInstall: false,
         );

@@ -20,6 +20,7 @@ import 'package:finn_ai/src/features/creations/deck/deck_export_service.dart';
 import 'package:finn_ai/src/features/creations/deck/deck_viewer.dart';
 import 'package:finn_ai/src/features/creations/home_screen_service.dart';
 import 'package:finn_ai/src/features/creations/runtime/mini_app_host.dart';
+import 'package:finn_ai/src/features/creations/widget_preview.dart';
 import 'package:finn_ai/src/features/creations/spec/deck_spec.dart';
 import 'package:finn_ai/src/features/creations/spec/mini_app_spec.dart';
 import 'package:finn_ai/src/features/creations/spec/widget_spec.dart';
@@ -215,7 +216,12 @@ class _CreationsPageState extends State<CreationsPage> {
     setState(() {
       _pendingKind = kind;
       final index = _turns.lastIndexWhere((turn) => turn is _KindQuestionTurn);
-      if (index >= 0) {
+      if (index >= 0 && pending == null) {
+        // The kind was picked before anything was typed (from the plus sheet):
+        // the question has been answered by the tap, so it goes away instead of
+        // lingering as a three-button bubble above the real prompt.
+        _turns.removeAt(index);
+      } else if (index >= 0) {
         _turns[index] = _KindQuestionTurn(answered: kind);
       } else {
         _turns.add(_KindQuestionTurn(answered: kind));

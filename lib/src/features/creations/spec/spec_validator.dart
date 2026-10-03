@@ -3,6 +3,9 @@ import 'package:flutter/foundation.dart';
 import 'package:finn_ai/src/features/creations/spec/mini_app_spec.dart';
 import 'package:finn_ai/src/features/creations/spec/safe_expression.dart';
 import 'package:finn_ai/src/features/creations/spec/spec_limits.dart';
+import 'package:finn_ai/src/features/creations/spec/widget_spec.dart';
+
+part 'spec_validator_widget.dart';
 
 /// One reason a generated spec was rejected.
 ///
@@ -78,63 +81,8 @@ abstract final class SpecValidator {
     return issues;
   }
 
-  static List<SpecIssue> validateHomeWidget(Object? raw) {
-    final issues = <SpecIssue>[];
-    final root = _asMap(raw);
-    if (root == null) {
-      return const [SpecIssue('', 'the widget must be a JSON object')];
-    }
-    _checkTitle(root, issues, 'title');
-    _checkAccent(root, issues);
-
-    final rows = root['rows'];
-    if (rows is! List || rows.isEmpty) {
-      issues.add(const SpecIssue('rows', 'must be a non-empty list of rows'));
-    } else if (rows.length > SpecLimits.maxWidgetRows) {
-      issues.add(
-        SpecIssue(
-          'rows',
-          'has ${rows.length} rows but a home-screen widget fits at most '
-              '${SpecLimits.maxWidgetRows}',
-        ),
-      );
-    } else {
-      for (var index = 0; index < rows.length; index++) {
-        final path = 'rows[$index]';
-        final row = _asMap(rows[index]);
-        if (row == null) {
-          issues.add(SpecIssue(path, 'must be an object with label and value'));
-          continue;
-        }
-        _checkString(
-          row,
-          'label',
-          path,
-          issues,
-          maxChars: SpecLimits.maxLabelChars,
-          required: true,
-        );
-        _checkString(
-          row,
-          'value',
-          path,
-          issues,
-          maxChars: SpecLimits.maxWidgetValueChars,
-          required: false,
-        );
-      }
-    }
-
-    _checkString(
-      root,
-      'footer',
-      '',
-      issues,
-      maxChars: SpecLimits.maxLabelChars,
-      required: false,
-    );
-    return issues;
-  }
+  static List<SpecIssue> validateHomeWidget(Object? raw) =>
+      _validateHomeWidget(raw);
 
   static List<SpecIssue> validateDeck(Object? raw) {
     final issues = <SpecIssue>[];

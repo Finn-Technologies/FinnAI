@@ -13,9 +13,9 @@ void main() {
           pickSpeechLanguage('फ्रांस की राजधानी पेरिस है।', heard: 'en'), 'hi');
     });
 
-    test('a Latin reply is never read with a Russian or Hindi voice', () {
+    test('a Latin reply is never read as Russian or Hindi', () {
       // Whisper guesses wrong on short or accented speech; the reply is
-      // English, so the English voice must read it.
+      // Latin script, so it must not be read as a Cyrillic or Devanagari one.
       expect(pickSpeechLanguage('Paris is the capital.', heard: 'ru'), 'en');
       expect(pickSpeechLanguage('Paris is the capital.', heard: 'hi'), 'en');
     });
@@ -31,7 +31,7 @@ void main() {
     });
 
     test('a language with no voice falls back to English', () {
-      expect(pickSpeechLanguage('Hello', heard: 'sw', device: 'ja'), 'en');
+      expect(pickSpeechLanguage('Hello', heard: 'sw', device: 'zz'), 'en');
     });
 
     test('mixed text goes with the script that dominates', () {
@@ -47,51 +47,57 @@ void main() {
   });
 
   group('voice catalog', () {
-    test('every voice is pinned and addressable', () {
-      final languages = <String>{};
-      for (final voice in ttsVoices) {
-        expect(voice.sha256Digest, matches(RegExp(r'^[0-9a-f]{64}$')));
+    test('the voice is pinned: every file has a size and a SHA-256', () {
+      final paths = <String>{};
+      for (final file in supertonicVoice.files) {
+        expect(file.sha256Digest, matches(RegExp(r'^[0-9a-f]{64}$')));
+        expect(file.bytes, greaterThan(0));
+        expect(paths.add(file.path), isTrue, reason: file.path);
         expect(
-            voice.bytes, inInclusiveRange(10 * 1000 * 1000, 60 * 1000 * 1000));
-        expect(voice.url, startsWith('https://github.com/k2-fsa/sherpa-onnx/'));
-        expect(voice.url, endsWith('${voice.id}.tar.bz2'));
-        expect(voice.id, endsWith('-int8'));
-        expect(languages.add(voice.language), isTrue,
-            reason: 'one voice per language: ${voice.language}');
+          file.url(supertonicVoice.repository),
+          startsWith('https://huggingface.co/'),
+        );
+        expect(file.url(supertonicVoice.repository), endsWith(file.path));
       }
+      expect(supertonicVoice.bytes, inInclusiveRange(300e6, 500e6));
     });
 
-    test('English is the default and every app language has a voice', () {
-      expect(defaultTtsVoice.language, 'en');
-      for (final code in ['en', 'de', 'es', 'fr', 'it', 'ru']) {
+    test('it carries the four models, the config, the indexer and the styles',
+        () {
+      final names = supertonicVoice.files.map((f) => f.path).toSet();
+      expect(
+          names,
+          containsAll([
+            'onnx/duration_predictor.onnx',
+            'onnx/text_encoder.onnx',
+            'onnx/vector_estimator.onnx',
+            'onnx/vocoder.onnx',
+            'onnx/tts.json',
+            'onnx/unicode_indexer.json',
+          ]));
+      for (final style in ttsStyles) {
+        expect(names, contains('voice_styles/$style.json'));
+      }
+      expect(ttsStyles, contains(defaultTtsStyle));
+    });
+
+    test('every language of the app, and Russian and Hindi, can be spoken', () {
+      for (final code in ['en', 'de', 'es', 'fr', 'it', 'ru', 'hi']) {
         expect(ttsVoiceFor(code), isNotNull, reason: code);
       }
+      expect(ttsVoiceFor('xx'), isNull);
+      expect(ttsNonLatinLanguages, isEmpty);
     });
 
-    test('there is no Hindi voice: none has a licence that allows shipping it',
+    test('it is not one of the voices whose licence does not allow shipping',
         () {
-      expect(ttsVoiceFor('hi'), isNull);
-      expect(ttsNonLatinLanguages, containsAll(['ru', 'hi']));
-    });
-
-    test('only voices with a redistributable licence are listed', () {
-      // The voices that were considered and rejected, by archive name. If one
-      // of these appears, check its dataset licence before keeping it.
-      const rejected = [
-        'lessac', // Blizzard 2013: a signed research licence
-        'ryan', // CC BY-NC-SA
-        'irina', // licence unknown
-        'ruslan', // CC BY-NC-SA
-        'pratham', // CC BY-NC-SA
-        'priyamvada', // CC BY-NC-SA
-        'rohan', // IITM research licence
-        'tom', // AGPL
-      ];
-      for (final voice in ttsVoices) {
-        for (final name in rejected) {
-          expect(voice.id, isNot(contains('-$name-')), reason: voice.id);
-        }
-      }
+      // The Piper voices this replaced needed espeak-ng (GPL-3.0). The model
+      // listed now reads characters and needs no phonemizer.
+      expect(supertonicVoice.id, 'supertonic-3');
+      expect(
+        supertonicVoice.files.map((f) => f.path),
+        everyElement(isNot(contains('espeak'))),
+      );
     });
 
     test('language codes are normalised', () {
@@ -100,15 +106,13 @@ void main() {
       expect(normalizeLanguage('DE'), 'de');
       expect(normalizeLanguage(''), isNull);
       expect(normalizeLanguage(null), isNull);
-      expect(ttsVoiceFor('<|ru|>')?.language, 'ru');
-      expect(ttsVoiceFor('xx'), isNull);
+      expect(ttsVoiceFor('<|ru|>'), isNotNull);
     });
 
-    test('setup gets English plus the phone\'s own language', () {
-      expect(ttsVoicesForSetup('en').map((v) => v.language), ['en']);
-      expect(ttsVoicesForSetup('de').map((v) => v.language), ['en', 'de']);
-      expect(ttsVoicesForSetup('ja').map((v) => v.language), ['en']);
-      expect(ttsVoicesForSetup(null).map((v) => v.language), ['en']);
+    test('setup gets the one voice whatever the phone\'s language', () {
+      for (final language in ['en', 'de', 'ja', null]) {
+        expect(ttsVoicesForSetup(language), [supertonicVoice]);
+      }
     });
   });
 }

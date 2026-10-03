@@ -47,7 +47,9 @@ class FlowIntent {
   static Map<String, String> _slotsFor(FlowTemplate template, String text) {
     final cleaned = text
         .replaceAll(
-            RegExp(r'\b(every|each)\s+\w+day\b', caseSensitive: false), '')
+            RegExp(r'\b(?:every|each|on)\s+(?:week)?\w*day\b',
+                caseSensitive: false),
+            '')
         .replaceAll(
             RegExp(r'\bat\s+\d{1,2}([:.]\d{2})?\s*(am|pm)?\b',
                 caseSensitive: false),
@@ -58,22 +60,44 @@ class FlowIntent {
         .firstMatch(cleaned)
         ?.group(1)
         ?.trim();
-    final subject = (about != null && about.length > 2) ? about : cleaned;
+    // "give me the football news" -> "football": the request words and the
+    // generic noun are not the topic.
+    final stripped = cleaned
+        .replaceFirst(
+          RegExp(
+            r'^(?:please\s+)?(?:give me|tell me|show me|send me|get me|read me|i want|i would like)\s+(?:the\s+|my\s+|a\s+|some\s+)?',
+            caseSensitive: false,
+          ),
+          '',
+        )
+        .replaceAll(
+          RegExp(r'\b(?:news|headlines|brief|briefing|update|updates)\b',
+              caseSensitive: false),
+          '',
+        )
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    final subject = (about != null && about.length > 2)
+        ? about
+        : (stripped.length > 2 ? stripped : cleaned);
     return switch (template.id) {
       'morning_brief' => {'topics': subject},
       'web_check' => {'topic': subject},
       'reminder' => {
-          'message': cleaned
+          'message': _capital(cleaned
               .replaceFirst(
                 RegExp(r'^(remind me to|remind me|tell me to)\s*',
                     caseSensitive: false),
                 '',
               )
-              .trim(),
+              .trim()),
         },
       _ => const {},
     };
   }
+
+  static String _capital(String text) =>
+      text.isEmpty ? text : text[0].toUpperCase() + text.substring(1);
 
   static FlowTrigger _triggerFrom(String lower, FlowTrigger fallback) {
     var hour = fallback.hour;

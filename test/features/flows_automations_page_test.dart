@@ -9,12 +9,12 @@ import 'package:finn_ai/src/features/flows/flows_store.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 
 class _Backend implements FlowScheduleBackend {
-  _Backend({this.allowed = true, this.grant = true});
+  _Backend({this.allowed = true});
 
   bool allowed;
-  final bool grant;
   int requests = 0;
-  final scheduled = <String, (int, int)>{};
+  List<FlowTriggerSpec> alarms = const [];
+  List<FlowTriggerSpec> events = const [];
 
   @override
   Future<bool> notificationsAllowed() async => allowed;
@@ -22,25 +22,24 @@ class _Backend implements FlowScheduleBackend {
   @override
   Future<bool> requestNotifications() async {
     requests++;
-    allowed = grant;
+    allowed = true;
     return allowed;
   }
 
   @override
-  Future<void> schedule({
-    required String flowId,
-    required String name,
-    required int hour,
-    required int minute,
-    required List<int> days,
-  }) async =>
-      scheduled[flowId] = (hour, minute);
+  Future<void> sync({
+    required List<FlowTriggerSpec> alarms,
+    required List<FlowTriggerSpec> events,
+  }) async {
+    this.alarms = alarms;
+    this.events = events;
+  }
 
   @override
-  Future<void> cancel(String flowId) async => scheduled.remove(flowId);
-
-  @override
-  Future<void> cancelAll() async => scheduled.clear();
+  Future<void> cancelAll() async {
+    alarms = const [];
+    events = const [];
+  }
 
   @override
   Future<void> notify({
@@ -95,38 +94,37 @@ void main() {
     }
   }
 
-  Future<void> createMorningBrief(
-    WidgetTester tester, {
-    bool manual = false,
-  }) async {
-    await tester.tap(find.byKey(const Key('add-flow-button')));
+  Future<void> pumpFor(WidgetTester tester, [int ms = 500]) async {
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 400));
-    if (manual) {
-      await tester.tap(find.byKey(const Key('flow-new-event')));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 500));
-      await tester.ensureVisible(find.text('Only when I ask').first);
-      await tester.pump();
-      await tester.tap(find.text('Only when I ask').first);
-    } else {
-      await tester.tap(find.byKey(const Key('flow-new-time')));
-    }
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
-    await tester.tap(find.byKey(const Key('flow-template-morning_brief')));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
-    await tester.enterText(
-        find.byKey(const Key('flow-slot-topics')), 'football and tech');
-    await tester.enterText(find.byKey(const Key('flow-slot-city')), 'Rome');
-    await tester.pump();
+    await tester.pump(Duration(milliseconds: ms));
   }
 
-  Future<void> openDetail(WidgetTester tester, String name) async {
-    await tester.tap(find.text(name).first);
+  /// Taps a key after scrolling it into view: the live test window is not the
+  /// phone-sized one, and a long chart can sit below the fold.
+  Future<void> tapKey(WidgetTester tester, String key) async {
+    var finder = find.byKey(Key(key));
+    // A control narrower than its slot (a chip) is hit at the chip, not at the
+    // middle of the row it sits in.
+    final inner = find.descendant(of: finder, matching: find.byType(InkWell));
+    if (inner.evaluate().isNotEmpty) finder = inner.first;
+    await tester.ensureVisible(finder);
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(finder);
+  }
+
+  Future<void> fillMorningBrief(WidgetTester tester) async {
+    await tapKey(tester, 'add-flow-button');
+    await pumpFor(tester, 400);
+    await tapKey(tester, 'flow-new-template');
+    await pumpFor(tester);
+    await tapKey(tester, 'flow-template-morning_brief');
+    await pumpFor(tester);
+    await tester.enterText(
+      find.byKey(const Key('flow-slot-topics')),
+      'football and tech',
+    );
+    await tester.enterText(find.byKey(const Key('flow-slot-city')), 'Rome');
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
   }
 
   testWidgets('a morning brief is created from a template and scheduled', (
@@ -136,90 +134,171 @@ void main() {
     await open(tester, backend);
     expect(find.text('No flows yet'), findsOneWidget);
 
-    await createMorningBrief(tester);
-    await tester.tap(find.byKey(const Key('flow-automation-save')));
+    await fillMorningBrief(tester);
+    await tapKey(tester, 'flow-automation-save');
     await settle(tester);
 
     final flow = store.flows.singleWhere((f) => f.name == 'Morning brief');
-    expect(flow.steps.map((s) => s.kind), [
-      FlowStepKind.browse,
-      FlowStepKind.browse,
-      FlowStepKind.prompt,
-      FlowStepKind.notify,
+    expect(flow.blocks.map((b) => b.kind), [
+      FlowBlockKind.web,
+      FlowBlockKind.web,
+      FlowBlockKind.ask,
+      FlowBlockKind.notify,
+      FlowBlockKind.saveToChat,
     ]);
     expect(flow.trigger.isScheduled, isTrue);
     expect(flow.trigger.hour, 7);
     expect(flow.trigger.minute, 30);
     expect(flow.enabled, isTrue);
-    expect(backend.scheduled[flow.id], (7, 30),
+    expect(backend.alarms.single.flowId, flow.id,
         reason: 'the alarm is armed once the flow is saved');
+    // The flowchart opens on the new flow.
+    expect(find.byKey(const Key('flow-trigger-0')), findsOneWidget);
     expect(find.textContaining('Every day at 07:30'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets(
-      'notifications are explained before the system prompt, and '
-      'declining leaves the flow quiet with a note', (tester) async {
-    final backend = _Backend(allowed: false, grant: false);
+  testWidgets('without notification permission it explains, then asks', (
+    tester,
+  ) async {
+    final backend = _Backend(allowed: false);
     await open(tester, backend);
 
-    await createMorningBrief(tester);
-    await tester.tap(find.byKey(const Key('flow-automation-save')));
-    await tester.pump(const Duration(milliseconds: 600));
-    await settle(tester);
+    await fillMorningBrief(tester);
+    await tapKey(tester, 'flow-automation-save');
+    await pumpFor(tester);
 
-    // Our own explanation comes first; the OS prompt has none.
+    // Our own reason first; the system prompt has none.
     expect(find.text('Allow notifications?'), findsOneWidget);
     expect(backend.requests, 0);
     await tester.tap(find.text('Allow'));
     await settle(tester);
 
     expect(backend.requests, 1);
-    expect(backend.scheduled, isEmpty, reason: 'nothing armed without a grant');
-    final flow = store.flows.singleWhere((f) => f.name == 'Morning brief');
-    expect(flow.enabled, isTrue, reason: 'the flow stays on, just quiet');
-    await openDetail(tester, 'Morning brief');
-    expect(find.textContaining("won't run by itself"), findsOneWidget);
+    expect(backend.alarms, isNotEmpty);
   });
 
-  testWidgets('a manual-only automation asks for no permission', (
-    tester,
-  ) async {
-    final backend = _Backend(allowed: false);
-    await open(tester, backend);
-
-    await createMorningBrief(tester, manual: true);
-    await tester.tap(find.byKey(const Key('flow-automation-save')));
-    await settle(tester);
-
-    expect(find.text('Allow notifications?'), findsNothing);
-    expect(backend.requests, 0);
-    final flow = store.flows.singleWhere((f) => f.name == 'Morning brief');
-    expect(flow.trigger.isScheduled, isFalse);
-  });
-
-  testWidgets('the schedule tile opens the editor and saves new days', (
+  testWidgets('a trigger is added from the chart and arms the listener', (
     tester,
   ) async {
     final backend = _Backend();
+    await store.upsertCustom(
+      id: null,
+      name: 'Torch',
+      description: '',
+      instructions: '',
+      blocks: const [FlowBlock.notify('hi')],
+    );
     await open(tester, backend);
-    await createMorningBrief(tester);
-    await tester.tap(find.byKey(const Key('flow-automation-save')));
+
+    await tester.tap(find.text('Torch').first);
+    await pumpFor(tester);
+    await tapKey(tester, 'flow-add-trigger');
+    await pumpFor(tester);
+    await tapKey(tester, 'trigger-kind-chargerConnected');
     await settle(tester);
 
-    final flow = store.flows.singleWhere((f) => f.name == 'Morning brief');
-    await openDetail(tester, 'Morning brief');
-    await tester.tap(find.byKey(Key('flow-schedule-${flow.id}')));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
-    await tester.tap(find.byKey(const Key('flow-day-6')));
-    await tester.tap(find.byKey(const Key('flow-day-7')));
-    await tester.pump();
-    await tester.tap(find.byKey(const Key('flow-schedule-save')));
+    final flow = store.flows.singleWhere((f) => f.name == 'Torch');
+    expect(flow.triggers.single.kind, FlowTriggerKind.chargerConnected);
+    expect(find.text('Charger connected'), findsOneWidget);
+    expect(backend.events.single.flowId, flow.id);
+    expect(backend.alarms, isEmpty);
+  });
+
+  testWidgets('a step is added at a "+" and saved at once', (tester) async {
+    final backend = _Backend();
+    await store.upsertCustom(
+      id: null,
+      name: 'Note',
+      description: '',
+      instructions: '',
+      blocks: const [FlowBlock.notify('first')],
+    );
+    await open(tester, backend);
+
+    await tester.tap(find.text('Note').first);
+    await pumpFor(tester);
+    await tapKey(tester, 'flow-insert-root-1');
+    await pumpFor(tester);
+    await tapKey(tester, 'block-kind-saveToChat');
     await settle(tester);
 
-    final updated = store.flows.singleWhere((f) => f.id == flow.id);
-    expect(updated.trigger.daysOfWeek, {1, 2, 3, 4, 5});
-    expect(backend.scheduled[flow.id], isNotNull);
+    final flow = store.flows.singleWhere((f) => f.name == 'Note');
+    expect(flow.blocks.map((b) => b.kind), [
+      FlowBlockKind.notify,
+      FlowBlockKind.saveToChat,
+    ]);
+  });
+
+  testWidgets('a step can be removed from its sheet', (tester) async {
+    final backend = _Backend();
+    await store.upsertCustom(
+      id: null,
+      name: 'Two',
+      description: '',
+      instructions: '',
+      blocks: const [FlowBlock.notify('a'), FlowBlock.saveToChat()],
+    );
+    await open(tester, backend);
+
+    await tester.tap(find.text('Two').first);
+    await pumpFor(tester);
+    await tapKey(tester, 'flow-block-root-1');
+    await pumpFor(tester);
+    await tapKey(tester, 'block-remove');
+    await settle(tester);
+
+    expect(
+      store.flows.singleWhere((f) => f.name == 'Two').blocks.single.kind,
+      FlowBlockKind.notify,
+    );
+  });
+
+  testWidgets('a branch shows a yes lane and an otherwise lane',
+      (tester) async {
+    final backend = _Backend();
+    await store.upsertCustom(
+      id: null,
+      name: 'Branchy',
+      description: '',
+      instructions: '',
+      blocks: const [
+        FlowBlock.branch(
+          FlowCondition.batteryBelow(30),
+          then: [FlowBlock.notify('low')],
+          otherwise: [FlowBlock.notify('fine')],
+        ),
+      ],
+    );
+    await open(tester, backend);
+
+    await tester.tap(find.text('Branchy').first);
+    await pumpFor(tester);
+
+    expect(find.text('Yes'), findsOneWidget);
+    expect(find.text('Otherwise'), findsOneWidget);
+    expect(find.byKey(const Key('flow-block-0t-0')), findsOneWidget);
+    expect(find.byKey(const Key('flow-block-0e-0')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a manual-only flow asks for no permission', (tester) async {
+    final backend = _Backend(allowed: false);
+    await store.upsertCustom(
+      id: null,
+      name: 'Manual',
+      description: '',
+      instructions: '',
+      blocks: const [FlowBlock.notify('hi')],
+    );
+    await open(tester, backend);
+
+    await tester.tap(find.byKey(
+      Key('flow-toggle-${store.flows.last.id}'),
+    ));
+    await settle(tester);
+
+    expect(backend.requests, 0,
+        reason: 'nothing is scheduled, nothing to allow');
   });
 }

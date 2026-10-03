@@ -17,6 +17,10 @@ abstract class FlowTemplate {
   /// When the flow runs unless the user changes it.
   FlowTrigger get defaultTrigger;
 
+  /// Whether the flow acts on the device, and so asks for a grant before it
+  /// may run on its own.
+  bool get actsOnDevice => false;
+
   /// Builds the flow. [values] are already sanitised.
   FinnFlow build(String flowId, SlotValues values, {FlowTrigger? trigger});
 }
@@ -64,23 +68,21 @@ class MorningBriefTemplate extends FlowTemplate {
       description: topics,
       instructions: '',
       category: 'Automation',
-      trigger: trigger ?? defaultTrigger,
-      steps: [
+      triggers: [trigger ?? defaultTrigger],
+      blocks: [
         // `news:` and `weather:` pick a source built for the question; general
         // web search returns articles *about* news and weather, not the news.
-        FlowStep(kind: FlowStepKind.browse, text: 'news: $topics'),
-        if (city.isNotEmpty)
-          FlowStep(kind: FlowStepKind.browse, text: 'weather: $city'),
-        FlowStep(
-          kind: FlowStepKind.prompt,
-          text:
-              'Write a short morning brief of 3 to 5 bullet points: first the '
-              'most important news about $topics'
-              '${city.isEmpty ? '' : ', then the weather in $city'}. '
-              'Use only the search results above; where a part has no results '
-              'say so instead of inventing it. Under 120 words. $_language',
+        FlowBlock.web('news: $topics'),
+        if (city.isNotEmpty) FlowBlock.web('weather: $city'),
+        FlowBlock.ask(
+          'Write a short morning brief of 3 to 5 bullet points: first the '
+          'most important news about $topics'
+          '${city.isEmpty ? '' : ', then the weather in $city'}. '
+          'Use only the search results above; where a part has no results '
+          'say so instead of inventing it. Under 120 words. $_language',
         ),
-        const FlowStep(kind: FlowStepKind.notify, text: ''),
+        const FlowBlock.notify(''),
+        const FlowBlock.saveToChat(),
       ],
     );
   }
@@ -118,16 +120,16 @@ class WebCheckTemplate extends FlowTemplate {
       description: topic,
       instructions: '',
       category: 'Automation',
-      trigger: trigger ?? defaultTrigger,
-      steps: [
-        FlowStep(kind: FlowStepKind.browse, text: 'news: $topic'),
-        FlowStep(
-          kind: FlowStepKind.prompt,
-          text: 'What is the latest on $topic? Answer in 3 short bullet points '
-              'using only the search results above. If they show nothing new, '
-              'say so. $_language',
+      triggers: [trigger ?? defaultTrigger],
+      blocks: [
+        FlowBlock.web('news: $topic'),
+        FlowBlock.ask(
+          'What is the latest on $topic? Answer in 3 short bullet points '
+          'using only the search results above. If they show nothing new, '
+          'say so. $_language',
         ),
-        const FlowStep(kind: FlowStepKind.notify, text: ''),
+        const FlowBlock.notify(''),
+        const FlowBlock.saveToChat(),
       ],
     );
   }
@@ -165,10 +167,103 @@ class ReminderTemplate extends FlowTemplate {
       description: message,
       instructions: '',
       category: 'Automation',
-      trigger: trigger ?? defaultTrigger,
-      steps: [FlowStep(kind: FlowStepKind.notify, text: message)],
+      triggers: [trigger ?? defaultTrigger],
+      blocks: [FlowBlock.notify(message)],
     );
   }
+}
+
+/// Tells you, once, when the battery gets low.
+class LowBatteryTemplate extends FlowTemplate {
+  const LowBatteryTemplate();
+
+  @override
+  String get id => 'low_battery';
+  @override
+  String get englishName => 'low battery alert';
+  @override
+  FlowTrigger get defaultTrigger => const FlowTrigger.batteryLow(20);
+
+  @override
+  List<TemplateSlot> get slots => const [
+        TemplateSlot(
+          'level',
+          SlotKind.integer,
+          fallback: 20,
+          example: 15,
+          description: 'the battery percent to warn at, from 5 to 50',
+          minValue: 5,
+          maxValue: 50,
+        ),
+        TemplateSlot(
+          'message',
+          SlotKind.text,
+          fallback: 'Battery is low. Time to charge.',
+          example: 'Battery is low, plug in soon',
+          description: 'what the alert says',
+          maxChars: 80,
+        ),
+      ];
+
+  @override
+  FinnFlow build(String flowId, SlotValues v, {FlowTrigger? trigger}) =>
+      FinnFlow(
+        id: flowId,
+        name: 'Low battery',
+        description: v.text('message'),
+        instructions: '',
+        category: 'Automation',
+        triggers: [trigger ?? FlowTrigger.batteryLow(v.integer('level'))],
+        blocks: [
+          FlowBlock.notify(v.text('message'), title: 'Battery'),
+          const FlowBlock.action('vibrate', {'milliseconds': '400'}),
+        ],
+      );
+
+  @override
+  bool get actsOnDevice => true;
+}
+
+/// Starts or pauses your music when headphones are plugged in or out.
+class HeadsetMusicTemplate extends FlowTemplate {
+  const HeadsetMusicTemplate();
+
+  @override
+  String get id => 'headset_music';
+  @override
+  String get englishName => 'headphones and music';
+  @override
+  FlowTrigger get defaultTrigger =>
+      const FlowTrigger.event(FlowTriggerKind.headsetConnected);
+
+  @override
+  bool get actsOnDevice => true;
+
+  @override
+  List<TemplateSlot> get slots => const [
+        TemplateSlot(
+          'what',
+          SlotKind.choice,
+          options: ['play', 'pause'],
+          fallback: 'play',
+          example: 'play',
+          description: 'play or pause when the headphones connect',
+        ),
+      ];
+
+  @override
+  FinnFlow build(String flowId, SlotValues v, {FlowTrigger? trigger}) =>
+      FinnFlow(
+        id: flowId,
+        name: 'Headphones',
+        description: v.text('what'),
+        instructions: '',
+        category: 'Automation',
+        triggers: [trigger ?? defaultTrigger],
+        blocks: [
+          FlowBlock.action('media', {'action': v.text('what')}),
+        ],
+      );
 }
 
 abstract final class FlowTemplates {
@@ -176,6 +271,8 @@ abstract final class FlowTemplates {
     MorningBriefTemplate(),
     WebCheckTemplate(),
     ReminderTemplate(),
+    LowBatteryTemplate(),
+    HeadsetMusicTemplate(),
   ];
 
   static FlowTemplate? byId(String? id) {

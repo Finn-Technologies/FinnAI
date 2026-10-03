@@ -58,6 +58,10 @@ extension _HomeShellSend on _HomeShellState {
         FlowsStore.instance.promptContextFor(value),
       ].where((item) => item.trim().isNotEmpty).join('\n\n');
 
+      // "Make me an app" and "when I plug in my charger…" build the thing and
+      // show it as a card, instead of becoming a chat answer about it.
+      if (attached == null && await _handleMakeRequest(value)) return;
+
       // A device command is answered from the catalog, not the model: it is
       // instant, it works before the model is installed, and it cannot be
       // talked into a different action.

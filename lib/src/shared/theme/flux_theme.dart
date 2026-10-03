@@ -361,7 +361,8 @@ abstract final class FluxColors {
 /// progress ring — is a bug, and the call site belongs in the handoff list.
 abstract final class FluxMotion {
   /// Push/pop of a secondary page (Settings, You, Creations, Flows).
-  static const Duration pageDuration = Duration(milliseconds: 280);
+  static const Duration pageDuration = Duration(milliseconds: 320);
+  static const Duration pageReverseDuration = Duration(milliseconds: 260);
   static const Curve pageCurve = Curves.easeOutCubic;
   static const Curve pageReverseCurve = Curves.easeInCubic;
 

@@ -9,3 +9,5 @@
 - Slot text must never contain `{` or `}`: a brace would inject a `{key}` placeholder.
 - `creations_page.dart` is oversized and may only shrink. New screens are new files.
 - Saved artifacts are versioned; a shape change needs a migration and a test in `test/features/creations/`.
+- Widget state lives in native `SharedPreferences` and is changed only by `FinnHomeWidgetActions`. A new widget kind needs the Dart spec, the Kotlin kind, a layout, and a test on each side (`test/features/creations/interactive_widget_test.dart`).
+- A mini app's saved state is sanitised on load (`MiniAppState.restore`: keys the spec declares, types coerced, size capped). Never trust the file.

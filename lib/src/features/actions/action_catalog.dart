@@ -132,6 +132,20 @@ abstract final class DeviceActionCatalog {
     phrases: ['volume', 'louder', 'quieter', 'mute'],
   );
 
+  static const vibrate = DeviceAction(
+    name: 'vibrate',
+    tier: DeviceActionTier.execute,
+    summary: 'Vibrate the phone briefly. milliseconds is 100-2000.',
+    params: [
+      DeviceActionParam(
+        name: 'milliseconds',
+        type: DeviceActionParamType.integer,
+        required: false,
+      ),
+    ],
+    phrases: ['vibrate', 'buzz'],
+  );
+
   static const openSettings = DeviceAction(
     name: 'open_settings',
     tier: DeviceActionTier.open,
@@ -280,6 +294,7 @@ abstract final class DeviceActionCatalog {
     torch,
     media,
     volume,
+    vibrate,
     openSettings,
     openApp,
     dial,
@@ -290,6 +305,14 @@ abstract final class DeviceActionCatalog {
     navigate,
     share,
   ];
+
+  /// Actions that work with the phone idle in a pocket. Everything else opens
+  /// an app or a system screen, and Android does not let an app do that from the
+  /// background, so a flow that was started by something other than the user
+  /// asks to be tapped instead of failing quietly.
+  static const _backgroundSafe = {'torch', 'media', 'volume', 'vibrate'};
+
+  static bool runsInBackground(String name) => _backgroundSafe.contains(name);
 
   static DeviceAction? byName(String name) {
     final needle = name.trim().toLowerCase();

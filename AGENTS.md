@@ -132,7 +132,7 @@ command with `--no-pub` (`flutter test --no-pub`), or use `dart analyze .` direc
 
 ### Add a feature screen
 Put it in `lib/src/features/<feature>/`, use `FinnPageHeader` + `FluxColors`/`FluxRadius` from
-`lib/src/shared/`, route through `FinnPageRoute` (`chat/widgets/sources.dart`, exported by `chat/home_shell.dart`), and add every string to
+`lib/src/shared/`, route through `FinnPageRoute` (`shared/widgets/finn_page_route.dart`, re-exported by `chat/home_shell.dart`; from the sidebar use `_pushFromSidebar` in `chat/shell/navigation.dart`), and add every string to
 `lib/l10n/app_en.arb` (and the other four locales) before running `flutter pub get`.
 
 Creations work differently — a creation is a runnable artifact, so read

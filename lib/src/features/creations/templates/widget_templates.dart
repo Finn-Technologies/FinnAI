@@ -26,16 +26,271 @@ CreationArtifact _widget(
   String title,
   String accent,
   List<Map<String, Object?>> rows,
-  String footer,
-) =>
+  String footer, {
+  HomeWidgetKind kind = HomeWidgetKind.display,
+  int step = 1,
+  int goal = 0,
+}) =>
     WidgetArtifact(
       HomeWidgetSpec.fromJson({
         'title': title,
         'accent': accent,
         'rows': rows,
         'footer': footer,
+        'kind': kind.name,
+        'step': step,
+        'goal': goal,
       }),
     );
+
+const _widgetTitle = TemplateSlot(
+  'title',
+  SlotKind.text,
+  fallback: 'My widget',
+  example: 'Water',
+  description: 'a short name',
+  maxChars: 30,
+);
+
+const _step = TemplateSlot(
+  'step',
+  SlotKind.integer,
+  fallback: 1,
+  example: 1,
+  description: 'how much one tap adds, usually 1',
+  minValue: 1,
+  maxValue: 100,
+);
+
+/// A number you change from the home screen: minus and plus buttons, and an
+/// optional goal with a progress bar.
+class CounterWidgetTemplate extends CreationTemplate {
+  const CounterWidgetTemplate();
+
+  @override
+  String get id => 'counter_widget';
+  @override
+  CreationKind get kind => CreationKind.widget;
+  @override
+  String get englishName => 'counter widget';
+  @override
+  String get purpose =>
+      'a number with plus and minus buttons, like cups of water or reps';
+
+  @override
+  List<TemplateSlot> get slots => const [
+        _widgetTitle,
+        TemplateSlot(
+          'label',
+          SlotKind.text,
+          fallback: 'Today',
+          example: 'Cups today',
+          description: 'what is being counted, a few words',
+          maxChars: 24,
+        ),
+        TemplateSlot(
+          'value',
+          SlotKind.integer,
+          fallback: 0,
+          example: 0,
+          description: 'the starting number, usually 0',
+          minValue: 0,
+          maxValue: 99999,
+        ),
+        _step,
+        TemplateSlot(
+          'goal',
+          SlotKind.integer,
+          fallback: 0,
+          example: 8,
+          description: 'the target number, or 0 for no target',
+          minValue: 0,
+          maxValue: 99999,
+        ),
+        _footer,
+        _accent,
+      ];
+
+  @override
+  List<String> get keywords => const [
+        'counter',
+        'count',
+        'tally',
+        'clicker',
+        'streak',
+        'water',
+        'glasses',
+        'cups',
+        'reps',
+        'laps',
+        'pushups',
+        'push-ups',
+        'steps',
+        'contatore',
+        'conteggio',
+        'contador',
+        'compteur',
+        'zähler',
+        'racha',
+        'serie',
+      ];
+
+  @override
+  CreationArtifact build(SlotValues v) => _widget(
+        titleFor(v),
+        v.text('accent'),
+        [
+          {'label': v.text('label'), 'value': '${v.integer('value')}'},
+        ],
+        v.text('footer'),
+        kind: HomeWidgetKind.counter,
+        step: v.integer('step'),
+        goal: v.integer('goal'),
+      );
+}
+
+/// Up to four things to tick off, straight from the home screen.
+class ChecklistWidgetTemplate extends CreationTemplate {
+  const ChecklistWidgetTemplate();
+
+  @override
+  String get id => 'checklist_widget';
+  @override
+  CreationKind get kind => CreationKind.widget;
+  @override
+  String get englishName => 'checklist widget';
+  @override
+  String get purpose => 'up to four things to tick off, like a morning routine';
+
+  @override
+  List<TemplateSlot> get slots => const [
+        TemplateSlot(
+          'title',
+          SlotKind.text,
+          fallback: 'My checklist',
+          example: 'Morning routine',
+          description: 'a short name',
+          maxChars: 30,
+        ),
+        TemplateSlot(
+          'items',
+          SlotKind.list,
+          fallback: <String>['First thing', 'Second thing'],
+          example: <String>['Stretch', 'Take vitamins', 'Plan the day'],
+          description: 'between 1 and 4 things to tick off, a few words each',
+          maxChars: 28,
+          maxItems: 4,
+          minItems: 1,
+        ),
+        _footer,
+        _accent,
+      ];
+
+  @override
+  List<String> get keywords => const [
+        'checklist',
+        'todo',
+        'to-do',
+        'task',
+        'tasks',
+        'chores',
+        'routine',
+        'groceries',
+        'shopping',
+        'packing',
+        'lista',
+        'compiti',
+        'spesa',
+        'tareas',
+        'compras',
+        'courses',
+        'einkauf',
+        'aufgaben',
+      ];
+
+  @override
+  CreationArtifact build(SlotValues v) => _widget(
+        titleFor(v),
+        v.text('accent'),
+        [
+          for (final item in v.list('items')) {'label': item, 'value': ''},
+        ],
+        v.text('footer'),
+        kind: HomeWidgetKind.checklist,
+      );
+}
+
+/// Up to four named numbers; tapping a line adds one.
+class TrackerWidgetTemplate extends CreationTemplate {
+  const TrackerWidgetTemplate();
+
+  @override
+  String get id => 'tracker_widget';
+  @override
+  CreationKind get kind => CreationKind.widget;
+  @override
+  String get englishName => 'tracker widget';
+  @override
+  String get purpose =>
+      'up to four named numbers you add to by tapping, like a habit log';
+
+  @override
+  List<TemplateSlot> get slots => const [
+        TemplateSlot(
+          'title',
+          SlotKind.text,
+          fallback: 'My tracker',
+          example: 'Habits this week',
+          description: 'a short name',
+          maxChars: 30,
+        ),
+        TemplateSlot(
+          'items',
+          SlotKind.list,
+          fallback: <String>['Workout', 'Reading'],
+          example: <String>['Workout', 'Reading', 'Meditate'],
+          description: 'between 1 and 4 things to count, a few words each',
+          maxChars: 22,
+          maxItems: 4,
+          minItems: 1,
+        ),
+        _step,
+        _footer,
+        _accent,
+      ];
+
+  @override
+  List<String> get keywords => const [
+        'tracker',
+        'track',
+        'log',
+        'habit',
+        'habits',
+        'score',
+        'scores',
+        'scoreboard',
+        'tracciare',
+        'abitudini',
+        'seguimiento',
+        'hábitos',
+        'habitos',
+        'suivi',
+        'habitudes',
+        'gewohnheiten',
+      ];
+
+  @override
+  CreationArtifact build(SlotValues v) => _widget(
+        titleFor(v),
+        v.text('accent'),
+        [
+          for (final item in v.list('items')) {'label': item, 'value': '0'},
+        ],
+        v.text('footer'),
+        kind: HomeWidgetKind.tracker,
+        step: v.integer('step'),
+      );
+}
 
 /// One big number with a label: a countdown, a streak, a balance.
 class StatWidgetTemplate extends CreationTemplate {
@@ -46,9 +301,10 @@ class StatWidgetTemplate extends CreationTemplate {
   @override
   CreationKind get kind => CreationKind.widget;
   @override
-  String get englishName => 'single number widget';
+  String get englishName => 'single number display widget';
   @override
-  String get purpose => 'one number with a label, like a streak or a countdown';
+  String get purpose =>
+      'one big number to look at, like a countdown or a balance';
 
   @override
   List<TemplateSlot> get slots => const [
@@ -82,23 +338,17 @@ class StatWidgetTemplate extends CreationTemplate {
 
   @override
   List<String> get keywords => const [
-        'streak',
         'countdown',
         'days',
         'number',
         'stat',
         'balance',
-        'counter',
-        'serie',
         'giorni',
         'conto alla rovescia',
-        'racha',
         'días',
         'dias',
-        'série',
         'jours',
         'tage',
-        'zähler',
       ];
 
   @override
@@ -151,7 +401,6 @@ class RowsWidgetTemplate extends CreationTemplate {
 
   @override
   List<String> get keywords => const [
-        'widget',
         'plan',
         'schedule',
         'today',

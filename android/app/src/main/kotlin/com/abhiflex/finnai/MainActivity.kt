@@ -21,6 +21,7 @@ class MainActivity : FlutterActivity() {
         super.onCreate(savedInstanceState)
         extractProcessText(intent)
         extractFlowId(intent)
+        extractCreationId(intent)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -36,6 +37,16 @@ class MainActivity : FlutterActivity() {
                 }
             }
         }
+        val creationId = extractCreationId(intent)
+        if (creationId != null) {
+            flutterEngine?.let { engine ->
+                try {
+                    MethodChannel(engine.dartExecutor.binaryMessenger, "finn_ai/home_screen")
+                        .invokeMethod("onCreationShortcut", mapOf("creationId" to creationId))
+                } catch (_: Exception) {
+                }
+            }
+        }
         val text = extractProcessText(intent)
         if (!text.isNullOrBlank()) {
             flutterEngine?.let { engine ->
@@ -46,6 +57,14 @@ class MainActivity : FlutterActivity() {
                 }
             }
         }
+    }
+
+    /** A pinned app shortcut carries the id of the creation to open. */
+    private fun extractCreationId(intent: Intent?): String? {
+        val id = intent?.getStringExtra(FinnHomeScreenBridge.EXTRA_CREATION_ID)
+        if (id.isNullOrBlank()) return null
+        FinnHomeScreenBridge.pendingCreationId = id
+        return id
     }
 
     /** A tap on a "flow is due" notification carries the flow's id. */
@@ -105,6 +124,11 @@ class MainActivity : FlutterActivity() {
         return args
     }
 
+    override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
+        if (FlowUiBridge.engine === flutterEngine) FlowUiBridge.engine = null
+        super.cleanUpFlutterEngine(flutterEngine)
+    }
+
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
         // Forward Android memory-trim signals to Dart so the accelerator can
@@ -128,73 +152,29 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        MethodChannel(
-            flutterEngine.dartExecutor.binaryMessenger,
-            "finn_ai/flow_schedule",
-        ).setMethodCallHandler { call, result ->
-            when (call.method) {
-                "notificationsAllowed" -> result.success(FlowScheduler.notificationsAllowed(this))
-                "requestNotifications" -> {
-                    if (FlowScheduler.notificationsAllowed(this)) {
-                        result.success(true)
-                    } else if (pendingNotificationResult != null) {
-                        result.success(false)
-                    } else {
-                        pendingNotificationResult = result
-                        requestPermissions(
-                            arrayOf(Manifest.permission.POST_NOTIFICATIONS),
-                            REQUEST_NOTIFICATIONS,
-                        )
-                    }
-                }
-                "schedule" -> {
-                    val args = call.arguments as? Map<*, *>
-                    val id = args?.get("flowId") as? String
-                    if (id == null) {
-                        result.error("bad_args", "flowId is required", null)
-                    } else {
-                        FlowScheduler.schedule(
-                            this,
-                            FlowScheduler.Spec(
-                                id = id,
-                                name = (args["name"] as? String) ?: "Flow",
-                                hour = (args["hour"] as? Number)?.toInt() ?: 0,
-                                minute = (args["minute"] as? Number)?.toInt() ?: 0,
-                                days = (args["days"] as? List<*>)
-                                    ?.mapNotNull { (it as? Number)?.toInt() } ?: emptyList(),
-                            ),
-                        )
-                        result.success(null)
-                    }
-                }
-                "cancel" -> {
-                    (call.arguments as? Map<*, *>)?.get("flowId")?.let {
-                        FlowScheduler.cancel(this, it as String)
-                    }
-                    result.success(null)
-                }
-                "cancelAll" -> {
-                    FlowScheduler.cancelAll(this)
-                    result.success(null)
-                }
-                "notify" -> {
-                    val args = call.arguments as? Map<*, *>
-                    FlowScheduler.notifyDue(
-                        this,
-                        (args?.get("flowId") as? String) ?: "flow",
-                        (args?.get("title") as? String) ?: "Flow",
-                        (args?.get("body") as? String) ?: "",
+        FlowChannels.register(
+            flutterEngine,
+            this,
+            requestNotifications = { result ->
+                if (pendingNotificationResult != null) {
+                    result.success(false)
+                } else {
+                    pendingNotificationResult = result
+                    requestPermissions(
+                        arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                        REQUEST_NOTIFICATIONS,
                     )
-                    result.success(null)
                 }
-                "takePendingFlow" -> {
-                    val id = pendingFlowId
-                    pendingFlowId = null
-                    result.success(id)
-                }
-                else -> result.notImplemented()
-            }
-        }
+            },
+            takePendingFlow = {
+                val id = pendingFlowId
+                pendingFlowId = null
+                id
+            },
+        )
+        FlowEnvironmentBridge.register(flutterEngine, this)
+        // While the app has an engine, flows that fire run in it.
+        FlowUiBridge.engine = flutterEngine
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             "finn_ai/device_profile",

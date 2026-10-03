@@ -19,6 +19,7 @@ class _Conversation extends StatefulWidget {
     required this.bottomInset,
     required this.scrollController,
     required this.greeting,
+    required this.cards,
     this.searchFailed = false,
     this.onDismissSearchNotice,
     this.historyUnavailable = false,
@@ -37,6 +38,9 @@ class _Conversation extends StatefulWidget {
   final ValueChanged<ConversationMessage> onEdit;
   final ValueChanged<String> onOpenConversation;
   final bool preparing;
+
+  /// What the cards under replies (a creation, a flow) need to work.
+  final MessageCardHost cards;
 
   /// Greeting shown on the empty slate; the design greets a listening session
   /// with a different line than a typed one.
@@ -308,6 +312,12 @@ class _ConversationState extends State<_Conversation> {
                         sources: message.sources,
                         toolActivities: message.toolActivities,
                         pendingAction: message.pendingAction,
+                        card: message.card == null
+                            ? null
+                            : MessageCardView(
+                                card: message.card!,
+                                host: widget.cards,
+                              ),
                         onRunAction: message.pendingAction == null
                             ? null
                             : () => widget.onRunAction(message),

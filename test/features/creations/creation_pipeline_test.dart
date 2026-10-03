@@ -108,7 +108,7 @@ void main() {
         prompt: 'a streak counter',
       );
       expect(result.outcome.artifact, isA<WidgetArtifact>());
-      expect(result.outcome.template?.id, 'stat');
+      expect(result.outcome.template?.id, 'counter_widget');
     });
 
     test('out-of-range and hostile values are repaired, not rejected',

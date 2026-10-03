@@ -246,53 +246,42 @@ void main() {
   });
 
   group('TtsVoicesAddon', () {
-    test('sizes itself for English plus the phone\'s language', () {
-      final english = TtsVoicesAddon(
-        deviceLanguage: 'en',
-        store: _VoiceStore(),
-      );
-      final german = TtsVoicesAddon(
-        deviceLanguage: 'de',
-        store: _VoiceStore(),
-      );
-
-      expect(english.totalBytes, ttsVoiceFor('en')!.bytes);
-      expect(
-        german.totalBytes,
-        ttsVoiceFor('en')!.bytes + ttsVoiceFor('de')!.bytes,
-      );
+    test('is one download, whatever the phone\'s language', () {
+      for (final language in ['en', 'de', 'ja', null]) {
+        final addon = TtsVoicesAddon(
+          deviceLanguage: language,
+          store: _VoiceStore(),
+        );
+        expect(addon.totalBytes, supertonicVoice.bytes);
+      }
     });
 
-    test('installs every missing voice and reports progress to the end',
-        () async {
+    test('installs the voice and reports progress to the end', () async {
       final store = _VoiceStore();
       final addon = TtsVoicesAddon(deviceLanguage: 'de', store: store);
-      final seen = <double>[];
-      addon.progress.addListener(() => seen.add(addon.progress.value));
 
       await addon.install();
 
-      expect(store.installed, ['en', 'de']);
-      expect(seen, orderedEquals([...seen]..sort()));
-      expect(seen.last, closeTo(1, 1e-9));
+      expect(store.installed, ['supertonic-3']);
+      expect(addon.progress.value, 1);
       expect(await addon.isInstalled(), isTrue);
     });
 
     test('skips what is already there', () async {
-      final store = _VoiceStore()..have.add('en');
+      final store = _VoiceStore()..have.add('supertonic-3');
       final addon = TtsVoicesAddon(deviceLanguage: 'de', store: store);
 
       await addon.install();
 
-      expect(store.installed, ['de']);
+      expect(store.installed, isEmpty);
     });
 
     test('is offered on upgrade until a failed attempt is remembered',
         () async {
       final store = _VoiceStore();
       final addon = TtsVoicesAddon(deviceLanguage: 'en', store: store);
-
       expect(await addon.shouldOfferOnUpgrade(), isTrue);
+
       await addon.markFailed();
       expect(await addon.shouldOfferOnUpgrade(), isFalse);
     });
@@ -317,8 +306,7 @@ class _VoiceStore extends TtsVoiceStore {
   bool failed = false;
 
   @override
-  Future<bool> isInstalled(TtsVoice voice) async =>
-      have.contains(voice.language);
+  Future<bool> isInstalled(TtsVoice voice) async => have.contains(voice.id);
 
   @override
   Future<void> install(
@@ -327,8 +315,8 @@ class _VoiceStore extends TtsVoiceStore {
   }) async {
     onProgress?.call(voice.bytes ~/ 2);
     onProgress?.call(voice.bytes);
-    have.add(voice.language);
-    installed.add(voice.language);
+    have.add(voice.id);
+    installed.add(voice.id);
   }
 
   @override

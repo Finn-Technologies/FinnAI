@@ -10,18 +10,16 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.app.NotificationCompat
-import org.json.JSONArray
-import org.json.JSONObject
 import java.util.Calendar
 
 /**
- * Schedules Flows with the platform alarm service and tells the user when one
- * is due.
+ * Arms Flow alarms with the platform alarm service and tells the user when a
+ * flow is due and cannot run by itself.
  *
  * Deliberately *inexact* ([AlarmManager.setAndAllowWhileIdle]): a morning brief
  * at "about 7:30" does not need SCHEDULE_EXACT_ALARM, which Play restricts, and
  * the OS batches the wake-up to save the battery. Alarms do not survive a
- * reboot, so the specs are kept in SharedPreferences and [FlowBootReceiver]
+ * reboot, so the specs are kept in [FlowTriggerStore] and [FlowBootReceiver]
  * re-arms them.
  *
  * The rule for "next occurrence" mirrors `FlowSchedule.nextRun` in Dart (the
@@ -30,46 +28,44 @@ import java.util.Calendar
  * saving change moves the flow with the wall clock.
  */
 object FlowScheduler {
-    private const val PREFS = "finn_flows"
-    private const val KEY_SPECS = "specs"
     const val CHANNEL_ID = "finn_flows"
     const val ACTION_RUN_FLOW = "com.abhiflex.finnai.RUN_FLOW"
     const val EXTRA_FLOW_ID = "finn_flow_id"
+    const val EXTRA_TRIGGER_KEY = "finn_trigger_key"
 
-    data class Spec(
-        val id: String,
-        val name: String,
-        val hour: Int,
-        val minute: Int,
-        val days: List<Int>,
-    )
-
-    fun schedule(context: Context, spec: Spec) {
-        val specs = readSpecs(context).filter { it.id != spec.id } + spec
-        writeSpecs(context, specs)
-        arm(context, spec)
-    }
-
-    fun cancel(context: Context, id: String) {
-        writeSpecs(context, readSpecs(context).filter { it.id != id })
-        alarmManager(context).cancel(pendingIntent(context, id))
+    /** Makes the alarms and event listeners exactly what Dart asked for. */
+    fun sync(context: Context, alarms: List<FlowTriggerSpec>, events: List<FlowTriggerSpec>) {
+        val old = FlowTriggerStore.alarms(context)
+        for (spec in old) {
+            if (alarms.none { it.key == spec.key }) {
+                alarmManager(context).cancel(pendingIntent(context, spec.key))
+            }
+        }
+        FlowTriggerStore.write(context, alarms, events)
+        for (spec in alarms) arm(context, spec)
+        FlowTriggerService.sync(context)
     }
 
     fun cancelAll(context: Context) {
-        readSpecs(context).forEach { alarmManager(context).cancel(pendingIntent(context, it.id)) }
-        writeSpecs(context, emptyList())
+        for (spec in FlowTriggerStore.alarms(context)) {
+            alarmManager(context).cancel(pendingIntent(context, spec.key))
+        }
+        FlowTriggerStore.write(context, emptyList(), emptyList())
+        FlowTriggerService.sync(context)
     }
 
-    fun rescheduleAll(context: Context) = readSpecs(context).forEach { arm(context, it) }
+    fun rescheduleAll(context: Context) =
+        FlowTriggerStore.alarms(context).forEach { arm(context, it) }
 
-    fun specFor(context: Context, id: String): Spec? = readSpecs(context).firstOrNull { it.id == id }
-
-    fun arm(context: Context, spec: Spec, nowMillis: Long = System.currentTimeMillis()) {
-        val at = nextOccurrence(spec.hour, spec.minute, spec.days, nowMillis) ?: return
+    fun arm(context: Context, spec: FlowTriggerSpec, nowMillis: Long = System.currentTimeMillis()) {
+        val at = when (spec.kind) {
+            "interval" -> nowMillis + spec.every.coerceAtLeast(15) * 60_000L
+            else -> nextOccurrence(spec.hour, spec.minute, spec.days, nowMillis)
+        } ?: return
         alarmManager(context).setAndAllowWhileIdle(
             AlarmManager.RTC_WAKEUP,
             at,
-            pendingIntent(context, spec.id),
+            pendingIntent(context, spec.key),
         )
     }
 
@@ -96,7 +92,7 @@ object FlowScheduler {
             PackageManager.PERMISSION_GRANTED
     }
 
-    /** Posts "a flow is due". Tapping opens the app, which runs it. */
+    /** Posts "a flow needs you". Tapping opens the app, which runs it. */
     fun notifyDue(context: Context, id: String, title: String, body: String) {
         if (!notificationsAllowed(context)) return
         ensureChannel(context)
@@ -124,12 +120,12 @@ object FlowScheduler {
             .notify(id.hashCode(), notification)
     }
 
-    private fun ensureChannel(context: Context) {
+    fun ensureChannel(context: Context) {
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (manager.getNotificationChannel(CHANNEL_ID) != null) return
         manager.createNotificationChannel(
             NotificationChannel(CHANNEL_ID, "Flows", NotificationManager.IMPORTANCE_DEFAULT).apply {
-                description = "Your scheduled Flows"
+                description = "Your Flows"
             },
         )
     }
@@ -137,58 +133,21 @@ object FlowScheduler {
     private fun alarmManager(context: Context) =
         context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
-    private fun pendingIntent(context: Context, id: String): PendingIntent =
+    private fun pendingIntent(context: Context, key: String): PendingIntent =
         PendingIntent.getBroadcast(
             context,
-            id.hashCode(),
-            Intent(context, FlowAlarmReceiver::class.java).putExtra(EXTRA_FLOW_ID, id),
+            key.hashCode(),
+            Intent(context, FlowAlarmReceiver::class.java).putExtra(EXTRA_TRIGGER_KEY, key),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-
-    private fun readSpecs(context: Context): List<Spec> {
-        val raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getString(KEY_SPECS, null) ?: return emptyList()
-        return try {
-            val array = JSONArray(raw)
-            (0 until array.length()).map { index ->
-                val item = array.getJSONObject(index)
-                val days = item.getJSONArray("days")
-                Spec(
-                    item.getString("id"),
-                    item.getString("name"),
-                    item.getInt("hour"),
-                    item.getInt("minute"),
-                    (0 until days.length()).map { days.getInt(it) },
-                )
-            }
-        } catch (_: Exception) {
-            emptyList()
-        }
-    }
-
-    private fun writeSpecs(context: Context, specs: List<Spec>) {
-        val array = JSONArray()
-        specs.forEach {
-            array.put(
-                JSONObject()
-                    .put("id", it.id)
-                    .put("name", it.name)
-                    .put("hour", it.hour)
-                    .put("minute", it.minute)
-                    .put("days", JSONArray(it.days)),
-            )
-        }
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit().putString(KEY_SPECS, array.toString()).apply()
-    }
 }
 
-/** Fires when a scheduled Flow is due: notifies, then arms the next occurrence. */
+/** Fires when a flow's alarm is due: hands the flow on, then arms the next one. */
 class FlowAlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        val id = intent.getStringExtra(FlowScheduler.EXTRA_FLOW_ID) ?: return
-        val spec = FlowScheduler.specFor(context, id) ?: return
-        FlowScheduler.notifyDue(context, id, spec.name, "Tap to run")
+        val key = intent.getStringExtra(FlowScheduler.EXTRA_TRIGGER_KEY) ?: return
+        val spec = FlowTriggerStore.alarm(context, key) ?: return
+        FlowDispatcher.dispatch(context, spec, "schedule")
         FlowScheduler.arm(context, spec)
     }
 }
@@ -198,7 +157,13 @@ class FlowBootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         when (intent.action) {
             Intent.ACTION_BOOT_COMPLETED,
-            Intent.ACTION_MY_PACKAGE_REPLACED -> FlowScheduler.rescheduleAll(context)
+            Intent.ACTION_MY_PACKAGE_REPLACED -> {
+                FlowScheduler.rescheduleAll(context)
+                FlowTriggerService.sync(context)
+                if (intent.action == Intent.ACTION_BOOT_COMPLETED) {
+                    FlowDispatcher.dispatchEvent(context, "deviceBooted")
+                }
+            }
         }
     }
 }

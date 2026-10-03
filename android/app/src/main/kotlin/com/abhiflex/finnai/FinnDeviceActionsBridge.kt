@@ -1,6 +1,5 @@
 package com.abhiflex.finnai
 
-import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
@@ -9,6 +8,9 @@ import android.hardware.camera2.CameraManager
 import android.media.AudioManager
 import android.net.Uri
 import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import android.provider.AlarmClock
 import android.provider.MediaStore
 import android.provider.Settings
@@ -27,7 +29,7 @@ import io.flutter.plugin.common.MethodChannel
 object FinnDeviceActionsBridge {
     private const val CHANNEL = "finn_ai/device_actions"
 
-    fun register(flutterEngine: FlutterEngine, activity: Activity) {
+    fun register(flutterEngine: FlutterEngine, context: Context) {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
             .setMethodCallHandler { call, result ->
                 if (call.method != "perform") {
@@ -42,37 +44,38 @@ object FinnDeviceActionsBridge {
                 @Suppress("UNCHECKED_CAST")
                 val arguments = (call.argument<Any>("arguments") as? Map<String, Any?>)
                     ?: emptyMap()
-                result.success(perform(activity, name, arguments))
+                result.success(perform(context, name, arguments))
             }
     }
 
     private fun perform(
-        activity: Activity,
+        context: Context,
         name: String,
         arguments: Map<String, Any?>,
     ): Map<String, Any?> = try {
         when (name) {
-            "set_alarm" -> setAlarm(activity, arguments)
-            "set_timer" -> setTimer(activity, arguments)
-            "show_alarms" -> start(activity, Intent(AlarmClock.ACTION_SHOW_ALARMS))
-            "torch" -> torch(activity, arguments)
-            "media" -> media(activity, arguments)
-            "volume" -> volume(activity, arguments)
-            "open_settings" -> openSettings(activity, arguments)
-            "open_app" -> openApp(activity, arguments)
+            "set_alarm" -> setAlarm(context, arguments)
+            "set_timer" -> setTimer(context, arguments)
+            "show_alarms" -> start(context, Intent(AlarmClock.ACTION_SHOW_ALARMS))
+            "torch" -> torch(context, arguments)
+            "media" -> media(context, arguments)
+            "volume" -> volume(context, arguments)
+            "vibrate" -> vibrate(context, arguments)
+            "open_settings" -> openSettings(context, arguments)
+            "open_app" -> openApp(context, arguments)
             "dial" -> start(
-                activity,
+                context,
                 Intent(Intent.ACTION_DIAL, Uri.parse("tel:${requireText(arguments, "number")}")),
             )
-            "compose_sms" -> composeSms(activity, arguments)
-            "compose_email" -> composeEmail(activity, arguments)
-            "take_photo" -> start(activity, Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA))
+            "compose_sms" -> composeSms(context, arguments)
+            "compose_email" -> composeEmail(context, arguments)
+            "take_photo" -> start(context, Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA))
             "open_url" -> start(
-                activity,
+                context,
                 Intent(Intent.ACTION_VIEW, Uri.parse(webUri(requireText(arguments, "url")))),
             )
             "navigate" -> start(
-                activity,
+                context,
                 Intent(
                     Intent.ACTION_VIEW,
                     Uri.parse("geo:0,0?q=${Uri.encode(requireText(arguments, "query"))}"),
@@ -83,7 +86,7 @@ object FinnDeviceActionsBridge {
                     type = "text/plain"
                     putExtra(Intent.EXTRA_TEXT, requireText(arguments, "text"))
                 }
-                start(activity, Intent.createChooser(send, null))
+                start(context, Intent.createChooser(send, null))
             }
             else -> mapOf("outcome" to "unavailable", "error" to "Unknown action: $name")
         }
@@ -93,7 +96,7 @@ object FinnDeviceActionsBridge {
         mapOf("outcome" to "failed", "error" to (e.message ?: e::class.java.simpleName))
     }
 
-    private fun setAlarm(activity: Activity, arguments: Map<String, Any?>): Map<String, Any?> {
+    private fun setAlarm(context: Context, arguments: Map<String, Any?>): Map<String, Any?> {
         val hour = intArgument(arguments, "hour") ?: throw IllegalArgumentException("Missing hour")
         val minute = intArgument(arguments, "minute") ?: 0
         if (hour !in 0..23) throw IllegalArgumentException("Hour out of range")
@@ -105,14 +108,14 @@ object FinnDeviceActionsBridge {
             textArgument(arguments, "label")?.let { putExtra(AlarmClock.EXTRA_MESSAGE, it) }
         }
         return start(
-            activity,
+            context,
             intent,
             detail = timeLabel(hour, minute),
             outcome = "performed",
         )
     }
 
-    private fun setTimer(activity: Activity, arguments: Map<String, Any?>): Map<String, Any?> {
+    private fun setTimer(context: Context, arguments: Map<String, Any?>): Map<String, Any?> {
         val seconds = intArgument(arguments, "seconds")
             ?: throw IllegalArgumentException("Missing seconds")
         if (seconds <= 0) throw IllegalArgumentException("Duration must be positive")
@@ -122,19 +125,19 @@ object FinnDeviceActionsBridge {
             textArgument(arguments, "label")?.let { putExtra(AlarmClock.EXTRA_MESSAGE, it) }
         }
         return start(
-            activity,
+            context,
             intent,
             detail = durationLabel(seconds),
             outcome = "performed",
         )
     }
 
-    private fun torch(activity: Activity, arguments: Map<String, Any?>): Map<String, Any?> {
+    private fun torch(context: Context, arguments: Map<String, Any?>): Map<String, Any?> {
         // No default: assuming "on" when the flag is absent turned a malformed
         // call into a lit torch.
         val on = boolArgument(arguments, "on")
             ?: throw IllegalArgumentException("Missing on")
-        val manager = activity.getSystemService(Context.CAMERA_SERVICE) as? CameraManager
+        val manager = context.getSystemService(Context.CAMERA_SERVICE) as? CameraManager
             ?: return mapOf("outcome" to "unavailable", "error" to "No camera service")
         val cameraId = manager.cameraIdList.firstOrNull { id ->
             val characteristics = manager.getCameraCharacteristics(id)
@@ -144,7 +147,7 @@ object FinnDeviceActionsBridge {
         return mapOf("outcome" to "performed")
     }
 
-    private fun media(activity: Activity, arguments: Map<String, Any?>): Map<String, Any?> {
+    private fun media(context: Context, arguments: Map<String, Any?>): Map<String, Any?> {
         val keyCode = when (textArgument(arguments, "action")) {
             "play" -> KeyEvent.KEYCODE_MEDIA_PLAY
             "pause" -> KeyEvent.KEYCODE_MEDIA_PAUSE
@@ -152,14 +155,14 @@ object FinnDeviceActionsBridge {
             "previous" -> KeyEvent.KEYCODE_MEDIA_PREVIOUS
             else -> throw IllegalArgumentException("Unknown media action")
         }
-        val manager = audioManager(activity)
+        val manager = audioManager(context)
         manager.dispatchMediaKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, keyCode))
         manager.dispatchMediaKeyEvent(KeyEvent(KeyEvent.ACTION_UP, keyCode))
         return mapOf("outcome" to "performed")
     }
 
-    private fun volume(activity: Activity, arguments: Map<String, Any?>): Map<String, Any?> {
-        val manager = audioManager(activity)
+    private fun volume(context: Context, arguments: Map<String, Any?>): Map<String, Any?> {
+        val manager = audioManager(context)
         val stream = AudioManager.STREAM_MUSIC
         val direction = when (textArgument(arguments, "direction")) {
             "up" -> AudioManager.ADJUST_RAISE
@@ -171,7 +174,24 @@ object FinnDeviceActionsBridge {
         return mapOf("outcome" to "performed")
     }
 
-    private fun openSettings(activity: Activity, arguments: Map<String, Any?>): Map<String, Any?> {
+    /** A short buzz. Needs no screen and no permission beyond VIBRATE. */
+    private fun vibrate(context: Context, arguments: Map<String, Any?>): Map<String, Any?> {
+        val millis = (intArgument(arguments, "milliseconds") ?: 400).coerceIn(50, 2000).toLong()
+        val effect = VibrationEffect.createOneShot(millis, VibrationEffect.DEFAULT_AMPLITUDE)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val manager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager
+                ?: return mapOf("outcome" to "unavailable", "error" to "No vibrator")
+            manager.defaultVibrator.vibrate(effect)
+        } else {
+            @Suppress("DEPRECATION")
+            val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+                ?: return mapOf("outcome" to "unavailable", "error" to "No vibrator")
+            vibrator.vibrate(effect)
+        }
+        return mapOf("outcome" to "performed")
+    }
+
+    private fun openSettings(context: Context, arguments: Map<String, Any?>): Map<String, Any?> {
         val screen = textArgument(arguments, "screen")
             ?: throw IllegalArgumentException("Missing screen")
         // Wi-Fi first tries the quick-settings panel, which is one tap from the
@@ -179,68 +199,68 @@ object FinnDeviceActionsBridge {
         if (screen == "wifi" && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val panel = Intent(Settings.Panel.ACTION_WIFI)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            if (panel.resolveActivity(activity.packageManager) != null) {
-                activity.startActivity(panel)
+            if (panel.resolveActivity(context.packageManager) != null) {
+                context.startActivity(panel)
                 return mapOf("outcome" to "opened", "detail" to screen)
             }
         }
         val action = SETTINGS_SCREENS[screen]
             ?: return mapOf("outcome" to "unavailable", "error" to "Unknown screen: $screen")
-        return start(activity, Intent(action), detail = screen)
+        return start(context, Intent(action), detail = screen)
     }
 
-    private fun openApp(activity: Activity, arguments: Map<String, Any?>): Map<String, Any?> {
+    private fun openApp(context: Context, arguments: Map<String, Any?>): Map<String, Any?> {
         val query = textArgument(arguments, "name")
             ?: throw IllegalArgumentException("Missing app name")
         val launcher = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
-        val candidates = activity.packageManager
+        val candidates = context.packageManager
             .queryIntentActivities(launcher, 0)
             .mapNotNull { it.activityInfo?.applicationInfo }
             .distinctBy { it.packageName }
         val needle = query.lowercase().trim()
         val match = candidates.firstOrNull {
-            it.loadLabel(activity.packageManager).toString().lowercase() == needle
+            it.loadLabel(context.packageManager).toString().lowercase() == needle
         } ?: candidates.firstOrNull {
-            it.loadLabel(activity.packageManager).toString().lowercase().contains(needle)
+            it.loadLabel(context.packageManager).toString().lowercase().contains(needle)
         } ?: candidates.firstOrNull {
             it.packageName.lowercase().contains(needle)
         } ?: return mapOf("outcome" to "unavailable", "error" to "No app matching \"$query\"")
-        val launch = activity.packageManager.getLaunchIntentForPackage(match.packageName)
+        val launch = context.packageManager.getLaunchIntentForPackage(match.packageName)
             ?: return mapOf("outcome" to "unavailable", "error" to "App is not launchable")
-        activity.startActivity(launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        context.startActivity(launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         return mapOf(
             "outcome" to "opened",
-            "detail" to match.loadLabel(activity.packageManager).toString(),
+            "detail" to match.loadLabel(context.packageManager).toString(),
         )
     }
 
-    private fun composeSms(activity: Activity, arguments: Map<String, Any?>): Map<String, Any?> {
+    private fun composeSms(context: Context, arguments: Map<String, Any?>): Map<String, Any?> {
         val to = textArgument(arguments, "to")
         val body = textArgument(arguments, "body")
         val uri = if (to.isNullOrBlank()) Uri.parse("smsto:") else Uri.parse("smsto:$to")
         val intent = Intent(Intent.ACTION_SENDTO, uri)
         body?.let { intent.putExtra("sms_body", it) }
-        return start(activity, intent, detail = to.orEmpty())
+        return start(context, intent, detail = to.orEmpty())
     }
 
-    private fun composeEmail(activity: Activity, arguments: Map<String, Any?>): Map<String, Any?> {
+    private fun composeEmail(context: Context, arguments: Map<String, Any?>): Map<String, Any?> {
         val intent = Intent(Intent.ACTION_SENDTO)
         val to = textArgument(arguments, "to")
         intent.data = Uri.parse(if (to.isNullOrBlank()) "mailto:" else "mailto:$to")
         textArgument(arguments, "subject")?.let { intent.putExtra(Intent.EXTRA_SUBJECT, it) }
         textArgument(arguments, "body")?.let { intent.putExtra(Intent.EXTRA_TEXT, it) }
-        return start(activity, intent, detail = to.orEmpty())
+        return start(context, intent, detail = to.orEmpty())
     }
 
     private fun start(
-        activity: Activity,
+        context: Context,
         intent: Intent,
         detail: String = "",
         outcome: String = "opened",
     ): Map<String, Any?> {
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         return try {
-            activity.startActivity(intent)
+            context.startActivity(intent)
             mapOf("outcome" to outcome, "detail" to detail)
         } catch (_: ActivityNotFoundException) {
             mapOf(
@@ -251,8 +271,8 @@ object FinnDeviceActionsBridge {
         }
     }
 
-    private fun audioManager(activity: Activity): AudioManager =
-        activity.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+    private fun audioManager(context: Context): AudioManager =
+        context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
 
     private fun intArgument(arguments: Map<String, Any?>, key: String): Int? = when (
         val value = arguments[key]

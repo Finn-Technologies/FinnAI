@@ -8,11 +8,13 @@ import 'package:path_provider/path_provider.dart';
 
 import 'package:finn_ai/src/features/actions/action_catalog.dart';
 import 'package:finn_ai/src/features/flows/flow_model.dart';
+import 'package:finn_ai/src/features/flows/flows_codec.dart';
 
 /// The flow types are part of this library's surface: the page, the runner and
 /// the tests all reach them through the store, and `FinnFlow` used to live
 /// here before the model grew steps, triggers and a run log.
 export 'package:finn_ai/src/features/flows/flow_model.dart';
+export 'package:finn_ai/src/features/flows/flows_codec.dart';
 
 /// Why a flow operation failed, resolved to a sentence by the page.
 ///
@@ -28,110 +30,6 @@ enum FlowsFailure {
 
   /// The four-active-flows cap was reached.
   limit,
-}
-
-const List<FinnFlow> finnBuiltInFlows = [
-  FinnFlow(
-    id: 'builtin-writing',
-    name: 'Clear writing',
-    description: 'Polish structure, clarity, tone, and grammar.',
-    instructions:
-        'For writing tasks, improve clarity and flow, preserve the intended meaning, and briefly note important edits.',
-    category: 'Writing',
-    builtIn: true,
-  ),
-  FinnFlow(
-    id: 'builtin-coding',
-    name: 'Coding partner',
-    description: 'Practical code with clear trade-offs and checks.',
-    instructions:
-        'For software tasks, prioritize correct, maintainable solutions. State assumptions, cover edge cases, and include verification steps when useful.',
-    category: 'Development',
-    builtIn: true,
-  ),
-  FinnFlow(
-    id: 'builtin-learning',
-    name: 'Study coach',
-    description: 'Explain concepts progressively and test understanding.',
-    instructions:
-        'For learning tasks, build from first principles, use a compact example, and end with one useful check for understanding when appropriate.',
-    category: 'Learning',
-    builtIn: true,
-  ),
-  FinnFlow(
-    id: 'builtin-planning',
-    name: 'Thoughtful planner',
-    description: 'Turn goals into realistic, ordered next steps.',
-    instructions:
-        'For planning tasks, identify constraints, prioritize the highest-impact steps, and make the plan concrete and realistic.',
-    category: 'Planning',
-    builtIn: true,
-  ),
-];
-
-/// Encodes and decodes a flow document.
-///
-/// Separate from the store so the format can be tested, and so a v1 file can
-/// be read by exactly one function that says what it did with it.
-class FlowCodec {
-  const FlowCodec._();
-
-  /// The current on-disk version.
-  ///
-  /// v1 was `{name, description, instructions, category, enabled}` — a prompt
-  /// snippet, not an automation. There is no version 2 file format yet: a v1
-  /// file becomes a single-step prompt flow, which is exactly what it was, and
-  /// keeps working without the user doing anything.
-  static const int currentVersion = 2;
-
-  /// Builds a flow from a v1 document, which had no steps and no trigger.
-  ///
-  /// The one migration in the format's history, and it is lossless in the only
-  /// direction that matters: a v1 flow's `instructions` were shown to the model
-  /// when relevant, which is precisely what a one-step prompt flow does.
-  static FinnFlow migrateV1(Map<String, Object?> json) => FinnFlow(
-        id: json['id']?.toString() ?? '',
-        name: json['name']?.toString() ?? '',
-        description: json['description']?.toString() ?? '',
-        instructions: json['instructions']?.toString() ?? '',
-        category: json['category']?.toString() ?? 'Custom',
-        enabled: json['enabled'] == true,
-        builtIn: json['builtIn'] == true,
-        steps: [
-          if ((json['instructions']?.toString() ?? '').trim().isNotEmpty)
-            FlowStep(
-              kind: FlowStepKind.prompt,
-              text: json['instructions']!.toString(),
-            ),
-        ],
-      );
-
-  /// Parses a whole document, migrating older versions.
-  ///
-  /// Returns an empty list for a document it cannot read, so a corrupt file
-  /// shows the built-ins rather than an empty screen.
-  static ({int version, List<FinnFlow> flows}) decode(String source) {
-    final decoded = jsonDecode(source);
-    if (decoded is! Map) return (version: currentVersion, flows: const []);
-    final json = decoded.cast<String, Object?>();
-    final version = (json['version'] as num?)?.toInt() ?? 1;
-    final raw = json['flows'] as List<Object?>? ?? const [];
-    return (
-      version: version,
-      flows: [
-        for (final item in raw)
-          if (item is Map)
-            version >= 2
-                ? FinnFlow.fromJson(item.cast<String, Object?>())
-                : migrateV1(item.cast<String, Object?>()),
-      ],
-    );
-  }
-
-  static String encode(int version, List<FinnFlow> flows) => jsonEncode({
-        'version': version,
-        'flows': [for (final flow in flows) flow.toJson()],
-      });
 }
 
 class FlowsStore extends ChangeNotifier {
@@ -170,12 +68,12 @@ class FlowsStore extends ChangeNotifier {
   /// their prompts are for their own runs and must never leak into chat, and
   /// they do not spend the skill budget.
   List<FinnFlow> get enabledSkills => List.unmodifiable(
-        _skills.where((flow) => flow.enabled && flow.steps.isEmpty),
+        _skills.where((flow) => flow.enabled && !flow.isAutomation),
       );
 
   /// Enabled flows that run steps, by hand or on a schedule.
   List<FinnFlow> get enabledAutomations => List.unmodifiable(
-        _skills.where((flow) => flow.enabled && flow.steps.isNotEmpty),
+        _skills.where((flow) => flow.enabled && flow.isAutomation),
       );
   List<FlowRun> get runs => List.unmodifiable(_runs);
   bool get initialized => _initialized;
@@ -194,7 +92,7 @@ class FlowsStore extends ChangeNotifier {
     if (run.id.isEmpty) return false;
     _runs = [run, ..._runs].take(maxRunHistory).toList(growable: false);
     notifyListeners();
-    return _persist();
+    return _persistRuns();
   }
 
   Future<List<FlowRun>> _readRuns(File file) async {
@@ -261,8 +159,10 @@ class FlowsStore extends ChangeNotifier {
             ),
           ...stored.where((flow) => !flow.builtIn),
         ];
-        _runs = await _readRuns(file);
       }
+      // The run log is its own file, so it is read even when no flow was ever
+      // saved (a built-in flow can run and be logged without a flows file).
+      _runs = await _readRuns(await _file());
       _failure = null;
     } catch (error) {
       debugPrint('FINN_SKILLS read failed: $error');
@@ -279,7 +179,7 @@ class FlowsStore extends ChangeNotifier {
     if (index < 0) return false;
     if (enabled &&
         !_skills[index].enabled &&
-        _skills[index].steps.isEmpty &&
+        !_skills[index].isAutomation &&
         enabledSkills.length >= 4) {
       _failure = FlowsFailure.limit;
       notifyListeners();
@@ -297,17 +197,16 @@ class FlowsStore extends ChangeNotifier {
     required String instructions,
     String category = 'Custom',
     bool enabled = true,
-    List<FlowStep> steps = const [],
-    FlowTrigger? trigger,
+    List<FlowBlock> blocks = const [],
+    List<FlowTrigger>? triggers,
+    List<FlowCondition>? conditions,
     bool? granted,
   }) async {
     final cleanName = name.trim();
     final cleanInstructions = instructions.trim();
-    // A flow needs something to do: either steps, or the v1 instruction text
-    // that the prompt path still uses.
-    if (cleanName.isEmpty ||
-        (cleanInstructions.isEmpty &&
-            steps.every((s) => s.text.trim().isEmpty))) {
+    // A flow needs something to do: either blocks, or the instruction text a
+    // guide is made of.
+    if (cleanName.isEmpty || (cleanInstructions.isEmpty && blocks.isEmpty)) {
       return false;
     }
 
@@ -316,7 +215,7 @@ class FlowsStore extends ChangeNotifier {
         : _skills.indexWhere((flow) => flow.id == id && !flow.builtIn);
     final previous = existingIndex >= 0 ? _skills[existingIndex] : null;
     final wasEnabled = previous != null && previous.enabled;
-    if (enabled && !wasEnabled && steps.isEmpty && enabledSkills.length >= 4) {
+    if (enabled && !wasEnabled && blocks.isEmpty && enabledSkills.length >= 4) {
       _failure = FlowsFailure.limit;
       notifyListeners();
       return false;
@@ -333,12 +232,13 @@ class FlowsStore extends ChangeNotifier {
       ),
       category: category.trim().isEmpty ? 'Custom' : category.trim(),
       enabled: enabled,
-      steps: steps,
-      trigger: trigger ?? previous?.trigger ?? const FlowTrigger.manual(),
+      blocks: blocks,
+      triggers: triggers ?? previous?.triggers ?? const [],
+      conditions: conditions ?? previous?.conditions ?? const [],
       // A grant survives an edit only if the caller did not say otherwise: an
-      // edit that adds a device action to a previously prompt-only flow must
-      // not inherit permission it never had.
-      granted: granted ?? previous?.granted ?? false,
+      // edit that adds a device action to a previously inert flow must not
+      // inherit permission it never had.
+      granted: granted ?? _keepGrant(previous, blocks),
     );
     if (existingIndex >= 0) {
       _skills[existingIndex] = flow;
@@ -347,6 +247,16 @@ class FlowsStore extends ChangeNotifier {
     }
     notifyListeners();
     return _persist();
+  }
+
+  /// The standing grant an edit keeps. An edit that *adds* a device action to a
+  /// flow that had none starts without permission; one that only changes what
+  /// was already permitted keeps it.
+  static bool _keepGrant(FinnFlow? previous, List<FlowBlock> blocks) {
+    if (previous == null || !previous.granted) return false;
+    return previous.hasDeviceAction &&
+        blocks
+            .any((b) => b.flatten().any((x) => x.kind == FlowBlockKind.action));
   }
 
   /// Records the user's standing permission for a flow to act on its own.
@@ -373,33 +283,40 @@ class FlowsStore extends ChangeNotifier {
   /// catalog" is testable, and so a bad flow is caught at save time rather than
   /// halfway through a run that has already set an alarm.
   static FlowValidation validate(FinnFlow flow) {
-    final problems = <FlowValidationProblem>[];
-    if (flow.steps.isEmpty) problems.add(FlowValidationProblem.empty);
+    final problems = <FlowValidationProblem>{};
+    if (flow.blocks.isEmpty) problems.add(FlowValidationProblem.empty);
+    final total = flow.blocks.fold<int>(0, (sum, b) => sum + b.size);
+    if (total > FlowBlock.maxPerFlow ||
+        flow.blocks.any((b) => b.depth > FlowBlock.maxDepth)) {
+      problems.add(FlowValidationProblem.tooLarge);
+    }
     var hasDeviceAction = false;
-    for (final step in flow.steps) {
-      if (step.kind != FlowStepKind.deviceAction) continue;
+    for (final block in flow.allBlocks) {
+      if (block.kind == FlowBlockKind.branch &&
+          !(block.condition?.isValid ?? false)) {
+        problems.add(FlowValidationProblem.invalidCondition);
+      }
+      if (block.kind != FlowBlockKind.action) continue;
       hasDeviceAction = true;
-      final name = step.actionName;
+      final name = block.actionName;
       final action = name == null ? null : DeviceActionCatalog.byName(name);
       if (action == null) {
         problems.add(FlowValidationProblem.unknownAction);
         continue;
       }
       for (final param in action.params) {
-        if (param.required && !step.arguments.containsKey(param.name)) {
+        if (param.required && !block.arguments.containsKey(param.name)) {
           problems.add(FlowValidationProblem.missingArgument);
         }
       }
     }
-    if (flow.trigger.isScheduled) {
-      if (flow.trigger.hour < 0 ||
-          flow.trigger.hour > 23 ||
-          flow.trigger.minute < 0 ||
-          flow.trigger.minute > 59) {
-        problems.add(FlowValidationProblem.invalidSchedule);
-      }
+    if (flow.triggers.any((t) => !t.isValid)) {
+      problems.add(FlowValidationProblem.invalidTrigger);
     }
-    return FlowValidation(problems, hasDeviceAction: hasDeviceAction);
+    if (flow.conditions.any((c) => !c.isValid)) {
+      problems.add(FlowValidationProblem.invalidCondition);
+    }
+    return FlowValidation(problems.toList(), hasDeviceAction: hasDeviceAction);
   }
 
   Future<bool> removeCustom(String id) async {
@@ -419,8 +336,11 @@ class FlowsStore extends ChangeNotifier {
     try {
       final file = await _file();
       final temporary = File('${file.path}.tmp');
+      final log = File('${file.path}.runs');
       if (await file.exists()) await file.delete();
       if (await temporary.exists()) await temporary.delete();
+      if (await log.exists()) await log.delete();
+      _runs = const [];
     } catch (error) {
       failures.add('Flows ($error)');
     }
@@ -487,10 +407,9 @@ class FlowsStore extends ChangeNotifier {
     if (selected.isEmpty) return '';
     final lines = <String>['Active user-selected flows:'];
     for (final flow in selected) {
-      // A flow with steps contributes its prompts; a v1 flow contributes the
-      // instruction text that was always its whole behaviour. A flow that has
-      // only device-action steps contributes nothing here: it is an automation
-      // the runner executes, not a preference the model should imitate.
+      // A guide contributes its instructions. An automation contributes
+      // nothing here: it is something the runner executes, not a preference the
+      // model should imitate.
       for (final line in flow.promptLines) {
         final clean = line.trim();
         if (clean.isEmpty) continue;
@@ -507,6 +426,32 @@ class FlowsStore extends ChangeNotifier {
     return lines.join('\n');
   }
 
+  /// Writes only the run log. A run can finish in a second Flutter engine (a
+  /// flow started in the background), and that engine must never rewrite the
+  /// flow definitions from a copy it read earlier.
+  Future<bool> _persistRuns() async {
+    final result = Completer<bool>();
+    _writeQueue = _writeQueue.then((_) async {
+      try {
+        await _writeRuns(await _file());
+        result.complete(true);
+      } catch (error) {
+        debugPrint('FINN_FLOWS run log save failed: $error');
+        result.complete(false);
+      }
+    });
+    return result.future;
+  }
+
+  /// Re-reads the run log, picking up runs another engine wrote while the app
+  /// was closed.
+  Future<void> reloadRuns() async {
+    try {
+      _runs = await _readRuns(await _file());
+      notifyListeners();
+    } catch (_) {}
+  }
+
   Future<bool> _persist() async {
     final payload = FlowCodec.encode(FlowCodec.currentVersion, _skills);
     final result = Completer<bool>();
@@ -521,7 +466,6 @@ class FlowsStore extends ChangeNotifier {
         final temporary = File('${file.path}.tmp');
         await temporary.writeAsString(payload, flush: true);
         await temporary.rename(file.path);
-        await _writeRuns(file);
         result.complete(true);
       } catch (error) {
         debugPrint('FINN_SKILLS save failed: $error');

@@ -35,6 +35,8 @@ abstract final class DeviceActionDescriptions {
         return l10n.deviceActionVolume(
           _volumeLabel(l10n, arguments['direction']),
         );
+      case 'vibrate':
+        return l10n.deviceActionVibrate;
       case 'open_settings':
         return l10n.deviceActionOpenSettings(
           screenLabel(context, arguments['screen']?.toString() ?? ''),

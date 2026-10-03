@@ -25,6 +25,10 @@ import java.io.File
 object FinnHomeScreenBridge {
     private const val CHANNEL = "finn_ai/home_screen"
 
+    /** The creation a pinned shortcut asked for, until Dart takes it. */
+    @Volatile
+    var pendingCreationId: String? = null
+
     fun register(engine: FlutterEngine, activity: android.app.Activity) {
         MethodChannel(engine.dartExecutor.binaryMessenger, CHANNEL)
             .setMethodCallHandler { call, result ->
@@ -34,6 +38,15 @@ object FinnHomeScreenBridge {
                     "requestPinWidget" -> result.success(requestPinWidget(activity))
                     "requestPinShortcut" -> result.success(requestPinShortcut(activity, call.arguments))
                     "refreshWidgets" -> {
+                        FinnHomeWidgetProvider.refreshAll(activity)
+                        result.success(true)
+                    }
+                    "takeLaunchCreation" -> {
+                        result.success(pendingCreationId)
+                        pendingCreationId = null
+                    }
+                    "clearWidgetState" -> {
+                        FinnHomeWidgetStore.clearState(activity)
                         FinnHomeWidgetProvider.refreshAll(activity)
                         result.success(true)
                     }

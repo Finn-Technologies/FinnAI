@@ -3,7 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'package:finn_ai/l10n/l10n_helper.dart';
-import 'package:finn_ai/src/features/flows/flow_detail_page.dart';
+import 'package:finn_ai/src/features/flows/flow_editor_page.dart';
+import 'package:finn_ai/src/features/flows/flow_icons.dart';
 import 'package:finn_ai/src/features/flows/flow_labels.dart';
 import 'package:finn_ai/src/features/flows/flow_new.dart';
 import 'package:finn_ai/src/features/flows/flow_runner.dart';
@@ -86,7 +87,7 @@ class _FlowsPageState extends State<FlowsPage> {
 
   void _open(FinnFlow flow) => Navigator.of(context).push(
         FinnPageRoute<void>(
-          child: FlowDetailPage(flowId: flow.id, actions: _actions),
+          child: FlowEditorPage(flowId: flow.id, actions: _actions),
         ),
       );
 
@@ -145,7 +146,7 @@ class _FlowsPageState extends State<FlowsPage> {
           );
         }
         final automations = _store.flows
-            .where((flow) => !flow.builtIn && flow.steps.isNotEmpty)
+            .where((flow) => !flow.builtIn && flow.isAutomation)
             .toList();
         final shown = automations
             .where(
@@ -158,7 +159,7 @@ class _FlowsPageState extends State<FlowsPage> {
             .toList();
         final builtIns = _store.flows.where((flow) => flow.builtIn).toList();
         final custom = _store.flows
-            .where((flow) => !flow.builtIn && flow.steps.isEmpty)
+            .where((flow) => !flow.builtIn && !flow.isAutomation)
             .toList();
         final plus = FinnCircleButton.icon(
           key: const Key('add-flow-button'),
@@ -199,7 +200,6 @@ class _FlowsPageState extends State<FlowsPage> {
                     onTap: () => _open(shown[i]),
                   ),
                 ),
-              FinnCaption(l10n.flowsPhoneOn),
             ],
             const SizedBox(height: 10),
             Text(
@@ -316,17 +316,14 @@ class _FlowRow extends StatelessWidget {
                 switch (last.outcome) {
                   FlowRunOutcome.completed => l10n.flowsResultDone,
                   FlowRunOutcome.interrupted => l10n.flowsResultStopped,
+                  FlowRunOutcome.skipped => l10n.flowsRunSkipped,
                   _ => l10n.flowsResultFailed,
                 },
               );
     return FinnTile(
-      icon: switch (flow.steps.first.kind) {
-        FlowStepKind.browse => FluxIcons.internet,
-        FlowStepKind.deviceAction => FluxIcons.alarm,
-        _ => FluxIcons.magic,
-      },
+      icon: FlowIcons.forTrigger(flow.trigger.kind),
       title: flow.name,
-      subtitle: '${flowScheduleLabel(context, flow.trigger)}\n$lastLine',
+      subtitle: '${flowTriggerLabel(l10n, flow.trigger)}\n$lastLine',
       onTap: onTap,
       chevron: false,
       trailing: FinnSwitch(

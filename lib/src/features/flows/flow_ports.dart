@@ -59,3 +59,16 @@ abstract interface class FlowNotifier {
     required String body,
   });
 }
+
+/// Reads the phone's state for conditions: battery, charging, Wi-Fi, headset.
+abstract interface class FlowEnvironment {
+  Future<FlowEnvironmentSnapshot> snapshot();
+}
+
+/// Says something out loud. Not available everywhere (a phone with no voice
+/// installed, a run with the app closed), so a flow that speaks and cannot is
+/// not failed: speaking is a courtesy, not the point of the flow.
+abstract interface class FlowSpeaker {
+  /// True when the text was spoken.
+  Future<bool> speak(String text);
+}

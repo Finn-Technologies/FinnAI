@@ -3,18 +3,32 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'package:finn_ai/flow_background.dart' show flowBackgroundMain;
 import 'package:finn_ai/src/app/bootstrap.dart';
 import 'package:finn_ai/src/engine/eval/benchmark.dart';
 import 'package:finn_ai/src/engine/eval/harness.dart';
 import 'package:finn_ai/src/features/search/search_turn.dart';
+import 'package:finn_ai/src/features/voice/tts/tts_probe.dart';
 import 'package:finn_ai/src/inference/finn_inference.dart';
 import 'package:finn_ai/src/shared/config/licenses.dart';
 import 'package:finn_ai/src/platform/openharmony_path_provider.dart';
+
+/// The screenless entry point `FlowBackgroundRunner.kt` starts by name. Naming it
+/// here is what keeps it in the compiled app: a library nothing imports is not
+/// part of it, and the engine would fail to find the function.
+// ignore: unused_element
+final _flowBackgroundEntry = flowBackgroundMain;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   OpenHarmonyPathProvider.registerIfNeeded();
   registerModelLicenses();
+  if (const bool.fromEnvironment('FINN_TTS_PROBE')) {
+    runApp(const _BareBenchmarkApp());
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => unawaited(runTtsProbe()));
+    return;
+  }
   final benchmark = const bool.fromEnvironment('FINN_BENCHMARK');
   final evaluation = const bool.fromEnvironment('FINN_EVALUATION');
   if (benchmark || evaluation) {

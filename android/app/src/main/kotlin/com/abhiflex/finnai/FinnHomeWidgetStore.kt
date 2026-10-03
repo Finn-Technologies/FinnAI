@@ -4,38 +4,76 @@ import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
 import java.io.File
+import org.json.JSONArray
 import org.json.JSONObject
 
+/** What a widget does when it is touched. Mirrors `HomeWidgetKind` in Dart. */
+enum class FinnWidgetKind {
+    DISPLAY,
+    COUNTER,
+    CHECKLIST,
+    TRACKER;
+
+    val interactive: Boolean get() = this != DISPLAY
+
+    companion object {
+        fun parse(raw: String?): FinnWidgetKind =
+            values().firstOrNull { it.name.equals(raw, ignoreCase = true) } ?: DISPLAY
+    }
+}
+
 /**
- * A home-screen widget's content, as written by Dart.
+ * A home-screen widget's definition, as written by Dart.
  *
  * Deliberately tiny: `RemoteViews` can only show text and colour, so anything
  * richer lives in the mini-app runtime instead.
  */
 data class FinnHomeWidgetSpec(
+    val specPath: String,
+    /** Fingerprint of the definition; a changed one resets the widget's state. */
+    val rev: String,
+    val kind: FinnWidgetKind,
     val title: String,
     val accent: Int,
     val rows: List<Pair<String, String>>,
     val footer: String,
+    val step: Int,
+    val goal: Int,
+)
+
+/**
+ * What the user has done to a widget: the number, the ticks, the tallies.
+ *
+ * Kept on the phone beside the definition and keyed by it, so every widget
+ * placed from one creation shows the same state, and none of it needs the app
+ * to be running.
+ */
+data class FinnWidgetState(
+    val value: Int,
+    val checks: List<Boolean>,
+    val values: List<Int>,
 )
 
 /**
  * Locates and reads the JSON spec behind each placed widget.
  *
  * The provider runs with the Flutter engine stopped, so nothing here may depend
- * on Dart having been started. Dart writes `<filesDir>/creations/home_widgets/
+ * on Dart having been started. Dart writes `<documents>/creations/home_widgets/
  * <creationId>.json`; this class maps a launcher-assigned widget id onto one of
- * those files, and can reconstruct the path from `filesDir` alone if the
- * mapping is lost (for example after a backup restore).
+ * those files through a stored path.
  */
 object FinnHomeWidgetStore {
     private const val PREFS = "finn_home_widgets"
+    private const val STATE_PREFS = "finn_home_widget_state"
     private const val KEY_PENDING_SPEC = "pending_spec_path"
     private const val KEY_PENDING_LABEL = "pending_label"
     private const val KEY_SPEC_PREFIX = "spec_path_"
 
     private fun prefs(context: Context) =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+
+    private fun statePrefs(context: Context) =
+        context.getSharedPreferences(STATE_PREFS, Context.MODE_PRIVATE)
 
     /**
      * Records the spec that the next widget to appear should adopt.
@@ -86,6 +124,10 @@ object FinnHomeWidgetStore {
     /** Reads [appWidgetId]'s spec, or null when nothing is stored for it. */
     fun specFor(context: Context, appWidgetId: Int): FinnHomeWidgetSpec? {
         val path = claim(context, appWidgetId) ?: return null
+        return readSpec(path)
+    }
+
+    fun readSpec(path: String): FinnHomeWidgetSpec? {
         val file = File(path)
         if (!file.exists()) return null
         return try {
@@ -101,15 +143,61 @@ object FinnHomeWidgetStore {
                 }
             }
             FinnHomeWidgetSpec(
+                specPath = path,
+                rev = json.optString("rev"),
+                kind = FinnWidgetKind.parse(json.optString("kind")),
                 title = json.optString("title").trim().ifEmpty { "Finn AI" },
                 accent = json.optInt("accent", DEFAULT_ACCENT),
                 rows = rows,
                 footer = json.optString("footer").trim(),
+                step = json.optInt("step", 1).coerceAtLeast(1),
+                goal = json.optInt("goal", 0).coerceAtLeast(0),
             )
         } catch (_: Exception) {
             // A malformed spec must not blank the launcher widget.
             null
         }
+    }
+
+    /** The state a widget starts from, and returns to when it is reset. */
+    fun initialState(spec: FinnHomeWidgetSpec): FinnWidgetState = FinnWidgetState(
+        value = spec.rows.firstOrNull()?.second?.toIntOrNull() ?: 0,
+        checks = spec.rows.map { false },
+        values = spec.rows.map { it.second.toIntOrNull() ?: 0 },
+    )
+
+    /** The current state, starting over when the definition has changed. */
+    fun stateFor(context: Context, spec: FinnHomeWidgetSpec): FinnWidgetState {
+        val raw = statePrefs(context).getString(spec.specPath, null)
+            ?: return initialState(spec)
+        return try {
+            val json = JSONObject(raw)
+            if (json.optString("rev") != spec.rev) return initialState(spec)
+            val initial = initialState(spec)
+            FinnWidgetState(
+                value = json.optInt("value", initial.value),
+                checks = List(spec.rows.size) { json.optJSONArray("checks")?.optBoolean(it, false) ?: false },
+                values = List(spec.rows.size) {
+                    json.optJSONArray("values")?.optInt(it, initial.values[it]) ?: initial.values[it]
+                },
+            )
+        } catch (_: Exception) {
+            initialState(spec)
+        }
+    }
+
+    fun saveState(context: Context, spec: FinnHomeWidgetSpec, state: FinnWidgetState) {
+        val json = JSONObject()
+            .put("rev", spec.rev)
+            .put("value", state.value)
+            .put("checks", JSONArray(state.checks))
+            .put("values", JSONArray(state.values))
+        statePrefs(context).edit().putString(spec.specPath, json.toString()).apply()
+    }
+
+    /** Forgets everything the user did, for "delete all data". */
+    fun clearState(context: Context) {
+        statePrefs(context).edit().clear().apply()
     }
 
     fun placedWidgetIds(context: Context): IntArray =

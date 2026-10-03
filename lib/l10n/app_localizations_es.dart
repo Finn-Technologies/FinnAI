@@ -2768,4 +2768,658 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get flowsStepNotifyMe => 'Avisarme';
+
+  @override
+  String get creationsTemplateTracker => 'Seguimiento';
+
+  @override
+  String get creationsSlotStep => 'Suma por toque';
+
+  @override
+  String get creationsResetAppTitle => '¿Restablecer esta app?';
+
+  @override
+  String get creationsResetAppBody =>
+      'Se borra todo lo que añadiste. No se puede deshacer.';
+
+  @override
+  String get deviceActionVibrate => 'Hacer vibrar el teléfono';
+
+  @override
+  String get flowsTrigManual => 'Solo cuando yo lo inicie';
+
+  @override
+  String get flowsTrigTimeOfDay => 'A una hora fija';
+
+  @override
+  String flowsTrigEveryMinutes(int n) {
+    return 'Cada $n minutos';
+  }
+
+  @override
+  String flowsTrigEveryHours(int n) {
+    return 'Cada $n horas';
+  }
+
+  @override
+  String get flowsTrigEveryHour => 'Cada hora';
+
+  @override
+  String get flowsTrigInterval => 'Repetido';
+
+  @override
+  String get flowsTrigChargerOn => 'Cargador conectado';
+
+  @override
+  String get flowsTrigChargerOff => 'Cargador desconectado';
+
+  @override
+  String flowsTrigBatteryLow(int n) {
+    return 'La batería baja al $n %';
+  }
+
+  @override
+  String get flowsTrigHeadsetOn => 'Auriculares conectados';
+
+  @override
+  String get flowsTrigHeadsetOff => 'Auriculares desconectados';
+
+  @override
+  String get flowsTrigWifiOn => 'Wi‑Fi conectado';
+
+  @override
+  String get flowsTrigWifiOff => 'Wi‑Fi desconectado';
+
+  @override
+  String get flowsTrigAirplaneOn => 'Se activa el modo avión';
+
+  @override
+  String get flowsTrigAirplaneOff => 'Se desactiva el modo avión';
+
+  @override
+  String get flowsTrigBoot => 'El teléfono se inicia';
+
+  @override
+  String get flowsTrigUnlock => 'Pantalla desbloqueada';
+
+  @override
+  String get flowsTrigGroupTime => 'Hora';
+
+  @override
+  String get flowsTrigGroupPhone => 'En el teléfono';
+
+  @override
+  String get flowsTrigGroupHand => 'A mano';
+
+  @override
+  String flowsCondBatteryBelow(int n) {
+    return 'Batería por debajo del $n %';
+  }
+
+  @override
+  String flowsCondBatteryAbove(int n) {
+    return 'Batería por encima del $n %';
+  }
+
+  @override
+  String get flowsCondCharging => 'Cargando';
+
+  @override
+  String get flowsCondNotCharging => 'No está cargando';
+
+  @override
+  String flowsCondTimeBetween(String from, String to) {
+    return 'Entre las $from y las $to';
+  }
+
+  @override
+  String flowsCondDays(String days) {
+    return 'El $days';
+  }
+
+  @override
+  String get flowsCondWifiOn => 'Wi‑Fi conectado';
+
+  @override
+  String get flowsCondWifiOff => 'Wi‑Fi no conectado';
+
+  @override
+  String get flowsCondHeadsetOn => 'Auriculares conectados';
+
+  @override
+  String get flowsCondHeadsetOff => 'Auriculares no conectados';
+
+  @override
+  String get flowsCondAirplaneOn => 'Modo avión activado';
+
+  @override
+  String get flowsCondAirplaneOff => 'Modo avión desactivado';
+
+  @override
+  String flowsCondAnswer(String text) {
+    return 'La respuesta menciona «$text»';
+  }
+
+  @override
+  String get flowsBlockAsk => 'Preguntar a FinnAI';
+
+  @override
+  String get flowsBlockAskSub => 'Escribir algo con el modelo del dispositivo';
+
+  @override
+  String get flowsBlockWeb => 'Buscar';
+
+  @override
+  String get flowsBlockWebSub => 'Noticias, tiempo o la web';
+
+  @override
+  String get flowsBlockNotify => 'Avisarme';
+
+  @override
+  String get flowsBlockNotifySub => 'Mostrar una notificación';
+
+  @override
+  String get flowsBlockSpeak => 'Decirlo en voz alta';
+
+  @override
+  String get flowsBlockSpeakSub => 'Hablar con la voz del teléfono';
+
+  @override
+  String get flowsBlockAction => 'Hacer en el teléfono';
+
+  @override
+  String get flowsBlockActionSub => 'Linterna, volumen, alarma, abrir una app';
+
+  @override
+  String get flowsBlockWait => 'Esperar';
+
+  @override
+  String get flowsBlockWaitSub => 'Pausar unos segundos';
+
+  @override
+  String get flowsBlockBranch => 'Si … entonces';
+
+  @override
+  String get flowsBlockBranchSub => 'Hacer una cosa u otra';
+
+  @override
+  String get flowsBlockSave => 'Guardar en el chat';
+
+  @override
+  String get flowsBlockSaveSub => 'Guardar la respuesta como chat';
+
+  @override
+  String get flowsBlockStop => 'Parar aquí';
+
+  @override
+  String get flowsBlockStopSub => 'Terminar el flujo';
+
+  @override
+  String flowsSumAsk(String text) {
+    return 'Preguntar: $text';
+  }
+
+  @override
+  String flowsSumWeb(String text) {
+    return 'Buscar $text';
+  }
+
+  @override
+  String get flowsSumNotifyAnswer => 'Mostrar la respuesta';
+
+  @override
+  String get flowsSumSpeakAnswer => 'Leer la respuesta en voz alta';
+
+  @override
+  String flowsSumWait(int n) {
+    return 'Esperar $n s';
+  }
+
+  @override
+  String flowsSumIf(String condition) {
+    return 'Si $condition';
+  }
+
+  @override
+  String get flowsEdWhen => 'Cuándo';
+
+  @override
+  String get flowsEdOnlyIf => 'Solo si';
+
+  @override
+  String get flowsEdThen => 'Entonces';
+
+  @override
+  String get flowsEdOr => 'o';
+
+  @override
+  String get flowsEdYes => 'Sí';
+
+  @override
+  String get flowsEdOtherwise => 'Si no';
+
+  @override
+  String get flowsEdEnd => 'Listo';
+
+  @override
+  String get flowsEdAddTrigger => 'Añadir un disparador';
+
+  @override
+  String get flowsEdAddCondition => 'Añadir una condición';
+
+  @override
+  String get flowsEdAddStep => 'Añadir un paso';
+
+  @override
+  String get flowsEdInsertHere => 'Añadir un paso aquí';
+
+  @override
+  String get flowsEdNoSteps =>
+      'Aún no hay nada que hacer. Añade el primer paso.';
+
+  @override
+  String get flowsEdManualStart => 'Empieza cuando tocas Ejecutar';
+
+  @override
+  String get flowsEdMoveUp => 'Subir';
+
+  @override
+  String get flowsEdMoveDown => 'Bajar';
+
+  @override
+  String get flowsEdRemove => 'Quitar';
+
+  @override
+  String get flowsEdDone => 'Listo';
+
+  @override
+  String get flowsEdChooseStep => '¿Qué debería pasar?';
+
+  @override
+  String get flowsEdChooseTrigger => '¿Qué lo inicia?';
+
+  @override
+  String get flowsEdChooseCondition => 'Solo cuando…';
+
+  @override
+  String get flowsEdConditionNote =>
+      'Si no se cumple, el flujo no se ejecuta cuando lo inicia otra cosa.';
+
+  @override
+  String get flowsFieldPrompt => '¿Qué debe escribir FinnAI?';
+
+  @override
+  String flowsFieldPromptHint(String input) {
+    return 'Usa $input para la última respuesta';
+  }
+
+  @override
+  String get flowsFieldQuery => 'Qué buscar';
+
+  @override
+  String get flowsFieldSource => 'Dónde';
+
+  @override
+  String get flowsSourceWeb => 'La web';
+
+  @override
+  String get flowsSourceNews => 'Noticias';
+
+  @override
+  String get flowsSourceWeather => 'Tiempo';
+
+  @override
+  String get flowsFieldTitle => 'Título';
+
+  @override
+  String get flowsFieldMessage => 'Mensaje';
+
+  @override
+  String get flowsFieldMessageHint =>
+      'Déjalo vacío para mostrar la última respuesta';
+
+  @override
+  String get flowsFieldSay => 'Qué decir';
+
+  @override
+  String get flowsFieldSayHint => 'Déjalo vacío para leer la última respuesta';
+
+  @override
+  String get flowsFieldSeconds => 'Cuántos segundos';
+
+  @override
+  String get flowsFieldAction => 'Qué hacer';
+
+  @override
+  String get flowsFieldCondition => 'Condición';
+
+  @override
+  String get flowsFieldLevel => 'Nivel de batería';
+
+  @override
+  String get flowsFieldFrom => 'Desde';
+
+  @override
+  String get flowsFieldTo => 'Hasta';
+
+  @override
+  String get flowsFieldDays => 'Días';
+
+  @override
+  String get flowsFieldContains => 'Contiene';
+
+  @override
+  String get flowsFieldEveryMinutes => 'Repetir cada';
+
+  @override
+  String get flowsUnitMinutes => 'minutos';
+
+  @override
+  String get flowsUnitHours => 'horas';
+
+  @override
+  String get flowsBgWorks => 'Funciona en segundo plano';
+
+  @override
+  String get flowsBgNeedsScreen => 'Necesita que toques una notificación';
+
+  @override
+  String get flowsAutoTitle => 'Dejar que se ejecute solo';
+
+  @override
+  String get flowsAutoNeedsAllow =>
+      'Este flujo cambia tu teléfono. Permite que se ejecute cuando no estás mirando.';
+
+  @override
+  String get flowsListenerOn =>
+      'FinnAI está atento a estos eventos en segundo plano.';
+
+  @override
+  String get flowsListenerNeedsNotify =>
+      'Activa las notificaciones para que FinnAI pueda seguir atento.';
+
+  @override
+  String get flowsRunStatusSkipped => 'Condiciones no cumplidas';
+
+  @override
+  String get flowsRunStatusNeedsScreen => 'Esperando por ti';
+
+  @override
+  String get flowsRunSkipped => 'Omitido';
+
+  @override
+  String get flowsRunNeedsScreen => 'Toca para terminar';
+
+  @override
+  String get flowsRunByEvent => 'Se ejecutó solo';
+
+  @override
+  String get flowsRunByChat => 'Ejecutado desde el chat';
+
+  @override
+  String flowsNeedsScreenBody(String name) {
+    return 'Toca para terminar «$name»: necesita la pantalla.';
+  }
+
+  @override
+  String flowsNeedsGrantBody(String name) {
+    return '«$name» quería ejecutarse pero necesita tu permiso.';
+  }
+
+  @override
+  String get flowsStepWaiting => 'Esperando';
+
+  @override
+  String flowsPathStep(int n) {
+    return 'Paso $n';
+  }
+
+  @override
+  String get flowsDescribeTitle => 'Describe tu flujo';
+
+  @override
+  String get flowsDescribeHint =>
+      'Por ejemplo: cuando conecte el cargador, enciende la linterna';
+
+  @override
+  String get flowsDescribeBuild => 'Crear';
+
+  @override
+  String get flowsDescribeThinking => 'Pensándolo…';
+
+  @override
+  String get flowsDescribeFailed =>
+      'No pude convertirlo en un flujo. Di cuándo empieza y qué debe hacer.';
+
+  @override
+  String flowsDescribeMissed(String parts) {
+    return 'No entendí: $parts';
+  }
+
+  @override
+  String get flowsDescribeExamples => 'Prueba uno de estos';
+
+  @override
+  String get flowsExampleCharger =>
+      'Cuando conecte el cargador, enciende la linterna';
+
+  @override
+  String get flowsExampleBattery =>
+      'Cuando la batería esté por debajo del 15 %, recuérdame cargar';
+
+  @override
+  String get flowsExampleNews => 'Cada mañana a las 7 cuéntame las noticias';
+
+  @override
+  String get flowsExampleHeadset =>
+      'Cuando conecte los auriculares, reproduce música';
+
+  @override
+  String get flowsNewBlank => 'Empezar desde cero';
+
+  @override
+  String get flowsNewBlankSub => 'Constrúyelo paso a paso';
+
+  @override
+  String get flowsNewTemplates => 'Desde una plantilla';
+
+  @override
+  String get flowsNewTemplatesSub =>
+      'Resumen de noticias, recordatorio, batería baja…';
+
+  @override
+  String get flowsTemplateLowBattery => 'Aviso de batería baja';
+
+  @override
+  String get flowsTemplateLowBatteryBody =>
+      'Te avisa una vez cuando la batería está baja.';
+
+  @override
+  String get flowsTemplateHeadset => 'Auriculares y música';
+
+  @override
+  String get flowsTemplateHeadsetBody =>
+      'Reproduce o pausa cuando se conectan los auriculares.';
+
+  @override
+  String get flowsSlotLevel => 'Avisar al (%)';
+
+  @override
+  String get flowsSlotWhat => 'Qué hacer';
+
+  @override
+  String get flowsSlotPlay => 'Reproducir';
+
+  @override
+  String get flowsSlotPause => 'Pausar';
+
+  @override
+  String get flowsRunsTitle => 'Ejecuciones';
+
+  @override
+  String get flowsRunsAll => 'Ver todas las ejecuciones';
+
+  @override
+  String get flowsRenameTitle => 'Renombrar flujo';
+
+  @override
+  String get flowsSavedToast => 'Guardado';
+
+  @override
+  String get flowsStepOutcomeSkipped => 'Omitido';
+
+  @override
+  String flowsChatCreated(String name) {
+    return 'He creado un flujo: «$name». Revísalo y actívalo.';
+  }
+
+  @override
+  String get flowsChatOpen => 'Abrir flujo';
+
+  @override
+  String get flowsChatTurnOn => 'Activar';
+
+  @override
+  String get flowsChatIsOn => 'Activado';
+
+  @override
+  String get flowsChatDiscard => 'Descartar';
+
+  @override
+  String get flowsActSetAlarm => 'Poner una alarma';
+
+  @override
+  String get flowsActSetTimer => 'Iniciar un temporizador';
+
+  @override
+  String get flowsActShowAlarms => 'Mostrar mis alarmas';
+
+  @override
+  String get flowsActTorch => 'Linterna';
+
+  @override
+  String get flowsActMedia => 'Controlar la música';
+
+  @override
+  String get flowsActVolume => 'Cambiar el volumen';
+
+  @override
+  String get flowsActVibrate => 'Vibrar';
+
+  @override
+  String get flowsActOpenSettings => 'Abrir unos ajustes';
+
+  @override
+  String get flowsActOpenApp => 'Abrir una app';
+
+  @override
+  String get flowsActDial => 'Iniciar una llamada';
+
+  @override
+  String get flowsActSms => 'Escribir un SMS';
+
+  @override
+  String get flowsActEmail => 'Escribir un correo';
+
+  @override
+  String get flowsActPhoto => 'Abrir la cámara';
+
+  @override
+  String get flowsActUrl => 'Abrir una dirección web';
+
+  @override
+  String get flowsActNavigate => 'Ver indicaciones';
+
+  @override
+  String get flowsActShare => 'Compartir texto';
+
+  @override
+  String get flowsOn => 'Activado';
+
+  @override
+  String get flowsOff => 'Desactivado';
+
+  @override
+  String get flowsParamState => 'Estado';
+
+  @override
+  String get flowsParamDirection => 'Dirección';
+
+  @override
+  String get flowsParamScreen => 'Pantalla';
+
+  @override
+  String get flowsParamTime => 'Hora';
+
+  @override
+  String get flowsParamSeconds => 'Segundos';
+
+  @override
+  String get flowsParamMilliseconds => 'Milisegundos';
+
+  @override
+  String get flowsParamLabel => 'Etiqueta';
+
+  @override
+  String get flowsParamName => 'Nombre de la app';
+
+  @override
+  String get flowsParamNumber => 'Número de teléfono';
+
+  @override
+  String get flowsParamTo => 'Para';
+
+  @override
+  String get flowsParamBody => 'Mensaje';
+
+  @override
+  String get flowsParamSubject => 'Asunto';
+
+  @override
+  String get flowsParamUrl => 'Dirección web';
+
+  @override
+  String get flowsParamQuery => 'Lugar o dirección';
+
+  @override
+  String get flowsParamText => 'Texto';
+
+  @override
+  String get flowsPickAction => '¿Qué debe hacer el teléfono?';
+
+  @override
+  String get flowsEveryHowLong => 'Repetir cada';
+
+  @override
+  String get flowsIntervalNote =>
+      'El teléfono agrupa los temporizadores para ahorrar batería, así que puede retrasarse unos minutos.';
+
+  @override
+  String get flowsBatteryLevelNote =>
+      'Se ejecuta una vez cuando la batería baja a este nivel.';
+
+  @override
+  String get chatCreationReady =>
+      'Aquí lo tienes. Ábrelo o ponlo en tu pantalla de inicio.';
+
+  @override
+  String get chatCreationBuilding => 'Creándolo…';
+
+  @override
+  String get flowsDetailOnEvent => 'Activado, empieza solo';
+
+  @override
+  String get voiceStyle => 'Voz';
+
+  @override
+  String get voiceStyleF1 => 'Femenina 1';
+
+  @override
+  String get voiceStyleF2 => 'Femenina 2';
+
+  @override
+  String get voiceStyleM1 => 'Masculina 1';
+
+  @override
+  String get voiceStyleM2 => 'Masculina 2';
 }

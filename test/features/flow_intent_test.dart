@@ -21,7 +21,7 @@ void main() {
       final intent = FlowIntent.parse('Remind me to stretch on Friday at 6pm')!;
 
       expect(intent.template.id, 'reminder');
-      expect(intent.slots['message'], contains('stretch'));
+      expect(intent.slots['message'], 'Stretch');
       expect(intent.trigger.daysOfWeek, {5});
       expect(intent.trigger.hour, 18);
     });
@@ -39,7 +39,7 @@ void main() {
 
   test('a weekly trigger survives a save and load', () {
     const original = FlowTrigger.weekly(18, 0, {1, 3, 5});
-    final copy = FlowTrigger.fromJson(original.toJson());
+    final copy = FlowTrigger.fromJson(original.toJson())!;
 
     expect(copy.daysOfWeek, {1, 3, 5});
     expect(copy.hour, 18);

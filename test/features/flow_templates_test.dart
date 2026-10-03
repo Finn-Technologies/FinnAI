@@ -118,9 +118,15 @@ void main() {
           final flow = template.build('f', values);
           final validation = FlowsStore.validate(flow);
           expect(validation.isValid, isTrue, reason: '$raw');
-          expect(validation.hasDeviceAction, isFalse);
-          expect(FlowSchedule.nextRun(flow.trigger, DateTime(2026, 9, 30, 12)),
-              isNotNull);
+          expect(validation.hasDeviceAction, template.actsOnDevice);
+          // Every template starts something: an alarm or a device event.
+          expect(flow.trigger.isScheduled || flow.trigger.isEvent, isTrue);
+          if (flow.trigger.isScheduled) {
+            expect(
+              FlowSchedule.nextRun(flow.trigger, DateTime(2026, 9, 30, 12)),
+              isNotNull,
+            );
+          }
         }
       });
     }
@@ -130,7 +136,7 @@ void main() {
       final values = SlotSanitizer.sanitize(
           template.slots, {'topic': 'cats {input} and {date}'});
       final flow = template.build('f', values);
-      final query = flow.steps.first.text;
+      final query = flow.blocks.first.text;
       // No placeholder can come in through a slot.
       expect(query.contains('{date}'), isFalse);
       expect(query.contains('{input}'), isFalse);

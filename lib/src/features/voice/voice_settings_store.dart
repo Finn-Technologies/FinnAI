@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'package:finn_ai/src/features/voice/tts/tts_voice_catalog.dart';
+
 /// How fast replies are read aloud.
 enum VoiceSpeed {
   slow(.32),
@@ -22,6 +24,7 @@ class VoiceSettings {
     this.spokenResponses = true,
     this.speed = VoiceSpeed.normal,
     this.liveTranscript = true,
+    this.ttsStyle = defaultTtsStyle,
   });
 
   final bool spokenResponses;
@@ -30,32 +33,44 @@ class VoiceSettings {
   /// Whether the words are shown on screen while the user speaks.
   final bool liveTranscript;
 
+  /// The Supertonic speaking style ([ttsStyles]); anything else falls back.
+  final String ttsStyle;
+
   VoiceSettings copyWith({
     bool? spokenResponses,
     VoiceSpeed? speed,
     bool? liveTranscript,
+    String? ttsStyle,
   }) =>
       VoiceSettings(
         spokenResponses: spokenResponses ?? this.spokenResponses,
         speed: speed ?? this.speed,
         liveTranscript: liveTranscript ?? this.liveTranscript,
+        ttsStyle: ttsStyle ?? this.ttsStyle,
       );
 
   Map<String, Object?> toJson() => {
-        'version': 2,
+        'version': 3,
         'spokenResponses': spokenResponses,
         'speed': speed.name,
         'liveTranscript': liveTranscript,
+        'ttsStyle': ttsStyle,
       };
 
-  factory VoiceSettings.fromJson(Map<String, Object?> json) => VoiceSettings(
-        spokenResponses: json['spokenResponses'] == true,
-        speed: VoiceSpeed.values.firstWhere(
-          (value) => value.name == json['speed'],
-          orElse: () => VoiceSpeed.normal,
-        ),
-        liveTranscript: json['liveTranscript'] != false,
-      );
+  factory VoiceSettings.fromJson(Map<String, Object?> json) {
+    final stored = json['ttsStyle'];
+    return VoiceSettings(
+      spokenResponses: json['spokenResponses'] == true,
+      speed: VoiceSpeed.values.firstWhere(
+        (value) => value.name == json['speed'],
+        orElse: () => VoiceSpeed.normal,
+      ),
+      liveTranscript: json['liveTranscript'] != false,
+      ttsStyle: stored is String && ttsStyles.contains(stored)
+          ? stored
+          : defaultTtsStyle,
+    );
+  }
 }
 
 class VoiceSettingsStore extends ChangeNotifier {
@@ -74,6 +89,7 @@ class VoiceSettingsStore extends ChangeNotifier {
   bool get spokenResponses => _settings.spokenResponses;
   VoiceSpeed get speed => _settings.speed;
   bool get liveTranscript => _settings.liveTranscript;
+  String get ttsStyle => _settings.ttsStyle;
 
   Future<void> initialize() async {
     if (_initialized) return;
@@ -112,6 +128,12 @@ class VoiceSettingsStore extends ChangeNotifier {
 
   Future<bool> setLiveTranscript(bool value) =>
       _update(_settings.copyWith(liveTranscript: value));
+
+  Future<bool> setTtsStyle(String value) => _update(
+        _settings.copyWith(
+          ttsStyle: ttsStyles.contains(value) ? value : defaultTtsStyle,
+        ),
+      );
 
   Future<bool> _update(VoiceSettings next) async {
     _settings = next;

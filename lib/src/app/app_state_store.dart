@@ -7,6 +7,8 @@ import 'package:finn_ai/src/features/actions/action_audit_store.dart';
 import 'package:finn_ai/src/features/conversations/conversation_store.dart';
 import 'package:finn_ai/src/features/creations/creation_store.dart';
 import 'package:finn_ai/src/inference/finn_inference.dart';
+import 'package:finn_ai/src/features/creations/home_screen_service.dart';
+import 'package:finn_ai/src/features/flows/flow_scheduler.dart';
 import 'package:finn_ai/src/features/flows/flows_store.dart';
 import 'package:finn_ai/src/features/onboarding/context_consent_store.dart';
 import 'package:finn_ai/src/features/voice/tts/tts_voice_store.dart';
@@ -70,6 +72,8 @@ class AppStateStore extends ChangeNotifier {
     YouMemoryStore? youMemoryStore,
     SttModelStore? sttModelStore,
     TtsVoiceStore? ttsVoiceStore,
+    HomeScreenService? homeScreen,
+    FlowScheduler? flowScheduler,
   }) async {
     final deleted = <String>[];
     final nonExistent = <String>[];
@@ -131,6 +135,19 @@ class AppStateStore extends ChangeNotifier {
       failed.add('Local creations ($e)');
     }
 
+    // What the user did to placed home-screen widgets (counts, ticks) lives
+    // in the launcher's process, not in the creations folder. Only the real
+    // app has that channel; tests that point at a temporary folder do not.
+    final widgets = homeScreen ??
+        (_directoryProvider == null ? HomeScreenService.instance : null);
+    if (widgets != null) {
+      try {
+        await widgets.clearWidgetState();
+      } catch (_) {
+        // No placed widgets, or not Android: nothing to forget.
+      }
+    }
+
     final profileTarget = youProfileStore ??
         (_directoryProvider == null
             ? YouProfileStore.instance
@@ -158,6 +175,17 @@ class AppStateStore extends ChangeNotifier {
             ? FlowsStore.instance
             : FlowsStore(directoryProvider: _directoryProvider));
     final flowFailures = await flowTarget.deleteStorage();
+    // Alarms and event listeners armed natively would fire for flows that no
+    // longer exist.
+    final scheduler =
+        flowScheduler ?? (_directoryProvider == null ? FlowScheduler() : null);
+    if (scheduler != null) {
+      try {
+        await scheduler.disarmAll();
+      } catch (_) {
+        // Nothing was armed, or the platform has no scheduler.
+      }
+    }
     if (flowFailures.isEmpty) {
       deleted.add('Flows');
     } else {

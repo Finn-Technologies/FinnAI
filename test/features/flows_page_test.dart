@@ -92,13 +92,8 @@ void main() {
           description: 'Sets an alarm',
           instructions: 'x',
           category: 'Custom',
-          steps: const [
-            FlowStep(
-              kind: FlowStepKind.deviceAction,
-              text: 'Set the alarm',
-              actionName: 'set_alarm',
-              arguments: {'hour': '7', 'minute': '0'},
-            ),
+          blocks: const [
+            FlowBlock.action('set_alarm', {'hour': '7', 'minute': '0'}),
           ],
         );
 
@@ -152,7 +147,7 @@ void main() {
         name: 'Note',
         description: '',
         instructions: 'x',
-        steps: const [FlowStep(kind: FlowStepKind.prompt, text: 'Summarise')],
+        blocks: const [FlowBlock.ask('Summarise')],
       );
       await open(tester);
       await openDetail(tester, store.flows.last);
@@ -160,7 +155,7 @@ void main() {
       expect(find.text('Run now'), findsWidgets);
       // A flow that cannot touch the phone needs no permission, so it is not
       // offered one.
-      expect(find.text('Let this run by itself'), findsNothing);
+      expect(find.text('Let it run by itself'), findsNothing);
     });
 
     testWidgets('a device-action flow offers the standing grant', (
@@ -171,14 +166,21 @@ void main() {
         name: 'Wake me',
         description: '',
         instructions: 'x',
-        steps: alarmFlow().steps,
+        blocks: alarmFlow().blocks,
+        triggers: const [FlowTrigger.daily(7, 0)],
       );
       await open(tester);
       await openDetail(tester, store.flows.last);
 
-      expect(find.text('Let this run by itself'), findsOneWidget);
-      expect(
-          find.textContaining('needs this before it can run'), findsOneWidget);
+      // The chart is long; the permission sits below it.
+      await tester.scrollUntilVisible(
+        find.text('Let it run by itself'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.text('Let it run by itself'), findsOneWidget);
+      expect(find.textContaining('Allow it to run when you are not looking'),
+          findsOneWidget);
       // The grant is its own control, not a repurposing of the enable switch:
       // turning the flow on is not permission for it to act on its own.
       final flow = store.flows.last;
@@ -197,7 +199,7 @@ void main() {
         name: 'Wake me',
         description: '',
         instructions: 'x',
-        steps: alarmFlow().steps,
+        blocks: alarmFlow().blocks,
       );
       await open(tester);
       await openDetail(tester, store.flows.last);
@@ -224,7 +226,7 @@ void main() {
         name: 'Wake me',
         description: '',
         instructions: 'x',
-        steps: alarmFlow().steps,
+        blocks: alarmFlow().blocks,
       );
       await open(tester);
       await openDetail(tester, store.flows.last);
@@ -249,7 +251,7 @@ void main() {
         name: 'Wake me',
         description: '',
         instructions: 'x',
-        steps: alarmFlow().steps,
+        blocks: alarmFlow().blocks,
       );
       await store.recordRun(FlowRun(
         id: 'run-0',
@@ -279,8 +281,8 @@ void main() {
         name: 'Wake me',
         description: '',
         instructions: 'x',
-        steps: alarmFlow().steps,
-        trigger: const FlowTrigger.daily(7, 0),
+        blocks: alarmFlow().blocks,
+        triggers: const [FlowTrigger.daily(7, 0)],
       );
       await store.recordRun(FlowRun(
         id: 'run-0',

@@ -1,17 +1,17 @@
 import 'package:flutter/foundation.dart';
 
-import 'package:finn_ai/src/features/voice/tts/sherpa_tts_backend.dart';
+import 'package:finn_ai/src/features/voice/tts/local_tts_backend.dart';
 import 'package:finn_ai/src/features/voice/tts_backend.dart';
 
-/// The app's voice: the on-device Piper voice when one is installed, and the
+/// The app's voice: the on-device Supertonic voice when one is installed, and the
 /// platform's text-to-speech engine otherwise (a user who skipped the
 /// download, or an engine on a phone that has one).
 class FallbackTtsBackend implements TtsBackend {
-  FallbackTtsBackend({SherpaTtsBackend? onDevice, TtsBackend? platform})
-      : _onDevice = onDevice ?? SherpaTtsBackend(),
+  FallbackTtsBackend({LocalTtsBackend? onDevice, TtsBackend? platform})
+      : _onDevice = onDevice ?? LocalTtsBackend(),
         _platform = platform ?? FlutterTtsBackend();
 
-  final SherpaTtsBackend _onDevice;
+  final LocalTtsBackend _onDevice;
   final TtsBackend _platform;
   String? _language;
 

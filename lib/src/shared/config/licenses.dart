@@ -78,7 +78,7 @@ class _SpeechLicenseEntry extends LicenseEntry {
         'onnxruntime',
         'whisper',
         'silero-vad',
-        'piper',
+        'supertonic',
       ];
 
   @override
@@ -93,41 +93,20 @@ class _SpeechLicenseEntry extends LicenseEntry {
       'OpenAI. https://github.com/openai/whisper\n'
       'Silero VAD: MIT License, Copyright (c) 2020-present Silero Team. '
       'https://github.com/snakers4/silero-vad\n'
-      'Piper (Rhasspy), the voice models: MIT License. '
-      'https://github.com/rhasspy/piper\n\n'
-      'Voice data: English "LJ Speech", public domain. German "Thorsten-Voice", '
-      'Spanish (davefx), Italian (Paola Persico) and Russian (denis), CC0 1.0. '
-      'French "SIWIS", University of Edinburgh, CC BY 4.0 '
-      '(https://datashare.is.ed.ac.uk/handle/10283/2353).',
-      0,
-    );
-  }
-}
-
-class _EspeakLicenseEntry extends LicenseEntry {
-  const _EspeakLicenseEntry();
-
-  @override
-  Iterable<String> get packages => const ['espeak-ng'];
-
-  @override
-  Iterable<LicenseParagraph> get paragraphs sync* {
-    yield const LicenseParagraph(
-      'espeak-ng\n'
-      'GNU General Public License, version 3 or later\n\n'
-      'FinnAI\'s on-device speech library (sherpa-onnx) includes espeak-ng, '
-      'which turns text into phonemes for the spoken-reply voices. espeak-ng is '
-      'free software licensed under the GNU General Public License, version 3 '
-      'or (at your option) any later version: you can redistribute it and/or '
-      'modify it under the terms of that licence, published at '
-      'https://www.gnu.org/licenses/gpl-3.0.html. It is distributed in the hope '
-      'that it will be useful, but WITHOUT ANY WARRANTY; without even the '
-      'implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR '
-      'PURPOSE.\n\n'
-      'The source code of espeak-ng is available at '
-      'https://github.com/espeak-ng/espeak-ng and of the sherpa-onnx build that '
-      'contains it at https://github.com/k2-fsa/sherpa-onnx. To ask for a copy '
-      'of the corresponding source, write to finn_org@proton.me.',
+      'Supertonic 3 (Supertone Inc.), the voice model: BigScience OpenRAIL-M '
+      'License; its sample code, from which the text handling is derived, is '
+      'MIT License, Copyright (c) 2025 Supertone Inc. '
+      'https://huggingface.co/supertone-oss-archive/supertonic-3\n\n'
+      'The Supertonic model is used under its OpenRAIL-M licence, which allows '
+      'commercial use and requires that it is not used for the purposes the '
+      'licence restricts, among them: generating or spreading disinformation, '
+      'impersonating a person without their consent, harassment, and '
+      'discrimination. FinnAI uses it only to read replies aloud, with four '
+      'built-in voices, and never clones a voice. Whoever receives the model '
+      'is bound by the same restrictions. The full licence is at '
+      'https://huggingface.co/supertone-oss-archive/supertonic-3/blob/main/LICENSE.\n\n'
+      'The speech library is built from the sherpa-onnx source with its '
+      'text-to-speech part switched off, so it contains no espeak-ng.',
       0,
     );
   }
@@ -141,9 +120,8 @@ void registerModelLicenses() {
     // android/app/libs/llama-cpp-dart.aar and are not visible to
     // showLicensePage(), so their MIT license is registered manually here.
     yield const _LlamaCppLicenseEntry();
-    // sherpa-onnx, ONNX Runtime and espeak-ng are native libraries inside the
+    // sherpa-onnx and ONNX Runtime are native libraries inside the
     // sherpa_onnx Android packages, also invisible to showLicensePage().
     yield const _SpeechLicenseEntry();
-    yield const _EspeakLicenseEntry();
   });
 }

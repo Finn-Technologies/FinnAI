@@ -183,15 +183,11 @@ Used by voice mode; the model files are downloaded on first use.
 - **ONNX Runtime** (bundled with sherpa-onnx): MIT License. https://github.com/microsoft/onnxruntime
 - **Whisper base**, multilingual, int8 ONNX export by the sherpa-onnx project (`csukuangfj/sherpa-onnx-whisper-base`): MIT License, Copyright (c) 2022 OpenAI. https://github.com/openai/whisper
 - **Silero VAD**: MIT License, Copyright (c) 2020-present Silero Team. https://github.com/snakers4/silero-vad
-- **Piper** VITS voices, int8 builds published by the sherpa-onnx project (`k2-fsa/sherpa-onnx`, release `tts-models`): MIT License (Piper, Michael Hansen / Rhasspy). https://github.com/rhasspy/piper
-  - English: *LJ Speech* dataset, public domain.
-  - German: *Thorsten-Voice* dataset, CC0 1.0.
-  - Spanish (`es_ES-davefx`): voice dataset from OHF-Voice, CC0 1.0.
-  - Italian (`it_IT-paola`): *Voice-Dataset-Italian* by Paola Persico, CC0 1.0.
-  - Russian (`ru_RU-denis`): CC0 1.0.
-  - French (`fr_FR-siwis`): *SIWIS* French Speech Synthesis Database, University of Edinburgh, CC BY 4.0. https://datashare.is.ed.ac.uk/handle/10283/2353
-- **espeak-ng** (phonemizer): GPL-3.0-or-later. **Known licensing risk (owner decision 2026-10-01: ship version 9 as is; not a legal opinion):** the prebuilt `libsherpa-onnx-c-api.so` that the `sherpa_onnx` package ships contains espeak-ng code (confirmed by its strings), and each voice archive carries espeak-ng's data. That is GPL code inside the app. Options: get a legal opinion, build sherpa-onnx without TTS/espeak-ng, or use a text-to-speech runtime that does not need it.
-- **flutter_pcm_sound** (speaker output): MIT License. **archive** (unpacking voices): MIT License.
+- **Supertonic 3** (Supertone Inc.), the spoken-reply voice, downloaded on first use from `supertone-oss-archive/supertonic-3` on Hugging Face: model weights under the **BigScience OpenRAIL-M** License; sample code (from which FinnAI's text handling is derived) under the MIT License, Copyright (c) 2025 Supertone Inc. https://huggingface.co/supertone-oss-archive/supertonic-3
+  - OpenRAIL-M permits commercial use and redistribution, and passes its **use restrictions** on to everyone who receives the model (for example: no disinformation, no impersonation of a person without consent, no harassment or discrimination, no use that harms minors). FinnAI reads replies aloud with four built-in styles and never clones a voice. The licence text is at https://huggingface.co/supertone-oss-archive/supertonic-3/blob/main/LICENSE.
+  - It reads characters directly, so it needs **no phonemizer**. FinnAI runs it with its own C++ layer (`android/app/src/main/cpp/finn_supertonic.cc`) over ONNX Runtime (MIT).
+- **sherpa-onnx is built from source** (`tool/rebuild_sherpa_android.sh`, Apache License 2.0) with text-to-speech switched off, so the shipped library does **not** contain espeak-ng (GPL-3.0); speech *recognition* is unaffected. The earlier Piper voices, which needed espeak-ng, are removed.
+- **flutter_pcm_sound** (speaker output): MIT License. **archive** (unpacking the speech-recognition model): MIT License.
 - **record** (microphone capture): BSD-style licence; the full text is in the in-app Open-Source Licences page.
 
 ---

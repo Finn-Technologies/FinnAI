@@ -6,6 +6,43 @@ import 'package:flutter/services.dart';
 import 'package:finn_ai/src/features/flows/flow_model.dart';
 import 'package:finn_ai/src/features/flows/flow_ports.dart';
 
+/// One trigger, as the platform needs to hear about it.
+@immutable
+class FlowTriggerSpec {
+  const FlowTriggerSpec({
+    required this.flowId,
+    required this.slot,
+    required this.name,
+    required this.trigger,
+    required this.auto,
+  });
+
+  final String flowId;
+
+  /// Which of the flow's triggers this is, so a flow with a morning and an
+  /// evening time keeps two alarms.
+  final int slot;
+  final String name;
+  final FlowTrigger trigger;
+
+  /// Whether the flow may run by itself when this fires. When false the
+  /// platform only tells the user it is due and runs it when they tap.
+  final bool auto;
+
+  Map<String, Object?> toMap() => {
+        'flowId': flowId,
+        'slot': slot,
+        'name': name,
+        'kind': trigger.kind.name,
+        'hour': trigger.hour,
+        'minute': trigger.minute,
+        'days': trigger.daysOfWeek.toList()..sort(),
+        'every': trigger.intervalMinutes,
+        'level': trigger.level,
+        'auto': auto,
+      };
+}
+
 /// The platform side of scheduling and notifying, as a narrow interface so the
 /// service above it is tested with no plugin and no device.
 abstract interface class FlowScheduleBackend {
@@ -14,15 +51,14 @@ abstract interface class FlowScheduleBackend {
   /// Shows the system permission prompt if needed. True when allowed.
   Future<bool> requestNotifications();
 
-  Future<void> schedule({
-    required String flowId,
-    required String name,
-    required int hour,
-    required int minute,
-    required List<int> days,
+  /// Makes the platform's alarms and event listeners exactly [alarms] and
+  /// [events]. Everything not listed is removed, so calling it after any change
+  /// (or at startup) is always safe.
+  Future<void> sync({
+    required List<FlowTriggerSpec> alarms,
+    required List<FlowTriggerSpec> events,
   });
 
-  Future<void> cancel(String flowId);
   Future<void> cancelAll();
 
   Future<void> notify({
@@ -35,7 +71,8 @@ abstract interface class FlowScheduleBackend {
   Future<String?> takePendingFlow();
 }
 
-/// Android: `AlarmManager` + a notification, in `FlowScheduler.kt`.
+/// Android: `AlarmManager`, a listener service and notifications, in
+/// `FlowScheduler.kt` and `FlowTriggerService.kt`.
 class MethodChannelFlowScheduleBackend implements FlowScheduleBackend {
   const MethodChannelFlowScheduleBackend();
 
@@ -62,24 +99,14 @@ class MethodChannelFlowScheduleBackend implements FlowScheduleBackend {
       await _call<bool>('requestNotifications') ?? false;
 
   @override
-  Future<void> schedule({
-    required String flowId,
-    required String name,
-    required int hour,
-    required int minute,
-    required List<int> days,
+  Future<void> sync({
+    required List<FlowTriggerSpec> alarms,
+    required List<FlowTriggerSpec> events,
   }) =>
-      _call<void>('schedule', {
-        'flowId': flowId,
-        'name': name,
-        'hour': hour,
-        'minute': minute,
-        'days': days,
+      _call<void>('sync', {
+        'alarms': [for (final a in alarms) a.toMap()],
+        'events': [for (final e in events) e.toMap()],
       });
-
-  @override
-  Future<void> cancel(String flowId) =>
-      _call<void>('cancel', {'flowId': flowId});
 
   @override
   Future<void> cancelAll() => _call<void>('cancelAll');
@@ -96,9 +123,10 @@ class MethodChannelFlowScheduleBackend implements FlowScheduleBackend {
   Future<String?> takePendingFlow() => _call<String>('takePendingFlow');
 }
 
-/// Keeps the platform alarms in step with the flows the user has enabled.
+/// Keeps the platform's alarms and event listeners in step with the flows the
+/// user has enabled.
 ///
-/// The store is the source of truth; [sync] makes the alarms match it, so
+/// The store is the source of truth; [sync] makes the platform match it, so
 /// calling it after any change (or at startup, or after a restore) is always
 /// safe and never needs to know what changed.
 class FlowScheduler implements FlowNotifier {
@@ -107,41 +135,49 @@ class FlowScheduler implements FlowNotifier {
 
   final FlowScheduleBackend backend;
 
-  final Set<String> _armed = {};
+  List<FlowTriggerSpec> _alarms = const [];
+  List<FlowTriggerSpec> _events = const [];
 
-  /// Ids currently armed. Exposed for tests.
+  /// Flow ids with at least one alarm armed. Exposed for tests.
   @visibleForTesting
-  Set<String> get armed => Set.unmodifiable(_armed);
+  Set<String> get armed => {for (final a in _alarms) a.flowId};
 
-  /// Arms every enabled, scheduled flow and disarms everything else.
+  /// Flow ids with at least one event listener armed. Exposed for tests.
+  @visibleForTesting
+  Set<String> get listening => {for (final e in _events) e.flowId};
+
+  /// Arms every enabled automation's triggers and disarms everything else.
   ///
-  /// Without notification permission nothing is armed: an alarm that cannot
+  /// Without notification permission nothing is armed: a trigger that cannot
   /// tell the user anything would fire invisibly. The flow stays enabled, and
   /// the page tells the user why it is quiet.
   Future<void> sync(List<FinnFlow> flows) async {
-    final wanted = {
-      for (final flow in flows)
-        if (flow.enabled && flow.trigger.isScheduled) flow.id: flow,
-    };
-    final allowed = wanted.isEmpty || await backend.notificationsAllowed();
-    final target = allowed ? wanted : const <String, FinnFlow>{};
-
-    for (final id in _armed.difference(target.keys.toSet())) {
-      await backend.cancel(id);
+    final alarms = <FlowTriggerSpec>[];
+    final events = <FlowTriggerSpec>[];
+    for (final flow in flows) {
+      if (!flow.enabled || !flow.isAutomation) continue;
+      for (var slot = 0; slot < flow.triggers.length; slot++) {
+        final trigger = flow.triggers[slot];
+        if (!trigger.isScheduled && !trigger.isEvent) continue;
+        final spec = FlowTriggerSpec(
+          flowId: flow.id,
+          slot: slot,
+          name: flow.name,
+          trigger: trigger,
+          auto: flow.autoRunIsPermitted,
+        );
+        (trigger.isScheduled ? alarms : events).add(spec);
+      }
     }
-    for (final flow in target.values) {
-      await backend.schedule(
-        flowId: flow.id,
-        name: flow.name,
-        hour: flow.trigger.hour,
-        minute: flow.trigger.minute,
-        days: flow.trigger.daysOfWeek.toList()..sort(),
-      );
-    }
-    _armed
-      ..clear()
-      ..addAll(target.keys);
+    final wanted = alarms.isNotEmpty || events.isNotEmpty;
+    final allowed = !wanted || await backend.notificationsAllowed();
+    _alarms = allowed ? alarms : const [];
+    _events = allowed ? events : const [];
+    await backend.sync(alarms: _alarms, events: _events);
   }
+
+  /// Disarms every alarm and event listener, for "delete all data".
+  Future<void> disarmAll() => sync(const []);
 
   /// Asks for notification permission, explaining nothing itself: the caller
   /// shows its own reason first, because the system prompt has none.

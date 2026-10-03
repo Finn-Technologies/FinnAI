@@ -630,7 +630,46 @@ void main() {
     final openLeft = tester.getTopLeft(
       find.byKey(const ValueKey('home-menu-button')),
     );
-    expect(openLeft.dx - closedLeft.dx, closeTo(390 * .76, 1));
+    expect(openLeft.dx - closedLeft.dx, closeTo(390 * (322 / 420), 1));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the sidebar stays fixed while only the home screen moves', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(theme: FluxTheme.light, home: const HomeShell()),
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final menu = find.byKey(const ValueKey('home-menu-button'));
+    final closedMenuX = tester.getTopLeft(menu).dx;
+
+    await tester.tap(find.byTooltip('Open menu'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 90));
+
+    // Part-way through the opening the home screen is on its way, but the
+    // panel is already exactly where it will end up.
+    final midMenuX = tester.getTopLeft(menu).dx;
+    expect(midMenuX, greaterThan(closedMenuX));
+    expect(midMenuX, lessThan(closedMenuX + 390 * (322 / 420) - 1));
+    final midPanel = tester.getTopLeft(find.text('Creations'));
+
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(tester.getTopLeft(find.text('Creations')), midPanel);
+    expect(tester.getTopLeft(find.text('Creations')).dx, lessThan(100));
+
+    // Closing moves the home screen back and still leaves the panel alone.
+    await tester.tap(menu);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 90));
+    expect(tester.getTopLeft(find.text('Creations')), midPanel);
     expect(tester.takeException(), isNull);
   });
 
@@ -656,7 +695,13 @@ void main() {
       find
           .descendant(
             of: find.byType(HomeShell),
-            matching: find.byType(DecoratedBox),
+            matching: find.byWidgetPredicate(
+              (w) =>
+                  w is DecoratedBox &&
+                  w.decoration is BoxDecoration &&
+                  (w.decoration as BoxDecoration).border is Border &&
+                  (w.decoration as BoxDecoration).borderRadius != null,
+            ),
           )
           .first,
     );
@@ -812,7 +857,7 @@ void main() {
     final initialTitleTop = tester.getTopLeft(find.text('Chats')).dy;
 
     final scrollableState = tester.state<ScrollableState>(
-      find.byType(Scrollable).last,
+      find.byType(Scrollable).first,
     );
     scrollableState.position.jumpTo(120);
     await tester.pump();
@@ -845,7 +890,7 @@ void main() {
       final initialTitleY = tester.getTopLeft(find.text('Chats')).dy;
 
       final scrollableState = tester.state<ScrollableState>(
-        find.byType(Scrollable).last,
+        find.byType(Scrollable).first,
       );
       scrollableState.position.jumpTo(250);
       await tester.pump();

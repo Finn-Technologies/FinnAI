@@ -1,8 +1,8 @@
 // ignore_for_file: invalid_use_of_protected_member
 part of '../home_shell.dart';
 
-/// The screen behind the sidebar panel, the scrim, the panel itself and the one
-/// control that toggles it — the whole open/close surface, kept out of
+/// The fixed sidebar panel, the home screen that slides over it, the scrim and
+/// the one control that toggles it — the whole open/close surface, kept out of
 /// `home_shell.dart` so that file stays inside its size budget.
 ///
 /// The menu/close control is drawn *here* rather than inside [home], because
@@ -24,14 +24,15 @@ class _SidebarSurface extends StatelessWidget {
     required this.onDragEnd,
   });
 
-  /// The chat screen, shifted and rounded away as the panel opens.
+  /// The chat screen, which slides aside and rounds as the panel is uncovered.
   final Widget home;
 
   /// The panel. Empty until it has been opened once, so a first-run install
   /// never builds the conversation grid.
   final Widget sidebar;
 
-  /// Width of the panel, and so the distance the home screen slides by.
+  /// Width of the panel, and so the distance the home screen slides by. The
+  /// panel itself never moves.
   final double sidebarWidth;
 
   /// 0 = closed, 1 = open. Drives the shift, the rounding, the morph and the
@@ -62,68 +63,87 @@ class _SidebarSurface extends StatelessWidget {
       onHorizontalDragEnd: onDragEnd,
       child: Stack(
         children: [
-          ExcludeSemantics(
-            excluding: sidebarOpen,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                borderRadius: radius,
-                // The design outlines the home sheet with a hairline, so the
-                // sliver beside the panel reads as an edge rather than as the
-                // panel simply stopping. It fades in with the sheet's rounding.
-                border: Border.all(
-                  color: FluxColors.panelEdgeOf(context).withValues(
-                    alpha: motion,
-                  ),
-                  width: 1,
+          // The panel never moves. It sits behind the home screen at the left
+          // edge and is uncovered as the home screen slides away, so opening
+          // and closing only ever animate one surface.
+          Positioned(
+            left: 0,
+            top: 0,
+            bottom: 0,
+            child: Offstage(
+              offstage: motion == 0 && !sidebarOpen,
+              child: IgnorePointer(
+                ignoring: !sidebarOpen,
+                child: ExcludeSemantics(
+                  excluding: !sidebarOpen,
+                  child: sidebar,
                 ),
-                boxShadow: [
-                  if (motion > 0)
-                    BoxShadow(
-                      // The only shadow in the app that had no dark branch at
-                      // all: 10% black on a black canvas left the home sheet
-                      // with no lift, so the sidebar looked like a flat wipe.
-                      color: FluxColors.elevationOf(context).withValues(
-                        alpha: 0.10,
+              ),
+            ),
+          ),
+          // The home screen, shifted aside, rounded and lifted as the panel
+          // is uncovered. The scrim that closes the panel rides with it, so
+          // a tap on the sliver of home screen still closes it while taps on
+          // the panel itself reach the panel.
+          Transform.translate(
+            offset: Offset(sidebarWidth * motion, 0),
+            child: Stack(
+              children: [
+                ExcludeSemantics(
+                  excluding: sidebarOpen,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      borderRadius: radius,
+                      // The design outlines the home sheet with a hairline, so
+                      // the sliver beside the panel reads as an edge rather
+                      // than as the panel simply stopping. It fades in with
+                      // the sheet's rounding.
+                      border: Border.all(
+                        color: FluxColors.panelEdgeOf(context).withValues(
+                          alpha: motion,
+                        ),
+                        width: 1,
                       ),
-                      blurRadius: 55,
-                      offset: const Offset(-10, 0),
+                      boxShadow: [
+                        if (motion > 0)
+                          BoxShadow(
+                            // The only shadow in the app that had no dark
+                            // branch at all: 10% black on a black canvas left
+                            // the home sheet with no lift.
+                            color: FluxColors.elevationOf(context).withValues(
+                              alpha: 0.10,
+                            ),
+                            blurRadius: 55,
+                            offset: const Offset(-10, 0),
+                          ),
+                      ],
                     ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: radius,
-                child: Transform.translate(
-                  // The panel covers three quarters of the screen; the home
-                  // screen stays visible beside it, rounded and lifted, as in
-                  // the design.
-                  offset: Offset(sidebarWidth * motion, 0),
-                  child: home,
+                    child: ClipRRect(
+                      borderRadius: radius,
+                      // Rasterised once: sliding the sheet then moves a cached
+                      // layer instead of repainting the whole chat screen
+                      // every frame.
+                      child: RepaintBoundary(child: home),
+                    ),
+                  ),
                 ),
-              ),
+                Positioned.fill(
+                  child: IgnorePointer(
+                    ignoring: !sidebarOpen,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => onToggle(),
+                      child: const SizedBox.expand(),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          IgnorePointer(
-            ignoring: !sidebarOpen,
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () => onToggle(),
-              child: const SizedBox.expand(),
-            ),
-          ),
-          IgnorePointer(
-            ignoring: !sidebarOpen,
-            child: ExcludeSemantics(
-              excluding: !sidebarOpen,
-              child: FractionalTranslation(
-                translation: Offset(-1 + motion, 0),
-                child: sidebar,
-              ),
-            ),
-          ),
-          // Above the scrim and the panel, so it stays reachable in both states.
-          // It rides the home screen's own travel: the design shows the
-          // control sliding off to the right with the surface it belongs to,
-          // rather than staying put over the incoming panel.
+          // Above the panel and the home screen, so it stays reachable in both
+          // states. It rides the home screen's own travel: the design shows
+          // the control sliding off to the right with the surface it belongs
+          // to, rather than staying put over the panel.
           Positioned(
             left: toggleLeft + sidebarWidth * motion,
             top: toggleTop,
@@ -154,12 +174,15 @@ extension _HomeShellSidebarDrag on _HomeShellState {
   void _sidebarDragStart(DragStartDetails details) {
     _sidebarDragBase = _sidebarController.value;
     _sidebarController.stop();
+    // The panel is built lazily on the first open; a drag that starts that
+    // open has to find it already there, or it pops in only on release.
+    if (!_sidebarEverOpened) setState(() => _sidebarEverOpened = true);
   }
 
   void _sidebarDragUpdate(DragUpdateDetails details, double travel) {
     if (travel <= 0) return;
-    // Dragging right opens: the panel comes from the left edge, so it follows
-    // the finger in the same direction rather than the opposite one.
+    // Dragging right opens: the panel is uncovered from the left edge, so the
+    // sheet follows the finger in the same direction.
     _sidebarController.value =
         (_sidebarDragBase + details.primaryDelta! / travel).clamp(0.0, 1.0);
   }
@@ -172,9 +195,15 @@ extension _HomeShellSidebarDrag on _HomeShellState {
     final velocity = details.primaryVelocity ?? 0;
     final travelled = _sidebarController.value - _sidebarDragBase;
     // A positive velocity is a rightward flick, which opens.
+    // From closed the finger must travel the commit distance to open; from open
+    // it must travel that far back to close, so a nudge never flips the state.
     final opening = velocity.abs() > _flickVelocity
         ? velocity > 0
-        : travelled > _commitFraction;
-    _setSidebar(opening);
+        : (_sidebarDragBase > .5
+            ? travelled > -_commitFraction
+            : travelled > _commitFraction);
+    // Hand the finger's speed on to the spring so the sheet keeps its
+    // momentum instead of restarting from rest.
+    _setSidebar(opening, velocity: velocity / travel);
   }
 }

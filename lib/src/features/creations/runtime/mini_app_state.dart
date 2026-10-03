@@ -63,6 +63,61 @@ class MiniAppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Puts back what an earlier launch saved.
+  ///
+  /// Saved values are untrusted input (a file on disk): only keys the spec
+  /// still uses are taken, each must have the same shape as the key's starting
+  /// value, and text and lists are capped, so a damaged or hand-edited file can
+  /// at worst leave a key at its default.
+  void restore(Map<String, Object?> saved) {
+    var changed = false;
+    for (final key in _initial.keys) {
+      if (!saved.containsKey(key)) continue;
+      final value = _coerce(_initial[key], saved[key]);
+      if (value == null) continue;
+      _values[key] = value;
+      changed = true;
+    }
+    if (!changed) return;
+    _revision++;
+    notifyListeners();
+  }
+
+  /// Longest saved text, and most saved list entries.
+  static const int maxSavedText = 500;
+  static const int maxSavedItems = 200;
+
+  static String _cap(String text) => text.runes.length <= maxSavedText
+      ? text
+      : String.fromCharCodes(text.runes.take(maxSavedText));
+
+  static Object? _coerce(Object? shape, Object? value) {
+    switch (shape) {
+      case bool _:
+        return value is bool ? value : null;
+      case int _:
+        return switch (value) {
+          final int number => number,
+          final double number when number.isFinite => number.round(),
+          _ => null,
+        };
+      case double _:
+        return value is num && value.isFinite ? value.toDouble() : null;
+      case List<Object?> _:
+        if (value is! List) return null;
+        return [
+          for (final item in value.take(maxSavedItems))
+            if (item != null) _cap('$item'),
+        ];
+      default:
+        return switch (value) {
+          final String text => _cap(text),
+          final int number => number.toString(),
+          _ => null,
+        };
+    }
+  }
+
   void reset() {
     _values = Map<String, Object?>.from(_initial);
     _revision++;

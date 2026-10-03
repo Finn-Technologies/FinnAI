@@ -28,13 +28,28 @@ extension _HomeShellNavigation on _HomeShellState {
     setState(() {});
   }
 
-  Future<void> _openCreations() async {
-    await _closeSidebarForNavigation();
-    if (!mounted) return;
-    Navigator.of(
-      context,
-    ).push(FinnPageRoute<void>(child: const CreationsPage()));
+  /// Pushes [page] from a sidebar destination.
+  ///
+  /// The page is pushed at once and the panel closes *behind* it when the push
+  /// has settled, so the move is one motion from the panel to the page. Closing
+  /// the panel first would slide the chat back into view for a moment and only
+  /// then open the page, which read as two animations.
+  Future<void> _pushFromSidebar(Widget page) {
+    if (!mounted) return Future.value();
+    return Navigator.of(context).push(
+      FinnPageRoute<void>(child: page, onSettled: _dismissSidebarBehindPage),
+    );
   }
+
+  /// Closes the panel without animating: a page already covers it.
+  void _dismissSidebarBehindPage() {
+    if (!mounted || (!_sidebar && _sidebarController.value == 0)) return;
+    _sidebarController.stop();
+    _sidebarController.value = 0;
+    setState(() => _sidebar = false);
+  }
+
+  Future<void> _openCreations() => _pushFromSidebar(const CreationsPage());
 
   /// Starts building something from the plus menu.
   void _startCreate(String kind) {
@@ -53,110 +68,75 @@ extension _HomeShellNavigation on _HomeShellState {
     );
   }
 
-  Future<void> _openYou() async {
-    await _closeSidebarForNavigation();
-    if (!mounted) return;
-    Navigator.of(context).push(
-      FinnPageRoute<void>(
-        child: YouPage(onBack: () => Navigator.of(context).pop()),
-      ),
-    );
-  }
+  Future<void> _openYou() => _pushFromSidebar(
+        YouPage(onBack: () => Navigator.of(context).pop()),
+      );
 
-  Future<void> _openSkills({bool startNew = false}) async {
-    await _closeSidebarForNavigation();
-    if (!mounted) return;
-    Navigator.of(context).push(
-      FinnPageRoute<void>(
-        child: FlowsPage(
+  Future<void> _openSkills({bool startNew = false}) => _pushFromSidebar(
+        FlowsPage(
           onBack: () => Navigator.of(context).pop(),
-          runner: _flowRunner,
-          scheduler: _flowScheduler,
+          runner: _flows.runner,
+          scheduler: _flows.scheduler,
           onOpenResult: _openFlowResult,
           startNew: startNew,
         ),
-      ),
-    );
-  }
+      );
 
-  Future<void> _openSettings() async {
-    await _closeSidebarForNavigation();
-    if (!mounted) return;
-    Navigator.of(context).push(
-      FinnPageRoute<void>(
-        child: SettingsPage(
+  Future<void> _openSettings() => _pushFromSidebar(
+        SettingsPage(
           onBack: () => Navigator.of(context).pop(),
           onOpenActions: _openDeviceActions,
           onOpenYou: _openYou,
         ),
-      ),
-    );
-  }
+      );
 
-  Future<void> _openSearch() async {
-    await _closeSidebarForNavigation();
-    if (!mounted) return;
-    Navigator.of(context).push(
-      FinnPageRoute<void>(
-        child: FinnSearchPage(
-          onOpenChat: (id) {
-            Navigator.of(context).pop();
-            _activateConversation(id);
-          },
-          onOpenCreations: () {
-            Navigator.of(context).pop();
-            unawaited(_openCreations());
-          },
-          onOpenYou: () {
-            Navigator.of(context).pop();
-            unawaited(_openYou());
-          },
-        ),
-      ),
-    );
-  }
-
-  Future<void> _openDeviceActions() async {
-    if (!mounted) return;
-    Navigator.of(context).push(
+  Future<void> _openDeviceActions() {
+    if (!mounted) return Future.value();
+    return Navigator.of(context).push(
       FinnPageRoute<void>(
         child: DeviceActionsPage(onBack: () => Navigator.of(context).pop()),
       ),
     );
   }
 
-  Future<void> _openDeviceActionsFromSidebar() async {
-    await _closeSidebarForNavigation();
-    if (!mounted) return;
-    await _openDeviceActions();
-  }
+  Future<void> _openDeviceActionsFromSidebar() => _pushFromSidebar(
+        DeviceActionsPage(onBack: () => Navigator.of(context).pop()),
+      );
 
-  void _setSidebar(bool open) {
-    if (_sidebar == open) return;
-    HapticFeedback.selectionClick();
-    setState(() {
-      _sidebar = open;
-      if (open) _sidebarEverOpened = true;
-    });
-    final reduced = MediaQuery.disableAnimationsOf(context);
-    if (reduced) {
-      _sidebarController.value = open ? 1 : 0;
-    } else if (open) {
-      _sidebarController.forward();
-    } else {
-      _sidebarController.reverse();
+  /// Opens or closes the panel. [velocity] is the release speed of a drag in
+  /// panels per second (positive opens), so a flick carries on at its own pace.
+  void _setSidebar(bool open, {double velocity = 0}) {
+    if (_sidebar != open) {
+      HapticFeedback.selectionClick();
+      setState(() {
+        _sidebar = open;
+        if (open) _sidebarEverOpened = true;
+      });
     }
+    _settleSidebar(open, velocity: velocity);
   }
 
-  Future<void> _closeSidebarForNavigation() async {
-    if (!_sidebar) return;
-    setState(() {
-      _sidebar = false;
-    });
+  /// Settles the panel with a critically damped spring: no overshoot, and the
+  /// same motion whether it was tapped or released from a drag mid-way.
+  TickerFuture _settleSidebar(bool open, {double velocity = 0}) {
     if (MediaQuery.disableAnimationsOf(context)) {
-      _sidebarController.value = 0;
-    } else {
-      await _sidebarController.reverse();
+      _sidebarController.value = open ? 1 : 0;
+      return TickerFuture.complete();
     }
+    // ScrollSpringSimulation lands exactly on the target, so the sheet never
+    // rests a fraction of a pixel short of open or closed.
+    return _sidebarController.animateWith(
+      ScrollSpringSimulation(
+        SpringDescription.withDampingRatio(
+          mass: 1,
+          stiffness: 550,
+          ratio: 1,
+        ),
+        _sidebarController.value,
+        open ? 1 : 0,
+        velocity,
+        tolerance: const Tolerance(distance: .002, velocity: .05),
+      ),
+    );
   }
 }

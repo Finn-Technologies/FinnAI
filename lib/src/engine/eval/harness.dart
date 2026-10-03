@@ -427,6 +427,11 @@ Future<void> runEvalHarness({EvalGrounder? grounder}) async {
         // ignore: avoid_print
         print('FINN_EVAL_ERROR baseline rejected: $error');
       }
+    } else {
+      // A gate run without its baseline still emits a passing-looking GATE
+      // with only the absolute checks, so a missing file must be loud.
+      // ignore: avoid_print
+      print('FINN_EVAL_ERROR baseline not found: $baselinePath');
     }
   }
 

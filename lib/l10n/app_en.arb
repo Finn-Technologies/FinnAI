@@ -3586,5 +3586,898 @@
   "flowsStepNotifyMe": "Notify me",
   "@flowsStepNotifyMe": {
     "description": "flowsStepNotifyMe"
+  },
+  "creationsTemplateTracker": "Tracker",
+  "@creationsTemplateTracker": {
+    "description": "Creations template/editor label"
+  },
+  "creationsSlotStep": "Added per tap",
+  "@creationsSlotStep": {
+    "description": "Creations template/editor label"
+  },
+  "creationsResetAppTitle": "Reset this app?",
+  "@creationsResetAppTitle": {
+    "description": "Title of the confirmation before a mini app forgets what it holds"
+  },
+  "creationsResetAppBody": "Everything you added to it is cleared. This cannot be undone.",
+  "@creationsResetAppBody": {
+    "description": "Body of the confirmation before a mini app forgets what it holds"
+  },
+  "deviceActionVibrate": "Vibrate the phone",
+  "@deviceActionVibrate": {
+    "description": "Confirmation line for the vibrate device action"
+  },
+  "flowsTrigManual": "Only when I start it",
+  "@flowsTrigManual": {
+    "description": "Flows editor label"
+  },
+  "flowsTrigTimeOfDay": "At a set time",
+  "@flowsTrigTimeOfDay": {
+    "description": "Flows editor label"
+  },
+  "flowsTrigEveryMinutes": "Every {n} minutes",
+  "@flowsTrigEveryMinutes": {
+    "description": "Flows editor label",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "flowsTrigEveryHours": "Every {n} hours",
+  "@flowsTrigEveryHours": {
+    "description": "Flows editor label",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "flowsTrigEveryHour": "Every hour",
+  "@flowsTrigEveryHour": {
+    "description": "Flows editor label"
+  },
+  "flowsTrigInterval": "Repeating",
+  "@flowsTrigInterval": {
+    "description": "Flows editor label"
+  },
+  "flowsTrigChargerOn": "Charger connected",
+  "@flowsTrigChargerOn": {
+    "description": "Flows editor label"
+  },
+  "flowsTrigChargerOff": "Charger disconnected",
+  "@flowsTrigChargerOff": {
+    "description": "Flows editor label"
+  },
+  "flowsTrigBatteryLow": "Battery drops to {n}%",
+  "@flowsTrigBatteryLow": {
+    "description": "Flows editor label",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "flowsTrigHeadsetOn": "Headphones connected",
+  "@flowsTrigHeadsetOn": {
+    "description": "Flows editor label"
+  },
+  "flowsTrigHeadsetOff": "Headphones disconnected",
+  "@flowsTrigHeadsetOff": {
+    "description": "Flows editor label"
+  },
+  "flowsTrigWifiOn": "Wi‑Fi connected",
+  "@flowsTrigWifiOn": {
+    "description": "Flows editor label"
+  },
+  "flowsTrigWifiOff": "Wi‑Fi disconnected",
+  "@flowsTrigWifiOff": {
+    "description": "Flows editor label"
+  },
+  "flowsTrigAirplaneOn": "Airplane mode turns on",
+  "@flowsTrigAirplaneOn": {
+    "description": "Flows editor label"
+  },
+  "flowsTrigAirplaneOff": "Airplane mode turns off",
+  "@flowsTrigAirplaneOff": {
+    "description": "Flows editor label"
+  },
+  "flowsTrigBoot": "Phone starts up",
+  "@flowsTrigBoot": {
+    "description": "Flows editor label"
+  },
+  "flowsTrigUnlock": "Screen unlocked",
+  "@flowsTrigUnlock": {
+    "description": "Flows editor label"
+  },
+  "flowsTrigGroupTime": "Time",
+  "@flowsTrigGroupTime": {
+    "description": "Flows editor label"
+  },
+  "flowsTrigGroupPhone": "On the phone",
+  "@flowsTrigGroupPhone": {
+    "description": "Flows editor label"
+  },
+  "flowsTrigGroupHand": "By hand",
+  "@flowsTrigGroupHand": {
+    "description": "Flows editor label"
+  },
+  "flowsCondBatteryBelow": "Battery below {n}%",
+  "@flowsCondBatteryBelow": {
+    "description": "Flows editor label",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "flowsCondBatteryAbove": "Battery above {n}%",
+  "@flowsCondBatteryAbove": {
+    "description": "Flows editor label",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "flowsCondCharging": "Charging",
+  "@flowsCondCharging": {
+    "description": "Flows editor label"
+  },
+  "flowsCondNotCharging": "Not charging",
+  "@flowsCondNotCharging": {
+    "description": "Flows editor label"
+  },
+  "flowsCondTimeBetween": "Between {from} and {to}",
+  "@flowsCondTimeBetween": {
+    "description": "Flows editor label",
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "flowsCondDays": "On {days}",
+  "@flowsCondDays": {
+    "description": "Flows editor label",
+    "placeholders": {
+      "days": {
+        "type": "String"
+      }
+    }
+  },
+  "flowsCondWifiOn": "Wi‑Fi connected",
+  "@flowsCondWifiOn": {
+    "description": "Flows editor label"
+  },
+  "flowsCondWifiOff": "Wi‑Fi not connected",
+  "@flowsCondWifiOff": {
+    "description": "Flows editor label"
+  },
+  "flowsCondHeadsetOn": "Headphones connected",
+  "@flowsCondHeadsetOn": {
+    "description": "Flows editor label"
+  },
+  "flowsCondHeadsetOff": "Headphones not connected",
+  "@flowsCondHeadsetOff": {
+    "description": "Flows editor label"
+  },
+  "flowsCondAirplaneOn": "Airplane mode on",
+  "@flowsCondAirplaneOn": {
+    "description": "Flows editor label"
+  },
+  "flowsCondAirplaneOff": "Airplane mode off",
+  "@flowsCondAirplaneOff": {
+    "description": "Flows editor label"
+  },
+  "flowsCondAnswer": "The answer mentions “{text}”",
+  "@flowsCondAnswer": {
+    "description": "Flows editor label",
+    "placeholders": {
+      "text": {
+        "type": "String"
+      }
+    }
+  },
+  "flowsBlockAsk": "Ask FinnAI",
+  "@flowsBlockAsk": {
+    "description": "Flows editor label"
+  },
+  "flowsBlockAskSub": "Write something with the on-device model",
+  "@flowsBlockAskSub": {
+    "description": "Flows editor label"
+  },
+  "flowsBlockWeb": "Look up",
+  "@flowsBlockWeb": {
+    "description": "Flows editor label"
+  },
+  "flowsBlockWebSub": "News, weather or the web",
+  "@flowsBlockWebSub": {
+    "description": "Flows editor label"
+  },
+  "flowsBlockNotify": "Notify me",
+  "@flowsBlockNotify": {
+    "description": "Flows editor label"
+  },
+  "flowsBlockNotifySub": "Show a notification",
+  "@flowsBlockNotifySub": {
+    "description": "Flows editor label"
+  },
+  "flowsBlockSpeak": "Say it out loud",
+  "@flowsBlockSpeak": {
+    "description": "Flows editor label"
+  },
+  "flowsBlockSpeakSub": "Speak with the phone’s voice",
+  "@flowsBlockSpeakSub": {
+    "description": "Flows editor label"
+  },
+  "flowsBlockAction": "Do on the phone",
+  "@flowsBlockAction": {
+    "description": "Flows editor label"
+  },
+  "flowsBlockActionSub": "Flashlight, volume, alarm, open an app",
+  "@flowsBlockActionSub": {
+    "description": "Flows editor label"
+  },
+  "flowsBlockWait": "Wait",
+  "@flowsBlockWait": {
+    "description": "Flows editor label"
+  },
+  "flowsBlockWaitSub": "Pause for a few seconds",
+  "@flowsBlockWaitSub": {
+    "description": "Flows editor label"
+  },
+  "flowsBlockBranch": "If … then",
+  "@flowsBlockBranch": {
+    "description": "Flows editor label"
+  },
+  "flowsBlockBranchSub": "Do one thing or another",
+  "@flowsBlockBranchSub": {
+    "description": "Flows editor label"
+  },
+  "flowsBlockSave": "Save to chat",
+  "@flowsBlockSave": {
+    "description": "Flows editor label"
+  },
+  "flowsBlockSaveSub": "Keep the answer as a chat",
+  "@flowsBlockSaveSub": {
+    "description": "Flows editor label"
+  },
+  "flowsBlockStop": "Stop here",
+  "@flowsBlockStop": {
+    "description": "Flows editor label"
+  },
+  "flowsBlockStopSub": "End the flow",
+  "@flowsBlockStopSub": {
+    "description": "Flows editor label"
+  },
+  "flowsSumAsk": "Ask: {text}",
+  "@flowsSumAsk": {
+    "description": "Flows editor label",
+    "placeholders": {
+      "text": {
+        "type": "String"
+      }
+    }
+  },
+  "flowsSumWeb": "Look up {text}",
+  "@flowsSumWeb": {
+    "description": "Flows editor label",
+    "placeholders": {
+      "text": {
+        "type": "String"
+      }
+    }
+  },
+  "flowsSumNotifyAnswer": "Show the answer",
+  "@flowsSumNotifyAnswer": {
+    "description": "Flows editor label"
+  },
+  "flowsSumSpeakAnswer": "Read the answer aloud",
+  "@flowsSumSpeakAnswer": {
+    "description": "Flows editor label"
+  },
+  "flowsSumWait": "Wait {n} s",
+  "@flowsSumWait": {
+    "description": "Flows editor label",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "flowsSumIf": "If {condition}",
+  "@flowsSumIf": {
+    "description": "Flows editor label",
+    "placeholders": {
+      "condition": {
+        "type": "String"
+      }
+    }
+  },
+  "flowsEdWhen": "When",
+  "@flowsEdWhen": {
+    "description": "Flows editor label"
+  },
+  "flowsEdOnlyIf": "Only if",
+  "@flowsEdOnlyIf": {
+    "description": "Flows editor label"
+  },
+  "flowsEdThen": "Then",
+  "@flowsEdThen": {
+    "description": "Flows editor label"
+  },
+  "flowsEdOr": "or",
+  "@flowsEdOr": {
+    "description": "Flows editor label"
+  },
+  "flowsEdYes": "Yes",
+  "@flowsEdYes": {
+    "description": "Flows editor label"
+  },
+  "flowsEdOtherwise": "Otherwise",
+  "@flowsEdOtherwise": {
+    "description": "Flows editor label"
+  },
+  "flowsEdEnd": "Done",
+  "@flowsEdEnd": {
+    "description": "Flows editor label"
+  },
+  "flowsEdAddTrigger": "Add a trigger",
+  "@flowsEdAddTrigger": {
+    "description": "Flows editor label"
+  },
+  "flowsEdAddCondition": "Add a condition",
+  "@flowsEdAddCondition": {
+    "description": "Flows editor label"
+  },
+  "flowsEdAddStep": "Add a step",
+  "@flowsEdAddStep": {
+    "description": "Flows editor label"
+  },
+  "flowsEdInsertHere": "Add a step here",
+  "@flowsEdInsertHere": {
+    "description": "Flows editor label"
+  },
+  "flowsEdNoSteps": "Nothing to do yet. Add the first step.",
+  "@flowsEdNoSteps": {
+    "description": "Flows editor label"
+  },
+  "flowsEdManualStart": "Starts when you tap Run",
+  "@flowsEdManualStart": {
+    "description": "Flows editor label"
+  },
+  "flowsEdMoveUp": "Move up",
+  "@flowsEdMoveUp": {
+    "description": "Flows editor label"
+  },
+  "flowsEdMoveDown": "Move down",
+  "@flowsEdMoveDown": {
+    "description": "Flows editor label"
+  },
+  "flowsEdRemove": "Remove",
+  "@flowsEdRemove": {
+    "description": "Flows editor label"
+  },
+  "flowsEdDone": "Done",
+  "@flowsEdDone": {
+    "description": "Flows editor label"
+  },
+  "flowsEdChooseStep": "What should happen?",
+  "@flowsEdChooseStep": {
+    "description": "Flows editor label"
+  },
+  "flowsEdChooseTrigger": "What starts it?",
+  "@flowsEdChooseTrigger": {
+    "description": "Flows editor label"
+  },
+  "flowsEdChooseCondition": "Only when…",
+  "@flowsEdChooseCondition": {
+    "description": "Flows editor label"
+  },
+  "flowsEdConditionNote": "If this is not true, the flow does not run when something else starts it.",
+  "@flowsEdConditionNote": {
+    "description": "Flows editor label"
+  },
+  "flowsFieldPrompt": "What should FinnAI write?",
+  "@flowsFieldPrompt": {
+    "description": "Flows editor label"
+  },
+  "flowsFieldPromptHint": "Use {input} for the last answer",
+  "@flowsFieldPromptHint": {
+    "description": "Flows editor label",
+    "placeholders": {
+      "input": {
+        "type": "String"
+      }
+    }
+  },
+  "flowsFieldQuery": "What to look up",
+  "@flowsFieldQuery": {
+    "description": "Flows editor label"
+  },
+  "flowsFieldSource": "Where",
+  "@flowsFieldSource": {
+    "description": "Flows editor label"
+  },
+  "flowsSourceWeb": "The web",
+  "@flowsSourceWeb": {
+    "description": "Flows editor label"
+  },
+  "flowsSourceNews": "News",
+  "@flowsSourceNews": {
+    "description": "Flows editor label"
+  },
+  "flowsSourceWeather": "Weather",
+  "@flowsSourceWeather": {
+    "description": "Flows editor label"
+  },
+  "flowsFieldTitle": "Title",
+  "@flowsFieldTitle": {
+    "description": "Flows editor label"
+  },
+  "flowsFieldMessage": "Message",
+  "@flowsFieldMessage": {
+    "description": "Flows editor label"
+  },
+  "flowsFieldMessageHint": "Leave empty to show the last answer",
+  "@flowsFieldMessageHint": {
+    "description": "Flows editor label"
+  },
+  "flowsFieldSay": "What to say",
+  "@flowsFieldSay": {
+    "description": "Flows editor label"
+  },
+  "flowsFieldSayHint": "Leave empty to read the last answer",
+  "@flowsFieldSayHint": {
+    "description": "Flows editor label"
+  },
+  "flowsFieldSeconds": "How many seconds",
+  "@flowsFieldSeconds": {
+    "description": "Flows editor label"
+  },
+  "flowsFieldAction": "What to do",
+  "@flowsFieldAction": {
+    "description": "Flows editor label"
+  },
+  "flowsFieldCondition": "Condition",
+  "@flowsFieldCondition": {
+    "description": "Flows editor label"
+  },
+  "flowsFieldLevel": "Battery level",
+  "@flowsFieldLevel": {
+    "description": "Flows editor label"
+  },
+  "flowsFieldFrom": "From",
+  "@flowsFieldFrom": {
+    "description": "Flows editor label"
+  },
+  "flowsFieldTo": "To",
+  "@flowsFieldTo": {
+    "description": "Flows editor label"
+  },
+  "flowsFieldDays": "Days",
+  "@flowsFieldDays": {
+    "description": "Flows editor label"
+  },
+  "flowsFieldContains": "Contains",
+  "@flowsFieldContains": {
+    "description": "Flows editor label"
+  },
+  "flowsFieldEveryMinutes": "Repeat every",
+  "@flowsFieldEveryMinutes": {
+    "description": "Flows editor label"
+  },
+  "flowsUnitMinutes": "minutes",
+  "@flowsUnitMinutes": {
+    "description": "Flows editor label"
+  },
+  "flowsUnitHours": "hours",
+  "@flowsUnitHours": {
+    "description": "Flows editor label"
+  },
+  "flowsBgWorks": "Works in the background",
+  "@flowsBgWorks": {
+    "description": "Flows editor label"
+  },
+  "flowsBgNeedsScreen": "Needs you to tap a notification",
+  "@flowsBgNeedsScreen": {
+    "description": "Flows editor label"
+  },
+  "flowsAutoTitle": "Let it run by itself",
+  "@flowsAutoTitle": {
+    "description": "Flows editor label"
+  },
+  "flowsAutoNeedsAllow": "This flow changes your phone. Allow it to run when you are not looking.",
+  "@flowsAutoNeedsAllow": {
+    "description": "Flows editor label"
+  },
+  "flowsListenerOn": "FinnAI is listening for these in the background.",
+  "@flowsListenerOn": {
+    "description": "Flows editor label"
+  },
+  "flowsListenerNeedsNotify": "Turn on notifications so FinnAI can keep listening.",
+  "@flowsListenerNeedsNotify": {
+    "description": "Flows editor label"
+  },
+  "flowsRunStatusSkipped": "Conditions not met",
+  "@flowsRunStatusSkipped": {
+    "description": "Flows editor label"
+  },
+  "flowsRunStatusNeedsScreen": "Waiting for you",
+  "@flowsRunStatusNeedsScreen": {
+    "description": "Flows editor label"
+  },
+  "flowsRunSkipped": "Skipped",
+  "@flowsRunSkipped": {
+    "description": "Flows editor label"
+  },
+  "flowsRunNeedsScreen": "Tap to finish",
+  "@flowsRunNeedsScreen": {
+    "description": "Flows editor label"
+  },
+  "flowsRunByEvent": "Ran by itself",
+  "@flowsRunByEvent": {
+    "description": "Flows editor label"
+  },
+  "flowsRunByChat": "Run from chat",
+  "@flowsRunByChat": {
+    "description": "Flows editor label"
+  },
+  "flowsNeedsScreenBody": "Tap to finish “{name}” — it needs the screen.",
+  "@flowsNeedsScreenBody": {
+    "description": "Flows editor label",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "flowsNeedsGrantBody": "“{name}” wanted to run but needs your permission first.",
+  "@flowsNeedsGrantBody": {
+    "description": "Flows editor label",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "flowsStepWaiting": "Waiting",
+  "@flowsStepWaiting": {
+    "description": "Flows editor label"
+  },
+  "flowsPathStep": "Step {n}",
+  "@flowsPathStep": {
+    "description": "Flows editor label",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "flowsDescribeTitle": "Describe your flow",
+  "@flowsDescribeTitle": {
+    "description": "Flows editor label"
+  },
+  "flowsDescribeHint": "For example: when I plug in my charger, turn on the flashlight",
+  "@flowsDescribeHint": {
+    "description": "Flows editor label"
+  },
+  "flowsDescribeBuild": "Build it",
+  "@flowsDescribeBuild": {
+    "description": "Flows editor label"
+  },
+  "flowsDescribeThinking": "Working it out…",
+  "@flowsDescribeThinking": {
+    "description": "Flows editor label"
+  },
+  "flowsDescribeFailed": "I could not turn that into a flow. Try saying when it starts and what it should do.",
+  "@flowsDescribeFailed": {
+    "description": "Flows editor label"
+  },
+  "flowsDescribeMissed": "I did not understand: {parts}",
+  "@flowsDescribeMissed": {
+    "description": "Flows editor label",
+    "placeholders": {
+      "parts": {
+        "type": "String"
+      }
+    }
+  },
+  "flowsDescribeExamples": "Try one of these",
+  "@flowsDescribeExamples": {
+    "description": "Flows editor label"
+  },
+  "flowsExampleCharger": "When I plug in my charger, turn on the flashlight",
+  "@flowsExampleCharger": {
+    "description": "Flows editor label"
+  },
+  "flowsExampleBattery": "When the battery is below 15%, remind me to charge",
+  "@flowsExampleBattery": {
+    "description": "Flows editor label"
+  },
+  "flowsExampleNews": "Every morning at 7 tell me the news",
+  "@flowsExampleNews": {
+    "description": "Flows editor label"
+  },
+  "flowsExampleHeadset": "When I connect headphones, play music",
+  "@flowsExampleHeadset": {
+    "description": "Flows editor label"
+  },
+  "flowsNewBlank": "Start from scratch",
+  "@flowsNewBlank": {
+    "description": "Flows editor label"
+  },
+  "flowsNewBlankSub": "Build it step by step",
+  "@flowsNewBlankSub": {
+    "description": "Flows editor label"
+  },
+  "flowsNewTemplates": "From a template",
+  "@flowsNewTemplates": {
+    "description": "Flows editor label"
+  },
+  "flowsNewTemplatesSub": "News brief, reminder, low battery…",
+  "@flowsNewTemplatesSub": {
+    "description": "Flows editor label"
+  },
+  "flowsTemplateLowBattery": "Low battery alert",
+  "@flowsTemplateLowBattery": {
+    "description": "Flows editor label"
+  },
+  "flowsTemplateLowBatteryBody": "Tells you once when the battery gets low.",
+  "@flowsTemplateLowBatteryBody": {
+    "description": "Flows editor label"
+  },
+  "flowsTemplateHeadset": "Headphones and music",
+  "@flowsTemplateHeadset": {
+    "description": "Flows editor label"
+  },
+  "flowsTemplateHeadsetBody": "Plays or pauses when headphones connect.",
+  "@flowsTemplateHeadsetBody": {
+    "description": "Flows editor label"
+  },
+  "flowsSlotLevel": "Warn at (%)",
+  "@flowsSlotLevel": {
+    "description": "Flows editor label"
+  },
+  "flowsSlotWhat": "What to do",
+  "@flowsSlotWhat": {
+    "description": "Flows editor label"
+  },
+  "flowsSlotPlay": "Play",
+  "@flowsSlotPlay": {
+    "description": "Flows editor label"
+  },
+  "flowsSlotPause": "Pause",
+  "@flowsSlotPause": {
+    "description": "Flows editor label"
+  },
+  "flowsRunsTitle": "Runs",
+  "@flowsRunsTitle": {
+    "description": "Flows editor label"
+  },
+  "flowsRunsAll": "See all runs",
+  "@flowsRunsAll": {
+    "description": "Flows editor label"
+  },
+  "flowsRenameTitle": "Rename flow",
+  "@flowsRenameTitle": {
+    "description": "Flows editor label"
+  },
+  "flowsSavedToast": "Saved",
+  "@flowsSavedToast": {
+    "description": "Flows editor label"
+  },
+  "flowsStepOutcomeSkipped": "Skipped",
+  "@flowsStepOutcomeSkipped": {
+    "description": "Flows editor label"
+  },
+  "flowsChatCreated": "I made a flow: “{name}”. Check it, then turn it on.",
+  "@flowsChatCreated": {
+    "description": "Flows editor label",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "flowsChatOpen": "Open flow",
+  "@flowsChatOpen": {
+    "description": "Flows editor label"
+  },
+  "flowsChatTurnOn": "Turn on",
+  "@flowsChatTurnOn": {
+    "description": "Flows editor label"
+  },
+  "flowsChatIsOn": "Turned on",
+  "@flowsChatIsOn": {
+    "description": "Flows editor label"
+  },
+  "flowsChatDiscard": "Discard",
+  "@flowsChatDiscard": {
+    "description": "Flows editor label"
+  },
+  "flowsActSetAlarm": "Set an alarm",
+  "@flowsActSetAlarm": {
+    "description": "Flows editor label"
+  },
+  "flowsActSetTimer": "Start a timer",
+  "@flowsActSetTimer": {
+    "description": "Flows editor label"
+  },
+  "flowsActShowAlarms": "Show my alarms",
+  "@flowsActShowAlarms": {
+    "description": "Flows editor label"
+  },
+  "flowsActTorch": "Flashlight",
+  "@flowsActTorch": {
+    "description": "Flows editor label"
+  },
+  "flowsActMedia": "Control music",
+  "@flowsActMedia": {
+    "description": "Flows editor label"
+  },
+  "flowsActVolume": "Change the volume",
+  "@flowsActVolume": {
+    "description": "Flows editor label"
+  },
+  "flowsActVibrate": "Vibrate",
+  "@flowsActVibrate": {
+    "description": "Flows editor label"
+  },
+  "flowsActOpenSettings": "Open a settings screen",
+  "@flowsActOpenSettings": {
+    "description": "Flows editor label"
+  },
+  "flowsActOpenApp": "Open an app",
+  "@flowsActOpenApp": {
+    "description": "Flows editor label"
+  },
+  "flowsActDial": "Start a call",
+  "@flowsActDial": {
+    "description": "Flows editor label"
+  },
+  "flowsActSms": "Write a text message",
+  "@flowsActSms": {
+    "description": "Flows editor label"
+  },
+  "flowsActEmail": "Write an email",
+  "@flowsActEmail": {
+    "description": "Flows editor label"
+  },
+  "flowsActPhoto": "Open the camera",
+  "@flowsActPhoto": {
+    "description": "Flows editor label"
+  },
+  "flowsActUrl": "Open a web address",
+  "@flowsActUrl": {
+    "description": "Flows editor label"
+  },
+  "flowsActNavigate": "Get directions",
+  "@flowsActNavigate": {
+    "description": "Flows editor label"
+  },
+  "flowsActShare": "Share text",
+  "@flowsActShare": {
+    "description": "Flows editor label"
+  },
+  "flowsOn": "On",
+  "@flowsOn": {
+    "description": "Flows editor label"
+  },
+  "flowsOff": "Off",
+  "@flowsOff": {
+    "description": "Flows editor label"
+  },
+  "flowsParamState": "State",
+  "@flowsParamState": {
+    "description": "Flows editor label"
+  },
+  "flowsParamDirection": "Direction",
+  "@flowsParamDirection": {
+    "description": "Flows editor label"
+  },
+  "flowsParamScreen": "Screen",
+  "@flowsParamScreen": {
+    "description": "Flows editor label"
+  },
+  "flowsParamTime": "Time",
+  "@flowsParamTime": {
+    "description": "Flows editor label"
+  },
+  "flowsParamSeconds": "Seconds",
+  "@flowsParamSeconds": {
+    "description": "Flows editor label"
+  },
+  "flowsParamMilliseconds": "Milliseconds",
+  "@flowsParamMilliseconds": {
+    "description": "Flows editor label"
+  },
+  "flowsParamLabel": "Label",
+  "@flowsParamLabel": {
+    "description": "Flows editor label"
+  },
+  "flowsParamName": "App name",
+  "@flowsParamName": {
+    "description": "Flows editor label"
+  },
+  "flowsParamNumber": "Phone number",
+  "@flowsParamNumber": {
+    "description": "Flows editor label"
+  },
+  "flowsParamTo": "To",
+  "@flowsParamTo": {
+    "description": "Flows editor label"
+  },
+  "flowsParamBody": "Message",
+  "@flowsParamBody": {
+    "description": "Flows editor label"
+  },
+  "flowsParamSubject": "Subject",
+  "@flowsParamSubject": {
+    "description": "Flows editor label"
+  },
+  "flowsParamUrl": "Web address",
+  "@flowsParamUrl": {
+    "description": "Flows editor label"
+  },
+  "flowsParamQuery": "Place or address",
+  "@flowsParamQuery": {
+    "description": "Flows editor label"
+  },
+  "flowsParamText": "Text",
+  "@flowsParamText": {
+    "description": "Flows editor label"
+  },
+  "flowsPickAction": "What should the phone do?",
+  "@flowsPickAction": {
+    "description": "Flows editor label"
+  },
+  "flowsEveryHowLong": "Repeat every",
+  "@flowsEveryHowLong": {
+    "description": "Flows editor label"
+  },
+  "flowsIntervalNote": "The phone groups timers to save battery, so it can be a few minutes late.",
+  "@flowsIntervalNote": {
+    "description": "Flows editor label"
+  },
+  "flowsBatteryLevelNote": "Runs once when the battery falls to this level.",
+  "@flowsBatteryLevelNote": {
+    "description": "Flows editor label"
+  },
+  "chatCreationReady": "Here it is. Open it, or put it on your home screen.",
+  "@chatCreationReady": {
+    "description": "Reply after FinnAI built something from a chat message"
+  },
+  "chatCreationBuilding": "Building it…",
+  "@chatCreationBuilding": {
+    "description": "Reply while FinnAI builds something from a chat message"
+  },
+  "flowsDetailOnEvent": "On, starts by itself",
+  "@flowsDetailOnEvent": {
+    "description": "Status line of a flow that something else starts"
+  },
+  "voiceStyle": "Voice",
+  "@voiceStyle": {
+    "description": "Settings voice page: speaking voice row title"
+  },
+  "voiceStyleF1": "Female 1",
+  "@voiceStyleF1": {
+    "description": "Speaking voice style name"
+  },
+  "voiceStyleF2": "Female 2",
+  "@voiceStyleF2": {
+    "description": "Speaking voice style name"
+  },
+  "voiceStyleM1": "Male 1",
+  "@voiceStyleM1": {
+    "description": "Speaking voice style name"
+  },
+  "voiceStyleM2": "Male 2",
+  "@voiceStyleM2": {
+    "description": "Speaking voice style name"
   }
 }

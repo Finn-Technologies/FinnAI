@@ -40,7 +40,9 @@ abstract class TtsEngine {
   Stream<TtsEvent> get events;
 
   /// Starts synthesising [text]. Chunks and one [TtsSynthDone] follow.
-  void synth(int id, String text, double speed);
+  /// [style] names a speaking style from [ttsStyles]; null keeps the default.
+  void synth(int id, String text, double speed,
+      {String? language, String? style});
 
   /// Stops whatever is being synthesised as soon as the engine can.
   void cancelAll();

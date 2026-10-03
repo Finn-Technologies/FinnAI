@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'package:finn_ai/src/features/creations/creation_model.dart';
@@ -38,6 +39,10 @@ class CreationStore {
 
   static final instance = CreationStore();
 
+  /// Bumped on every save, so something showing creations (a card in a chat)
+  /// can tell when what it read is out of date without reading the file again.
+  static final ValueNotifier<int> revision = ValueNotifier<int>(0);
+
   /// Current on-disk schema version.
   static const int currentVersion = 2;
 
@@ -63,6 +68,16 @@ class CreationStore {
       await exports.create(recursive: true);
     }
     return exports;
+  }
+
+  /// Directory holding what each mini app remembers between launches.
+  Future<Directory> appStateDirectory() async {
+    final directory = await _directory(create: true);
+    final state = Directory('${directory.path}/app_state');
+    if (!await state.exists()) {
+      await state.create(recursive: true);
+    }
+    return state;
   }
 
   /// Removes every persisted creation and export, returning whether storage
@@ -132,5 +147,6 @@ class CreationStore {
     });
     await temporary.writeAsString(payload, flush: true);
     await temporary.rename(file.path);
+    revision.value++;
   }
 }

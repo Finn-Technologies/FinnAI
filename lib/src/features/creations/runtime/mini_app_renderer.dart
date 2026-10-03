@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'package:finn_ai/src/features/creations/creation_palette.dart';
 import 'package:finn_ai/src/features/creations/runtime/mini_app_state.dart';
@@ -14,9 +15,13 @@ import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
 /// generated creations look like they belong to Finn, and why there is no path
 /// by which a spec could inject arbitrary styling.
 class MiniAppRenderer extends StatefulWidget {
-  const MiniAppRenderer({super.key, required this.state});
+  const MiniAppRenderer({super.key, required this.state, this.skipFirst = 0});
 
   final MiniAppState state;
+
+  /// How many leading top-level nodes the host already shows itself (the
+  /// emoji it draws beside the title), so they are not drawn twice.
+  final int skipFirst;
 
   @override
   State<MiniAppRenderer> createState() => _MiniAppRendererState();
@@ -76,7 +81,7 @@ class _MiniAppRendererState extends State<MiniAppRenderer> {
   Widget build(BuildContext context) {
     final spec = widget.state.spec;
     final children = <Widget>[];
-    for (final node in spec.nodes) {
+    for (final node in spec.nodes.skip(widget.skipFirst)) {
       children.add(_buildNode(context, node));
     }
     return Column(
@@ -85,6 +90,14 @@ class _MiniAppRendererState extends State<MiniAppRenderer> {
       children: children,
     );
   }
+
+  Color get _accent => CreationPalette.pastel(widget.state.spec.accent);
+
+  /// The accent deepened enough to be read as text or a thin line on the page
+  /// background, in both themes.
+  Color _accentInk(BuildContext context) => FluxColors.isDark(context)
+      ? Color.lerp(_accent, Colors.white, .1)!
+      : Color.lerp(_accent, Colors.black, .55)!;
 
   Widget _buildNode(BuildContext context, MiniAppNode node) {
     final child = switch (node) {
@@ -101,7 +114,7 @@ class _MiniAppRendererState extends State<MiniAppRenderer> {
       SpacerNode() => SizedBox(height: node.size.toDouble()),
     };
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: 14),
       child: child,
     );
   }
@@ -110,7 +123,10 @@ class _MiniAppRendererState extends State<MiniAppRenderer> {
     final text = SafeExpression.interpolate(node.value, widget.state.values);
     final theme = Theme.of(context).textTheme;
     final style = switch (node.role) {
-      MiniAppTextRole.title => theme.headlineMedium,
+      MiniAppTextRole.title => theme.headlineMedium?.copyWith(
+          fontWeight: FontWeight.w600,
+          height: 1.15,
+        ),
       MiniAppTextRole.body => theme.bodyLarge,
       MiniAppTextRole.caption => theme.labelMedium?.copyWith(
           color: FluxColors.mutedOf(context),
@@ -119,13 +135,52 @@ class _MiniAppRendererState extends State<MiniAppRenderer> {
     return Text(text, style: style);
   }
 
-  Widget _button(BuildContext context, ButtonNode node) => Align(
-        alignment: Alignment.centerLeft,
-        child: FluxPillButton(
-          label: node.label,
-          onTap: () => widget.state.dispatch(node.action),
+  Widget _button(BuildContext context, ButtonNode node) {
+    // The thing the app is for (add, count, set) is the dark button; undoing
+    // it (reset) is quiet. The accent colours the screen around them.
+    final quiet = node.action is ResetAction;
+    final fill =
+        quiet ? FluxColors.cardOf(context) : FluxColors.actionOf(context);
+    final ink =
+        quiet ? FluxColors.inkOf(context) : FluxColors.actionInkOf(context);
+    return Semantics(
+      button: true,
+      label: node.label,
+      excludeSemantics: true,
+      child: FluxPressScale(
+        child: Material(
+          color: fill,
+          borderRadius: BorderRadius.circular(FluxRadius.pill),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(FluxRadius.pill),
+            onTap: () {
+              HapticFeedback.selectionClick();
+              widget.state.dispatch(node.action);
+            },
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 52),
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+                child: Center(
+                  widthFactor: 1,
+                  child: Text(
+                    node.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          color: ink,
+                          fontWeight: FontWeight.w600,
+                        ),
+                  ),
+                ),
+              ),
+            ),
+          ),
         ),
-      );
+      ),
+    );
+  }
 
   Widget _field(BuildContext context, FieldNode node) => TextField(
         controller: _controllerFor(node.key),
@@ -140,14 +195,18 @@ class _MiniAppRendererState extends State<MiniAppRenderer> {
               .bodyLarge
               ?.copyWith(color: FluxColors.mutedOf(context)),
           filled: true,
-          fillColor: FluxColors.surfaceOf(context),
+          fillColor: FluxColors.cardOf(context),
           contentPadding: const EdgeInsets.symmetric(
-            horizontal: 15,
-            vertical: 13,
+            horizontal: 18,
+            vertical: 16,
           ),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(FluxRadius.sm),
+            borderRadius: BorderRadius.circular(FluxRadius.md),
             borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(FluxRadius.md),
+            borderSide: BorderSide(color: _accentInk(context), width: 1.5),
           ),
         ),
       );
@@ -164,7 +223,12 @@ class _MiniAppRendererState extends State<MiniAppRenderer> {
         ),
         Switch.adaptive(
           value: value,
-          onChanged: (next) => widget.state.setValue(node.key, next),
+          activeTrackColor: _accent,
+          activeThumbColor: CreationPalette.onPastel,
+          onChanged: (next) {
+            HapticFeedback.selectionClick();
+            widget.state.setValue(node.key, next);
+          },
         ),
       ],
     );
@@ -177,6 +241,8 @@ class _MiniAppRendererState extends State<MiniAppRenderer> {
       children: [
         Expanded(
           child: Slider(
+            activeColor: _accentInk(context),
+            inactiveColor: FluxColors.surfaceOf(context),
             value: current,
             min: node.min.toDouble(),
             max: node.max.toDouble(),
@@ -223,14 +289,29 @@ class _MiniAppRendererState extends State<MiniAppRenderer> {
           Padding(
             padding: const EdgeInsets.only(bottom: 6),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               decoration: BoxDecoration(
                 color: FluxColors.cardOf(context),
-                borderRadius: BorderRadius.circular(FluxRadius.sm),
+                borderRadius: BorderRadius.circular(FluxRadius.md),
               ),
-              child: Text(
-                SafeExpression.describeValue(item),
-                style: Theme.of(context).textTheme.bodyMedium,
+              child: Row(
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    margin: const EdgeInsets.only(right: 12),
+                    decoration: BoxDecoration(
+                      color: _accent,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      SafeExpression.describeValue(item),
+                      style: Theme.of(context).textTheme.bodyLarge,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -245,11 +326,9 @@ class _MiniAppRendererState extends State<MiniAppRenderer> {
       borderRadius: BorderRadius.circular(FluxRadius.pill),
       child: LinearProgressIndicator(
         value: fraction,
-        minHeight: 9,
-        backgroundColor: FluxColors.surfaceOf(context),
-        valueColor: AlwaysStoppedAnimation<Color>(
-          CreationPalette.pastel(widget.state.spec.accent),
-        ),
+        minHeight: 14,
+        backgroundColor: FluxColors.cardOf(context),
+        valueColor: AlwaysStoppedAnimation<Color>(_accent),
       ),
     );
   }
@@ -262,23 +341,21 @@ class _MiniAppRendererState extends State<MiniAppRenderer> {
       children: [
         for (final option in node.options)
           Material(
-            color: option == selected
-                ? FluxColors.inkOf(context)
-                : FluxColors.surfaceOf(context),
+            color: option == selected ? _accent : FluxColors.cardOf(context),
             borderRadius: BorderRadius.circular(FluxRadius.pill),
             child: InkWell(
               borderRadius: BorderRadius.circular(FluxRadius.pill),
               onTap: () => widget.state.setValue(node.key, option),
               child: Padding(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 8,
+                  horizontal: 16,
+                  vertical: 11,
                 ),
                 child: Text(
                   option,
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
                         color: option == selected
-                            ? FluxColors.canvasOf(context)
+                            ? CreationPalette.onPastel
                             : FluxColors.inkOf(context),
                       ),
                 ),

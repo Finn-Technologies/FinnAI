@@ -3,4 +3,6 @@
     <!-- Shown in the launcher's widget picker. -->
     <string name="finn_widget_label">Finn AI</string>
     <string name="finn_widget_description">A small FinnAI creation on your home screen.</string>
+    <string name="finn_flow_service_title">FinnAI is running your flows</string>
+    <string name="finn_flow_service_text">Listening for the things your flows start on.</string>
 </resources>

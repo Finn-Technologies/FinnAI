@@ -66,20 +66,30 @@ Use this before grepping. Paths are relative to the repository root.
 
 ## Flows (automations)
 
+A flow is a tree of blocks (ask, web, notify, speak, action, wait, branch, save-to-chat, stop) plus triggers and "only if" conditions. Rules: `lib/src/features/flows/AGENTS.md`; decision: `docs/decisions/0009-flows-v3.md`.
+
 | To change… | Edit |
 |---|---|
-| The steps, trigger and run log data model | `lib/src/features/flows/flow_model.dart` |
-| How a run executes steps (grounding, stop rules, the grant rule) | `lib/src/features/flows/flow_runner.dart` |
-| What a flow may reach outside itself (model, search, sink, notifier) | `lib/src/features/flows/flow_ports.dart` |
+| The flow, its triggers and block data model | `lib/src/features/flows/{flow_model,flow_blocks,flow_triggers,flow_conditions}.dart` |
+| The run log (holds no model text) | `lib/src/features/flows/flow_run_log.dart` |
+| Saving and loading flows | `lib/src/features/flows/{flows_store,flows_codec}.dart` |
+| How a run executes blocks (grounding, stop rules, the three-place grant rule, background runs) | `lib/src/features/flows/flow_runner.dart` |
+| What a flow may reach outside itself (model, search, sink, notifier, speaker) | `lib/src/features/flows/flow_ports.dart` |
 | The real implementations of those ports (engine, search, conversations) | `lib/src/features/chat/flow_wiring.dart` |
-| Morning brief / web check / reminder | `lib/src/features/flows/flow_templates.dart` |
-| When a scheduled flow next runs | `lib/src/features/flows/flow_schedule.dart` (mirrored in `android/app/src/main/kotlin/com/abhiflex/finnai/FlowScheduler.kt`) |
-| Arming alarms, notification permission | `lib/src/features/flows/flow_scheduler.dart` + `android/app/src/main/kotlin/com/abhiflex/finnai/FlowScheduler.kt` |
-| Tap-a-notification-to-run, alarm sync at startup | `lib/src/features/chat/shell/flows.dart` |
+| Ready-made flows (morning brief, web check, reminder, low battery, headset) | `lib/src/features/flows/flow_templates.dart` |
+| When a time trigger next fires | `lib/src/features/flows/flow_schedule.dart` (mirrored in `android/…/FlowScheduler.kt`) |
+| Arming alarms and event triggers, notification permission | `lib/src/features/flows/flow_scheduler.dart` + `android/…/{FlowScheduler,FlowTriggerStore,FlowTriggerService,FlowDispatcher,FlowChannels}.kt` |
+| Device conditions (battery, charging, headset, Wi-Fi) | `lib/src/features/flows/flow_environment.dart` + `android/…/FlowEnvironmentBridge.kt` |
+| Runs with the app closed (headless engine) | `lib/flow_background.dart` + `android/…/FlowBackgroundRunner.kt` |
+| Tap-a-notification-to-run, trigger sync at startup | `lib/src/features/chat/shell/flows.dart` |
+| A flow told in a sentence (phrases, line DSL, model fallback) | `lib/src/features/flows/{flow_phrases,flow_script,flow_author,flow_intent}.dart` |
 | The Flows list, filters and guides | `lib/src/features/flows/flows_page.dart` |
-| A flow's detail, run log, New-flow sheet, builder, triggers, schedule sheet | `lib/src/features/flows/{flow_detail_page,flow_run_page,flow_new,flow_builder_page,flow_schedule_sheet}.dart` |
-| What the Flows screens do to a flow (run, enable, delete, notifications) | `lib/src/features/flows/flows_actions.dart` |
-| Reading a sentence into a flow | `lib/src/features/flows/flow_intent.dart` |
+| The flowchart editor and its sheets | `lib/src/features/flows/{flow_editor_page,flow_chart,flow_edit,flow_trigger_sheet,flow_condition_sheet,flow_block_sheet,flow_schedule_sheet}.dart` |
+| Block icons and labels | `lib/src/features/flows/{flow_icons,flow_labels}.dart` |
+| "New flow" (describe / template / blank) and the describe page | `lib/src/features/flows/{flow_new,flow_describe_page}.dart` |
+| A run's live view | `lib/src/features/flows/flow_run_page.dart` |
+| What the Flows screens do to a flow (run, enable, delete, grant) | `lib/src/features/flows/flows_actions.dart` |
+| Making a flow from chat ("every morning…") | `lib/src/features/chat/shell/make.dart` |
 
 ## Creations
 
@@ -104,8 +114,14 @@ See `docs/architecture/CREATIONS.md` for the spec DSL, the generation pipeline a
 | The slide deck viewer / `.pptx` export | `lib/src/features/creations/deck/` |
 | Colours for tiles and specs | `lib/src/features/creations/creation_palette.dart` |
 | Stored creations, versions and migration | `lib/src/features/creations/creation_store.dart` + `creation_model.dart` |
-| Home-screen widget pinning and file sharing (Dart side) | `lib/src/features/creations/home_screen_service.dart` |
-| Home-screen widget rendering (Kotlin side) | `android/…/FinnHomeWidgetProvider.kt`, `FinnHomeWidgetRenderer.kt`, `FinnHomeWidgetStore.kt` |
+| Widget kinds (counter, checklist, tracker) and their spec | `lib/src/features/creations/spec/widget_spec.dart`, `templates/widget_templates.dart` |
+| Home-screen widget pinning, launcher shortcuts and file sharing (Dart side) | `lib/src/features/creations/home_screen_service.dart` |
+| Home-screen widget rendering and taps with the app closed (Kotlin side) | `android/…/FinnHomeWidgetProvider.kt`, `FinnHomeWidgetRenderer.kt`, `FinnHomeWidgetStore.kt`, `FinnHomeWidgetActions.kt` |
+| A widget as it looks in the app | `lib/src/features/creations/widget_preview.dart` |
+| Opening, adding to the home screen, exporting a creation | `lib/src/features/creations/creation_launcher.dart`, `creation_shelf.dart` |
+| A mini app's saved state across launches | `lib/src/features/creations/runtime/mini_app_persistence.dart` |
+| "Make me an app / widget / deck" typed in chat | `lib/src/features/creations/creation_request.dart`, `lib/src/features/chat/shell/make.dart` |
+| The card a chat reply carries for what was made | `lib/src/features/conversations/message_card.dart`, `lib/src/features/chat/message_card_view.dart` |
 
 ## Apps, onboarding, settings, features
 
@@ -121,7 +137,8 @@ See `docs/architecture/CREATIONS.md` for the spec DSL, the generation pipeline a
 | Search across chats, creations and You | `lib/src/features/chat/search_page.dart` |
 | A chat's options (rename, pin, export, delete) | `lib/src/features/chat/chat_options.dart` |
 | Hands-free voice | `lib/src/features/voice/{voice_sheet,voice_chat_controller,voice_settings_store,tts_backend}.dart` |
-| Spoken replies (on-device voices, playback, language choice) | `lib/src/features/voice/tts/{sherpa_tts_backend,tts_worker,tts_events,tts_voice_catalog,tts_voice_store,pcm_output,language_pick,fallback_tts_backend}.dart`, `lib/src/features/voice/{reply_chunker,model_fetch}.dart` |
+| Spoken replies (on-device voices, playback, language choice) | `lib/src/features/voice/tts/{local_tts_backend,supertonic_native,supertonic_worker,supertonic_text,supertonic_nfkd,tts_events,tts_voice_catalog,tts_voice_store,pcm_output,language_pick,fallback_tts_backend}.dart` + the C++ runner `android/app/src/main/cpp/finn_supertonic.cc` (decision: `docs/decisions/0008-licence-clean-voice.md`), `lib/src/features/voice/{reply_chunker,model_fetch}.dart` |
+| Speaking-voice style picker (F1/F2/M1/M2) | `lib/src/features/settings/settings_voice_page.dart` (picker) + `lib/src/features/voice/voice_settings_store.dart` (`ttsStyle`) |
 | Live voice bar (pill, caption, chat <-> voice morph) | `lib/src/features/chat/widgets/{voice_pill,voice_morph_bar}.dart`, the composer's attachment chip in `composer_attachment.dart` |
 | Setup / upgrade download (language model + add-ons) | `lib/src/features/onboarding/model_install.dart`, `lib/src/app/speech_model_addon.dart` |
 | Speech recognition (mic, VAD, Whisper, model download) | `lib/src/features/voice/stt/{sherpa_speech_backend,stt_worker,stt_events,stt_model_store,mic_source,audio_math,transcript_filter,speech_backend}.dart` |
@@ -150,7 +167,7 @@ See `docs/architecture/CREATIONS.md` for the spec DSL, the generation pipeline a
 | Android host + method channels | `android/app/src/main/kotlin/com/abhiflex/finnai/MainActivity.kt` |
 | Android home-screen widget + share bridge | `android/…/FinnHomeScreenBridge.kt` (+ the manifest receiver/provider and `proguard-rules.pro`) |
 | OpenHarmony path handling | `lib/src/platform/openharmony_path_provider.dart` |
-| Page transition used by every sub-page | `lib/src/features/chat/widgets/sources.dart` (`FinnPageRoute`) |
+| Page transition used by every sub-page, and the sidebar → page hand-off | `lib/src/shared/widgets/finn_page_route.dart` (`FinnPageRoute`), `lib/src/features/chat/shell/navigation.dart` (`_pushFromSidebar`); timings in `FluxMotion` |
 | Engine-seam CI gate | `tool/verify_engine_seam.sh` |
 | Release verification | `tool/verify_release.sh`, `tool/build_play_release.sh` |
 | CI pipeline | `.github/workflows/ci.yml`, `.github/workflows/release.yml` |

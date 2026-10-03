@@ -9,6 +9,7 @@ import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 import 'package:finn_ai/src/shared/widgets/ambient_background.dart';
 import 'package:finn_ai/src/shared/widgets/finn_page_header.dart';
 import 'package:finn_ai/src/shared/widgets/finn_overlays.dart';
+import 'package:finn_ai/src/shared/widgets/finn_page_route.dart';
 import 'package:finn_ai/src/shared/widgets/finn_page.dart';
 import 'package:finn_ai/src/shared/widgets/finn_ui.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
@@ -58,12 +59,8 @@ class _DeckViewerState extends State<DeckViewer> {
   }
 
   Future<void> _present() => Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          fullscreenDialog: true,
-          builder: (_) => _PresentPage(
-            deck: widget.deck,
-            startAt: _index,
-          ),
+        FinnPageRoute<void>(
+          child: _PresentPage(deck: widget.deck, startAt: _index),
         ),
       );
 

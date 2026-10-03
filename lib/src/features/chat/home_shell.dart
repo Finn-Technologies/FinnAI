@@ -11,12 +11,17 @@ import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:finn_ai/src/features/chat/chat_options.dart';
-import 'package:finn_ai/src/features/chat/search_page.dart';
 import 'package:finn_ai/src/features/conversations/conversation_store.dart';
 import 'package:finn_ai/src/features/conversations/pinned_chats_store.dart';
 import 'package:finn_ai/src/features/conversations/conversation_timestamp.dart';
 import 'package:finn_ai/src/features/creations/creation_model.dart';
+import 'package:finn_ai/src/features/creations/creation_generator.dart';
+import 'package:finn_ai/src/features/creations/creation_launcher.dart';
+import 'package:finn_ai/src/features/creations/creation_request.dart';
+import 'package:finn_ai/src/features/creations/creation_store.dart';
+import 'package:finn_ai/src/features/creations/creations_controller.dart';
 import 'package:finn_ai/src/features/creations/creations_page.dart';
+import 'package:finn_ai/src/features/creations/home_screen_service.dart';
 import 'package:finn_ai/src/features/chat/chat_generation_controller.dart';
 import 'package:finn_ai/src/features/chat/tool_activity_indicator.dart';
 import 'package:finn_ai/src/features/onboarding/context_consent_store.dart';
@@ -25,8 +30,6 @@ import 'package:finn_ai/src/inference/finn_inference.dart';
 import 'package:finn_ai/src/inference/residency_policy.dart';
 import 'package:finn_ai/src/features/reporting/report_dialog.dart';
 import 'package:finn_ai/src/features/search/search_agent.dart';
-import 'package:finn_ai/src/features/search/providers/news_provider.dart';
-import 'package:finn_ai/src/features/search/providers/weather_provider.dart';
 import 'package:finn_ai/src/features/search/search_turn.dart';
 import 'package:finn_ai/src/features/search/web_search_service.dart';
 import 'package:finn_ai/src/features/actions/action_audit_store.dart';
@@ -36,10 +39,14 @@ import 'package:finn_ai/src/features/actions/device_action_descriptions.dart';
 import 'package:finn_ai/src/features/actions/device_actions_page.dart';
 import 'package:finn_ai/src/features/settings/settings_page.dart';
 import 'package:finn_ai/src/features/chat/flow_wiring.dart';
+import 'package:finn_ai/src/features/chat/message_card_view.dart';
+import 'package:finn_ai/src/features/conversations/message_card.dart';
+import 'package:finn_ai/src/features/flows/flow_author.dart';
 import 'package:finn_ai/src/features/flows/flow_scheduler.dart';
 import 'package:finn_ai/src/features/flows/flows_page.dart';
 import 'package:finn_ai/src/features/flows/flows_store.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
+import 'package:finn_ai/src/shared/widgets/finn_overlays.dart';
 import 'package:finn_ai/src/app/data_export.dart';
 import 'package:finn_ai/src/features/chat/widgets/voice_morph_bar.dart';
 import 'package:finn_ai/src/features/voice/read_aloud.dart';
@@ -68,6 +75,8 @@ part 'shell/voice.dart';
 part 'shell/navigation.dart';
 part 'shell/flows.dart';
 part 'shell/selected_text.dart';
+part 'shell/shortcuts.dart';
+part 'shell/make.dart';
 part 'widgets/header_and_fade.dart';
 part 'widgets/conversation.dart';
 part 'widgets/bubbles.dart';
@@ -116,25 +125,13 @@ class _HomeShellState extends State<HomeShell>
   late final _generation =
       widget.generationController ?? ChatGenerationController.instance;
   late final _webSearch = widget.webSearch ?? WebSearchService();
-  final _flowScheduler = FlowScheduler();
-  late final _flowSink = ConversationFlowSink(_conversations);
-  // A flow is not waiting on a keyboard, so its searches get longer than a chat
-  // turn's 5 seconds: a phone on a slow radio still gets its headlines.
-  late final _flowSearchTurn = SearchTurn(
-    agent: SearchAgent(searchService: _webSearch),
-    budget: const Duration(seconds: 14),
-    providers: [
-      NewsProvider(timeout: const Duration(seconds: 9)),
-      WeatherProvider(timeout: const Duration(seconds: 9)),
-    ],
-  );
-  late final _flowRunner = buildFlowRunner(
-    sink: _flowSink,
-    search: _flowSearchTurn,
-    notifier: _flowScheduler,
+  late final _flows = FlowHost(
+    conversations: _conversations,
+    webSearch: _webSearch,
   );
   Timer? _flowSyncTimer;
   bool _flowRunInProgress = false;
+  Future<void> _flowQueue = Future<void>.value();
   final _searchPlanner = const SearchPlanner();
   late final _searchTurn =
       SearchTurn(agent: SearchAgent(searchService: _webSearch));
@@ -180,15 +177,11 @@ class _HomeShellState extends State<HomeShell>
   Uint8List? _attachedImageBytes;
   bool _attachmentMenuOpen = false;
   late bool _storesReady = !widget.initializeServices;
+
+  /// 0 = closed, 1 = open. It is read directly (no easing curve) so a drag
+  /// tracks the finger one-to-one; releases and taps settle it with a spring.
   late final AnimationController _sidebarController = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 340),
-    reverseDuration: const Duration(milliseconds: 280),
-  );
-  late final Animation<double> _sidebarAnimation = CurvedAnimation(
-    parent: _sidebarController,
-    curve: Curves.easeInOutCubicEmphasized,
-    reverseCurve: Curves.easeInCubic,
   );
 
   bool get _busy => _preparing || _generation.busy;
@@ -203,6 +196,7 @@ class _HomeShellState extends State<HomeShell>
     _conversations.addListener(_conversationChanged);
     _chatScrollController.addListener(_onChatScroll);
     _startFlowScheduling();
+    _listenForShortcuts();
     WidgetsBinding.instance.addObserver(this);
     // Cap decoded image bytes retained in the widget image cache.
     // 20 MiB bounds RSS from chat + composer previews; pressure
@@ -315,6 +309,7 @@ class _HomeShellState extends State<HomeShell>
     _conversations.removeListener(_conversationChanged);
     _chatScrollController.removeListener(_onChatScroll);
     _stopFlowScheduling();
+    _stopListeningForShortcuts();
     _chatScrollController.dispose();
     _chatScrolledAway.dispose();
     _memoryPressureChannel.setMethodCallHandler(null);
@@ -435,6 +430,7 @@ class _HomeShellState extends State<HomeShell>
                         onActions: _openDeviceActions,
                         onEdit: _editUserMessage,
                         onOpenConversation: _activateConversation,
+                        cards: MessageCardHost(flowActions: _flows.actions),
                         preparing: _preparing,
                         greeting: _voiceListening
                             ? L10n.of(context).voiceGreeting
@@ -555,9 +551,9 @@ class _HomeShellState extends State<HomeShell>
                 ),
               ),
             );
-            // The panel covers three quarters of the screen; the home screen
-            // stays visible beside it, rounded and lifted, as in the design.
-            final sidebarWidth = constraints.maxWidth * .76;
+            // The panel stays put and the home screen slides aside to reveal
+            // it; the design's home sheet starts 322 of 420 points across.
+            final sidebarWidth = constraints.maxWidth * (322 / 420);
             final sidebarLayer = !_sidebarEverOpened
                 ? const SizedBox.shrink()
                 : RepaintBoundary(
@@ -573,17 +569,16 @@ class _HomeShellState extends State<HomeShell>
                         onFlows: _openSkills,
                         onActions: _openDeviceActionsFromSidebar,
                         onSettings: _openSettings,
-                        onSearch: _openSearch,
                       ),
                     ),
                   );
             return AnimatedBuilder(
-              animation: _sidebarAnimation,
+              animation: _sidebarController,
               builder: (context, _) => _SidebarSurface(
                 home: homeLayer,
                 sidebar: sidebarLayer,
                 sidebarWidth: sidebarWidth,
-                progress: _sidebarAnimation.value,
+                progress: _sidebarController.value,
                 sidebarOpen: _sidebar,
                 toggleLeft: contentLeft,
                 toggleTop: 70 * sy,

@@ -38,8 +38,21 @@ class FinnHomeWidgetProvider : AppWidgetProvider() {
     }
 
     override fun onReceive(context: Context, intent: Intent) {
-        super.onReceive(context, intent)
         val id = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1)
+        if (intent.action == FinnHomeWidgetActions.ACTION_TAP) {
+            // A tap on a control: change the stored state, then redraw every
+            // widget (several can show the same creation).
+            if (id != -1) {
+                FinnHomeWidgetActions.handle(
+                    context,
+                    id,
+                    intent.getIntExtra(FinnHomeWidgetActions.EXTRA_OP, -1),
+                )
+            }
+            refreshAll(context)
+            return
+        }
+        super.onReceive(context, intent)
         if (id != -1) {
             FinnHomeWidgetRenderer.update(
                 context,

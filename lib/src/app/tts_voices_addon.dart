@@ -4,8 +4,8 @@ import 'package:finn_ai/src/features/onboarding/model_install.dart';
 import 'package:finn_ai/src/features/voice/tts/tts_voice_catalog.dart';
 import 'package:finn_ai/src/features/voice/tts/tts_voice_store.dart';
 
-/// The on-device voices that read replies aloud, offered with the language
-/// model: English, and the voice for the phone's language.
+/// The on-device voice that reads replies aloud, offered with the language
+/// model. One model speaks every language, so it is one download.
 class TtsVoicesAddon implements InstallAddon {
   TtsVoicesAddon({String? deviceLanguage, TtsVoiceStore? store})
       : _store = store ?? TtsVoiceStore.instance,

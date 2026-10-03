@@ -66,11 +66,16 @@ class FlowsActions extends ChangeNotifier {
     }
   }
 
-  /// Turning a scheduled flow on is the moment to ask for notifications;
+  /// Whether the flow needs the platform to wake it (an alarm or an event
+  /// listener), which is when notification permission matters.
+  static bool _needsPlatform(FinnFlow flow) =>
+      flow.triggers.any((t) => t.isScheduled || t.isEvent);
+
+  /// Turning a triggered flow on is the moment to ask for notifications;
   /// turning it off just disarms it.
   Future<void> setEnabled(BuildContext context, FinnFlow flow, bool on) async {
     await store.setEnabled(flow.id, on);
-    if (on && flow.trigger.isScheduled && context.mounted) {
+    if (on && _needsPlatform(flow) && context.mounted) {
       await ensureNotifications(context);
     }
     await scheduler?.sync(store.flows);
@@ -98,45 +103,68 @@ class FlowsActions extends ChangeNotifier {
     return granted;
   }
 
-  Future<void> setTrigger(
+  /// Saves changes to a flow (its name, blocks, triggers or conditions) and
+  /// keeps the platform's alarms and listeners in step.
+  ///
+  /// Every edit saves at once: there is no draft to lose. Returns false when
+  /// the store refused the write.
+  Future<bool> update(
     BuildContext context,
-    FinnFlow flow,
-    FlowTrigger trigger,
-  ) async {
-    await store.upsertCustom(
+    FinnFlow flow, {
+    String? name,
+    List<FlowBlock>? blocks,
+    List<FlowTrigger>? triggers,
+    List<FlowCondition>? conditions,
+  }) async {
+    final saved = await store.upsertCustom(
       id: flow.id,
-      name: flow.name,
+      name: name ?? flow.name,
       description: flow.description,
       instructions: flow.instructions,
       category: flow.category,
       enabled: flow.enabled,
-      steps: flow.steps,
-      trigger: trigger,
+      blocks: blocks ?? flow.blocks,
+      triggers: triggers ?? flow.triggers,
+      conditions: conditions ?? flow.conditions,
     );
-    if (trigger.isScheduled && context.mounted) {
+    if (!saved) return false;
+    final after = store.flows.where((f) => f.id == flow.id).firstOrNull;
+    if (after != null &&
+        after.enabled &&
+        _needsPlatform(after) &&
+        context.mounted) {
       await ensureNotifications(context);
     }
     await scheduler?.sync(store.flows);
     await refreshNotifications();
+    return true;
   }
 
-  /// Saves a flow built from a template and arms it.
-  Future<FinnFlow?> add(BuildContext context, FinnFlow flow) async {
+  /// Saves a new flow (from a template, a sentence or a blank page). It starts
+  /// turned off: the user checks it, then turns it on.
+  Future<FinnFlow?> add(
+    BuildContext context,
+    FinnFlow flow, {
+    bool enabled = false,
+  }) async {
     final saved = await store.upsertCustom(
       name: flow.name,
       description: flow.description,
       instructions: '',
       category: flow.category,
-      steps: flow.steps,
-      trigger: flow.trigger,
+      enabled: enabled,
+      blocks: flow.blocks,
+      triggers: flow.triggers,
+      conditions: flow.conditions,
     );
     if (!saved) return null;
-    if (flow.trigger.isScheduled && context.mounted) {
+    final added = store.flows.last;
+    if (enabled && _needsPlatform(added) && context.mounted) {
       await ensureNotifications(context);
     }
     await scheduler?.sync(store.flows);
     await refreshNotifications();
-    return store.flows.last;
+    return added;
   }
 
   /// Grants or revokes the standing permission to act on the phone, asking
@@ -154,6 +182,24 @@ class FlowsActions extends ChangeNotifier {
       if (ok != true) return;
     }
     await store.setGranted(flow.id, on);
+  }
+
+  /// Turns a flow on from somewhere other than its own page (a card in a chat),
+  /// asking for what it needs first: a flow that changes the phone and starts
+  /// by itself must be allowed to, in so many words, before it is switched on.
+  /// False when the user said no.
+  Future<bool> turnOn(BuildContext context, FinnFlow flow) async {
+    final auto = flow.triggers.any((t) => t.isScheduled || t.isEvent);
+    if (flow.hasDeviceAction && auto && !flow.granted) {
+      await setGranted(context, flow, true);
+      final now = store.flows.where((f) => f.id == flow.id).firstOrNull;
+      if (now == null || !now.granted) return false;
+    }
+    if (!context.mounted) return false;
+    final current = store.flows.where((f) => f.id == flow.id).firstOrNull;
+    if (current == null) return false;
+    await setEnabled(context, current, true);
+    return true;
   }
 
   Future<bool> delete(BuildContext context, FinnFlow flow) async {
@@ -178,8 +224,9 @@ class FlowsActions extends ChangeNotifier {
       instructions: flow.instructions,
       category: flow.category,
       enabled: false,
-      steps: flow.steps,
-      trigger: flow.trigger,
+      blocks: flow.blocks,
+      triggers: flow.triggers,
+      conditions: flow.conditions,
     );
   }
 }

@@ -9,7 +9,7 @@ Hugging Face and never leave the device.
 
 - **Package id:** `com.abhiflex.finnai`
 - **Platforms:** Android (primary), OpenHarmony
-- **Model:** LFM2.5-VL 1.6B Q4_0 + `mmproj-LFM2.5-VL-1.6b-F16` vision projector (≈1.55 GB total), plus the on-device speech model for voice mode (Whisper base + Silero VAD, ≈161 MB) and spoken replies (Piper voices, ≈21 MB per language), all downloaded with it
+- **Model:** LFM2.5-VL 1.6B Q4_0 + `mmproj-LFM2.5-VL-1.6b-F16` vision projector (≈1.55 GB total), plus the on-device speech model for voice mode (Whisper base + Silero VAD, ≈161 MB) and spoken replies (Supertonic 3 voice, ≈398 MB, 31 languages), all downloaded with it
 
 ---
 

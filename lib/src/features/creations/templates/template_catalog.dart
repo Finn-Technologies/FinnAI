@@ -10,6 +10,9 @@ abstract final class CreationTemplates {
     ChecklistTemplate(),
     ListTemplate(),
     ScoreboardTemplate(),
+    CounterWidgetTemplate(),
+    ChecklistWidgetTemplate(),
+    TrackerWidgetTemplate(),
     StatWidgetTemplate(),
     RowsWidgetTemplate(),
   ];

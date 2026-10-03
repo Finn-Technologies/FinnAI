@@ -4921,6 +4921,1206 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Notify me'**
   String get flowsStepNotifyMe;
+
+  /// Creations template/editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Tracker'**
+  String get creationsTemplateTracker;
+
+  /// Creations template/editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Added per tap'**
+  String get creationsSlotStep;
+
+  /// Title of the confirmation before a mini app forgets what it holds
+  ///
+  /// In en, this message translates to:
+  /// **'Reset this app?'**
+  String get creationsResetAppTitle;
+
+  /// Body of the confirmation before a mini app forgets what it holds
+  ///
+  /// In en, this message translates to:
+  /// **'Everything you added to it is cleared. This cannot be undone.'**
+  String get creationsResetAppBody;
+
+  /// Confirmation line for the vibrate device action
+  ///
+  /// In en, this message translates to:
+  /// **'Vibrate the phone'**
+  String get deviceActionVibrate;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Only when I start it'**
+  String get flowsTrigManual;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'At a set time'**
+  String get flowsTrigTimeOfDay;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Every {n} minutes'**
+  String flowsTrigEveryMinutes(int n);
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Every {n} hours'**
+  String flowsTrigEveryHours(int n);
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Every hour'**
+  String get flowsTrigEveryHour;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Repeating'**
+  String get flowsTrigInterval;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Charger connected'**
+  String get flowsTrigChargerOn;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Charger disconnected'**
+  String get flowsTrigChargerOff;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Battery drops to {n}%'**
+  String flowsTrigBatteryLow(int n);
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Headphones connected'**
+  String get flowsTrigHeadsetOn;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Headphones disconnected'**
+  String get flowsTrigHeadsetOff;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Wi‑Fi connected'**
+  String get flowsTrigWifiOn;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Wi‑Fi disconnected'**
+  String get flowsTrigWifiOff;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Airplane mode turns on'**
+  String get flowsTrigAirplaneOn;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Airplane mode turns off'**
+  String get flowsTrigAirplaneOff;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Phone starts up'**
+  String get flowsTrigBoot;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Screen unlocked'**
+  String get flowsTrigUnlock;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Time'**
+  String get flowsTrigGroupTime;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'On the phone'**
+  String get flowsTrigGroupPhone;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'By hand'**
+  String get flowsTrigGroupHand;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Battery below {n}%'**
+  String flowsCondBatteryBelow(int n);
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Battery above {n}%'**
+  String flowsCondBatteryAbove(int n);
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Charging'**
+  String get flowsCondCharging;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Not charging'**
+  String get flowsCondNotCharging;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Between {from} and {to}'**
+  String flowsCondTimeBetween(String from, String to);
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'On {days}'**
+  String flowsCondDays(String days);
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Wi‑Fi connected'**
+  String get flowsCondWifiOn;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Wi‑Fi not connected'**
+  String get flowsCondWifiOff;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Headphones connected'**
+  String get flowsCondHeadsetOn;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Headphones not connected'**
+  String get flowsCondHeadsetOff;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Airplane mode on'**
+  String get flowsCondAirplaneOn;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Airplane mode off'**
+  String get flowsCondAirplaneOff;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'The answer mentions “{text}”'**
+  String flowsCondAnswer(String text);
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Ask FinnAI'**
+  String get flowsBlockAsk;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Write something with the on-device model'**
+  String get flowsBlockAskSub;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Look up'**
+  String get flowsBlockWeb;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'News, weather or the web'**
+  String get flowsBlockWebSub;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Notify me'**
+  String get flowsBlockNotify;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Show a notification'**
+  String get flowsBlockNotifySub;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Say it out loud'**
+  String get flowsBlockSpeak;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Speak with the phone’s voice'**
+  String get flowsBlockSpeakSub;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Do on the phone'**
+  String get flowsBlockAction;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Flashlight, volume, alarm, open an app'**
+  String get flowsBlockActionSub;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Wait'**
+  String get flowsBlockWait;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Pause for a few seconds'**
+  String get flowsBlockWaitSub;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'If … then'**
+  String get flowsBlockBranch;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Do one thing or another'**
+  String get flowsBlockBranchSub;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Save to chat'**
+  String get flowsBlockSave;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Keep the answer as a chat'**
+  String get flowsBlockSaveSub;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Stop here'**
+  String get flowsBlockStop;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'End the flow'**
+  String get flowsBlockStopSub;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Ask: {text}'**
+  String flowsSumAsk(String text);
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Look up {text}'**
+  String flowsSumWeb(String text);
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Show the answer'**
+  String get flowsSumNotifyAnswer;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Read the answer aloud'**
+  String get flowsSumSpeakAnswer;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Wait {n} s'**
+  String flowsSumWait(int n);
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'If {condition}'**
+  String flowsSumIf(String condition);
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'When'**
+  String get flowsEdWhen;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Only if'**
+  String get flowsEdOnlyIf;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Then'**
+  String get flowsEdThen;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'or'**
+  String get flowsEdOr;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Yes'**
+  String get flowsEdYes;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Otherwise'**
+  String get flowsEdOtherwise;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get flowsEdEnd;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Add a trigger'**
+  String get flowsEdAddTrigger;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Add a condition'**
+  String get flowsEdAddCondition;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Add a step'**
+  String get flowsEdAddStep;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Add a step here'**
+  String get flowsEdInsertHere;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to do yet. Add the first step.'**
+  String get flowsEdNoSteps;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Starts when you tap Run'**
+  String get flowsEdManualStart;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Move up'**
+  String get flowsEdMoveUp;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Move down'**
+  String get flowsEdMoveDown;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get flowsEdRemove;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get flowsEdDone;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'What should happen?'**
+  String get flowsEdChooseStep;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'What starts it?'**
+  String get flowsEdChooseTrigger;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Only when…'**
+  String get flowsEdChooseCondition;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'If this is not true, the flow does not run when something else starts it.'**
+  String get flowsEdConditionNote;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'What should FinnAI write?'**
+  String get flowsFieldPrompt;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Use {input} for the last answer'**
+  String flowsFieldPromptHint(String input);
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'What to look up'**
+  String get flowsFieldQuery;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Where'**
+  String get flowsFieldSource;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'The web'**
+  String get flowsSourceWeb;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'News'**
+  String get flowsSourceNews;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Weather'**
+  String get flowsSourceWeather;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Title'**
+  String get flowsFieldTitle;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Message'**
+  String get flowsFieldMessage;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Leave empty to show the last answer'**
+  String get flowsFieldMessageHint;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'What to say'**
+  String get flowsFieldSay;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Leave empty to read the last answer'**
+  String get flowsFieldSayHint;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'How many seconds'**
+  String get flowsFieldSeconds;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'What to do'**
+  String get flowsFieldAction;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Condition'**
+  String get flowsFieldCondition;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Battery level'**
+  String get flowsFieldLevel;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'From'**
+  String get flowsFieldFrom;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'To'**
+  String get flowsFieldTo;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Days'**
+  String get flowsFieldDays;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Contains'**
+  String get flowsFieldContains;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Repeat every'**
+  String get flowsFieldEveryMinutes;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'minutes'**
+  String get flowsUnitMinutes;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'hours'**
+  String get flowsUnitHours;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Works in the background'**
+  String get flowsBgWorks;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Needs you to tap a notification'**
+  String get flowsBgNeedsScreen;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Let it run by itself'**
+  String get flowsAutoTitle;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'This flow changes your phone. Allow it to run when you are not looking.'**
+  String get flowsAutoNeedsAllow;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'FinnAI is listening for these in the background.'**
+  String get flowsListenerOn;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on notifications so FinnAI can keep listening.'**
+  String get flowsListenerNeedsNotify;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Conditions not met'**
+  String get flowsRunStatusSkipped;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for you'**
+  String get flowsRunStatusNeedsScreen;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Skipped'**
+  String get flowsRunSkipped;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to finish'**
+  String get flowsRunNeedsScreen;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Ran by itself'**
+  String get flowsRunByEvent;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Run from chat'**
+  String get flowsRunByChat;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to finish “{name}” — it needs the screen.'**
+  String flowsNeedsScreenBody(String name);
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'“{name}” wanted to run but needs your permission first.'**
+  String flowsNeedsGrantBody(String name);
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting'**
+  String get flowsStepWaiting;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Step {n}'**
+  String flowsPathStep(int n);
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Describe your flow'**
+  String get flowsDescribeTitle;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'For example: when I plug in my charger, turn on the flashlight'**
+  String get flowsDescribeHint;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Build it'**
+  String get flowsDescribeBuild;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Working it out…'**
+  String get flowsDescribeThinking;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'I could not turn that into a flow. Try saying when it starts and what it should do.'**
+  String get flowsDescribeFailed;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'I did not understand: {parts}'**
+  String flowsDescribeMissed(String parts);
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Try one of these'**
+  String get flowsDescribeExamples;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'When I plug in my charger, turn on the flashlight'**
+  String get flowsExampleCharger;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'When the battery is below 15%, remind me to charge'**
+  String get flowsExampleBattery;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Every morning at 7 tell me the news'**
+  String get flowsExampleNews;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'When I connect headphones, play music'**
+  String get flowsExampleHeadset;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Start from scratch'**
+  String get flowsNewBlank;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Build it step by step'**
+  String get flowsNewBlankSub;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'From a template'**
+  String get flowsNewTemplates;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'News brief, reminder, low battery…'**
+  String get flowsNewTemplatesSub;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Low battery alert'**
+  String get flowsTemplateLowBattery;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Tells you once when the battery gets low.'**
+  String get flowsTemplateLowBatteryBody;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Headphones and music'**
+  String get flowsTemplateHeadset;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Plays or pauses when headphones connect.'**
+  String get flowsTemplateHeadsetBody;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Warn at (%)'**
+  String get flowsSlotLevel;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'What to do'**
+  String get flowsSlotWhat;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Play'**
+  String get flowsSlotPlay;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Pause'**
+  String get flowsSlotPause;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Runs'**
+  String get flowsRunsTitle;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'See all runs'**
+  String get flowsRunsAll;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Rename flow'**
+  String get flowsRenameTitle;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Saved'**
+  String get flowsSavedToast;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Skipped'**
+  String get flowsStepOutcomeSkipped;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'I made a flow: “{name}”. Check it, then turn it on.'**
+  String flowsChatCreated(String name);
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Open flow'**
+  String get flowsChatOpen;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on'**
+  String get flowsChatTurnOn;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Turned on'**
+  String get flowsChatIsOn;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Discard'**
+  String get flowsChatDiscard;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Set an alarm'**
+  String get flowsActSetAlarm;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Start a timer'**
+  String get flowsActSetTimer;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Show my alarms'**
+  String get flowsActShowAlarms;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Flashlight'**
+  String get flowsActTorch;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Control music'**
+  String get flowsActMedia;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Change the volume'**
+  String get flowsActVolume;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Vibrate'**
+  String get flowsActVibrate;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Open a settings screen'**
+  String get flowsActOpenSettings;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Open an app'**
+  String get flowsActOpenApp;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Start a call'**
+  String get flowsActDial;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Write a text message'**
+  String get flowsActSms;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Write an email'**
+  String get flowsActEmail;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Open the camera'**
+  String get flowsActPhoto;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Open a web address'**
+  String get flowsActUrl;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Get directions'**
+  String get flowsActNavigate;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Share text'**
+  String get flowsActShare;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'On'**
+  String get flowsOn;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get flowsOff;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'State'**
+  String get flowsParamState;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Direction'**
+  String get flowsParamDirection;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Screen'**
+  String get flowsParamScreen;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Time'**
+  String get flowsParamTime;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Seconds'**
+  String get flowsParamSeconds;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Milliseconds'**
+  String get flowsParamMilliseconds;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Label'**
+  String get flowsParamLabel;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'App name'**
+  String get flowsParamName;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Phone number'**
+  String get flowsParamNumber;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'To'**
+  String get flowsParamTo;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Message'**
+  String get flowsParamBody;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Subject'**
+  String get flowsParamSubject;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Web address'**
+  String get flowsParamUrl;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Place or address'**
+  String get flowsParamQuery;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Text'**
+  String get flowsParamText;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'What should the phone do?'**
+  String get flowsPickAction;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Repeat every'**
+  String get flowsEveryHowLong;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'The phone groups timers to save battery, so it can be a few minutes late.'**
+  String get flowsIntervalNote;
+
+  /// Flows editor label
+  ///
+  /// In en, this message translates to:
+  /// **'Runs once when the battery falls to this level.'**
+  String get flowsBatteryLevelNote;
+
+  /// Reply after FinnAI built something from a chat message
+  ///
+  /// In en, this message translates to:
+  /// **'Here it is. Open it, or put it on your home screen.'**
+  String get chatCreationReady;
+
+  /// Reply while FinnAI builds something from a chat message
+  ///
+  /// In en, this message translates to:
+  /// **'Building it…'**
+  String get chatCreationBuilding;
+
+  /// Status line of a flow that something else starts
+  ///
+  /// In en, this message translates to:
+  /// **'On, starts by itself'**
+  String get flowsDetailOnEvent;
+
+  /// Settings voice page: speaking voice row title
+  ///
+  /// In en, this message translates to:
+  /// **'Voice'**
+  String get voiceStyle;
+
+  /// Speaking voice style name
+  ///
+  /// In en, this message translates to:
+  /// **'Female 1'**
+  String get voiceStyleF1;
+
+  /// Speaking voice style name
+  ///
+  /// In en, this message translates to:
+  /// **'Female 2'**
+  String get voiceStyleF2;
+
+  /// Speaking voice style name
+  ///
+  /// In en, this message translates to:
+  /// **'Male 1'**
+  String get voiceStyleM1;
+
+  /// Speaking voice style name
+  ///
+  /// In en, this message translates to:
+  /// **'Male 2'**
+  String get voiceStyleM2;
 }
 
 class _AppLocalizationsDelegate

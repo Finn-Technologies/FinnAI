@@ -9,6 +9,9 @@ String _templateLabel(BuildContext context, String id) {
     'scoreboard' => l10n.creationsTemplateScoreboard,
     'stat' => l10n.creationsTemplateStat,
     'rows' => l10n.creationsTemplateRows,
+    'counter_widget' => l10n.creationsTemplateCounter,
+    'checklist_widget' => l10n.creationsTemplateChecklist,
+    'tracker_widget' => l10n.creationsTemplateTracker,
     _ => id,
   };
 }
@@ -19,6 +22,7 @@ String _slotLabel(BuildContext context, String key) {
     'title' => l10n.creationsSlotTitle,
     'unit' => l10n.creationsSlotUnit,
     'goal' => l10n.creationsSlotGoal,
+    'step' => l10n.creationsSlotStep,
     'emoji' => l10n.creationsSlotEmoji,
     'accent' => l10n.creationsSlotAccent,
     'items' => l10n.creationsSlotItems,
