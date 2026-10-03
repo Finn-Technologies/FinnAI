@@ -6,7 +6,7 @@ import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 
 /// Guards the dark-mode fixes, each of which was a real defect: a control that
 /// was invisible, text below AA, or a shadow/scrim that did nothing at all
-/// because the dark canvas is pure black.
+/// because the dark canvas was pure black.
 ///
 /// The contrast maths mirrors `flux_color_tokens_test.dart` so a regression is
 /// reported the same way.
@@ -70,14 +70,14 @@ void main() {
     testWidgets('the user bubble token is not the control surface', (
       tester,
     ) async {
-      // The bubble was painted with controlOf (#1E1E22), 1.26:1 on the #000000
+      // The bubble was painted with controlOf, 1.26:1 on the old #000000
       // canvas — the user's own message had no visible bubble. It must read
       // through bubbleUserOf, which exists for exactly this.
       final bubble = await _inDark(tester, FluxColors.bubbleUserOf);
       expect(bubble, FluxColors.bubbleUserDark);
       expect(bubble, isNot(FluxColors.controlDark));
       expect(bubble, isNot(FluxColors.darkCanvas));
-      // bubbleUserDark measures 3.20:1 on the canvas, so the bubble reads as a
+      // bubbleUserDark measures 3.25:1 on the canvas, so the bubble reads as a
       // raised surface without pushing the text off AA.
       expect(_contrast(bubble, FluxColors.darkCanvas), greaterThan(2.0));
     });
@@ -85,8 +85,8 @@ void main() {
     testWidgets('an icon disc is visible on the sheet it sits on', (
       tester,
     ) async {
-      // The attachment sheet is controlOf (#1E1E22); its icon discs were
-      // darkCard (#222226), 1.05:1 — the circles were simply not there.
+      // The attachment sheet is controlOf; its icon discs were
+      // darkCard, 1.05:1 — the circles were simply not there.
       final sheet = FluxColors.controlDark;
       expect(_contrast(FluxColors.darkCard, sheet), lessThan(1.2));
       // And the disc now has to be the sheet's own surface, which does read.
@@ -102,21 +102,22 @@ void main() {
       // surfaceOf like every other container.
       final frame = await _inDark(tester, FluxColors.surfaceOf);
       expect(frame, FluxColors.darkSurface);
-      // This palette's dark surfaces measure ~1.2:1 on the pure-black canvas
-      // by design — see the note on the group below — so the bar here is that
+      // This palette's dark surfaces sit close to the canvas by design — see
+      // the note on the group below — so the bar here is that
       // a frame is never the bubble token.
       expect(frame, isNot(FluxColors.bubbleAssistantDark));
     });
   });
 
-  group('the dark canvas is pure black, so surfaces are low-contrast', () {
+  group('the dark canvas is near-black, so surfaces stay low-contrast', () {
     // Not a test that can be fixed by editing a call site: darkCanvas is
-    // #000000 and every dark surface sits between #18181B and #222226, which
-    // measures 1.19-1.40:1. That is a deliberate property of this palette, and
-    // it is why dark mode relies on elevation and hairline borders for
-    // separation rather than on surface lightness. Asserted so the numbers are
-    // known rather than accidental.
-    test('records the measured separation each surface has on black', () {
+    // #101014 and every dark surface sits just above it, measuring 1.07:1
+    // (surface) to 1.54:1 (line). That is a deliberate property of this
+    // palette — pure black crushed on LCD and smeared on OLED — and it is why
+    // dark mode separates flat surfaces with fill plus a 1px hairline rather
+    // than with a shadow. Asserted so the numbers are known rather than
+    // accidental.
+    test('records the measured separation each surface has on the canvas', () {
       for (final surface in <String, Color>{
         'darkSurface': FluxColors.darkSurface,
         'darkCard': FluxColors.darkCard,
@@ -129,7 +130,7 @@ void main() {
           greaterThan(1.05),
           reason: '${surface.key} must at least separate from the canvas',
         );
-        expect(ratio, lessThan(1.5),
+        expect(ratio, lessThan(2.1),
             reason: '${surface.key} is unusually light');
       }
     });
@@ -173,7 +174,7 @@ void main() {
     testWidgets('a lifted shadow is visible against the canvas', (
       tester,
     ) async {
-      // A black shadow over #000000 is a no-op; dark mode must lift instead.
+      // A black shadow over near-black is a no-op; dark mode must lift instead.
       final shadow = await _inDark(tester, FluxColors.elevationOf);
       expect(shadow, isNot(Colors.black));
       expect(_contrast(shadow, FluxColors.darkCanvas), greaterThan(1.5));
@@ -207,8 +208,8 @@ void main() {
           ),
         ),
       );
-      // Over a black canvas a black scrim composites to exactly the canvas, so
-      // the menu had no dimming at all. It has to lighten instead.
+      // Over a near-black canvas a black scrim barely registers, so
+      // the menu had almost no dimming at all. It has to lighten instead.
       expect(scrim.computeLuminance(), greaterThan(0.0));
       expect(_over(scrim, FluxColors.darkCanvas), isNot(FluxColors.darkCanvas));
     });

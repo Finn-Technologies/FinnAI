@@ -148,7 +148,9 @@ void main() {
       expect(_voiceMic, findsNothing);
       // 390 wide minus two 50 buttons and two 20 gaps.
       expect(_pillWidth(tester), closeTo(390 - 100 - 40, 1));
-      expect(tester.getSize(_pill).height, closeTo(50, 1));
+      // 52, like the plain pill: the 50dp field plus its 1px hairline on
+      // each side.
+      expect(tester.getSize(_pill).height, closeTo(52, 1));
     });
 
     testWidgets('it does not redraw sixty times a second while idle',

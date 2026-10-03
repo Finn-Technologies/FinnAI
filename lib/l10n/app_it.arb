@@ -784,18 +784,6 @@
       }
     }
   },
-  "flowsNewSkill": "Nuova flow",
-  "@flowsNewSkill": {
-    "description": "New flow"
-  },
-  "flowsNoSkills": "Nessuna flow personalizzata. Creane una per un flusso di lavoro che ripeti.",
-  "@flowsNoSkills": {
-    "description": "Empty flows"
-  },
-  "flowsInstructionHint": "Scrivi un'istruzione riutilizzabile che Finn deve applicare quando è pertinente.",
-  "@flowsInstructionHint": {
-    "description": "Instruction hint"
-  },
   "flowsDeleteTitle": "Eliminare questa flow?",
   "@flowsDeleteTitle": {
     "description": "Delete flow title"
@@ -809,17 +797,9 @@
       }
     }
   },
-  "flowsLimitReached": "Limite di flow raggiunto (4). Eliminane una per aggiungerne un'altra.",
-  "@flowsLimitReached": {
-    "description": "Limit"
-  },
   "flowsNameLabel": "Nome della flow",
   "@flowsNameLabel": {
     "description": "Name label"
-  },
-  "flowsInstructionLabel": "Istruzione",
-  "@flowsInstructionLabel": {
-    "description": "Instruction label"
   },
   "flowsRunAction": "Esegui ora",
   "flowsRunRunning": "In corso…",
@@ -1263,26 +1243,9 @@
   },
   "creationsKindPresentation": "Presentazione",
   "flowsSaveFailed": "Impossibile salvare questa Flow.",
-  "flowsBuiltForFinn": "Creato per Finn",
-  "flowsBuiltForFinnSubtitle": "Attiva solo ciò che ti serve per ogni tipo di lavoro.",
-  "flowsYourSkills": "Le tue Flow",
-  "flowsYourSkillsSubtitle": "Crea istruzioni riutilizzabili per i tuoi flussi di lavoro.",
-  "flowsNoneActive": "Nessuna Flow attiva",
-  "flowsActiveCount": "{count} attive",
   "flowsActionsTooltip": "Azioni della Flow",
   "flowsNameSemantic": "Flow {name}",
-  "flowsEditTitle": "Modifica Flow",
-  "flowsEditorName": "Nome",
   "flowsEditorNameHint": "Cosa fa questa Flow?",
-  "flowsEditorDescription": "Breve descrizione",
-  "flowsEditorDescriptionHint": "Un promemoria rapido per te",
-  "flowsEditorInstructions": "Istruzioni",
-  "flowsEditorInstructionsHint": "Dì a Finn come affrontare questo tipo di attività",
-  "flowsCategoryWriting": "Scrittura",
-  "flowsCategoryDevelopment": "Sviluppo",
-  "flowsCategoryLearning": "Apprendimento",
-  "flowsCategoryPlanning": "Pianificazione",
-  "flowsCategoryCustom": "Personalizzata",
   "youNamePlaceholder": "Nome preferito",
   "youAboutQuestion": "Qualcosa che Finn dovrebbe sapere?",
   "youAboutPlaceholder": "Il tuo lavoro, i tuoi interessi, obiettivi o contesto",
@@ -1908,7 +1871,6 @@
   "flowsAllowConfirm": "Consenti",
   "flowsDeleteNamed": "Eliminare {name}?",
   "flowsDeleteNamedBody": "Anche le esecuzioni passate vengono rimosse. Non si può annullare.",
-  "flowsGuidesTitle": "Guide",
   "flowsStepLookUp": "Cerca {query}",
   "flowsStepWrite": "Scrivere la risposta",
   "creationsNewSheetSub": "Descrivilo in chat. FinnAI lo crea su questo dispositivo.",
@@ -1947,7 +1909,6 @@
   "onboardingDownloadPausedTitle": "Download in pausa",
   "onboardingDownloadPausedBody": "In attesa di connessione, i tuoi progressi sono salvati.",
   "onboardingDownloadPausedNote": "Riprende quando torni online.",
-  "flowsNewGuide": "Nuova guida",
   "flowsStepNotifyMe": "Avvisami",
   "creationsTemplateTracker": "Tracker",
   "creationsSlotStep": "Aggiunto a ogni tocco",

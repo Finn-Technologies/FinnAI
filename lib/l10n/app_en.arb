@@ -814,18 +814,6 @@
       }
     }
   },
-  "flowsNewSkill": "New flow",
-  "@flowsNewSkill": {
-    "description": "New flow"
-  },
-  "flowsNoSkills": "No custom flows yet. Create one for a workflow you repeat.",
-  "@flowsNoSkills": {
-    "description": "Empty flows"
-  },
-  "flowsInstructionHint": "Write a reusable instruction Finn should apply when relevant.",
-  "@flowsInstructionHint": {
-    "description": "Instruction hint"
-  },
   "flowsDeleteTitle": "Delete this flow?",
   "@flowsDeleteTitle": {
     "description": "Delete flow title"
@@ -839,17 +827,9 @@
       }
     }
   },
-  "flowsLimitReached": "Flow limit reached (4). Delete one to add another.",
-  "@flowsLimitReached": {
-    "description": "Limit"
-  },
   "flowsNameLabel": "Flow name",
   "@flowsNameLabel": {
     "description": "Name label"
-  },
-  "flowsInstructionLabel": "Instruction",
-  "@flowsInstructionLabel": {
-    "description": "Instruction label"
   },
   "flowsRunAction": "Run now",
   "@flowsRunAction": {
@@ -963,7 +943,9 @@
   "@flowsScheduleWeekdaysAt": {
     "description": "Schedule label for Monday to Friday",
     "placeholders": {
-      "time": { "type": "String" }
+      "time": {
+        "type": "String"
+      }
     }
   },
   "flowsScheduleEveryDay": "Every day",
@@ -998,21 +980,27 @@
   "@flowsRunning": {
     "description": "Flows automation text",
     "placeholders": {
-      "name": { "type": "String" }
+      "name": {
+        "type": "String"
+      }
     }
   },
   "flowsRunReady": "{name} is ready",
   "@flowsRunReady": {
     "description": "Flows automation text",
     "placeholders": {
-      "name": { "type": "String" }
+      "name": {
+        "type": "String"
+      }
     }
   },
   "flowsRunCouldNotFinish": "{name} couldn't finish",
   "@flowsRunCouldNotFinish": {
     "description": "Flows automation text",
     "placeholders": {
-      "name": { "type": "String" }
+      "name": {
+        "type": "String"
+      }
     }
   },
   "flowsOpenResult": "Open result",
@@ -1023,7 +1011,9 @@
   "@flowsNextRun": {
     "description": "Flows automation text",
     "placeholders": {
-      "when": { "type": "String" }
+      "when": {
+        "type": "String"
+      }
     }
   },
   "flowsRunByYou": "Run by you",
@@ -1376,20 +1366,6 @@
   "creationsFilterWidgets": "Widgets",
   "creationsFilterPresentations": "Presentations",
   "flowsSaveFailed": "That flow could not be saved.",
-  "flowsBuiltForFinn": "Built for Finn",
-  "flowsBuiltForFinnSubtitle": "Enable only what you need for each kind of work.",
-  "flowsYourSkills": "Your flows",
-  "flowsYourSkillsSubtitle": "Create reusable instructions for your own workflows.",
-  "flowsNoneActive": "No flows active",
-  "flowsActiveCount": "{count} active",
-  "@flowsActiveCount": {
-    "description": "Summary active count",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
   "creationsExportedShared": "Presentation ready to share.",
   "@creationsExportedShared": {
     "description": "Confirmation when the export was handed to the share sheet"
@@ -1776,53 +1752,9 @@
       }
     }
   },
-  "flowsEditTitle": "Edit flow",
-  "@flowsEditTitle": {
-    "description": "Editor title for an existing flow"
-  },
-  "flowsEditorName": "Name",
-  "@flowsEditorName": {
-    "description": "Editor field label"
-  },
   "flowsEditorNameHint": "What does this flow do?",
   "@flowsEditorNameHint": {
     "description": "Editor field hint"
-  },
-  "flowsEditorDescription": "Short description",
-  "@flowsEditorDescription": {
-    "description": "Editor field label"
-  },
-  "flowsEditorDescriptionHint": "A quick reminder for you",
-  "@flowsEditorDescriptionHint": {
-    "description": "Editor field hint"
-  },
-  "flowsEditorInstructions": "Instructions",
-  "@flowsEditorInstructions": {
-    "description": "Editor field label"
-  },
-  "flowsEditorInstructionsHint": "Tell Finn how to approach this kind of task",
-  "@flowsEditorInstructionsHint": {
-    "description": "Editor field hint"
-  },
-  "flowsCategoryWriting": "Writing",
-  "@flowsCategoryWriting": {
-    "description": "Flow category label"
-  },
-  "flowsCategoryDevelopment": "Development",
-  "@flowsCategoryDevelopment": {
-    "description": "Flow category label"
-  },
-  "flowsCategoryLearning": "Learning",
-  "@flowsCategoryLearning": {
-    "description": "Flow category label"
-  },
-  "flowsCategoryPlanning": "Planning",
-  "@flowsCategoryPlanning": {
-    "description": "Flow category label"
-  },
-  "flowsCategoryCustom": "Custom",
-  "@flowsCategoryCustom": {
-    "description": "Flow category label"
   },
   "youNamePlaceholder": "Preferred name",
   "@youNamePlaceholder": {
@@ -3408,10 +3340,6 @@
   "@flowsDeleteNamedBody": {
     "description": "flowsDeleteNamedBody"
   },
-  "flowsGuidesTitle": "Guides",
-  "@flowsGuidesTitle": {
-    "description": "flowsGuidesTitle"
-  },
   "flowsStepLookUp": "Look up {query}",
   "@flowsStepLookUp": {
     "description": "flowsStepLookUp",
@@ -3578,10 +3506,6 @@
   "onboardingDownloadPausedNote": "It continues when you are back online.",
   "@onboardingDownloadPausedNote": {
     "description": "onboardingDownloadPausedNote"
-  },
-  "flowsNewGuide": "New guide",
-  "@flowsNewGuide": {
-    "description": "flowsNewGuide"
   },
   "flowsStepNotifyMe": "Notify me",
   "@flowsStepNotifyMe": {

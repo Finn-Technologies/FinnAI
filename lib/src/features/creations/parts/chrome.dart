@@ -111,7 +111,7 @@ class _ErrorNotice extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.fromLTRB(14, 11, 8, 11),
         decoration: BoxDecoration(
-          // Tinted harder in dark: #FF9E96 at .09 over #18181B measures about
+          // Tinted harder in dark: #FF9E96 at .09 over #18181C measures about
           // 1.15:1, so the notice was visible only by its icon.
           color: FluxColors.destructiveOf(context).withValues(
             alpha: FluxColors.isDark(context) ? .16 : .09,

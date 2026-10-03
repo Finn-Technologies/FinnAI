@@ -630,17 +630,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get flowsNewSkill => 'New flow';
-
-  @override
-  String get flowsNoSkills =>
-      'No custom flows yet. Create one for a workflow you repeat.';
-
-  @override
-  String get flowsInstructionHint =>
-      'Write a reusable instruction Finn should apply when relevant.';
-
-  @override
   String get flowsDeleteTitle => 'Delete this flow?';
 
   @override
@@ -649,14 +638,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get flowsLimitReached =>
-      'Flow limit reached (4). Delete one to add another.';
-
-  @override
   String get flowsNameLabel => 'Flow name';
-
-  @override
-  String get flowsInstructionLabel => 'Instruction';
 
   @override
   String get flowsRunAction => 'Run now';
@@ -1087,28 +1069,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get flowsSaveFailed => 'That flow could not be saved.';
 
   @override
-  String get flowsBuiltForFinn => 'Built for Finn';
-
-  @override
-  String get flowsBuiltForFinnSubtitle =>
-      'Enable only what you need for each kind of work.';
-
-  @override
-  String get flowsYourSkills => 'Your flows';
-
-  @override
-  String get flowsYourSkillsSubtitle =>
-      'Create reusable instructions for your own workflows.';
-
-  @override
-  String get flowsNoneActive => 'No flows active';
-
-  @override
-  String flowsActiveCount(int count) {
-    return '$count active';
-  }
-
-  @override
   String get creationsExportedShared => 'Presentation ready to share.';
 
   @override
@@ -1401,41 +1361,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get flowsEditTitle => 'Edit flow';
-
-  @override
-  String get flowsEditorName => 'Name';
-
-  @override
   String get flowsEditorNameHint => 'What does this flow do?';
-
-  @override
-  String get flowsEditorDescription => 'Short description';
-
-  @override
-  String get flowsEditorDescriptionHint => 'A quick reminder for you';
-
-  @override
-  String get flowsEditorInstructions => 'Instructions';
-
-  @override
-  String get flowsEditorInstructionsHint =>
-      'Tell Finn how to approach this kind of task';
-
-  @override
-  String get flowsCategoryWriting => 'Writing';
-
-  @override
-  String get flowsCategoryDevelopment => 'Development';
-
-  @override
-  String get flowsCategoryLearning => 'Learning';
-
-  @override
-  String get flowsCategoryPlanning => 'Planning';
-
-  @override
-  String get flowsCategoryCustom => 'Custom';
 
   @override
   String get youNamePlaceholder => 'Preferred name';
@@ -2609,9 +2535,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Its past runs are removed too. This can not be undone.';
 
   @override
-  String get flowsGuidesTitle => 'Guides';
-
-  @override
   String flowsStepLookUp(String query) {
     return 'Look up $query';
   }
@@ -2737,9 +2660,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get onboardingDownloadPausedNote =>
       'It continues when you are back online.';
-
-  @override
-  String get flowsNewGuide => 'New guide';
 
   @override
   String get flowsStepNotifyMe => 'Notify me';

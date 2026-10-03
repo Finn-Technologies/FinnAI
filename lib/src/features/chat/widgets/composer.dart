@@ -179,7 +179,6 @@ class _ChatComposerState extends State<ChatComposer>
     final canSend =
         (_hasText || hasAttachment) && !widget.blocked && !widget.busy;
     final reducedMotion = MediaQuery.disableAnimationsOf(context);
-    final isDark = FluxColors.isDark(context);
     final hasDraft = _hasText || hasAttachment;
 
     // One circular control of the composer row: 50dp, flat colour, glyph.
@@ -409,7 +408,10 @@ class _ChatComposerState extends State<ChatComposer>
     );
     const fieldInset = EdgeInsets.fromLTRB(17, 1, 4, 1);
 
-    // The middle pill outside live voice: just the field.
+    // The middle pill outside live voice: just the field. Flat in both
+    // themes — no shadow. A blur renders differently per GPU and, on dark,
+    // reads as a haze around the pill on some panels; the pill separates
+    // from the chat background with its fill plus a 1px hairline instead.
     final pill = AnimatedContainer(
       key: const ValueKey('chat-composer-motion'),
       duration:
@@ -420,14 +422,7 @@ class _ChatComposerState extends State<ChatComposer>
         borderRadius: BorderRadius.circular(
           hasAttachment ? FluxRadius.sheet : FluxRadius.pill,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: FluxColors.elevationOf(context)
-                .withValues(alpha: isDark ? 0.14 : 0.08),
-            blurRadius: isDark ? 20 : 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        border: Border.all(color: FluxColors.lineOf(context), width: 1),
       ),
       constraints: const BoxConstraints(minHeight: 50, maxHeight: 220),
       padding: fieldInset,

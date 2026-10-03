@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:finn_ai/src/inference/finn_inference.dart';
-import 'package:finn_ai/src/features/flows/flows_store.dart';
 import 'package:finn_ai/src/features/you/you_profile_store.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -29,7 +28,7 @@ void main() {
     });
 
     test(
-        'personalization and enabled flows are rendered as private context '
+        'personalization is rendered as private context '
         'without replacing safety instructions', () async {
       final directory = await Directory.systemTemp.createTemp(
         'finn_prompt_context_test_',
@@ -40,9 +39,7 @@ void main() {
         }
       });
       final profile = YouProfileStore(directoryProvider: () async => directory);
-      final flows = FlowsStore(directoryProvider: () async => directory);
       await profile.initialize();
-      await flows.initialize();
       await profile.save(
         const FinnUserProfile(
           preferredName: 'Ari',
@@ -51,17 +48,8 @@ void main() {
           responseStyle: FinnResponseStyle.concise,
         ),
       );
-      await flows.setEnabled('builtin-coding', true);
-      await flows.upsertCustom(
-        name: 'Battery reviewer',
-        description: 'Checks mobile efficiency',
-        instructions: 'Call out battery and thermal trade-offs.',
-      );
 
-      final systemContext = [
-        profile.promptContext,
-        flows.activePromptContext,
-      ].join('\n\n');
+      final systemContext = profile.promptContext;
       final rendered = FinnInference.instance.renderPromptForTest(
         prompt: 'Review this Android implementation.',
         systemContext: systemContext,
@@ -80,9 +68,6 @@ void main() {
       );
       expect(rendered, contains('Address the user as Ari.'));
       expect(rendered, contains('Use metric units.'));
-      expect(rendered, contains('Coding partner:'));
-      expect(rendered, contains('Battery reviewer:'));
-      expect(rendered, contains('Call out battery and thermal trade-offs.'));
       expect(
         rendered,
         contains(

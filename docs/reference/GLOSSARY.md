@@ -21,6 +21,6 @@ Terms used across the codebase and these docs.
 | **Freshness policy** | `WebSearchPolicy.shouldSearch` — a local, deterministic check for whether a query may need current web facts. |
 | **Grounded context** | Web-search excerpts injected into the prompt, surfaced to the user as sources. |
 | **Creations** | Locally generated structured artifacts (documents/widgets/concepts). |
-| **Skills** | User-authored instruction snippets injected into the private context. |
+| **Flows** | Local automations: a tree of blocks run by hand, on a schedule, or on a device event. |
 | **PROCESS_TEXT / "Ask Finn AI"** | Android text-selection integration that opens the app with the selected text. |
 | **Engine seam violation** | CI failure produced when a non-engine file imports `package:llama_cpp_dart`. |

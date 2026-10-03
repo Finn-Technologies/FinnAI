@@ -642,17 +642,6 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get flowsNewSkill => 'Nueva flow';
-
-  @override
-  String get flowsNoSkills =>
-      'Aún no hay flows personalizadas. Crea una para un flujo de trabajo que repitas.';
-
-  @override
-  String get flowsInstructionHint =>
-      'Escribe una instrucción reutilizable que Finn deba aplicar cuando sea relevante.';
-
-  @override
   String get flowsDeleteTitle => '¿Eliminar esta flow?';
 
   @override
@@ -661,14 +650,7 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get flowsLimitReached =>
-      'Límite de flows alcanzado (4). Elimina una para añadir otra.';
-
-  @override
   String get flowsNameLabel => 'Nombre de la flow';
-
-  @override
-  String get flowsInstructionLabel => 'Instrucción';
 
   @override
   String get flowsRunAction => 'Ejecutar ahora';
@@ -1099,28 +1081,6 @@ class AppLocalizationsEs extends AppLocalizations {
   String get flowsSaveFailed => 'No se pudo guardar esa Flow.';
 
   @override
-  String get flowsBuiltForFinn => 'Diseñado para Finn';
-
-  @override
-  String get flowsBuiltForFinnSubtitle =>
-      'Activa solo lo que necesites para cada tipo de trabajo.';
-
-  @override
-  String get flowsYourSkills => 'Tus Flows';
-
-  @override
-  String get flowsYourSkillsSubtitle =>
-      'Crea instrucciones reutilizables para tus propios flujos de trabajo.';
-
-  @override
-  String get flowsNoneActive => 'No hay Flows activas';
-
-  @override
-  String flowsActiveCount(int count) {
-    return '$count activas';
-  }
-
-  @override
   String get creationsExportedShared => 'Presentación lista para compartir.';
 
   @override
@@ -1416,41 +1376,7 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get flowsEditTitle => 'Editar Flow';
-
-  @override
-  String get flowsEditorName => 'Nombre';
-
-  @override
   String get flowsEditorNameHint => '¿Qué hace esta Flow?';
-
-  @override
-  String get flowsEditorDescription => 'Descripción breve';
-
-  @override
-  String get flowsEditorDescriptionHint => 'Un recordatorio rápido para ti';
-
-  @override
-  String get flowsEditorInstructions => 'Instrucciones';
-
-  @override
-  String get flowsEditorInstructionsHint =>
-      'Di a Finn cómo abordar este tipo de tarea';
-
-  @override
-  String get flowsCategoryWriting => 'Escritura';
-
-  @override
-  String get flowsCategoryDevelopment => 'Desarrollo';
-
-  @override
-  String get flowsCategoryLearning => 'Aprendizaje';
-
-  @override
-  String get flowsCategoryPlanning => 'Planificación';
-
-  @override
-  String get flowsCategoryCustom => 'Personalizada';
 
   @override
   String get youNamePlaceholder => 'Nombre preferido';
@@ -2631,9 +2557,6 @@ class AppLocalizationsEs extends AppLocalizations {
       'Sus ejecuciones pasadas también se eliminan. Esto no se puede deshacer.';
 
   @override
-  String get flowsGuidesTitle => 'Guías';
-
-  @override
   String flowsStepLookUp(String query) {
     return 'Buscar $query';
   }
@@ -2762,9 +2685,6 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get onboardingDownloadPausedNote =>
       'Continúa cuando vuelvas a tener conexión.';
-
-  @override
-  String get flowsNewGuide => 'Nueva guía';
 
   @override
   String get flowsStepNotifyMe => 'Avisarme';

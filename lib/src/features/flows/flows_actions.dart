@@ -120,7 +120,6 @@ class FlowsActions extends ChangeNotifier {
       id: flow.id,
       name: name ?? flow.name,
       description: flow.description,
-      instructions: flow.instructions,
       category: flow.category,
       enabled: flow.enabled,
       blocks: blocks ?? flow.blocks,
@@ -150,7 +149,6 @@ class FlowsActions extends ChangeNotifier {
     final saved = await store.upsertCustom(
       name: flow.name,
       description: flow.description,
-      instructions: '',
       category: flow.category,
       enabled: enabled,
       blocks: flow.blocks,
@@ -221,7 +219,6 @@ class FlowsActions extends ChangeNotifier {
     await store.upsertCustom(
       name: '${flow.name} 2',
       description: flow.description,
-      instructions: flow.instructions,
       category: flow.category,
       enabled: false,
       blocks: flow.blocks,

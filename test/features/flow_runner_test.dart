@@ -86,7 +86,6 @@ void main() {
       id: null,
       name: flow.name,
       description: flow.description,
-      instructions: '',
       blocks: flow.blocks,
       triggers: flow.triggers,
       conditions: flow.conditions,

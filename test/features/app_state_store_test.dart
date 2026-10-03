@@ -139,11 +139,10 @@ void main() {
           ),
         );
         await flowsStore.initialize();
-        await flowsStore.setEnabled('builtin-coding', true);
         await flowsStore.upsertCustom(
           name: 'Private workflow',
           description: 'Local workflow',
-          instructions: 'Use the private workflow.',
+          blocks: const [FlowBlock.notify('hi')],
         );
 
         final result = await AppStateStore(
@@ -166,19 +165,18 @@ void main() {
         );
         expect(File('${tempDir.path}/flows.json').existsSync(), isFalse);
         expect(profileStore.profile.hasPersonalization, isFalse);
-        expect(flowsStore.enabledSkills, isEmpty);
-        expect(flowsStore.flows, hasLength(finnBuiltInFlows.length));
+        expect(flowsStore.flows, isEmpty);
 
         final restoredProfile = YouProfileStore(
           directoryProvider: () async => tempDir,
         );
-        final restoredSkills = FlowsStore(
+        final restoredFlows = FlowsStore(
           directoryProvider: () async => tempDir,
         );
         await restoredProfile.initialize();
-        await restoredSkills.initialize();
+        await restoredFlows.initialize();
         expect(restoredProfile.promptContext, isEmpty);
-        expect(restoredSkills.activePromptContext, isEmpty);
+        expect(restoredFlows.flows, isEmpty);
       },
     );
   });

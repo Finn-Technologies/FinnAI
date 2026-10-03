@@ -123,7 +123,6 @@ extension _HomeShellMake on _HomeShellState {
           await store.upsertCustom(
             name: flow.name,
             description: flow.description,
-            instructions: '',
             category: flow.category,
             enabled: false,
             blocks: flow.blocks,

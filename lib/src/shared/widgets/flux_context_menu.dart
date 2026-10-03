@@ -316,7 +316,7 @@ class _FluxContextMenuOverlayState extends State<_FluxContextMenuOverlay> {
                 animation: curvedAnimation,
                 builder: (context, _) => ColoredBox(
                   // Through [FluxColors.scrimOf]: a black scrim over the
-                  // #000000 canvas is a no-op, so in dark the menu opened
+                  // near-black canvas barely registers, so in dark the menu opened
                   // with no dimming and no sense of being modal.
                   color: FluxColors.scrimOf(
                     context,

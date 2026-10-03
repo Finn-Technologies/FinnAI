@@ -271,8 +271,8 @@ void main() {
       expect(flow.blocks.map((b) => b.kind), [FlowBlockKind.notify]);
     });
 
-    test('a v1 flow is a guide: instructions, no blocks', () {
-      final flow = FlowCodec.decode(jsonEncode({
+    test('a v1 flow is a dropped guide: nothing migrates', () {
+      final decoded = FlowCodec.decode(jsonEncode({
         'version': 1,
         'flows': [
           {
@@ -284,10 +284,9 @@ void main() {
             'enabled': true,
           },
         ],
-      })).flows.single;
-      expect(flow.isAutomation, isFalse);
-      expect(flow.instructions, 'Be brief.');
-      expect(flow.promptLines, ['Be brief.']);
+      }));
+      expect(decoded.flows, isEmpty);
+      expect(FlowCodec.migrateV1(const {}), isNull);
     });
 
     test('a v3 document round trips', () {
@@ -314,16 +313,21 @@ void main() {
       expect(again.toJson(), flow.toJson());
     });
 
-    test('an automation contributes nothing to the chat prompt', () {
-      const flow = FinnFlow(
-        id: 'f',
-        name: 'N',
-        description: '',
-        instructions: 'secret instruction',
-        category: 'Automation',
-        blocks: [FlowBlock.ask('x')],
-      );
-      expect(flow.promptLines, isEmpty);
+    test('a v3 guide with no blocks is dropped', () {
+      final decoded = FlowCodec.decode(jsonEncode({
+        'version': 3,
+        'flows': [
+          {
+            'id': 'g',
+            'name': 'Guide',
+            'description': 'd',
+            'instructions': 'Be brief.',
+            'category': 'Custom',
+            'enabled': true,
+          },
+        ],
+      }));
+      expect(decoded.flows, isEmpty);
     });
   });
 

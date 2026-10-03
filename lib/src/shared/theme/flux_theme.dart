@@ -33,14 +33,16 @@ abstract final class FluxColors {
   static const mint = Color(0xFF7DFFCD);
   static const green = Color(0xFF00FF2B);
 
-  // Dark Palette (Sleek Dark Mode)
-  static const darkCanvas = Color(0xFF000000);
+  // Dark palette, lifted off pure black: #000000 crushes on LCD and smears
+  // on OLED, so the canvas is #101014 and flat surfaces separate with fill
+  // plus a 1px hairline instead of a shadow (see composer.dart).
+  static const darkCanvas = Color(0xFF101014);
   static const darkInk = Color(0xFFF5F5F7);
   static const darkMuted = Color(0xFF9898A0);
-  static const darkLine = Color(0xFF26262D);
-  static const darkPanelEdge = Color(0xFF3A3A42);
-  static const darkSurface = Color(0xFF18181B);
-  static const darkCard = Color(0xFF222226);
+  static const darkLine = Color(0xFF34343E);
+  static const darkPanelEdge = Color(0xFF45454F);
+  static const darkSurface = Color(0xFF18181C);
+  static const darkCard = Color(0xFF26262E);
 
   // Destructive (unified red)
   static const destructive = Color(0xFFB3261E);
@@ -97,27 +99,29 @@ abstract final class FluxColors {
   static const scrimMenuLight = Color(0x18000000);
   static const scrimMenuDark = Color(0x33000000);
 
-  // Elevation. A black shadow is a no-op on the #000000 dark canvas, so dark
-  // mode separates a raised surface with a light rim instead — the same trick
-  // a dark UI uses for a floating card. Both are declared as the *ink* colour
-  // so [elevationOf] can tint them.
+  // Elevation. Shadows render differently per GPU and vanish entirely on
+  // near-black fills, so the chat surfaces (composer pill, bubbles) are flat
+  // and separate with fill + a 1px hairline instead. [elevationShadow] stays
+  // for transient raised surfaces only (sidebar sheet, menus, sheets), where
+  // a blur is a depth cue rather than a permanent edge.
   static const double elevationRadius = 24;
   static const double elevationOffsetY = 8;
 
   /// The colour of an elevated surface's shadow in the active theme.
   ///
-  /// Light mode darkens; dark mode lifts. Every elevated surface — cards,
-  /// sheets, menus, the composer pill — goes through this, because a literal
-  /// `Colors.black` shadow is invisible against the dark canvas.
+  /// Light mode darkens; dark mode lifts. Transient raised surfaces — sheets,
+  /// menus — go through this. The composer pill and chat bubbles do NOT: they
+  /// are flat with a hairline border so they look identical on every panel.
   static Color elevationOf(BuildContext context) =>
       isDark(context) ? darkInk : Colors.black;
 
-  /// A ready-made elevated shadow.
+  /// A ready-made elevated shadow for transient surfaces (sheets, menus).
   ///
   /// One call so a raised surface cannot reintroduce a literal black shadow:
-  /// this is what every card, sheet, menu and the composer pill use. [alpha] is
+  /// this is what sheets and menus use. The composer pill and chat bubbles
+  /// are flat by design and must not call this. [alpha] is
   /// the light-mode strength; dark uses a fraction of it, because a lift over
-  /// black reads at a much lower contrast than a shade over white.
+  /// near-black reads at a much lower contrast than a shade over white.
   static List<BoxShadow> elevationShadow(
     BuildContext context, {
     double alpha = .08,
@@ -138,33 +142,31 @@ abstract final class FluxColors {
 
   /// Scrim behind a modal surface.
   ///
-  /// Darkening a black canvas achieves nothing, so in dark the scrim *lightens*
-  /// what is behind it, which is the only way to read as "this is now modal".
+  /// Darkening a near-black canvas achieves little, so in dark the scrim
+  /// *lightens* what is behind it, which is the only way to read as "this is
+  /// now modal".
   static Color scrimOf(BuildContext context, {required double alpha}) =>
       isDark(context)
           ? darkInk.withValues(alpha: alpha * 0.30)
           : Colors.black.withValues(alpha: alpha);
 
-  // Bubble / surface helpers.
-  //
-  // `bubbleUserDark` used to be #2C2C2E — 1.51:1 against the pure-black dark
-  // canvas, which is why the user bubble read as "very dark grey on black" on
-  // device. #575D6E keeps >= 4.5:1 for the text on it *and* >= 3:1 against the
-  // canvas, so the bubble is visible without the copy becoming unreadable.
+  // Bubble fills. bubbleUserDark is #64646E: white text clears 4.5:1 on it
+  // (5.37:1) and it holds 3:1 against both the canvas and the tile it sits
+  // on, so it survives panels that crushed the old slate into the background.
   static const bubbleUserLight = Color(0xFFFFFFFF);
-  static const bubbleUserDark = Color(0xFF575D6E);
+  static const bubbleUserDark = Color(0xFF64646E);
   static const bubbleAssistantLight = Color(0xFFF2F2F7);
-  static const bubbleAssistantDark = Color(0xFF1C1C1E);
+  static const bubbleAssistantDark = Color(0xFF26262E);
 
   // Reveal pills that sit under a reply (sources, browser steps)
   static const disclosureLight = Color(0xFFEAEAEE);
-  static const disclosureDark = Color(0xFF1E1E22);
+  static const disclosureDark = Color(0xFF26262E);
 
-  // Chat shell controls: the circular surfaces the design uses for the menu,
-  // attachment, mic and close buttons, and the near-black it uses for primary
-  // actions such as send.
+  // Chat shell controls. controlDark is the lightest dark fill on purpose:
+  // the flat composer pill separates from the chat background on fill plus
+  // its hairline, with no shadow to lean on.
   static const controlLight = Color(0xFFFFFFFF);
-  static const controlDark = Color(0xFF1E1E22);
+  static const controlDark = Color(0xFF2C2C35);
   static const actionLight = Color(0xFF414141);
   static const actionDark = Color(0xFFF5F5F7);
 
@@ -178,7 +180,7 @@ abstract final class FluxColors {
 
   // Listening pill behind the composer (design: Chat - Voice). The dark pair
   // is a deep, desaturated version: the light pastels measure ~15:1 against
-  // the black canvas, which reads as a slab of daylight pasted onto a dark UI.
+  // the dark canvas, which reads as a slab of daylight pasted onto a dark UI.
   static const voiceStart = Color(0xFFC9E7A8);
   static const voiceEnd = Color(0xFFA7E9E1);
   static const voiceStartDark = Color(0xFF24361C);

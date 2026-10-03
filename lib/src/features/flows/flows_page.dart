@@ -18,8 +18,6 @@ import 'package:finn_ai/src/shared/widgets/finn_page_route.dart';
 import 'package:finn_ai/src/shared/widgets/finn_ui.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
 
-part 'parts/skill_editor.dart';
-
 enum _Filter { all, active, paused }
 
 /// Flows: the things FinnAI does for the user on a schedule or on request.
@@ -91,37 +89,6 @@ class _FlowsPageState extends State<FlowsPage> {
         ),
       );
 
-  Future<void> _editGuide([FinnFlow? flow]) async {
-    final result = await showModalBottomSheet<_SkillDraft>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => _SkillEditor(flow: flow),
-    );
-    if (result == null) return;
-    final saved = await _store.upsertCustom(
-      id: flow?.id,
-      name: result.name,
-      description: result.description,
-      instructions: result.instructions,
-      enabled: flow?.enabled ?? true,
-    );
-    if (!saved && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            switch (_store.failure ?? FlowsFailure.save) {
-              FlowsFailure.limit => L10n.of(context).flowsLimitReached,
-              _ => L10n.of(context).flowsSaveFailed,
-            },
-          ),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final l10n = L10n.of(context);
@@ -145,9 +112,8 @@ class _FlowsPageState extends State<FlowsPage> {
             ],
           );
         }
-        final automations = _store.flows
-            .where((flow) => !flow.builtIn && flow.isAutomation)
-            .toList();
+        final automations =
+            _store.flows.where((flow) => flow.isAutomation).toList();
         final shown = automations
             .where(
               (flow) => switch (_filter) {
@@ -156,10 +122,6 @@ class _FlowsPageState extends State<FlowsPage> {
                 _Filter.paused => !flow.enabled,
               },
             )
-            .toList();
-        final builtIns = _store.flows.where((flow) => flow.builtIn).toList();
-        final custom = _store.flows
-            .where((flow) => !flow.builtIn && !flow.isAutomation)
             .toList();
         final plus = FinnCircleButton.icon(
           key: const Key('add-flow-button'),
@@ -201,40 +163,7 @@ class _FlowsPageState extends State<FlowsPage> {
                   ),
                 ),
             ],
-            const SizedBox(height: 10),
-            Text(
-              l10n.flowsGuidesTitle,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            FinnCaption(l10n.flowsBuiltForFinnSubtitle),
-            for (final flow in [...builtIns, ...custom])
-              FinnTile(
-                icon: FluxIcons.note,
-                title: flow.name,
-                subtitle: flow.description,
-                onTap: flow.builtIn ? null : () => unawaited(_editGuide(flow)),
-                chevron: false,
-                trailing: FinnSwitch(
-                  key: Key('flow-toggle-${flow.id}'),
-                  value: flow.enabled,
-                  label: l10n.flowsNameSemantic(flow.name),
-                  onChanged: (v) => unawaited(_store.setEnabled(flow.id, v)),
-                ),
-              ),
-            FinnButton(
-              key: const Key('new-skill-button'),
-              label: l10n.flowsNewGuide,
-              icon: FluxIcons.add,
-              secondary: true,
-              onTap: () => unawaited(_editGuide()),
-            ),
-            if (_store.failure != null)
-              FinnCaption(
-                switch (_store.failure!) {
-                  FlowsFailure.limit => l10n.flowsLimitReached,
-                  _ => l10n.flowsSaveFailed,
-                },
-              ),
+            if (_store.failure != null) FinnCaption(l10n.flowsSaveFailed),
           ],
         );
       },

@@ -284,11 +284,9 @@ class _MessageBubbleState extends State<_MessageBubble> {
             ? FluxColors.bubbleUserOf(context)
             : FluxColors.cardOf(context),
         borderRadius: borderRadius,
-        border: widget.user
-            ? null
-            : Border.all(
-                color: FluxColors.lineOf(context).withValues(alpha: 0.06),
-              ),
+        // Flat in both themes — no shadow. Fill plus this hairline is what
+        // separates the bubble on every panel; a blur reads as haze on dark.
+        border: Border.all(color: FluxColors.lineOf(context), width: 1),
       ),
       child: widget.childBuilder(false),
     );
@@ -336,7 +334,6 @@ class _MessageBubbleState extends State<_MessageBubble> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = FluxColors.isDark(context);
     // A user message is a solid pill of its own; the assistant keeps the
     // softly-cornered surface so an error or notice still reads as a card.
     final borderRadius = widget.user
@@ -361,15 +358,8 @@ class _MessageBubbleState extends State<_MessageBubble> {
             ? FluxColors.bubbleUserOf(context)
             : FluxColors.cardOf(context),
         borderRadius: borderRadius,
-        boxShadow: widget.user
-            ? null
-            : FluxColors.elevationShadow(
-                context,
-                alpha: .04,
-                blur: isDark ? 12 : 9,
-                offset: const Offset(0, 3),
-              ),
-        border: null,
+        // Flat in both themes — no shadow, same as the preview above.
+        border: Border.all(color: FluxColors.lineOf(context), width: 1),
       ),
       child: widget.childBuilder(_selecting),
     );

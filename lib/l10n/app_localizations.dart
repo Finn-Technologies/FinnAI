@@ -1184,24 +1184,6 @@ abstract class AppLocalizations {
   /// **'{count} available · flows guide relevant replies'**
   String flowsSubtitle(int count);
 
-  /// New flow
-  ///
-  /// In en, this message translates to:
-  /// **'New flow'**
-  String get flowsNewSkill;
-
-  /// Empty flows
-  ///
-  /// In en, this message translates to:
-  /// **'No custom flows yet. Create one for a workflow you repeat.'**
-  String get flowsNoSkills;
-
-  /// Instruction hint
-  ///
-  /// In en, this message translates to:
-  /// **'Write a reusable instruction Finn should apply when relevant.'**
-  String get flowsInstructionHint;
-
   /// Delete flow title
   ///
   /// In en, this message translates to:
@@ -1214,23 +1196,11 @@ abstract class AppLocalizations {
   /// **'“{name}” will be removed from this device.'**
   String flowsDeleteBody(String name);
 
-  /// Limit
-  ///
-  /// In en, this message translates to:
-  /// **'Flow limit reached (4). Delete one to add another.'**
-  String get flowsLimitReached;
-
   /// Name label
   ///
   /// In en, this message translates to:
   /// **'Flow name'**
   String get flowsNameLabel;
-
-  /// Instruction label
-  ///
-  /// In en, this message translates to:
-  /// **'Instruction'**
-  String get flowsInstructionLabel;
 
   /// Runs a flow once, on the spot
   ///
@@ -1988,42 +1958,6 @@ abstract class AppLocalizations {
   /// **'That flow could not be saved.'**
   String get flowsSaveFailed;
 
-  /// No description provided for @flowsBuiltForFinn.
-  ///
-  /// In en, this message translates to:
-  /// **'Built for Finn'**
-  String get flowsBuiltForFinn;
-
-  /// No description provided for @flowsBuiltForFinnSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Enable only what you need for each kind of work.'**
-  String get flowsBuiltForFinnSubtitle;
-
-  /// No description provided for @flowsYourSkills.
-  ///
-  /// In en, this message translates to:
-  /// **'Your flows'**
-  String get flowsYourSkills;
-
-  /// No description provided for @flowsYourSkillsSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Create reusable instructions for your own workflows.'**
-  String get flowsYourSkillsSubtitle;
-
-  /// No description provided for @flowsNoneActive.
-  ///
-  /// In en, this message translates to:
-  /// **'No flows active'**
-  String get flowsNoneActive;
-
-  /// Summary active count
-  ///
-  /// In en, this message translates to:
-  /// **'{count} active'**
-  String flowsActiveCount(int count);
-
   /// Confirmation when the export was handed to the share sheet
   ///
   /// In en, this message translates to:
@@ -2546,77 +2480,11 @@ abstract class AppLocalizations {
   /// **'{name} flow'**
   String flowsNameSemantic(String name);
 
-  /// Editor title for an existing flow
-  ///
-  /// In en, this message translates to:
-  /// **'Edit flow'**
-  String get flowsEditTitle;
-
-  /// Editor field label
-  ///
-  /// In en, this message translates to:
-  /// **'Name'**
-  String get flowsEditorName;
-
   /// Editor field hint
   ///
   /// In en, this message translates to:
   /// **'What does this flow do?'**
   String get flowsEditorNameHint;
-
-  /// Editor field label
-  ///
-  /// In en, this message translates to:
-  /// **'Short description'**
-  String get flowsEditorDescription;
-
-  /// Editor field hint
-  ///
-  /// In en, this message translates to:
-  /// **'A quick reminder for you'**
-  String get flowsEditorDescriptionHint;
-
-  /// Editor field label
-  ///
-  /// In en, this message translates to:
-  /// **'Instructions'**
-  String get flowsEditorInstructions;
-
-  /// Editor field hint
-  ///
-  /// In en, this message translates to:
-  /// **'Tell Finn how to approach this kind of task'**
-  String get flowsEditorInstructionsHint;
-
-  /// Flow category label
-  ///
-  /// In en, this message translates to:
-  /// **'Writing'**
-  String get flowsCategoryWriting;
-
-  /// Flow category label
-  ///
-  /// In en, this message translates to:
-  /// **'Development'**
-  String get flowsCategoryDevelopment;
-
-  /// Flow category label
-  ///
-  /// In en, this message translates to:
-  /// **'Learning'**
-  String get flowsCategoryLearning;
-
-  /// Flow category label
-  ///
-  /// In en, this message translates to:
-  /// **'Planning'**
-  String get flowsCategoryPlanning;
-
-  /// Flow category label
-  ///
-  /// In en, this message translates to:
-  /// **'Custom'**
-  String get flowsCategoryCustom;
 
   /// Name field hint
   ///
@@ -4676,12 +4544,6 @@ abstract class AppLocalizations {
   /// **'Its past runs are removed too. This can not be undone.'**
   String get flowsDeleteNamedBody;
 
-  /// flowsGuidesTitle
-  ///
-  /// In en, this message translates to:
-  /// **'Guides'**
-  String get flowsGuidesTitle;
-
   /// flowsStepLookUp
   ///
   /// In en, this message translates to:
@@ -4909,12 +4771,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'It continues when you are back online.'**
   String get onboardingDownloadPausedNote;
-
-  /// flowsNewGuide
-  ///
-  /// In en, this message translates to:
-  /// **'New guide'**
-  String get flowsNewGuide;
 
   /// flowsStepNotifyMe
   ///

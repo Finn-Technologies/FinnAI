@@ -108,7 +108,7 @@ class _SidebarSurface extends StatelessWidget {
                         if (motion > 0)
                           BoxShadow(
                             // The only shadow in the app that had no dark
-                            // branch at all: 10% black on a black canvas left
+                            // branch at all: 10% black on a near-black canvas left
                             // the home sheet with no lift.
                             color: FluxColors.elevationOf(context).withValues(
                               alpha: 0.10,

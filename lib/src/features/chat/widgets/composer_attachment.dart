@@ -24,16 +24,10 @@ extension _ComposerAttachment on _ChatComposerState {
             height: 54,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(FluxRadius.sm),
+              // Flat: the border is the edge, no shadow inside the pill.
               border: Border.all(
-                color:
-                    isDark ? const Color(0x33FFFFFF) : const Color(0x1F000000),
+                color: FluxColors.lineOf(context),
                 width: 1,
-              ),
-              boxShadow: FluxColors.elevationShadow(
-                context,
-                alpha: .08,
-                blur: 8,
-                offset: const Offset(0, 2),
               ),
             ),
             child: ClipRRect(
@@ -47,9 +41,7 @@ extension _ComposerAttachment on _ChatComposerState {
                 gaplessPlayback: true,
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) => Container(
-                  color: isDark
-                      ? const Color(0xFF2C2C2E)
-                      : FluxColors.bubbleUserLight,
+                  color: FluxColors.cardOf(context),
                   child: Center(
                     child: FluxIcon(
                       icon: FluxIcons.brokenImage,
@@ -75,16 +67,9 @@ extension _ComposerAttachment on _ChatComposerState {
                       : const Color(0xFF3A3A3C),
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: isDark ? const Color(0xFF18181B) : Colors.white,
+                    color: isDark ? const Color(0xFF101014) : Colors.white,
                     width: 1.5,
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Color(0x1A000000),
-                      blurRadius: 4,
-                      offset: Offset(0, 1),
-                    ),
-                  ],
                 ),
                 child: const Center(
                   child: FluxIcon(
@@ -109,12 +94,8 @@ extension _ComposerAttachment on _ChatComposerState {
       decoration: BoxDecoration(
         color: FluxColors.surfaceOf(context),
         borderRadius: BorderRadius.circular(FluxRadius.pill),
-        boxShadow: FluxColors.elevationShadow(
-          context,
-          alpha: .04,
-          blur: 8,
-          offset: const Offset(0, 2),
-        ),
+        // Flat inside the pill: the border is the edge, no shadow.
+        border: Border.all(color: FluxColors.lineOf(context), width: 1),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -122,8 +103,7 @@ extension _ComposerAttachment on _ChatComposerState {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
-              color:
-                  isDark ? const Color(0xFF3A3A3C) : FluxColors.bubbleUserLight,
+              color: FluxColors.controlOf(context),
               borderRadius: BorderRadius.circular(FluxRadius.pill),
             ),
             child: Text(

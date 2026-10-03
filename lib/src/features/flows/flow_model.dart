@@ -12,13 +12,10 @@ export 'package:finn_ai/src/features/flows/flow_triggers.dart';
 /// One flow: *when* something starts it, *only if* conditions hold, and the
 /// blocks it then runs.
 ///
-/// There are two kinds of thing in the store and they share this class:
-///
-/// * a **guide** has [instructions] and no blocks. It shapes chat replies and
-///   never runs;
-/// * an **automation** has blocks and (usually) triggers. It runs by hand, on a
-///   schedule or when something happens on the phone, and it is the only kind
-///   that can act on the device.
+/// Every flow is an automation: it has blocks and (usually) triggers. It runs
+/// by hand, on a schedule or when something happens on the phone, and it is
+/// the only kind that can act on the device. A flow's prompts are for its own
+/// runs and never reach chat.
 @immutable
 class FinnFlow {
   const FinnFlow({
@@ -43,7 +40,9 @@ class FinnFlow {
   final bool enabled;
   final bool builtIn;
 
-  /// What the flow does, in order. Empty for a guide.
+  /// What the flow does, in order. Never empty: a flow without blocks is a
+  /// leftover guide from before guides were removed, and the store drops it
+  /// on load.
   final List<FlowBlock> blocks;
 
   /// What starts the flow on its own. Any one of them does. Empty means the
@@ -65,6 +64,8 @@ class FinnFlow {
   /// the only thing that must not be implicit.
   final bool granted;
 
+  /// Whether this flow runs steps. Always true for a stored flow: the codec
+  /// and the store drop instruction-only guides, so anything left has blocks.
   bool get isAutomation => blocks.isNotEmpty;
 
   /// The first trigger, or a manual one. Kept for callers that show one line.
@@ -91,13 +92,6 @@ class FinnFlow {
       yield* block.flatten();
     }
   }
-
-  /// What the model is told about this flow. A guide contributes its
-  /// instructions; an automation contributes nothing, because its prompts are
-  /// for its own runs and must never leak into chat.
-  List<String> get promptLines => [
-        if (!isAutomation && instructions.trim().isNotEmpty) instructions,
-      ];
 
   FinnFlow copyWith({
     String? name,

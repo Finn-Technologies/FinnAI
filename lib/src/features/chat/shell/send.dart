@@ -55,7 +55,6 @@ extension _HomeShellSend on _HomeShellState {
           value,
           chatId: _conversations.active?.id,
         ),
-        FlowsStore.instance.promptContextFor(value),
       ].where((item) => item.trim().isNotEmpty).join('\n\n');
 
       // "Make me an app" and "when I plug in my charger…" build the thing and
@@ -259,7 +258,6 @@ extension _HomeShellSend on _HomeShellState {
     final systemContext = [
       YouProfileStore.instance.promptContext,
       YouMemoryStore.instance.promptContextFor(latestUser.text),
-      FlowsStore.instance.promptContextFor(latestUser.text),
     ].where((item) => item.trim().isNotEmpty).join('\n\n');
     // A continuation reuses the sources the reply was written from, so it
     // stays grounded offline. A fresh lookup happens only when the original
@@ -308,7 +306,6 @@ extension _HomeShellSend on _HomeShellState {
     final systemContext = [
       YouProfileStore.instance.promptContext,
       YouMemoryStore.instance.promptContextFor(latestUser.text),
-      FlowsStore.instance.promptContextFor(latestUser.text),
     ].where((item) => item.trim().isNotEmpty).join('\n\n');
     if (mounted) setState(() => _dismissedSearchNotice = false);
     final grounding = await _groundTurn(latestUser.text);
@@ -350,7 +347,6 @@ extension _HomeShellSend on _HomeShellState {
     final systemContext = [
       YouProfileStore.instance.promptContext,
       YouMemoryStore.instance.promptContextFor(trimmed),
-      FlowsStore.instance.promptContextFor(trimmed),
     ].where((item) => item.trim().isNotEmpty).join('\n\n');
     if (mounted) setState(() => _dismissedSearchNotice = false);
     final grounding = await _groundTurn(trimmed);

@@ -18,66 +18,11 @@ void main() {
   late Directory directory;
 
   setUp(() async {
-    directory = await Directory.systemTemp.createTemp('finn_skills_page_');
+    directory = await Directory.systemTemp.createTemp('finn_flows_page_');
   });
 
   tearDown(() async {
     if (await directory.exists()) await directory.delete(recursive: true);
-  });
-
-  testWidgets('the four-flow cap shows the localized limit sentence', (
-    tester,
-  ) async {
-    final store = FlowsStore(directoryProvider: () async => directory);
-    await store.initialize();
-    for (final flow in finnBuiltInFlows) {
-      expect(await store.setEnabled(flow.id, true), isTrue);
-    }
-
-    tester.view.physicalSize = const Size(390, 844);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.reset);
-
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: FluxTheme.light,
-        home: FlowsPage(onBack: () {}, store: store),
-      ),
-    );
-    await tester.pump();
-    expect(find.byKey(const Key('add-flow-button')), findsOneWidget);
-
-    await tester.scrollUntilVisible(
-      find.byKey(const Key('new-skill-button')),
-      120,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.pump();
-    await tester.tap(find.byKey(const Key('new-skill-button')));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 400));
-
-    await tester.enterText(
-      find.byKey(const Key('flow-name-field')),
-      'Fifth flow',
-    );
-    await tester.enterText(
-      find.byKey(const Key('flow-instructions-field')),
-      'Do the thing.',
-    );
-    await tester.pump();
-
-    await tester.tap(find.byKey(const Key('save-flow-button')));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 400));
-
-    expect(store.failure, FlowsFailure.limit);
-    // Shown both in the snackbar and in the inline notice.
-    expect(
-      find.text('Flow limit reached (4). Delete one to add another.'),
-      findsWidgets,
-    );
-    expect(tester.takeException(), isNull);
   });
 
   group('a flow with steps is an automation', () {
@@ -135,18 +80,13 @@ void main() {
       await tester.pump(const Duration(milliseconds: 500));
     }
 
-    /// Scrolls a custom flow's card into view.
-    ///
-    /// The custom section sits below the four built-ins, so its run button is
-    /// off-screen on a 390x844 phone — which is a fact about the page, not a
-    /// test artefact.
-    testWidgets('a prompt-only flow shows a run button and no grant switch',
+    /// Scrolls a flow's card into view.
+    testWidgets('an ask-only flow shows a run button and no grant switch',
         (tester) async {
       await store.upsertCustom(
         id: null,
         name: 'Note',
         description: '',
-        instructions: 'x',
         blocks: const [FlowBlock.ask('Summarise')],
       );
       await open(tester);
@@ -165,7 +105,6 @@ void main() {
         id: null,
         name: 'Wake me',
         description: '',
-        instructions: 'x',
         blocks: alarmFlow().blocks,
         triggers: const [FlowTrigger.daily(7, 0)],
       );
@@ -198,7 +137,6 @@ void main() {
         id: null,
         name: 'Wake me',
         description: '',
-        instructions: 'x',
         blocks: alarmFlow().blocks,
       );
       await open(tester);
@@ -225,7 +163,6 @@ void main() {
         id: null,
         name: 'Wake me',
         description: '',
-        instructions: 'x',
         blocks: alarmFlow().blocks,
       );
       await open(tester);
@@ -250,7 +187,6 @@ void main() {
         id: null,
         name: 'Wake me',
         description: '',
-        instructions: 'x',
         blocks: alarmFlow().blocks,
       );
       await store.recordRun(FlowRun(
@@ -280,7 +216,6 @@ void main() {
         id: null,
         name: 'Wake me',
         description: '',
-        instructions: 'x',
         blocks: alarmFlow().blocks,
         triggers: const [FlowTrigger.daily(7, 0)],
       );

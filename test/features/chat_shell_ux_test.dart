@@ -122,7 +122,8 @@ void main() {
     });
 
     // A placeholder long enough to wrap must not inflate the pill — it is one
-    // line in every locale, ellipsised when the pill is narrow.
+    // line in every locale, ellipsised when the pill is narrow. The pill is
+    // 52 tall: the 50dp field plus its 1px hairline on each side.
     testWidgets('a long hint stays on one line', (tester) async {
       _useMobileSize(tester);
       await _pumpComposer(
@@ -135,7 +136,7 @@ void main() {
         tester
             .getSize(find.byKey(const ValueKey('chat-composer-motion')))
             .height,
-        50,
+        52,
       );
     });
 

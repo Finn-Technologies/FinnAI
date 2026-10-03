@@ -83,7 +83,7 @@ A flow is a tree of blocks (ask, web, notify, speak, action, wait, branch, save-
 | Runs with the app closed (headless engine) | `lib/flow_background.dart` + `android/…/FlowBackgroundRunner.kt` |
 | Tap-a-notification-to-run, trigger sync at startup | `lib/src/features/chat/shell/flows.dart` |
 | A flow told in a sentence (phrases, line DSL, model fallback) | `lib/src/features/flows/{flow_phrases,flow_script,flow_author,flow_intent}.dart` |
-| The Flows list, filters and guides | `lib/src/features/flows/flows_page.dart` |
+| The Flows list and filters | `lib/src/features/flows/flows_page.dart` |
 | The flowchart editor and its sheets | `lib/src/features/flows/{flow_editor_page,flow_chart,flow_edit,flow_trigger_sheet,flow_condition_sheet,flow_block_sheet,flow_schedule_sheet}.dart` |
 | Block icons and labels | `lib/src/features/flows/{flow_icons,flow_labels}.dart` |
 | "New flow" (describe / template / blank) and the describe page | `lib/src/features/flows/{flow_new,flow_describe_page}.dart` |
@@ -131,7 +131,6 @@ See `docs/architecture/CREATIONS.md` for the spec DSL, the generation pipeline a
 | Onboarding pages, install progress, upgrade screen | `lib/src/features/onboarding/onboarding_flow.dart` |
 | Settings hub and its pages (model, voice, access, data, about) | `lib/src/features/settings/settings_*.dart` |
 | Global "delete all data" orchestration | `lib/src/app/app_state_store.dart` |
-| Skills | `lib/src/features/flows/{flows_page,flows_store}.dart` |
 | You: what FinnAI remembers (store, pages) | `lib/src/features/you/{you_memory_store,you_page,you_category_page,you_privacy_page}.dart` |
 | Personalization profile (name, style, instructions) | `lib/src/features/you/{you_profile_page,you_profile_store}.dart` |
 | Search across chats, creations and You | `lib/src/features/chat/search_page.dart` |

@@ -94,7 +94,6 @@ const Map<String, String> _identicalAllowlist = {
   'plusMiniApp': 'cognate or name',
   'plusPhoto': 'cognate or name',
   'youPrivacyTitle': 'cognate or name',
-  'flowsGuidesTitle': 'cognate or name',
 };
 
 void main() {

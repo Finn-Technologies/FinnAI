@@ -79,7 +79,6 @@ void main() {
       await store.upsertCustom(
         name: 'Charger note',
         description: '',
-        instructions: '',
         enabled: false,
         blocks: blocks,
         triggers: triggers,

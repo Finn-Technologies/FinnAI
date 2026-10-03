@@ -186,7 +186,6 @@ void main() {
       id: null,
       name: 'Torch',
       description: '',
-      instructions: '',
       blocks: const [FlowBlock.notify('hi')],
     );
     await open(tester, backend);
@@ -211,7 +210,6 @@ void main() {
       id: null,
       name: 'Note',
       description: '',
-      instructions: '',
       blocks: const [FlowBlock.notify('first')],
     );
     await open(tester, backend);
@@ -236,7 +234,6 @@ void main() {
       id: null,
       name: 'Two',
       description: '',
-      instructions: '',
       blocks: const [FlowBlock.notify('a'), FlowBlock.saveToChat()],
     );
     await open(tester, backend);
@@ -261,7 +258,6 @@ void main() {
       id: null,
       name: 'Branchy',
       description: '',
-      instructions: '',
       blocks: const [
         FlowBlock.branch(
           FlowCondition.batteryBelow(30),
@@ -288,7 +284,6 @@ void main() {
       id: null,
       name: 'Manual',
       description: '',
-      instructions: '',
       blocks: const [FlowBlock.notify('hi')],
     );
     await open(tester, backend);

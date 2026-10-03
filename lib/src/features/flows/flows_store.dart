@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
@@ -22,14 +21,11 @@ export 'package:finn_ai/src/features/flows/flows_codec.dart';
 /// here would override the page's `L10n` lookup and leak English into the other
 /// locales.
 enum FlowsFailure {
-  /// The persisted flows could not be read; built-ins are shown instead.
+  /// The persisted flows could not be read; an empty list is shown instead.
   load,
 
   /// A change could not be written.
   save,
-
-  /// The four-active-flows cap was reached.
-  limit,
 }
 
 class FlowsStore extends ChangeNotifier {
@@ -39,7 +35,7 @@ class FlowsStore extends ChangeNotifier {
 
   @visibleForTesting
   final Future<Directory> Function()? directoryProvider;
-  List<FinnFlow> _skills = List.of(finnBuiltInFlows);
+  List<FinnFlow> _flows = <FinnFlow>[];
 
   /// Recent runs, newest first, bounded by [maxRunHistory].
   ///
@@ -61,19 +57,11 @@ class FlowsStore extends ChangeNotifier {
   int _pendingWrites = 0;
   FlowsFailure? _failure;
 
-  List<FinnFlow> get flows => List.unmodifiable(_skills);
-
-  /// Enabled *skills*: instruction flows that shape chat replies, capped at
-  /// four by the prompt budget. Automations (flows with steps) are not skills:
-  /// their prompts are for their own runs and must never leak into chat, and
-  /// they do not spend the skill budget.
-  List<FinnFlow> get enabledSkills => List.unmodifiable(
-        _skills.where((flow) => flow.enabled && !flow.isAutomation),
-      );
+  List<FinnFlow> get flows => List.unmodifiable(_flows);
 
   /// Enabled flows that run steps, by hand or on a schedule.
   List<FinnFlow> get enabledAutomations => List.unmodifiable(
-        _skills.where((flow) => flow.enabled && flow.isAutomation),
+        _flows.where((flow) => flow.enabled && flow.isAutomation),
       );
   List<FlowRun> get runs => List.unmodifiable(_runs);
   bool get initialized => _initialized;
@@ -142,32 +130,19 @@ class FlowsStore extends ChangeNotifier {
     try {
       final file = await _file();
       if (await file.exists()) {
-        // The version was written but never read, so a v1 file — a prompt
-        // snippet with no steps — used to load as an automation with nothing in
-        // it. [FlowCodec.decode] migrates it: a v1 flow's instructions become
-        // the one prompt step they always effectively were.
+        // Guides were removed in v4: [FlowCodec.decode] already drops flows
+        // with no blocks, so whatever is left here is an automation.
         final decoded = FlowCodec.decode(await file.readAsString());
-        final stored =
-            decoded.flows.where((flow) => flow.id.isNotEmpty).toList();
-        final storedById = {for (final flow in stored) flow.id: flow};
-        _skills = [
-          for (final builtIn in finnBuiltInFlows)
-            // Only the enabled flag is restored for a built-in: its steps and
-            // trigger ship with the app, not with the user's file.
-            builtIn.copyWith(
-              enabled: storedById[builtIn.id]?.enabled ?? builtIn.enabled,
-            ),
-          ...stored.where((flow) => !flow.builtIn),
-        ];
+        _flows = decoded.flows.where((flow) => flow.id.isNotEmpty).toList();
       }
       // The run log is its own file, so it is read even when no flow was ever
-      // saved (a built-in flow can run and be logged without a flows file).
+      // saved (a flow can run and be logged without a flows file).
       _runs = await _readRuns(await _file());
       _failure = null;
     } catch (error) {
-      debugPrint('FINN_SKILLS read failed: $error');
+      debugPrint('FINN_FLOWS read failed: $error');
       _failure = FlowsFailure.load;
-      _skills = List.of(finnBuiltInFlows);
+      _flows = <FinnFlow>[];
     } finally {
       _initialized = true;
       notifyListeners();
@@ -175,17 +150,9 @@ class FlowsStore extends ChangeNotifier {
   }
 
   Future<bool> setEnabled(String id, bool enabled) async {
-    final index = _skills.indexWhere((flow) => flow.id == id);
+    final index = _flows.indexWhere((flow) => flow.id == id);
     if (index < 0) return false;
-    if (enabled &&
-        !_skills[index].enabled &&
-        !_skills[index].isAutomation &&
-        enabledSkills.length >= 4) {
-      _failure = FlowsFailure.limit;
-      notifyListeners();
-      return false;
-    }
-    _skills[index] = _skills[index].copyWith(enabled: enabled);
+    _flows[index] = _flows[index].copyWith(enabled: enabled);
     notifyListeners();
     return _persist();
   }
@@ -194,7 +161,6 @@ class FlowsStore extends ChangeNotifier {
     String? id,
     required String name,
     required String description,
-    required String instructions,
     String category = 'Custom',
     bool enabled = true,
     List<FlowBlock> blocks = const [],
@@ -203,33 +169,22 @@ class FlowsStore extends ChangeNotifier {
     bool? granted,
   }) async {
     final cleanName = name.trim();
-    final cleanInstructions = instructions.trim();
-    // A flow needs something to do: either blocks, or the instruction text a
-    // guide is made of.
-    if (cleanName.isEmpty || (cleanInstructions.isEmpty && blocks.isEmpty)) {
+    // A flow is its blocks. Anything without steps is a leftover guide and is
+    // refused: the codec already drops those on load.
+    if (cleanName.isEmpty || blocks.isEmpty) {
       return false;
     }
 
-    final existingIndex = id == null
-        ? -1
-        : _skills.indexWhere((flow) => flow.id == id && !flow.builtIn);
-    final previous = existingIndex >= 0 ? _skills[existingIndex] : null;
-    final wasEnabled = previous != null && previous.enabled;
-    if (enabled && !wasEnabled && blocks.isEmpty && enabledSkills.length >= 4) {
-      _failure = FlowsFailure.limit;
-      notifyListeners();
-      return false;
-    }
+    final existingIndex =
+        id == null ? -1 : _flows.indexWhere((flow) => flow.id == id);
+    final previous = existingIndex >= 0 ? _flows[existingIndex] : null;
     final flow = FinnFlow(
       id: existingIndex >= 0
-          ? _skills[existingIndex].id
+          ? _flows[existingIndex].id
           : 'custom-${DateTime.now().microsecondsSinceEpoch}',
       name: cleanName,
       description: description.trim(),
-      instructions: cleanInstructions.substring(
-        0,
-        math.min(500, cleanInstructions.length),
-      ),
+      instructions: '',
       category: category.trim().isEmpty ? 'Custom' : category.trim(),
       enabled: enabled,
       blocks: blocks,
@@ -241,9 +196,9 @@ class FlowsStore extends ChangeNotifier {
       granted: granted ?? _keepGrant(previous, blocks),
     );
     if (existingIndex >= 0) {
-      _skills[existingIndex] = flow;
+      _flows[existingIndex] = flow;
     } else {
-      _skills.add(flow);
+      _flows.add(flow);
     }
     notifyListeners();
     return _persist();
@@ -265,14 +220,14 @@ class FlowsStore extends ChangeNotifier {
   /// feature that can let something happen when the user is not looking, so it
   /// gets its own name and its own reason to exist.
   Future<bool> setGranted(String id, bool granted) async {
-    final index = _skills.indexWhere((flow) => flow.id == id);
+    final index = _flows.indexWhere((flow) => flow.id == id);
     if (index < 0) return false;
-    final flow = _skills[index];
+    final flow = _flows[index];
     // Withdrawing a grant is always allowed. Granting one is only meaningful
     // for a flow that can actually do something, and a flow with no device
     // action needs no permission, so it is not granted one.
     if (granted && !flow.hasDeviceAction) return false;
-    _skills[index] = flow.copyWith(granted: granted);
+    _flows[index] = flow.copyWith(granted: granted);
     notifyListeners();
     return _persist();
   }
@@ -320,18 +275,18 @@ class FlowsStore extends ChangeNotifier {
   }
 
   Future<bool> removeCustom(String id) async {
-    final before = _skills.length;
-    _skills.removeWhere((flow) => flow.id == id && !flow.builtIn);
-    if (_skills.length == before) return false;
+    final before = _flows.length;
+    _flows.removeWhere((flow) => flow.id == id);
+    if (_flows.length == before) return false;
     notifyListeners();
     return _persist();
   }
 
-  /// Restores built-ins to disabled defaults and removes app-private state.
+  /// Clears flows and removes app-private state.
   Future<List<String>> deleteStorage() async {
     await _writeQueue;
     final failures = <String>[];
-    _skills = List.of(finnBuiltInFlows);
+    _flows = <FinnFlow>[];
     _failure = null;
     try {
       final file = await _file();
@@ -347,83 +302,6 @@ class FlowsStore extends ChangeNotifier {
     _initialized = true;
     notifyListeners();
     return failures;
-  }
-
-  /// Prompt fragment consumed by the inference layer.
-  String get activePromptContext {
-    return _promptContext(enabledSkills.take(4));
-  }
-
-  String promptContextFor(String prompt) {
-    final value = prompt.toLowerCase();
-    final relevant = enabledSkills.where((flow) {
-      final signals = switch (flow.id) {
-        'builtin-writing' => const [
-            'write',
-            'rewrite',
-            'edit',
-            'message',
-            'scrivi',
-            'écris',
-          ],
-        'builtin-coding' => const [
-            'code',
-            'program',
-            'software',
-            'debug',
-            'flutter',
-            'python',
-            'swift',
-          ],
-        'builtin-learning' => const [
-            'learn',
-            'explain',
-            'teach',
-            'study',
-            'impar',
-            'spiega',
-          ],
-        'builtin-planning' => const [
-            'plan',
-            'schedule',
-            'roadmap',
-            'organize',
-            'piano',
-            'programma',
-          ],
-        _ => [
-            ...flow.name.toLowerCase().split(RegExp(r'\W+')),
-            ...flow.category.toLowerCase().split(RegExp(r'\W+')),
-            ...flow.description.toLowerCase().split(RegExp(r'\W+')),
-          ].where((word) => word.length >= 4),
-      };
-      return signals.any(value.contains);
-    }).take(4);
-    return _promptContext(relevant);
-  }
-
-  String _promptContext(Iterable<FinnFlow> active) {
-    final selected = active.toList(growable: false);
-    if (selected.isEmpty) return '';
-    final lines = <String>['Active user-selected flows:'];
-    for (final flow in selected) {
-      // A guide contributes its instructions. An automation contributes
-      // nothing here: it is something the runner executes, not a preference the
-      // model should imitate.
-      for (final line in flow.promptLines) {
-        final clean = line.trim();
-        if (clean.isEmpty) continue;
-        lines.add(
-          '- ${flow.name}: '
-          '${clean.substring(0, math.min(500, clean.length))}',
-        );
-      }
-    }
-    if (lines.length == 1) return '';
-    lines.add(
-      'Apply a flow only when it is relevant to the current request. Safety and explicit user requests take priority.',
-    );
-    return lines.join('\n');
   }
 
   /// Writes only the run log. A run can finish in a second Flutter engine (a
@@ -453,7 +331,7 @@ class FlowsStore extends ChangeNotifier {
   }
 
   Future<bool> _persist() async {
-    final payload = FlowCodec.encode(FlowCodec.currentVersion, _skills);
+    final payload = FlowCodec.encode(FlowCodec.currentVersion, _flows);
     final result = Completer<bool>();
     _pendingWrites++;
     _saving = true;
@@ -468,7 +346,7 @@ class FlowsStore extends ChangeNotifier {
         await temporary.rename(file.path);
         result.complete(true);
       } catch (error) {
-        debugPrint('FINN_SKILLS save failed: $error');
+        debugPrint('FINN_FLOWS save failed: $error');
         _failure = FlowsFailure.save;
         result.complete(false);
       } finally {

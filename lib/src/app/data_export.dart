@@ -42,7 +42,7 @@ Future<bool> exportEverything() async {
       ],
       'you': YouProfileStore.instance.profile.toJson(),
       'flows': [
-        for (final flow in FlowsStore.instance.flows.where((f) => !f.builtIn))
+        for (final flow in FlowsStore.instance.flows)
           {'name': flow.name, 'description': flow.description},
       ],
     };

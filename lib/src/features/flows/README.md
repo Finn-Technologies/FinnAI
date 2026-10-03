@@ -4,7 +4,7 @@
 
 **Entry points.** `flow_model.dart` + `flow_blocks.dart` + `flow_triggers.dart` + `flow_conditions.dart` (data), `flows_store.dart` + `flows_codec.dart` (persistence, migrations), `flow_runner.dart` (runs blocks through the ports in `flow_ports.dart`), `flow_scheduler.dart` + `flow_schedule.dart` + `flow_environment.dart` (arming triggers, device state), `flow_phrases.dart` / `flow_script.dart` / `flow_author.dart` (a flow from a sentence), `flow_editor_page.dart` + `flow_chart.dart` (the flowchart editor), `flows_page.dart`.
 
-Two kinds of flow share the store: *skills* (instructions that shape chat, at most four enabled) and *automations* (flows with blocks). An automation's prompts are for its own runs and never reach chat.
+Every flow is an automation: a tree of blocks with (usually) triggers. A flow's prompts are for its own runs and never reach chat.
 
 **Invariants.**
 - A flow cannot act on the device without a grant. Enforced in three places (shape check, user-started run, automatic run), each with a test. Keep all three.

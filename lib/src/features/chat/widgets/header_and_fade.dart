@@ -276,8 +276,8 @@ class _ChatEdgeFade extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // The fade has to end on the same colour as the surface it sits on. The chat
-    // canvas is tileOf (#18181C in dark), not canvasOf (#000000), so fading to
-    // darkCanvas left a visible black band along the header and footer.
+    // canvas is tileOf (#18181C in dark), not canvasOf (#101014), so fading to
+    // darkCanvas left a visible dark band along the header and footer.
     final color = FluxColors.tileOf(context);
     final stops = top
         ? const <double>[
