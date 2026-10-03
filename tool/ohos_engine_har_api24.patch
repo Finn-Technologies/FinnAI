@@ -1,0 +1,131 @@
+--- a/package/src/main/ets/plugin/editing/OhosAutoFillHelper.ets
++++ b/package/src/main/ets/plugin/editing/OhosAutoFillHelper.ets
+@@ -25,6 +25,37 @@
+ /** AutoFillTriggerType.AUTO_REQUEST; literal for API levels without kit export. */
+ const AUTOFILL_TRIGGER_AUTO_REQUEST = 0;
+ 
++/*
++ * API-24 compile shim -- FINN_API24_AUTOFILL_SHIM
++ * Applied by tool/patch_ohos_engine_har.sh. Delete this block, that script and
++ * tool/ohos_engine_har_api24.patch once the engine targets a HarmonyOS SDK that
++ * ships autoFillManager's API-26 surface.
++ *
++ * autoFillManager only gained FillRequest, AutoFillCallback, ViewData,
++ * FillFailureResult, SaveRequest, AutoFillType, AutoFillTriggerType and
++ * requestAutoFill in HarmonyOS 7 (API 26). The newest Release SDK the public
++ * Command Line Tools ship is HarmonyOS 6.1.1 (API 24), and ArkTS resolves type
++ * annotations at compile time, so naming those members here fails the build.
++ *
++ * Both public entry points already bail out below AUTOFILL_SUPPORT_API, so the
++ * API-26 surface is unreachable on API 24. The aliases below keep this file's
++ * types and log output unchanged while routing the two API-26-only SDK calls
++ * through `autofillSdk`, an ESObject view of the namespace that is only touched
++ * after the version guard has already passed.
++ */
++type ViewDataApi26 = AutoFillManagerViewData;
++
++interface FillFailureResultApi26 {
++  errCode: number;
++}
++
++interface AutoFillCallbackApi26 {
++  onSuccess(viewData: ViewDataApi26): void;
++  onFailure(result: FillFailureResultApi26): void;
++}
++
++const autofillSdk: ESObject = autoFillManager;
++
+ const AUTOFILL_TYPE_UNSPECIFIED = 0;
+ const AUTOFILL_TYPE_PASSWORD = 1;
+ const AUTOFILL_TYPE_USER_NAME = 2;
+@@ -103,7 +134,7 @@
+ interface AutoFillManagerPageNodeInfo {
+   id: number;
+   depth: number;
+-  autoFillType: autoFillManager.AutoFillType;
++  autoFillType: number;
+   tag: string;
+   value: string;
+   placeholder: string;
+@@ -201,8 +232,8 @@
+     }
+   }
+ 
+-  private static toSdkAutoFillType(value: number): autoFillManager.AutoFillType {
+-    return value as autoFillManager.AutoFillType;
++  private static toSdkAutoFillType(value: number): number {
++    return value;
+   }
+ 
+   static hintToAutoFillType(hint: string): number {
+@@ -506,7 +537,7 @@
+     };
+   }
+ 
+-  private static toManagerViewData(viewData: OhosViewData): autoFillManager.ViewData {
++  private static toManagerViewData(viewData: OhosViewData): ViewDataApi26 {
+     const pageNodeInfos: AutoFillManagerPageNodeInfo[] = [];
+     for (const node of viewData.pageNodeInfos) {
+       pageNodeInfos.push(OhosAutoFillHelper.toManagerPageNodeInfo(node));
+@@ -521,13 +552,12 @@
+       isUserSelected: viewData.isUserSelected,
+       isOtherAccount: viewData.isOtherAccount,
+     };
+-    return managerViewData as autoFillManager.ViewData;
++    return managerViewData;
+   }
+ 
+-  static parseFillResult(viewData: autoFillManager.ViewData): Map<number, string> {
++  static parseFillResult(viewData: ViewDataApi26): Map<number, string> {
+     const values: Map<number, string> = new Map();
+-    const pageNodeInfos: OhosPageNodeInfo[] =
+-      (viewData as AutoFillManagerViewData).pageNodeInfos;
++    const pageNodeInfos: OhosPageNodeInfo[] = viewData.pageNodeInfos;
+     for (const node of pageNodeInfos) {
+       if (node.value.length > 0) {
+         values.set(node.id, node.value);
+@@ -560,20 +590,20 @@
+       viewData: managerViewData,
+       customData: OhosAutoFillHelper.createEmptyCustomData(),
+       isPopup: false,
+-      triggerType: AUTOFILL_TRIGGER_AUTO_REQUEST as autoFillManager.AutoFillTriggerType,
+-    } as autoFillManager.FillRequest;
+-    const callback: autoFillManager.AutoFillCallback = {
+-      onSuccess: (filledViewData: autoFillManager.ViewData): void => {
++      triggerType: AUTOFILL_TRIGGER_AUTO_REQUEST,
++    };
++    const callback: AutoFillCallbackApi26 = {
++      onSuccess: (filledViewData: ViewDataApi26): void => {
+         const values = OhosAutoFillHelper.parseFillResult(filledViewData);
+         onSuccess(values);
+       },
+-      onFailure: (result: autoFillManager.FillFailureResult): void => {
++      onFailure: (result: FillFailureResultApi26): void => {
+         Log.e(TAG, 'requestAutoFill onFailure: ' + JSON.stringify(result));
+         onFailure(result.errCode);
+       },
+     };
+     try {
+-      autoFillManager.requestAutoFill(uiContext, fillRequest, callback);
++      autofillSdk.requestAutoFill(uiContext, fillRequest, callback);
+     } catch (error) {
+       const businessError = error as BusinessError;
+       Log.e(TAG, 'requestAutoFill error code=' + businessError?.code +
+@@ -591,7 +621,7 @@
+       napiCallback.onFailure();
+       return;
+     }
+-    const saveRequest: autoFillManager.SaveRequest = {
++    const saveRequest = {
+       viewData: OhosAutoFillHelper.toManagerViewData(viewData),
+     };
+     const validation = OhosAutoFillHelper.validateSaveViewData(viewData);
+@@ -601,7 +631,7 @@
+       return;
+     }
+     try {
+-      autoFillManager.requestAutoSave(uiContext, saveRequest, napiCallback);
++      autofillSdk.requestAutoSave(uiContext, saveRequest, napiCallback);
+     } catch (error) {
+       const businessError = error as BusinessError;
+       Log.e(TAG, 'requestAutoSave error code=' + businessError?.code +
