@@ -44,6 +44,9 @@ class ContextChoosePage extends StatelessWidget {
       'location': (l10n.ctxLocation, l10n.ctxLocationSub),
     };
     final bottom = FluxBottomInset.bottomOf(context);
+    // Matches _StepPage: the bar clears the nav bar plus a small lift so it
+    // never sits on the glass, on small and large screens alike.
+    const lift = 12.0;
     return ColoredBox(
       color: FluxColors.controlOf(context),
       child: ListenableBuilder(
@@ -54,7 +57,7 @@ class ContextChoosePage extends StatelessWidget {
               child: ListView(
                 padding: EdgeInsets.fromLTRB(
                   20,
-                  MediaQuery.paddingOf(context).top + 60,
+                  MediaQuery.paddingOf(context).top + 32,
                   20,
                   10,
                 ),
@@ -140,7 +143,7 @@ class ContextChoosePage extends StatelessWidget {
               ),
             ),
             Padding(
-              padding: EdgeInsets.fromLTRB(20, 10, 20, 20 + bottom),
+              padding: EdgeInsets.fromLTRB(20, 10, 20, 20 + bottom + lift),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [

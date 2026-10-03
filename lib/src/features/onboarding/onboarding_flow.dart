@@ -178,7 +178,13 @@ class _WelcomePage extends StatelessWidget {
           color: Colors.black,
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final sy = constraints.maxHeight / 912;
+              // Only the starfield bleeds; content is measured from the safe
+              // area so nothing slides under the status bar or nav bar.
+              final padding = MediaQuery.paddingOf(context);
+              final avail =
+                  constraints.maxHeight - padding.top - padding.bottom;
+              final sy = (avail / 912).clamp(.4, 1.0);
+              final bottom = padding.bottom;
               return Stack(
                 children: [
                   Positioned.fill(
@@ -187,12 +193,12 @@ class _WelcomePage extends StatelessWidget {
                       fit: BoxFit.cover,
                     ),
                   ),
-                  // Brand bloom rising from the bottom edge: the blurred wash
-                  // first, then the sharp card the design draws on top of it.
+                  // Brand bloom from the bottom edge, bottom-anchored so tall
+                  // screens grow the empty middle (wash bleeds 65px past it).
                   Positioned(
                     left: 0,
                     right: 0,
-                    top: 701 * sy,
+                    bottom: -65 * sy,
                     height: 276 * sy,
                     child: Opacity(
                       opacity: .7,
@@ -205,7 +211,7 @@ class _WelcomePage extends StatelessWidget {
                   Positioned(
                     left: 20,
                     right: 20,
-                    top: 786 * sy,
+                    bottom: bottom + 20 * sy,
                     height: 106 * sy,
                     child: Image.asset(
                       FigmaAssets.welcomeGlowCard,
@@ -213,7 +219,7 @@ class _WelcomePage extends StatelessWidget {
                     ),
                   ),
                   Positioned(
-                    top: 441 * sy,
+                    top: padding.top + 441 * sy,
                     left: 0,
                     right: 0,
                     child: Center(
@@ -234,7 +240,7 @@ class _WelcomePage extends StatelessWidget {
                     ),
                   ),
                   Positioned(
-                    top: 695 * sy,
+                    bottom: bottom + 156 * sy,
                     left: 0,
                     right: 0,
                     child: Column(
@@ -386,12 +392,10 @@ class _FloatingArrowState extends State<_FloatingArrow>
   }
 }
 
-/// One step of the onboarding flow: the artwork card, the step's copy and the
-/// bottom control bar (back, step progress, next) from the design.
+/// One step of the onboarding flow: artwork card, copy, bottom bar.
 ///
-/// Everything is placed on the design's 420x912 canvas: the vertical offsets
-/// scale with the device height so the control bar stays pinned to the bottom
-/// edge, while the card keeps the artwork's 380x660 aspect.
+/// Laid out on the design's 420x912 canvas; the card keeps the 380x660 aspect
+/// while the control bar stays pinned to the bottom edge.
 class _StepPage extends StatelessWidget {
   const _StepPage({
     required this.artwork,
@@ -419,30 +423,17 @@ class _StepPage extends StatelessWidget {
   /// Copy or controls shown between the card and the bottom bar.
   final Widget? body;
 
-  /// The height the artwork card is sized against: the budget [body] is
-  /// expected to fit in.
-  ///
-  /// This is a *budget*, not a measurement — the body is laid out from the
-  /// space that is actually left, so copy that runs longer than this (a
-  /// translated paragraph, a large text scale) shrinks the card further
-  /// rather than overflowing. A step whose body holds the only tappable
-  /// controls needs [bodyHeight] to be an honest over-estimate of that
-  /// content, or those controls land below the fold.
+  /// Budget [body] is expected to fit in: longer copy shrinks the card
+  /// rather than overflowing. Must over-estimate when the body holds the
+  /// only tappable controls, or they land below the fold.
   final double bodyHeight;
 
-  /// Whether [_StepPage] should wrap [body] in a scroll view.
-  ///
-  /// True by default, which is right for prose. A body that lays out its own
-  /// overflow — a control pinned to the bottom of the region with a scrolling
-  /// explanation above it — must set this false, or the two nested scroll
-  /// views leave its Column unbounded and it throws at layout time.
+  /// True wraps [body] in a scroll view (prose). A body with its own scroll
+  /// region sets this false to avoid unbounded nested scroll views.
   final bool scrollBody;
 
-  /// The smallest the body region is allowed to get, in logical pixels.
-  ///
-  /// A body that pins a control must state what that control needs. Below this
-  /// the artwork card keeps shrinking instead, because losing the card is
-  /// cosmetic and losing the control means the step cannot be completed.
+  /// Smallest the body region may get: below this the card keeps shrinking
+  /// instead, since losing artwork beats losing the answer.
   final double bodyMaxFloor;
 
   /// Filled quarters of the step bar (0 on the steps that carry no bar).
@@ -454,55 +445,56 @@ class _StepPage extends StatelessWidget {
   /// full-width action instead of step navigation.
   final Widget? footer;
 
-  /// A line directly above the control bar, for a step that cannot be
-  /// completed yet. Without it a disabled Next is just a grey circle, and the
-  /// consent step read as "skip this" rather than "answer this first".
+  /// Shown directly above the control bar when the step cannot advance yet.
   final String? footerHint;
 
   @override
-  Widget build(BuildContext context) => LayoutBuilder(
-        builder: (context, constraints) {
-          final sy = (constraints.maxHeight / 912).clamp(.6, 1.3);
-          final cardWidth = math.min(380.0, constraints.maxWidth - 40);
-          final hint = footerHint;
-          final hintHeight = hint == null ? 0.0 : 20.0;
-          const controlsHeight = 60.0;
-          const gap = 20.0;
-
-          // The body is sized from the space the card does not use, and the
-          // card is bounded by what is left after reserving the body's budget.
-          // The floor on the card is what makes this safe: when the viewport
-          // cannot hold the ideal card *and* the body, the card is the thing
-          // that gives way, because the body is where the answer lives. A
-          // step whose only tappable controls are in the body must never be
-          // laid out with those controls below the fold.
-          //
-          // The floor scales with the viewport rather than being a constant,
-          // because a fixed 160px card plus a 250px body cannot both fit in a
-          // landscape phone's 390px — the body was squeezed to 114px and
-          // overflowed by 12.
-          final chrome = 3 * gap * sy + controlsHeight + hintHeight;
-          final budget = math.max(0.0, constraints.maxHeight - chrome);
-          final minCard = 120.0 * sy;
-          final cardHeight = math.min(
-            cardWidth * 660 / 380,
-            math.max(minCard, budget - bodyHeight),
-          );
-          // The body never gets less than the space the viewport can spare,
-          // and the card yields below its floor rather than starving it.
-          final bodyMax = math.max(
-            bodyMaxFloor,
-            math.max(0.0, budget - cardHeight),
-          );
-          final body = this.body;
-          return ColoredBox(
-            color: FluxColors.cardOf(context),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                children: [
-                  SizedBox(height: gap * sy),
-                  SizedBox(
+  Widget build(BuildContext context) {
+    // Edge-to-edge draws under the system bars, so the page reserves them:
+    // card below the status bar, controls above the nav bar plus a lift.
+    final topInset = MediaQuery.paddingOf(context).top;
+    final bottomReserve = FluxBottomInset.bottomOf(context);
+    const lift = 12.0;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final avail = constraints.maxHeight - topInset - bottomReserve;
+        final sy = (avail / 912).clamp(.6, 1.0);
+        final cardWidth = math.max(
+          0.0,
+          math.min(380.0, constraints.maxWidth - 40),
+        );
+        final hint = footerHint;
+        final hintHeight = hint == null ? 0.0 : 20.0;
+        const controlsHeight = 60.0;
+        const gap = 20.0;
+        // Card yields first: losing artwork is cosmetic, losing the answer
+        // means the step cannot be completed.
+        final chrome = topInset +
+            bottomReserve +
+            lift +
+            3 * gap * sy +
+            controlsHeight +
+            hintHeight;
+        final budget = math.max(0.0, constraints.maxHeight - chrome);
+        final minCard = 120.0 * sy;
+        final cardHeight = math.max(
+          0.0,
+          math.min(
+              cardWidth * 660 / 380, math.max(minCard, budget - bodyHeight)),
+        );
+        final bodyMax =
+            math.max(bodyMaxFloor, math.max(0.0, budget - cardHeight));
+        final body = this.body;
+        return ColoredBox(
+          color: FluxColors.cardOf(context),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Column(
+              children: [
+                SizedBox(height: topInset + gap * sy),
+                Center(
+                  child: SizedBox(
+                    width: cardWidth,
                     height: cardHeight,
                     child: _ArtworkCard(
                       artwork: artwork,
@@ -510,15 +502,13 @@ class _StepPage extends StatelessWidget {
                       twoLineTitle: twoLineTitle,
                     ),
                   ),
-                  SizedBox(height: gap * sy),
-                  if (body != null)
-                    SizedBox(
+                ),
+                SizedBox(height: gap * sy),
+                if (body != null)
+                  Center(
+                    child: SizedBox(
+                      width: cardWidth,
                       height: bodyMax,
-                      // Not an Align: it would hand the body an unbounded
-                      // height, which is what a Column with a flexible child
-                      // cannot lay out. A step that scrolls its own body needs
-                      // the region to constrain it; the prose steps shrink-wrap
-                      // and sit at the top, which is what Align was for.
                       child: scrollBody
                           ? Align(
                               alignment: Alignment.topLeft,
@@ -526,39 +516,46 @@ class _StepPage extends StatelessWidget {
                             )
                           : body,
                     ),
-                  const Spacer(),
-                  if (hint != null)
-                    SizedBox(
-                      height: hintHeight,
-                      child: Align(
-                        alignment: Alignment.center,
-                        child: Text(
-                          hint,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontFamily: 'InstrumentSans',
-                            fontSize: 13,
-                            height: 1.2,
-                            color: FluxColors.secondaryInkOf(context),
-                          ),
+                  ),
+                const Spacer(),
+                if (hint != null)
+                  SizedBox(
+                    height: hintHeight,
+                    child: Align(
+                      alignment: Alignment.center,
+                      child: Text(
+                        hint,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontFamily: 'InstrumentSans',
+                          fontSize: 13,
+                          height: 1.2,
+                          color: FluxColors.secondaryInkOf(context),
                         ),
                       ),
                     ),
-                  footer ??
-                      _StepControls(
-                        progress: progress,
-                        backEnabled: backEnabled,
-                        onBack: onBack,
-                        onNext: onNext,
-                      ),
-                  SizedBox(height: 20 * sy),
-                ],
-              ),
+                  ),
+                Center(
+                  child: SizedBox(
+                    width: cardWidth,
+                    child: footer ??
+                        _StepControls(
+                          progress: progress,
+                          backEnabled: backEnabled,
+                          onBack: onBack,
+                          onNext: onNext,
+                        ),
+                  ),
+                ),
+                SizedBox(height: gap * sy + bottomReserve + lift),
+              ],
             ),
-          );
-        },
-      );
+          ),
+        );
+      },
+    );
+  }
 }
 
 /// The step's photographic card: the artwork fills it, the title sits in the
@@ -799,7 +796,7 @@ class _PrivacyPage extends StatelessWidget {
   Widget build(BuildContext context) => _StepPage(
         artwork: FigmaAssets.artworkPrivacy,
         title: L10n.of(context).onboardingPrivacyTitle,
-        bodyHeight: 96,
+        bodyHeight: 150,
         progress: 1,
         onBack: onBack,
         onNext: onNext,
@@ -974,7 +971,7 @@ class _AutomaticModelPageState extends State<_AutomaticModelPage> {
           ? l10n.onboardingInstallTitleReady
           : l10n.onboardingInstallTitleInstalling,
       twoLineTitle: !_ready,
-      bodyHeight: 83,
+      bodyHeight: 160,
       progress: 2,
       onBack: widget.onBack,
       backEnabled: _ready,
@@ -1305,6 +1302,7 @@ class _SoftwareUpgradeScreenState extends State<SoftwareUpgradeScreen> {
             ? l10n.onboardingInstallTitleReady
             : l10n.onboardingInstallTitleInstalling,
         twoLineTitle: !_ready,
+        bodyHeight: 160,
         progress: 2,
         backEnabled: false,
         onNext: _ready ? _enterHome : null,
@@ -1549,8 +1547,8 @@ class _FinishPage extends StatelessWidget {
     return _StepPage(
       artwork: FigmaAssets.artworkFinish,
       title: l10n.onboardingReadyTitle,
-      bodyHeight: 96,
-      onBack: () {},
+      bodyHeight: 116,
+      backEnabled: false,
       body: Text.rich(
         TextSpan(
           children: [
