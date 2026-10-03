@@ -94,48 +94,60 @@ extension FinnAcceleratorLoader on FinnAccelerator {
               profile.totalRamBytes! <= 3000 * 1000 * 1000);
       final projectorMinTokens = constrainedForProjector ? 96 : 64;
       final projectorMaxTokens = constrainedForProjector ? 192 : 256;
+      final multimodalParams = hasMmproj
+          ? MultimodalParams(
+              mmprojPath: mmprojFile.path,
+              useGpu: useProjectorGpu,
+              nThreads: cfg.batchThreads > 0 ? cfg.batchThreads : 8,
+              imageMinTokens: projectorMinTokens,
+              imageMaxTokens: projectorMaxTokens,
+            )
+          : null;
+      final modelParams = ModelParams(
+        path: path,
+        gpuLayers: cfg.gpuLayers,
+        useMmap: true,
+        // Weights stay RAM-resident via the OS page cache with mmap alone
+        // (verified: zero major faults during decode). Locking 1.3 GB
+        // actively hurts on 8 GB-class devices by removing reclaimable
+        // headroom the OS needs for the KV cache and the app itself.
+        useMlock: false,
+        checkTensors: false,
+        // See _spawnBenchmarkEngine: empty devices = all backends (Vulkan
+        // included); pin CPU configs to the CPU device by name.
+        devices: cfg.isCpu ? const ['CPU'] : [cfg.deviceName],
+      );
+      final contextParams = ContextParams(
+        nCtx: cfg.contextSize,
+        nBatch: cfg.batchSize,
+        nUbatch: cfg.microBatchSize,
+        nThreads: cfg.threads,
+        nThreadsBatch: cfg.batchThreads,
+        nSeqMax: cfg.sessionCount,
+        flashAttn: cfg.flashAttention,
+        typeK: compactKv ? cfg.kvType : KvCacheType.f16,
+        typeV: compactKv ? cfg.kvType : KvCacheType.f16,
+        defragThreshold: DeviceProfiler.isLowEnd(profile) ? 0.1 : -1.0,
+        swaFull: false,
+        noPerf: false,
+        // Recurrent-state snapshots for lookahead decoding rollback.
+        nRsSeq: DeviceProfiler.lookaheadSnapshots(profile),
+      );
+      // iOS links llama.cpp statically into the app binary (there is no .so
+      // to dlopen), so resolve its symbols from the running process instead.
+      if (Platform.isIOS) {
+        return LlamaEngine.spawnFromProcess(
+          multimodalParams: multimodalParams,
+          modelParams: modelParams,
+          contextParams: contextParams,
+        );
+      }
       return LlamaEngine.spawn(
         libraryPath: 'libllama.so',
         backendDirectory: profile.nativeLibraryDir,
-        multimodalParams: hasMmproj
-            ? MultimodalParams(
-                mmprojPath: mmprojFile.path,
-                useGpu: useProjectorGpu,
-                nThreads: cfg.batchThreads > 0 ? cfg.batchThreads : 8,
-                imageMinTokens: projectorMinTokens,
-                imageMaxTokens: projectorMaxTokens,
-              )
-            : null,
-        modelParams: ModelParams(
-          path: path,
-          gpuLayers: cfg.gpuLayers,
-          useMmap: true,
-          // Weights stay RAM-resident via the OS page cache with mmap alone
-          // (verified: zero major faults during decode). Locking 1.3 GB
-          // actively hurts on 8 GB-class devices by removing reclaimable
-          // headroom the OS needs for the KV cache and the app itself.
-          useMlock: false,
-          checkTensors: false,
-          // See _spawnBenchmarkEngine: empty devices = all backends (Vulkan
-          // included); pin CPU configs to the CPU device by name.
-          devices: cfg.isCpu ? const ['CPU'] : [cfg.deviceName],
-        ),
-        contextParams: ContextParams(
-          nCtx: cfg.contextSize,
-          nBatch: cfg.batchSize,
-          nUbatch: cfg.microBatchSize,
-          nThreads: cfg.threads,
-          nThreadsBatch: cfg.batchThreads,
-          nSeqMax: cfg.sessionCount,
-          flashAttn: cfg.flashAttention,
-          typeK: compactKv ? cfg.kvType : KvCacheType.f16,
-          typeV: compactKv ? cfg.kvType : KvCacheType.f16,
-          defragThreshold: DeviceProfiler.isLowEnd(profile) ? 0.1 : -1.0,
-          swaFull: false,
-          noPerf: false,
-          // Recurrent-state snapshots for lookahead decoding rollback.
-          nRsSeq: DeviceProfiler.lookaheadSnapshots(profile),
-        ),
+        multimodalParams: multimodalParams,
+        modelParams: modelParams,
+        contextParams: contextParams,
       );
     }
 
