@@ -40,10 +40,14 @@ class DeviceProfile {
   final String? nativeLibraryDir;
 
   bool get supported =>
+      // Android and OpenHarmony both ship an arm64-only build of the engine
+      // libs, so both need the RAM + ABI gate. An empty ABI list means the
+      // native channel did not answer (desktop Linux answers no channel), and
+      // the RAM half of the check is still worth applying.
       !Platform.isAndroid ||
       (totalRamBytes != null &&
           totalRamBytes! >= minimumRamBytes &&
-          supportedAbis.contains('arm64-v8a'));
+          (supportedAbis.isEmpty || supportedAbis.contains('arm64-v8a')));
 
   String get processorLabel => switch (processor) {
         ProcessorClass.entry => 'Efficiency processor',
@@ -145,7 +149,11 @@ class DeviceProfiler {
 
   static Future<DeviceProfile> read() async {
     Map<Object?, Object?> native = const {};
-    if (Platform.isAndroid) {
+    // OpenHarmony answers this channel too (DeviceProfilePlugin.ets). It is
+    // keyed off `Platform.isLinux` rather than an OHOS-specific check because
+    // dart:io reports 'linux' there; desktop Linux answers no channel, and the
+    // MissingPluginException below degrades it to the /proc/meminfo path.
+    if (Platform.isAndroid || Platform.isLinux) {
       try {
         native = await _channel.invokeMapMethod<Object?, Object?>(
               'getDeviceProfile',

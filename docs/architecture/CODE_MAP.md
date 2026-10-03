@@ -166,6 +166,10 @@ See `docs/architecture/CREATIONS.md` for the spec DSL, the generation pipeline a
 | Android host + method channels | `android/app/src/main/kotlin/com/abhiflex/finnai/MainActivity.kt` |
 | Android home-screen widget + share bridge | `android/…/FinnHomeScreenBridge.kt` (+ the manifest receiver/provider and `proguard-rules.pro`) |
 | OpenHarmony path handling | `lib/src/platform/openharmony_path_provider.dart` |
+| OpenHarmony platform detection (use this, not `Platform.isX`) | `lib/src/platform/platform_target.dart` |
+| OpenHarmony conversation-key storage | `lib/src/platform/openharmony_key_storage.dart`, `lib/src/features/conversations/conversation_crypto.dart` (`createConversationCrypto`) |
+| OpenHarmony host ability + native plugin channels | `ohos/entry/src/main/ets/entryability/EntryAbility.ets`, `ohos/entry/src/main/ets/plugins/` (one file per channel, listed in `docs/guides/OHOS_BUILD.md`) |
+| OpenHarmony toolchain env, build/run, emulator, native libs | `tool/ohos_env.sh`, `tool/run_ohos.sh`, `tool/ohos_dev.sh`, `tool/patch_ohos_engine_har.sh` (+ `tool/ohos_engine_har_api24.patch`), `tool/rebuild_llama_ohos.sh` (+ `tool/llama_ohos_build.patch`) |
 | Page transition used by every sub-page, and the sidebar → page hand-off | `lib/src/shared/widgets/finn_page_route.dart` (`FinnPageRoute`), `lib/src/features/chat/shell/navigation.dart` (`_pushFromSidebar`); timings in `FluxMotion` |
 | Engine-seam CI gate | `tool/verify_engine_seam.sh` |
 | Release verification | `tool/verify_release.sh`, `tool/build_play_release.sh` |

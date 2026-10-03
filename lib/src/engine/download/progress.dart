@@ -125,11 +125,25 @@ extension FinnAcceleratorProgress on FinnAccelerator {
         lower.contains('load_model')) {
       return 'The AI model couldn\'t load on this device. Try again, or remove and re-download the model.';
     }
+    if (text.contains('LlamaLibraryException') ||
+        lower.contains('failed to load dynamic library') ||
+        lower.contains('dlopen') ||
+        lower.contains('error relocating')) {
+      // A native library that will not load is a packaging problem, not a
+      // resource one. It has to be matched before the storage/memory checks
+      // below: the sandbox path in these messages contains "storage", which
+      // used to make this report "Not enough free storage" for what was
+      // actually a missing symbol.
+      return 'The local model library could not be loaded on this device. '
+          'Reinstall the app to restore it.';
+    }
     if (text.toLowerCase().contains('memory') || text.contains('alloc')) {
       return 'Not enough free memory. Close other apps and try again.';
     }
-    if (text.toLowerCase().contains('storage') ||
-        text.toLowerCase().contains('space')) {
+    if (lower.contains('no space left') ||
+        lower.contains('disk full') ||
+        lower.contains('quota exceeded') ||
+        lower.contains('not enough storage')) {
       return 'Not enough free storage to download this model.';
     }
     if (!Platform.isAndroid && !Platform.isLinux) {

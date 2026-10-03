@@ -1,6 +1,6 @@
 {
   "name": "finn_ai",
-  "version": "1.0.4",
+  "version": "2.0.0",
   "description": "A private, on-device AI assistant for OpenHarmony.",
   "main": "",
   "author": "abhiflex",
@@ -9,5 +9,19 @@
   "dependencies": {},
   "devDependencies": {
     "@ohos/hypium": "1.0.19"
+  },
+  // The Flutter engine HAR is copied to ohos/har/flutter.har by the Flutter
+  // OHOS fork during `flutter build hap` (cleanAndCopyFlutterRuntime in
+  // packages/flutter_tools/lib/src/ohos/ohos_builder.dart). The entry module
+  // declares it as the relative path "har/flutter.har", which ohpm resolves
+  // against ohos/entry/ — a directory that never exists. This override is the
+  // documented fix (see printHowToConsumeHar in the fork's hvigor.dart): point
+  // the whole workspace at the one HAR the tool actually writes.
+  //
+  // It is also written automatically by the fork *only when* at least one
+  // Flutter plugin ships an `ohos` platform implementation. FinnAI has none, so
+  // it must be committed here or every clean checkout fails `ohpm install`.
+  "overrides": {
+    "@ohos/flutter_ohos": "file:./har/flutter.har"
   }
 }

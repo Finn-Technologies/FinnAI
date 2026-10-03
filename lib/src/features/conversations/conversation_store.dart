@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
@@ -220,15 +219,17 @@ class FinnConversation {
 class ConversationStore extends ChangeNotifier {
   ConversationStore({
     SecureKeyStorage? keyStorage,
+    ConversationCrypto? crypto,
     Future<Directory> Function()? directoryProvider,
     int? maxConversationsInMemory,
-  })  : _keyStorage = keyStorage ?? const DefaultFlutterSecureKeyStorage(),
+  })  : _crypto = crypto ??
+            (keyStorage != null
+                ? KeyedConversationCrypto(keyStorage: keyStorage)
+                : createConversationCrypto()),
         _directoryProvider = directoryProvider,
         _maxConversationsInMemoryOverride = maxConversationsInMemory;
 
   static final instance = ConversationStore();
-
-  static const String _keyStorageAlias = 'finn_ai_conversation_master_key_v2';
 
   /// Monotonic counter that makes every temporary write file unique within
   /// this isolate.
@@ -274,7 +275,7 @@ class ConversationStore extends ChangeNotifier {
   /// Conversation ids become archive file names; reject anything that
   /// could escape the archive directory.
   static final RegExp _unsafeArchiveIdChars = RegExp(r'[^A-Za-z0-9._-]');
-  final SecureKeyStorage _keyStorage;
+  final ConversationCrypto _crypto;
   final Future<Directory> Function()? _directoryProvider;
 
   /// Test-only eviction cap override. When supplied it also re-enables
@@ -288,7 +289,7 @@ class ConversationStore extends ChangeNotifier {
   Future<void>? _initializeJob;
   Future<void> _flushQueue = Future<void>.value();
   bool _deleting = false;
-  Uint8List? _masterKey;
+  bool _cryptoReady = false;
   bool _storageError = false;
   String? _storageErrorMessage;
 
@@ -450,35 +451,27 @@ class ConversationStore extends ChangeNotifier {
   bool get storageError => _storageError;
   String? get storageErrorMessage => _storageErrorMessage;
 
-  Future<Uint8List?> _getOrCreateMasterKey() async {
-    if (_masterKey != null) return _masterKey;
+  Future<void> _ensureCryptoReady() async {
+    if (_cryptoReady) return;
     try {
-      final existingKey = await _keyStorage.readKey(_keyStorageAlias);
-      if (existingKey != null && existingKey.length == 32) {
-        _masterKey = existingKey;
-        return _masterKey;
-      }
-
-      final random = Random.secure();
-      final newKey = Uint8List(32);
-      for (var i = 0; i < 32; i++) {
-        newKey[i] = random.nextInt(256);
-      }
-
-      await _keyStorage.writeKey(_keyStorageAlias, newKey);
-      final readBack = await _keyStorage.readKey(_keyStorageAlias);
-
-      if (readBack == null || !listEquals(readBack, newKey)) {
-        throw StateError('Secure key read-back verification failed.');
-      }
-
-      _masterKey = newKey;
-      return _masterKey;
+      await _crypto.prepare();
+      _cryptoReady = true;
     } catch (e) {
       _storageError = true;
       _storageErrorMessage = 'Secure key storage unavailable: $e';
       debugPrint(_storageErrorMessage);
-      return null;
+      rethrow;
+    }
+  }
+
+  /// [_ensureCryptoReady] for callers that treat an unusable keystore as "skip
+  /// this write" rather than as a startup failure.
+  Future<bool> _tryReadyCrypto() async {
+    try {
+      await _ensureCryptoReady();
+      return true;
+    } catch (_) {
+      return false;
     }
   }
 
@@ -507,29 +500,26 @@ class ConversationStore extends ChangeNotifier {
       final tmpFile = File('${encFile.path}.tmp');
 
       if (await encFile.exists()) {
-        // Encrypted file exists. DO NOT generate a replacement key if key is missing or invalid!
-        final existingKey = await _keyStorage.readKey(_keyStorageAlias);
-        if (existingKey == null || existingKey.length != 32) {
+        // Encrypted file exists. DO NOT generate a replacement key if the
+        // keystore cannot produce the one that wrote it.
+        if (!await _crypto.hasExistingKey()) {
           _storageError = true;
           _storageErrorMessage =
-              'Encrypted history exists but key is missing, invalid or incorrect length.';
+              'Encrypted history exists but the keystore no longer holds its key.';
           _initialized = true;
           notifyListeners();
           return;
         }
 
         try {
+          await _ensureCryptoReady();
           final rawEnvelopeStr = await encFile.readAsString();
           final envelope = (jsonDecode(rawEnvelopeStr) as Map<Object?, Object?>)
               .cast<String, Object?>();
-          final decryptedJsonStr = await decryptOffMain(
-            existingKey,
-            envelope,
-          );
+          final decryptedJsonStr = await _crypto.decrypt(envelope);
           final data = (jsonDecode(decryptedJsonStr) as Map<Object?, Object?>)
               .cast<String, Object?>();
 
-          _masterKey = existingKey;
           _activeId = data['activeId'] as String?;
           _conversations
             ..clear()
@@ -556,8 +546,10 @@ class ConversationStore extends ChangeNotifier {
           } catch (_) {}
         }
 
-        final key = await _getOrCreateMasterKey();
-        if (key == null) {
+        try {
+          await _ensureCryptoReady();
+        } catch (_) {
+          // _ensureCryptoReady already latched _storageError and the message.
           _initialized = true;
           notifyListeners();
           return;
@@ -565,7 +557,7 @@ class ConversationStore extends ChangeNotifier {
 
         // Check legacy migration if legacy plaintext file exists
         if (await legacyFile.exists()) {
-          await _migrateLegacyPlaintext(legacyFile, encFile, key);
+          await _migrateLegacyPlaintext(legacyFile, encFile);
         }
       }
     } catch (e) {
@@ -602,7 +594,6 @@ class ConversationStore extends ChangeNotifier {
   Future<void> _migrateLegacyPlaintext(
     File legacyFile,
     File encFile,
-    Uint8List key,
   ) async {
     final tempFile = File('${encFile.path}.tmp');
     try {
@@ -649,14 +640,14 @@ class ConversationStore extends ChangeNotifier {
       }
 
       // Step 2: Write encrypted data to temporary file
-      final envelope = await encryptOffMain(key, plaintextStr);
+      final envelope = await _crypto.encrypt(plaintextStr);
       await tempFile.writeAsString(jsonEncode(envelope), flush: true);
 
       // Step 3: Read and decrypt temporary file while it is still temporary
       final tmpStr = await tempFile.readAsString();
       final tmpEnv =
           (jsonDecode(tmpStr) as Map<Object?, Object?>).cast<String, Object?>();
-      final tmpDecrypted = await decryptOffMain(key, tmpEnv);
+      final tmpDecrypted = await _crypto.decrypt(tmpEnv);
 
       // Step 4: Verify decrypted content equals source plaintext
       if (tmpDecrypted != plaintextStr) {
@@ -670,7 +661,7 @@ class ConversationStore extends ChangeNotifier {
       final finalStr = await encFile.readAsString();
       final finalEnv = (jsonDecode(finalStr) as Map<Object?, Object?>)
           .cast<String, Object?>();
-      final finalDecrypted = await decryptOffMain(key, finalEnv);
+      final finalDecrypted = await _crypto.decrypt(finalEnv);
 
       if (finalDecrypted != plaintextStr) {
         throw StateError('Final file decryption verification failed.');
@@ -681,7 +672,6 @@ class ConversationStore extends ChangeNotifier {
 
       // Immediately load the pre-validated model objects so they are visible and
       // cannot be overwritten by a new conversation on the same launch.
-      _masterKey = key;
       _activeId = validatedActiveId;
       _conversations
         ..clear()
@@ -1216,12 +1206,12 @@ class ConversationStore extends ChangeNotifier {
     _pendingArchiveWrites.clear();
 
     try {
-      await _keyStorage.deleteKey(_keyStorageAlias);
+      await _crypto.destroy();
     } catch (e) {
       failures.add('encryption key ($e)');
     }
 
-    _masterKey = null;
+    _cryptoReady = false;
     _storageError = false;
     _storageErrorMessage = null;
     _deleting = false;
@@ -1274,13 +1264,12 @@ class ConversationStore extends ChangeNotifier {
       return;
     }
     try {
-      final key = await _getOrCreateMasterKey();
-      if (key == null) {
+      if (!await _tryReadyCrypto()) {
         debugPrint('Flush aborted: Secure key unavailable.');
         return;
       }
       final file = await _file(filename: 'conversations.v2.enc');
-      final envelope = await encryptOffMain(key, plaintext);
+      final envelope = await _crypto.encrypt(plaintext);
       final payload = jsonEncode(envelope);
 
       // One retry with a fresh temp file absorbs a lost rename race (see
@@ -1437,13 +1426,9 @@ class ConversationStore extends ChangeNotifier {
       return false;
     }
     try {
-      final key = await _getOrCreateMasterKey();
-      if (key == null) return false;
+      if (!await _tryReadyCrypto()) return false;
       final file = await _archiveFile(conversation.id);
-      final envelope = await encryptOffMain(
-        key,
-        jsonEncode(conversation.toJson()),
-      );
+      final envelope = await _crypto.encrypt(jsonEncode(conversation.toJson()));
       final payload = jsonEncode(envelope);
       for (var attempt = 0;; attempt++) {
         final temp = File(_uniqueTempPath(file.path));
@@ -1472,12 +1457,11 @@ class ConversationStore extends ChangeNotifier {
   Future<FinnConversation?> _loadArchivedConversation(String id) async {
     final file = await _archiveFile(id);
     if (!await file.exists()) return null;
-    final key = await _getOrCreateMasterKey();
-    if (key == null) return null;
+    if (!await _tryReadyCrypto()) return null;
     final envelope =
         (jsonDecode(await file.readAsString()) as Map<Object?, Object?>)
             .cast<String, Object?>();
-    final decrypted = await decryptOffMain(key, envelope);
+    final decrypted = await _crypto.decrypt(envelope);
     return FinnConversation.fromJson(
       (jsonDecode(decrypted) as Map<Object?, Object?>).cast<String, Object?>(),
     );

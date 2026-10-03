@@ -1,0 +1,82 @@
+diff --git a/ggml/src/CMakeLists.txt b/ggml/src/CMakeLists.txt
+index c26c3f1..a191bb8 100644
+--- a/ggml/src/CMakeLists.txt
++++ b/ggml/src/CMakeLists.txt
+@@ -208,11 +208,6 @@ add_library(ggml-base
+             ggml-quants.h
+             gguf.cpp)
+ 
+-set_target_properties(ggml-base PROPERTIES
+-    VERSION ${GGML_VERSION}
+-    SOVERSION ${GGML_VERSION_MAJOR}
+-)
+-
+ target_include_directories(ggml-base PRIVATE .)
+ if (GGML_BACKEND_DL)
+     target_compile_definitions(ggml-base PUBLIC GGML_BACKEND_DL)
+@@ -244,11 +239,6 @@ add_library(ggml
+             ggml-backend-reg.cpp)
+ add_library(ggml::ggml ALIAS ggml)
+ 
+-set_target_properties(ggml PROPERTIES
+-    VERSION ${GGML_VERSION}
+-    SOVERSION ${GGML_VERSION_MAJOR}
+-)
+-
+ if (GGML_BACKEND_DIR)
+     if (NOT GGML_BACKEND_DL)
+         message(FATAL_ERROR "GGML_BACKEND_DIR requires GGML_BACKEND_DL")
+@@ -288,15 +278,6 @@ function(ggml_add_backend_library backend)
+         target_compile_definitions(${backend} PUBLIC  GGML_BACKEND_SHARED)
+     endif()
+ 
+-    # Set versioning properties for all backend libraries
+-    # Building a MODULE library with a version is not supported on macOS (https://gitlab.kitware.com/cmake/cmake/-/issues/20782)
+-    if (NOT (APPLE AND GGML_BACKEND_DL))
+-        set_target_properties(${backend} PROPERTIES
+-            VERSION ${GGML_VERSION}
+-            SOVERSION ${GGML_VERSION_MAJOR}
+-        )
+-    endif()
+-
+     if(NOT GGML_AVAILABLE_BACKENDS)
+         set(GGML_AVAILABLE_BACKENDS "${backend}"
+             CACHE INTERNAL "List of backends for cmake package")
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index d15ccfd..81166d4 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -42,9 +42,12 @@ add_library(llama
+             ${LLAMA_MODELS_SOURCES}
+             )
+ 
++# FinnAI OHOS build (tool/llama_ohos_build.patch): VERSION/SOVERSION are
++# dropped so every library keeps a plain, unversioned SONAME.
++# OpenHarmony loads an app's native libs from the bundle's libs/arm64
++# directory and dlopen()s them by bare filename; a versioned SONAME
++# makes the loader look for e.g. libllama.so.0 forever.
+ set_target_properties(llama PROPERTIES
+-    VERSION ${LLAMA_INSTALL_VERSION}
+-    SOVERSION 0
+     MACHO_CURRENT_VERSION 0 # keep macOS linker from seeing oversized version number
+ )
+ 
+diff --git a/tools/mtmd/CMakeLists.txt b/tools/mtmd/CMakeLists.txt
+index 09b6235..b836a79 100644
+--- a/tools/mtmd/CMakeLists.txt
++++ b/tools/mtmd/CMakeLists.txt
+@@ -53,9 +53,12 @@ add_library(mtmd
+             models/yasa2.cpp
+             )
+ 
++# FinnAI OHOS build (tool/llama_ohos_build.patch): VERSION/SOVERSION are
++# dropped so every library keeps a plain, unversioned SONAME.
++# OpenHarmony loads an app's native libs from the bundle's libs/arm64
++# directory and dlopen()s them by bare filename; a versioned SONAME
++# makes the loader look for e.g. libllama.so.0 forever.
+ set_target_properties(mtmd PROPERTIES
+-    VERSION ${LLAMA_INSTALL_VERSION}
+-    SOVERSION 0
+     MACHO_CURRENT_VERSION 0 # keep macOS linker from seeing oversized version number
+ )
+ 
