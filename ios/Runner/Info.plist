@@ -26,6 +26,14 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Finn AI uses the camera so you can take photos to share with Finn.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Finn AI uses the microphone so you can talk to Finn with your voice.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Finn AI needs access to your photos so you can share images with Finn.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Finn AI uses speech recognition to turn what you say into text for Finn.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
@@ -53,10 +61,6 @@
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>Finn AI uses the microphone so you can talk to Finn with your voice.</string>
-	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>Finn AI uses speech recognition to turn what you say into text for Finn.</string>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
