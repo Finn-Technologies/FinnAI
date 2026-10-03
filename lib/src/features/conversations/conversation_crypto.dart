@@ -191,6 +191,12 @@ class KeyedConversationCrypto implements ConversationCrypto {
   }) : _keyStorage = keyStorage;
 
   final SecureKeyStorage _keyStorage;
+
+  /// The keystore this instance uses. Exposed so a test can assert that a
+  /// platform gets the storage it is meant to get.
+  @visibleForTesting
+  SecureKeyStorage get keyStorage => _keyStorage;
+
   Uint8List? _key;
 
   @override
