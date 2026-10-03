@@ -19,22 +19,25 @@ BUNDLE="com.abhiflex.finnai"
 ABILITY="EntryAbility"
 HAP="entry/build/default/outputs/default/entry-default-unsigned.hap"
 DO_BUILD=true
+CLEAN=false
 SERIAL=""
 LOG_LINES="${LOG_LINES:-0}"
 
 usage() {
   cat <<'EOF'
-Usage: $0 [--no-build] [--serial HOST:PORT] [--logs N]
+Usage: $0 [--no-build] [--clean] [--serial HOST:PORT] [--logs N]
 
   --no-build     skip `flutter build hap` and install the existing HAP
+  --clean        uninstall first (wipes the downloaded model and app data)
   --serial       hdc target serial (default: the only connected target)
-  --logs N       after launch, stream the last N lines of hilog and follow
+  --logs N       after launch, print the last N lines of hilog
 EOF
 }
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --no-build) DO_BUILD=false; shift ;;
+    --clean) CLEAN=true; shift ;;
     --serial) SERIAL="$2"; shift 2 ;;
     --logs) LOG_LINES="$2"; shift 2 ;;
     -h|--help) usage; exit 0 ;;
@@ -78,8 +81,14 @@ if [[ ! -f "$hap_path" ]]; then
 fi
 
 echo "==> installing $(basename "$hap_path")"
-hdc_target uninstall "$BUNDLE" >/dev/null 2>&1 || true
-hdc_target install -r "$hap_path"
+if $CLEAN; then
+  # Wipes the sandbox, including the downloaded model (1.5 GB) and the
+  # conversation key material. Only for "prove first-run works" runs.
+  hdc_target uninstall "$BUNDLE" >/dev/null 2>&1 || true
+  hdc_target install "$hap_path"
+else
+  hdc_target install -r "$hap_path"
+fi
 
 echo "==> launching $BUNDLE/$ABILITY"
 hdc_target shell "aa force-stop $BUNDLE" >/dev/null 2>&1 || true

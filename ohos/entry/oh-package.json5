@@ -1,11 +1,4 @@
 {
-  // The Flutter engine HAR is declared in the workspace-level oh-package.json5
-  // under "overrides". `flutter build hap` re-adds the relative path
-  // "har/flutter.har" here on every run (checkOhosPluginsDependencies in the
-  // fork's ohos_plugins_manager.dart), which ohpm resolves against ohos/entry/
-  // where no HAR is ever written; the workspace override is what makes that
-  // path resolve to ohos/har/flutter.har. Keep this entry in sync with the
-  // tool's output so the build does not leave the tree dirty.
   "name": "entry",
   "version": "2.0.0",
   "description": "Finn AI OpenHarmony Entry Module",
