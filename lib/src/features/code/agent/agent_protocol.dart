@@ -138,11 +138,23 @@ abstract final class AgentProtocol {
   /// writes only the tags, over and over, or leaves a stray closing one. The
   /// engine strips a block at the very start of a reply; this strips the rest,
   /// so what is parsed and shown is only what the model said to the user.
-  static String clean(String raw) => raw
-      .replaceAll(RegExp(r'<think>[\s\S]*?</think>'), '')
-      .replaceAll(RegExp(r'<think>[\s\S]*$'), '')
-      .replaceAll(RegExp(r'</?think>'), '')
-      .trim();
+  ///
+  /// A 1.6B model also sometimes repeats the hidden reminder that closes the
+  /// prompt; that is an instruction to it, not an answer, so it is dropped.
+  static String clean(String raw) {
+    var text = raw
+        .replaceAll(RegExp(r'<think>[\s\S]*?</think>'), '')
+        .replaceAll(RegExp(r'<think>[\s\S]*$'), '')
+        .replaceAll(RegExp(r'</?think>'), '');
+    for (final echo in [
+      resultReminder,
+      taskReminder(shell: true),
+      taskReminder(shell: false),
+    ]) {
+      text = text.replaceAll(echo, '');
+    }
+    return text.trim();
+  }
 
   /// A short worked example, shown to a small model as if it had already
   /// happened: ask, act, see the result, act again, answer. One example of the

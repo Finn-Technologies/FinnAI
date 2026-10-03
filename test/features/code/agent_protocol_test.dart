@@ -149,6 +149,16 @@ void main() {
 
     test('reasoning tags are removed, whole, stray or unterminated', () {
       expect(AgentProtocol.clean('<think>\n\n</think>\n\nHello'), 'Hello');
+      expect(
+        AgentProtocol.clean(
+          'All set.\n\n${AgentProtocol.resultReminder}\n\nDone.',
+        ),
+        'All set.\n\n\n\nDone.',
+      );
+      expect(
+        AgentProtocol.clean(AgentProtocol.taskReminder(shell: true)),
+        '',
+      );
       expect(AgentProtocol.clean('Hello\n</think>'), 'Hello');
       expect(AgentProtocol.clean('<think>plan</think>Done<think>more'), 'Done');
       expect(

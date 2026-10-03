@@ -35,10 +35,24 @@ class FlowsActions extends ChangeNotifier {
 
   FlowRunner get _runner => runner ?? FlowRunner(store: store);
 
+  bool _disposed = false;
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+
+  /// A run or a permission check outlives the page that started it; when it
+  /// finishes there is nobody left to tell.
+  void _notify() {
+    if (!_disposed) notifyListeners();
+  }
+
   Future<void> refreshNotifications() async {
     final allowed = await scheduler?.backend.notificationsAllowed();
     notificationsOn = allowed ?? true;
-    notifyListeners();
+    _notify();
   }
 
   /// Runs a flow once, on the spot. A manual run asks before any device
@@ -62,7 +76,7 @@ class FlowsActions extends ChangeNotifier {
       return await _runner.run(flow, granted: permitted);
     } finally {
       runningId = null;
-      notifyListeners();
+      _notify();
     }
   }
 

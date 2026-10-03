@@ -688,10 +688,9 @@ class ChatGenerationController extends ChangeNotifier {
     // stuck on "Finn is typing…"), and any `flushActive()` / `stop()` / the
     // 1.5 s persistence timer that ran in that window re-read the stale
     // non-terminal job and overwrote the finished answer — downgrading its
-    // status back to `generating` and, whenever the last paint batch lagged
-    // behind the token buffer, truncating its text. On device that is how a
-    // two-token reply ("blue") only showed up once the *next* user turn made
-    // the store dirty again.
+    // status to `generating` and, when the last paint batch lagged behind the
+    // token buffer, truncating its text. On device a two-token reply ("blue")
+    // only showed up once the *next* user turn made the store dirty again.
     _commitTerminal(terminal, status);
     _job = terminal;
     _clearToolActivities();
@@ -701,6 +700,7 @@ class ChatGenerationController extends ChangeNotifier {
       await conversations.flush();
     } finally {
       _commitPending = false;
+      _notify(); // `busy` fell: without this the stop button lingers.
     }
   }
 
