@@ -1,4 +1,5 @@
 import 'package:finn_ai/l10n/app_localizations.dart';
+import 'package:finn_ai/src/platform/platform_target.dart';
 import 'package:finn_ai/src/platform/window_chrome.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 import 'package:finn_ai/src/shared/widgets/finn_window_frame.dart';
@@ -10,6 +11,12 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  // `WindowChrome.initialize()` returns early unless the platform is Linux, so
+  // this suite would otherwise pass on the Linux CI runner and fail on a macOS
+  // or Windows host. Pin the platform rather than depending on the host.
+  setUp(() => debugSetFinnPlatformOverride(FinnPlatform.linux));
+  tearDown(() => debugSetFinnPlatformOverride(null));
+
   const channel = MethodChannel('finn_ai/window');
   final messenger =
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;

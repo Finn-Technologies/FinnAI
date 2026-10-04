@@ -1,3 +1,4 @@
+import 'package:finn_ai/src/platform/platform_target.dart';
 import 'package:finn_ai/src/shared/layout/finn_layout.dart';
 import 'package:finn_ai/src/shared/widgets/desktop_shortcuts.dart';
 import 'package:finn_ai/src/shared/widgets/enter_to_send.dart';
@@ -123,6 +124,11 @@ void main() {
     testWidgets('Ctrl+N, Ctrl+B and Ctrl+, call their handlers', (
       tester,
     ) async {
+      // `DesktopShortcuts` binds Cmd instead of Ctrl on macOS, so on a macOS
+      // host the Ctrl presses below would match nothing. Pin a non-Apple
+      // platform so the suite behaves the same everywhere.
+      debugSetFinnPlatformOverride(FinnPlatform.linux);
+      addTearDown(() => debugSetFinnPlatformOverride(null));
       final calls = <String>[];
       await tester.pumpWidget(
         MaterialApp(
