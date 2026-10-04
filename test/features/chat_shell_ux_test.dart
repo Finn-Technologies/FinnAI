@@ -106,9 +106,13 @@ void main() {
       await _pumpComposer(tester, voiceEnabled: true);
 
       final pill = find.byKey(const ValueKey('chat-composer-motion'));
+      // The field box sits 2dp above the pill's middle on purpose: the typeface
+      // has more room above its letters than below, so the box has to be lifted
+      // for the *letters* to be centred (see composer_centering_test.dart).
+      const lift = 2.0;
       expect(
         tester.getCenter(find.text('Ask anything')).dy,
-        closeTo(tester.getCenter(pill).dy, 1.0),
+        closeTo(tester.getCenter(pill).dy - lift, 1.0),
       );
 
       // The draft the placeholder becomes keeps that line: the field box is
@@ -117,7 +121,7 @@ void main() {
       await tester.pump();
       expect(
         tester.getCenter(find.byType(TextField)).dy,
-        closeTo(tester.getCenter(pill).dy, 1.0),
+        closeTo(tester.getCenter(pill).dy - lift, 1.0),
       );
     });
 

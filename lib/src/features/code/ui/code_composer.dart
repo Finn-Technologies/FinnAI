@@ -139,36 +139,41 @@ class _CodeComposerState extends State<CodeComposer> {
             // the pill's whole maximum height and the composer balloons.
             child: Center(
               heightFactor: 1,
-              child: EnterToSend(
-                canSend: canSend,
-                onSend: widget.onSend,
-                child: TextField(
-                  key: const ValueKey('code-composer-field'),
-                  controller: widget.controller,
-                  focusNode: widget.focusNode,
-                  inputFormatters: [LengthLimitingTextInputFormatter(6000)],
-                  minLines: 1,
-                  maxLines: 6,
-                  textAlignVertical: TextAlignVertical.center,
-                  keyboardType: TextInputType.multiline,
-                  textInputAction: TextInputAction.newline,
-                  style: TextStyle(
-                    fontFamily: 'InstrumentSans',
-                    fontSize: 16,
-                    height: 1.25,
-                    fontWeight: FontWeight.w400,
-                    color: FluxColors.inkOf(context),
-                  ),
-                  cursorColor: FluxColors.inkOf(context),
-                  decoration: InputDecoration.collapsed(
-                    hintText: l10n.codeComposerHint,
-                    hintMaxLines: 1,
-                    hintStyle: TextStyle(
+              child: Padding(
+// InstrumentSans carries more space above its letters than below, which
+// left the text 2px under the pill's middle: lift it by that much.
+                padding: const EdgeInsets.only(bottom: 4),
+                child: EnterToSend(
+                  canSend: canSend,
+                  onSend: widget.onSend,
+                  child: TextField(
+                    key: const ValueKey('code-composer-field'),
+                    controller: widget.controller,
+                    focusNode: widget.focusNode,
+                    inputFormatters: [LengthLimitingTextInputFormatter(6000)],
+                    minLines: 1,
+                    maxLines: 6,
+                    textAlignVertical: TextAlignVertical.center,
+                    keyboardType: TextInputType.multiline,
+                    textInputAction: TextInputAction.newline,
+                    style: TextStyle(
                       fontFamily: 'InstrumentSans',
                       fontSize: 16,
                       height: 1.25,
                       fontWeight: FontWeight.w400,
-                      color: FluxColors.inkOf(context).withValues(alpha: .55),
+                      color: FluxColors.inkOf(context),
+                    ),
+                    cursorColor: FluxColors.inkOf(context),
+                    decoration: InputDecoration.collapsed(
+                      hintText: l10n.codeComposerHint,
+                      hintMaxLines: 1,
+                      hintStyle: TextStyle(
+                        fontFamily: 'InstrumentSans',
+                        fontSize: 16,
+                        height: 1.25,
+                        fontWeight: FontWeight.w400,
+                        color: FluxColors.inkOf(context).withValues(alpha: .55),
+                      ),
                     ),
                   ),
                 ),
