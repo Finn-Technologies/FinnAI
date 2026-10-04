@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:finn_ai/src/features/conversations/conversation_crypto.dart';
+import 'package:finn_ai/src/platform/linux_key_storage.dart';
 import 'package:finn_ai/src/platform/openharmony_key_storage.dart';
 import 'package:finn_ai/src/platform/platform_target.dart';
 import 'package:flutter/services.dart';
@@ -95,6 +96,12 @@ void main() {
       debugSetFinnPlatformOverride(FinnPlatform.openHarmony);
       final crypto = createConversationCrypto() as KeyedConversationCrypto;
       expect(crypto.keyStorage, isA<OpenHarmonyKeyStorage>());
+    });
+
+    test('Linux gets the keyring store with a file fallback', () {
+      debugSetFinnPlatformOverride(FinnPlatform.linux);
+      final crypto = createConversationCrypto() as KeyedConversationCrypto;
+      expect(crypto.keyStorage, isA<LinuxKeyStorage>());
     });
 
     test('Android keeps the KeyStore-backed storage', () {

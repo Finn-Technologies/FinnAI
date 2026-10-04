@@ -4,6 +4,8 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+import 'package:finn_ai/src/engine/profiler/desktop_profile.dart';
+
 enum ProcessorClass { entry, balanced, flagship }
 
 @immutable
@@ -18,7 +20,9 @@ class DeviceProfile {
     this.supportedAbis = const [],
     this.availableStorageBytes,
     this.nativeLibraryDir,
+    this.llamaLibraryPath,
     this.performanceCores,
+    this.desktop = false,
   });
 
   static const minimumRamBytes = 2200000000;
@@ -38,6 +42,20 @@ class DeviceProfile {
   final List<String> supportedAbis;
   final int? availableStorageBytes;
   final String? nativeLibraryDir;
+
+  /// Absolute path of `libllama.so` when the host cannot resolve it by name.
+  ///
+  /// On Android the loader finds `libllama.so` through the app's native
+  /// library directory and on OpenHarmony through the bundle mount, so both
+  /// pass the bare name. A desktop Linux bundle keeps its libraries in
+  /// `lib/` next to the executable, and `dlopen` from inside the Dart VM does
+  /// not search the executable's RUNPATH, so it needs the full path.
+  final String? llamaLibraryPath;
+
+  /// True on desktop Linux, which answers no platform channel: free storage
+  /// comes from `df` instead, and nothing like Android's download service
+  /// stands between a transfer and a full disk.
+  final bool desktop;
 
   bool get supported =>
       // Android and OpenHarmony both ship an arm64-only build of the engine
@@ -184,11 +202,20 @@ class DeviceProfiler {
       1,
       _asInt(native['cores']) ?? Platform.numberOfProcessors,
     );
+    // Desktop Linux answers no platform channel (OpenHarmony, which also
+    // reports Linux, does), so an empty reply is what identifies it here.
+    final desktop = Platform.isLinux && native.isEmpty;
+    final desktopCpu = desktop ? await DesktopProfile.cpuName() : null;
+    final bundledLib = desktop ? DesktopProfile.bundledLlamaLibrary() : null;
     return DeviceProfile(
       totalRamBytes: total,
       availableRamBytes: available,
-      processor: _classifyProcessor(soc, cores),
-      soc: soc.isEmpty ? 'Unknown SoC' : soc,
+      // The SoC keyword table describes phone chips and would misread a desktop
+      // CPU name, so a desktop is classed by core count and memory alone.
+      processor: desktop
+          ? DesktopProfile.classify(cores, total)
+          : _classifyProcessor(soc, cores),
+      soc: soc.isNotEmpty ? soc : (desktopCpu ?? 'Unknown SoC'),
       cores: cores,
       performanceCores: await _performanceCores(cores),
       lowMemory: native['lowMemory'] == true,
@@ -196,8 +223,12 @@ class DeviceProfiler {
           (native['supportedAbis'] as List<Object?>? ?? const <Object?>[])
               .whereType<String>()
               .toList(growable: false),
-      availableStorageBytes: _asInt(native['availableStorageBytes']),
-      nativeLibraryDir: native['nativeLibraryDir'] as String?,
+      availableStorageBytes: _asInt(native['availableStorageBytes']) ??
+          (desktop ? await DesktopProfile.freeBytes() : null),
+      desktop: desktop,
+      nativeLibraryDir:
+          native['nativeLibraryDir'] as String? ?? bundledLib?.parent.path,
+      llamaLibraryPath: bundledLib?.path,
     );
   }
 

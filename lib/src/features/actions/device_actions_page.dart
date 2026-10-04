@@ -98,6 +98,7 @@ class _DeviceActionsPageState extends State<DeviceActionsPage> {
           builder: (context, constraints) {
             final metrics = FinnPageHeaderMetrics.forHeight(
               constraints.maxHeight,
+              constraints.maxWidth,
             );
             return Stack(
               children: [

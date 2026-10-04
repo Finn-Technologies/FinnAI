@@ -36,9 +36,14 @@ extension _HomeShellNavigation on _HomeShellState {
   /// then open the page, which read as two animations.
   Future<void> _pushFromSidebar(Widget page) {
     if (!mounted) return Future.value();
-    return Navigator.of(context).push(
-      FinnPageRoute<void>(child: page, onSettled: _dismissSidebarBehindPage),
-    );
+    return Navigator.of(context)
+        .push(
+          FinnPageRoute<void>(
+            child: page,
+            onSettled: _dismissSidebarBehindPage,
+          ),
+        )
+        .whenComplete(_focusComposerOnDesktop);
   }
 
   /// Closes the panel without animating: a page already covers it.

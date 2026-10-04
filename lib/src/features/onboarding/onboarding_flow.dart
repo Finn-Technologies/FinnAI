@@ -7,7 +7,11 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:finn_ai/src/app/app_mode_host.dart';
+import 'package:finn_ai/src/features/onboarding/artwork_card.dart';
 import 'package:finn_ai/src/features/onboarding/context_choose_page.dart';
+import 'package:finn_ai/src/features/onboarding/starfield.dart';
+import 'package:finn_ai/src/features/onboarding/wide_step.dart';
+import 'package:finn_ai/src/shared/widgets/finn_window_frame.dart';
 import 'package:finn_ai/src/features/onboarding/context_consent_store.dart';
 import 'package:finn_ai/src/inference/device_profile.dart';
 import 'package:finn_ai/src/features/onboarding/model_install.dart';
@@ -68,9 +72,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       });
     }
     if (page >= 3 && widget.enableModelDownload) {
-      // Precautions and the final swipe give the mmap-backed engine time to
-      // load before the user can type a first prompt on devices with ample RAM.
-      // On entry/low-memory devices, skip eager prewarm to keep UI memory unpressured.
+      // Give the mmap-backed engine time to load before the first prompt on
+      // devices with ample RAM; entry/low-memory devices skip the eager prewarm.
       final profile = FinnInference.instance.deviceProfile;
       if (profile == null || !DeviceProfiler.isLowEnd(profile)) {
         unawaited(FinnInference.instance.prewarm());
@@ -174,25 +177,19 @@ class _WelcomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) => _SwipeAdvance(
         onAdvance: onNext,
-        child: ColoredBox(
-          color: Colors.black,
+        child: FinnBlackScreen(
           child: LayoutBuilder(
             builder: (context, constraints) {
-              // Only the starfield bleeds; content is measured from the safe
-              // area so nothing slides under the status bar or nav bar.
+              // Only the sky bleeds; content stays inside the safe area.
               final padding = MediaQuery.paddingOf(context);
               final avail =
                   constraints.maxHeight - padding.top - padding.bottom;
               final sy = (avail / 912).clamp(.4, 1.0);
               final bottom = padding.bottom;
+              final glowInset = welcomeGlowInset(constraints);
               return Stack(
                 children: [
-                  Positioned.fill(
-                    child: Image.asset(
-                      FigmaAssets.welcomeStars,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
+                  const Positioned.fill(child: Starfield()),
                   // Brand bloom from the bottom edge, bottom-anchored so tall
                   // screens grow the empty middle (wash bleeds 65px past it).
                   Positioned(
@@ -209,13 +206,12 @@ class _WelcomePage extends StatelessWidget {
                     ),
                   ),
                   Positioned(
-                    left: 20,
-                    right: 20,
+                    left: glowInset,
+                    right: glowInset,
                     bottom: bottom + 20 * sy,
                     height: 106 * sy,
-                    child: Image.asset(
-                      FigmaAssets.welcomeGlowCard,
-                      fit: BoxFit.fill,
+                    child: WelcomeGlowCard(
+                      radius: welcomeGlowRadius(constraints),
                     ),
                   ),
                   Positioned(
@@ -228,7 +224,7 @@ class _WelcomePage extends StatelessWidget {
                         child: Text(
                           L10n.of(context).onboardingWelcome,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'InstrumentSans',
                             fontSize: 24,
                             height: 1.2,
@@ -243,22 +239,24 @@ class _WelcomePage extends StatelessWidget {
                     bottom: bottom + 156 * sy,
                     left: 0,
                     right: 0,
-                    child: Column(
-                      children: [
-                        const _FloatingArrow(color: Colors.white),
-                        const SizedBox(height: 15),
-                        Text(
-                          L10n.of(context).onboardingSwipeToStart,
-                          style: const TextStyle(
-                            fontFamily: 'InstrumentSans',
-                            fontSize: 18,
-                            height: 1.2,
-                            fontWeight: FontWeight.w400,
-                            color: Color(0x80FFFFFF),
+                    child: wideStepFits(constraints)
+                        ? WelcomeStartButton(onTap: onNext)
+                        : Column(
+                            children: [
+                              const _FloatingArrow(color: Colors.white),
+                              const SizedBox(height: 15),
+                              Text(
+                                L10n.of(context).onboardingSwipeToStart,
+                                style: const TextStyle(
+                                  fontFamily: 'InstrumentSans',
+                                  fontSize: 18,
+                                  height: 1.2,
+                                  fontWeight: FontWeight.w400,
+                                  color: Color(0x80FFFFFF),
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
-                    ),
                   ),
                 ],
               );
@@ -457,6 +455,21 @@ class _StepPage extends StatelessWidget {
     const lift = 12.0;
     return LayoutBuilder(
       builder: (context, constraints) {
+        if (wideStepFits(constraints)) {
+          return WideStepLayout(
+            artwork: artwork,
+            title: title,
+            body: this.body,
+            scrollBody: scrollBody,
+            twoLineTitle: twoLineTitle,
+            progress: progress,
+            backEnabled: backEnabled,
+            onBack: onBack,
+            onNext: onNext,
+            footer: footer,
+            footerHint: footerHint,
+          );
+        }
         final avail = constraints.maxHeight - topInset - bottomReserve;
         final sy = (avail / 912).clamp(.6, 1.0);
         final cardWidth = math.max(
@@ -496,7 +509,7 @@ class _StepPage extends StatelessWidget {
                   child: SizedBox(
                     width: cardWidth,
                     height: cardHeight,
-                    child: _ArtworkCard(
+                    child: OnboardingArtworkCard(
                       artwork: artwork,
                       title: title,
                       twoLineTitle: twoLineTitle,
@@ -556,72 +569,6 @@ class _StepPage extends StatelessWidget {
       },
     );
   }
-}
-
-/// The step's photographic card: the artwork fills it, the title sits in the
-/// bottom-left corner over the artwork's own dark wash.
-class _ArtworkCard extends StatelessWidget {
-  const _ArtworkCard({
-    required this.artwork,
-    required this.title,
-    this.twoLineTitle = false,
-  });
-
-  final String artwork;
-  final String title;
-  final bool twoLineTitle;
-
-  @override
-  Widget build(BuildContext context) => ClipRRect(
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(25),
-          topRight: Radius.circular(25),
-          bottomLeft: Radius.circular(10),
-          bottomRight: Radius.circular(10),
-        ),
-        child: LayoutBuilder(
-          builder: (context, constraints) => Stack(
-            fit: StackFit.expand,
-            children: [
-              // The design's card photo: the source bitmap is already cropped to
-              // the card's crop region, so filling it reproduces the design's
-              // exact stretch rather than a BoxFit.cover re-crop.
-              Image.asset(
-                artwork,
-                fit: BoxFit.fill,
-                filterQuality: FilterQuality.medium,
-                excludeFromSemantics: true,
-              ),
-              // The design washes the photo with a 35% black-to-transparent
-              // gradient so the white title reads over any part of it.
-              const DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.bottomCenter,
-                    end: Alignment.topCenter,
-                    colors: [Color(0x59000000), Color(0x00666666)],
-                  ),
-                ),
-              ),
-              Positioned(
-                left: 25,
-                right: 25,
-                bottom: twoLineTitle ? 21 : 30,
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontFamily: 'InstrumentSans',
-                    fontSize: 24,
-                    height: 1.2,
-                    fontWeight: FontWeight.w400,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
 }
 
 /// Back, step progress and next: the control bar every step shares.
@@ -1501,29 +1448,32 @@ class _PrimaryActionButton extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => Semantics(
-        button: true,
-        label: label,
-        onTap: onTap,
-        excludeSemantics: true,
-        child: FluxPressScale(
-          child: Material(
-            color: FluxColors.actionOf(context),
-            borderRadius: BorderRadius.circular(60),
-            child: InkWell(
-              onTap: onTap,
+  Widget build(BuildContext context) => StepEnterKey(
+        onEnter: onTap,
+        child: Semantics(
+          button: true,
+          label: label,
+          onTap: onTap,
+          excludeSemantics: true,
+          child: FluxPressScale(
+            child: Material(
+              color: FluxColors.actionOf(context),
               borderRadius: BorderRadius.circular(60),
-              child: SizedBox(
-                height: 60,
-                child: Center(
-                  child: Text(
-                    label,
-                    style: TextStyle(
-                      fontFamily: 'InstrumentSans',
-                      fontSize: 18,
-                      height: 1.2,
-                      fontWeight: FontWeight.w400,
-                      color: FluxColors.actionInkOf(context),
+              child: InkWell(
+                onTap: onTap,
+                borderRadius: BorderRadius.circular(60),
+                child: SizedBox(
+                  height: 60,
+                  child: Center(
+                    child: Text(
+                      label,
+                      style: TextStyle(
+                        fontFamily: 'InstrumentSans',
+                        fontSize: 18,
+                        height: 1.2,
+                        fontWeight: FontWeight.w400,
+                        color: FluxColors.actionInkOf(context),
+                      ),
                     ),
                   ),
                 ),

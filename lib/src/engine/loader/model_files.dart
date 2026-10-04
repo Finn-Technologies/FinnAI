@@ -95,6 +95,14 @@ extension FinnAcceleratorModelFiles on FinnAccelerator {
       );
       return;
     }
+    final partialBytes = await File('${target.path}.part').exists()
+        ? await File('${target.path}.part').length()
+        : 0;
+    await _requireDesktopStorage(
+      math.max(0, finnMmproj.expectedBytes - partialBytes),
+      reserve: 256 * 1024 * 1024,
+      what: 'the multimodal component',
+    );
     await _ensureArtifactDart(
       url: finnMmproj.downloadUrl,
       target: target,

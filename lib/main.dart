@@ -11,7 +11,10 @@ import 'package:finn_ai/src/features/search/search_turn.dart';
 import 'package:finn_ai/src/features/voice/tts/tts_probe.dart';
 import 'package:finn_ai/src/inference/finn_inference.dart';
 import 'package:finn_ai/src/shared/config/licenses.dart';
+import 'package:finn_ai/src/platform/desktop_setup.dart';
 import 'package:finn_ai/src/platform/openharmony_path_provider.dart';
+import 'package:finn_ai/src/platform/platform_target.dart';
+import 'package:finn_ai/src/platform/window_chrome.dart';
 
 /// The screenless entry point `FlowBackgroundRunner.kt` starts by name. Naming it
 /// here is what keeps it in the compiled app: a library nothing imports is not
@@ -22,6 +25,8 @@ final _flowBackgroundEntry = flowBackgroundMain;
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   OpenHarmonyPathProvider.registerIfNeeded();
+  if (isDesktop) ignoreUnimplementedDesktopChannels();
+  await WindowChrome.instance.initialize();
   registerModelLicenses();
   if (const bool.fromEnvironment('FINN_TTS_PROBE')) {
     runApp(const _BareBenchmarkApp());
@@ -41,17 +46,19 @@ Future<void> main() async {
       FinnInference.instance.select(FinnModelTier.standard);
     }
   }
-  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.dark,
-      systemNavigationBarColor: Colors.transparent,
-      systemNavigationBarIconBrightness: Brightness.dark,
-      systemStatusBarContrastEnforced: false,
-      systemNavigationBarContrastEnforced: false,
-    ),
-  );
+  if (!isDesktop) {
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarIconBrightness: Brightness.dark,
+        systemStatusBarContrastEnforced: false,
+        systemNavigationBarContrastEnforced: false,
+      ),
+    );
+  }
 
   // The benchmark/eval harness must run AFTER the first frame: Android puts
   // an app whose activity is never visible into the background cgroup, where

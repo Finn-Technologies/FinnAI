@@ -1,6 +1,6 @@
 # AGENTS.md — operating FinnAI
 
-FinnAI is a **private, on-device AI assistant** for Android and OpenHarmony: a Flutter UI over a
+FinnAI is a **private, on-device AI assistant** for Android, OpenHarmony and desktop Linux: a Flutter UI over a
 native llama.cpp runtime (`FinnAI-Accelerator`) that runs a single downloaded model
 (`LFM2.5-VL 1.6B Q4_0`) entirely on the device. There is no server, no account, and no cloud
 inference.
@@ -64,7 +64,7 @@ FinnAI/
 ├── test/                         # mirrors lib/ (app/, engine/, features/) + goldens/
 ├── .agents/skills/               # repo-local agent skills (see §6)
 ├── docs/                         # architecture / guides / reference / operations / legal
-├── android/  ohos/               # native platform projects
+├── android/  ohos/  linux/       # native platform projects (linux/ = GTK runner, see docs/guides/LINUX.md)
 ├── third_party/llama_cpp_dart/   # vendored FFI bindings (excluded from analysis)
 └── tool/                         # build + verification scripts
 ```
@@ -176,3 +176,6 @@ Task playbooks live in `.agents/skills/` and are auto-discovered (invoke with `/
 | `finn-feature` | Adding or changing a user-facing feature screen or string |
 | `finn-device-test` | Building, installing, and exercising the app on a real device |
 | `finn-release` | Preparing or verifying a release build |
+
+Desktop and large-screen work (window classes, docked sidebar, Linux runner) is documented in
+`docs/guides/LINUX.md`; breakpoints live only in `lib/src/shared/layout/finn_layout.dart`.

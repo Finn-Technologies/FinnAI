@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:finn_ai/src/platform/platform_target.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -318,6 +319,9 @@ void main() {
     });
 
     testWidgets('filters narrow the tiles to one kind', (tester) async {
+      // Widgets are a phone's home-screen feature, hidden on a desktop.
+      debugSetFinnPlatformOverride(FinnPlatform.android);
+      addTearDown(() => debugSetFinnPlatformOverride(null));
       await store.save([
         _creation(id: 'a', title: 'Flappy Bird', artifact: _appArtifact),
         _creation(

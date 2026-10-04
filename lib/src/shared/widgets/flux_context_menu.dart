@@ -105,6 +105,9 @@ class _FluxSpringPressableState extends State<FluxSpringPressable>
             onTapUp: _handleTapUp,
             onTapCancel: _handleTapCancel,
             onLongPress: _handleLongPress,
+            // A mouse has no long press: right-click opens the same menu.
+            onSecondaryTap:
+                widget.onLongPress == null ? null : _handleLongPress,
             child: AnimatedBuilder(
               animation: _scaleAnimation,
               builder: (context, child) => Transform.scale(
@@ -115,6 +118,9 @@ class _FluxSpringPressableState extends State<FluxSpringPressable>
             ),
           )
         : widget.child;
+    if (enabled && widget.onTap != null) {
+      content = MouseRegion(cursor: SystemMouseCursors.click, child: content);
+    }
 
     if (widget.expandHitArea) {
       content = Align(

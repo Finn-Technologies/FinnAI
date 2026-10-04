@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'package:finn_ai/l10n/app_localizations.dart';
+import 'package:finn_ai/src/platform/platform_target.dart';
 import 'package:finn_ai/l10n/l10n_helper.dart';
 import 'package:finn_ai/src/features/chat/home_shell.dart' show ChatComposer;
 import 'package:finn_ai/src/features/creations/creation_generator.dart';
@@ -329,6 +330,7 @@ class _CreationsPageState extends State<CreationsPage> {
             builder: (context, constraints) {
               final metrics = FinnPageHeaderMetrics.forHeight(
                 constraints.maxHeight,
+                constraints.maxWidth,
               );
               return Stack(
                 children: [

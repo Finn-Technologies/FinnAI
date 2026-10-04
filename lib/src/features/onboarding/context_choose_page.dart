@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:finn_ai/l10n/l10n_helper.dart';
 import 'package:finn_ai/src/features/onboarding/context_consent_store.dart';
+import 'package:finn_ai/src/features/onboarding/wide_step.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 import 'package:finn_ai/src/shared/widgets/finn_ui.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
@@ -31,6 +32,73 @@ class ContextChoosePage extends StatelessWidget {
     'location': FluxIcons.flag,
   };
 
+  Widget _row(
+    BuildContext context,
+    ContextConsentStore consent,
+    String key,
+    Map<String, (String, String)> titles,
+  ) =>
+      Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: Container(
+          height: 74,
+          padding: const EdgeInsets.symmetric(
+            horizontal: 15,
+            vertical: 12,
+          ),
+          decoration: BoxDecoration(
+            color: FluxColors.tileOf(context),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: FluxColors.controlOf(context),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: FluxIcon(
+                    icon: _icons[key]!,
+                    size: 22,
+                    strokeWidth: 1.5,
+                    color: FluxColors.actionOf(context),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 15),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      titles[key]!.$1,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    Text(
+                      titles[key]!.$2,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: FluxColors.actionOf(context),
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              FinnSwitch(
+                value: consent.categoryOn(key),
+                label: titles[key]!.$1,
+                onChanged: (v) => consent.setCategory(key, v),
+              ),
+            ],
+          ),
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
     final l10n = L10n.of(context);
@@ -43,6 +111,33 @@ class ContextChoosePage extends StatelessWidget {
       'files': (l10n.ctxFiles, l10n.ctxFilesSub),
       'location': (l10n.ctxLocation, l10n.ctxLocationSub),
     };
+    final wide = MediaQuery.sizeOf(context);
+    if (wideStepFits(BoxConstraints.tight(wide))) {
+      return ListenableBuilder(
+        listenable: consent,
+        builder: (context, _) => WideStepLayout(
+          artwork: FigmaAssets.artworkConsent,
+          title: l10n.onboardingChooseTitle,
+          progress: 4,
+          onBack: onBack,
+          onNext: onNext,
+          body: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                l10n.onboardingChooseBody,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: FluxColors.actionOf(context),
+                    ),
+              ),
+              const SizedBox(height: 20),
+              for (final key in ContextConsentStore.categoryKeys)
+                _row(context, consent, key, titles),
+            ],
+          ),
+        ),
+      );
+    }
     final bottom = FluxBottomInset.bottomOf(context);
     // Matches _StepPage: the bar clears the nav bar plus a small lift so it
     // never sits on the glass, on small and large screens alike.
@@ -75,70 +170,7 @@ class ContextChoosePage extends StatelessWidget {
                   ),
                   const SizedBox(height: 30),
                   for (final key in ContextConsentStore.categoryKeys)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: Container(
-                        height: 74,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 15,
-                          vertical: 12,
-                        ),
-                        decoration: BoxDecoration(
-                          color: FluxColors.tileOf(context),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 44,
-                              height: 44,
-                              decoration: BoxDecoration(
-                                color: FluxColors.controlOf(context),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Center(
-                                child: FluxIcon(
-                                  icon: _icons[key]!,
-                                  size: 22,
-                                  strokeWidth: 1.5,
-                                  color: FluxColors.actionOf(context),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 15),
-                            Expanded(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    titles[key]!.$1,
-                                    style:
-                                        Theme.of(context).textTheme.bodyMedium,
-                                  ),
-                                  Text(
-                                    titles[key]!.$2,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodySmall
-                                        ?.copyWith(
-                                          color: FluxColors.actionOf(context),
-                                        ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            FinnSwitch(
-                              value: consent.categoryOn(key),
-                              label: titles[key]!.$1,
-                              onChanged: (v) => consent.setCategory(key, v),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                    _row(context, consent, key, titles),
                 ],
               ),
             ),
