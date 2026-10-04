@@ -88,6 +88,18 @@ Output: `libggml-base.so`, `libggml-cpu.so`, `libggml.so`, `libllama.so`,
 `libmtmd.so`, built with `OHOS_STL=c++_static` so no `libc++_shared.so` has to
 be packaged.
 
+### 2.3 Build the speech-recognition libraries
+
+```bash
+source tool/ohos_env.sh
+bash tool/build_voice_ohos.sh
+```
+
+Builds `libonnxruntime.so` and the sherpa-onnx C API against the same sysroot and
+installs them next to the llama.cpp libraries. It builds onnxruntime from source
+(there is no OHOS prebuild to download), so it is slow -- roughly 900 translation
+units. §8 explains the five patches it applies and the gates it enforces.
+
 ---
 
 ## 3. Emulator
@@ -167,8 +179,7 @@ per channel, wired from `FinnPlugins.ets`:
 | `plugins.flutter.io/image_picker` | `ImagePickerPlugin.ets` | `pickImage` (gallery) |
 | `miguelruivo.flutter.plugins.filepicker` | `FilePickerPlugin.ets` | `custom`, `any`, `image` |
 | `flutter_tts` | `TtsPlugin.ets` | `speak`/`stop` + the `speak.on*` callbacks |
-| `com.llfbandit.record/*` | `AudioRecordPlugin.ets` | PCM16 stream for on-device STT |
-| `finn_ai/secure_key` | `SecureKeyPlugin.ets` | conversation master key |
+| `com.llfbandit.record/*` | `AudioRecordPlugin.ets` | PCM16 stream for on-device STT, plus `hasPermission` (needs `ohos.permission.MICROPHONE`) |
 | `finn_ai/device_profile` | `DeviceProfilePlugin.ets` | RAM/ABI/SoC/free storage |
 | `finn_ai/device_actions` | `DeviceActionsPlugin.ets` | the device-action catalog |
 | `finn_ai/flow_schedule`, `finn_ai/flow_env` | `FlowPlugin.ets` | flow triggers, conditions, notifications |
@@ -178,14 +189,72 @@ per channel, wired from `FinnPlugins.ets`:
 
 `lib/src/platform/` is the OHOS seam:
 
-- `platform_target.dart` — `finnPlatform` / `isOpenHarmony`. **Important:**
+- `platform_target.dart` — `finnPlatform` / `isOpenHarmony`, plus the documented
+  sandbox layout (`ohosSandboxFilesDir`, `ohosSandboxCacheDir`) as the single
+  source of truth for "where is the sandbox". **Important:**
   `dart:io` reports `operatingSystem == 'linux'` and `Platform.isLinux == true`
   on HarmonyOS, so anything that branches on `Platform.isLinux` first (or on
   `Platform.isX` at all) silently classifies the app as desktop Linux. OHOS is
   fingerprinted by its per-app sandbox mount points instead.
 - `openharmony_path_provider.dart` — path_provider, with hard-coded sandbox
   fallbacks if the native side is missing.
-- `openharmony_key_storage.dart` — the conversation master key.
+- `openharmony_key_storage.dart` — the conversation master key, in `dart:io`.
+
+### Where the plugin layer is registered (it used to be nowhere)
+
+`FinnPlugins.register()` used to be called only from
+`EntryAbility.configureFlutterEngine`. **That never ran.** This app renders
+through `FlutterEntry` + `FlutterPage` in `ets/pages/Index.ets`, and
+`FlutterEntry` builds the engine itself, so the ability's hook is not on the
+path. The result was that every ArkTS shim in `ets/plugins/` was dead code and
+every channel answered `No registered handler for message.`
+
+It went unnoticed because `OpenHarmonyPathProvider` falls back to hard-coded
+sandbox paths, and because the features that depend on the other channels were
+either hidden or reported `unavailable` anyway.
+
+Registration now happens in **both** places, which is deliberate:
+
+* `Index.ets` installs a `FlutterEngineConfigurator` via
+  `setFlutterEngineConfigurator` **before** `aboutToAppear()`, because that is
+  what builds the engine the configurator is later called with.
+* `EntryAbility` keeps its `configureFlutterEngine` override.
+
+Both are needed: this fork constructs two engines (`FlutterAbility.onCreate`
+makes one, `FlutterEntry` makes another) and which one Dart talks to is decided
+inside the fork. Registering a MethodChannel handler twice is idempotent -- it
+replaces, never duplicates -- so registering on both is correct either way.
+
+After this, the only channels that still log a missing handler are
+`finn_ai/home_screen`, `finn_ai/process_text` and `flutter/processtext`, all
+three of which are Android-only by design (HarmonyOS has no AppWidget and no
+`PROCESS_TEXT`). `hilog` shows `Setting handler for channel '<name>'` once per
+registered channel, which is the quickest way to confirm the layer is live.
+
+### The conversation key does not use a platform channel
+
+The master key is read and written with plain `dart:io` against the sandbox
+`filesDir`. It used to go through a `finn_ai/secure_key` channel implemented in
+`SecureKeyPlugin.ets`, which did nothing an ArkTS file API cannot do from Dart,
+and which the engine bug below made unusable. `SecureKeyPlugin.ets` has been
+removed.
+
+Two rules keep this working:
+
+1. **Same path, same bytes.** The file is still
+   `<filesDir>/finn_secure_key_<alias>` and still holds the raw 32 key bytes, so
+   a key file written by an earlier build is still readable. Both properties are
+   pinned by `test/app/openharmony_key_storage_test.dart`.
+2. **The directory comes from `path_provider` when it answers, and from
+   `ohosSandboxFilesDir` when it does not.** In practice the channel did *not*
+   answer on the API 24 emulator and the hard-coded path carried it —
+   `FINN_SECURE_KEY path_provider unavailable, using the documented sandbox
+   path` is the expected line in `hilog`, not a fault.
+
+Verified on the API 24 emulator: an existing key file written by the old
+`SecureKeyPlugin.ets` was read by the new `dart:io` implementation without being
+rewritten, a new conversation encrypted and decrypted across a force-stop and
+relaunch, and the sidebar listed it on relaunch.
 
 ### Platform behaviour notes
 
@@ -218,16 +287,19 @@ per channel, wired from `FinnPlugins.ets`:
 - **Some `finn_ai/*` channels lose their reply (open engine bug).** With
   Flutter OHOS fork `3.41.10-ohos-1.0.1` (engine `9161402dc0e1`), a platform
   message is sometimes delivered to the registered handler **twice under the
-  same response id**. The handler runs — its side effects land, which is how this
-  was found: `finn_ai/secure_key`'s `write` creates the key file — but Dart
+  same response id**. The handler runs — its side effects land — but Dart
   receives an empty reply and raises `MissingPluginException`. The engine's own
   `FlutterNapi --> called handlePlatformMessage Channel: … Response ID: 33`
   line appears twice for one message, and the reply for that id is consumed by
   the first delivery.
 
-  Observed channels: `finn_ai/secure_key`, `finn_ai/flow_schedule`.
-  Unaffected: `plugins.flutter.io/path_provider`,
-  `dev.fluttercommunity.plus/package_info`.
+  Observed channels: `finn_ai/flow_schedule`.
+  Unaffected: `dev.fluttercommunity.plus/package_info`.
+  **Resolved for `finn_ai/secure_key`:** that channel has been removed entirely
+  and the conversation key is now `dart:io` file I/O, so conversation history
+  persists across restarts on HarmonyOS (verified on the emulator).
+  `finn_ai/flow_schedule` still needs either an engine fix or the same
+  treatment.
 
   Ruled out: the channel name (renaming `finn_ai/secure_key` to a
   plugin-style name changes nothing), a null success envelope (replying `''`
@@ -235,14 +307,7 @@ per channel, wired from `FinnPlugins.ets`:
   nothing), and a missing handler (`Setting handler for channel` is logged, and
   the handler demonstrably runs).
 
-  Mitigation: a bounded retry in `OpenHarmonyKeyStorage._invoke`. **Consequence:
-  conversation history cannot be persisted across restarts on HarmonyOS**, and
-  the store shows its read-only storage-error banner, because the key read-back
-  verification never sees a reply. Chat, inference and every other feature are
-  unaffected.
-
-  To finish this, either fix the engine's response-id handling, or move the
-  conversation key off a method channel. Verify with:
+  Verify a future change with:
   `hdc -t <target> shell "hilog -x" | grep handlePlatformMessage`.
 - **Flows cannot fire unattended.** Notifications and condition reading work,
   and event triggers are subscribed while the app runs, but a *time* trigger
@@ -250,26 +315,61 @@ per channel, wired from `FinnPlugins.ets`:
   OpenHarmony counterpart of `lib/flow_background.dart`, which does not exist.
   Registering a work item that wakes an ability which cannot run the model would
   be worse than not scheduling it, so `FlowPlugin` logs the unscheduled triggers
-  instead. Work needed: new ExtensionAbility, a module.json5 entry, and a Dart
-  entrypoint wired the way `finn_ai/flow_background` is on Android.
+  instead.
+
+  **The engine half is not the obstacle.** Checked against the fork
+  (`3.41.10-ohos-1.0.1`, `embedding/engine/`):
+  `FlutterEngine`'s constructor takes a plain `common.Context`, not a
+  `UIAbilityContext`, so an extension ability's context is enough;
+  `DartEntrypoint(pathToBundle, library, functionName)` and
+  `DartExecutor.executeDartEntrypoint` exist with exactly the shape Android uses;
+  and `getDartExecutor()` is a `BinaryMessenger`, so a `MethodChannel` works with
+  no window. `lib/flow_background.dart` itself needs no platform channels to run
+  a flow — flows, conversations and the master key are all `dart:io` now, and
+  search is `http`.
+
+  **The obstacle is the time budget.** A `WorkSchedulerExtensionAbility` gets a
+  short, suspendable window; loading `libllama.so` plus the 695 MB model already
+  took ~75 s wall clock on the API 24 emulator before the first token. So a flow
+  containing an `ask` block cannot be relied on to finish unattended, and one
+  without it has little reason to be a background task. Work needed: build the
+  extension ability and `module.json5` entry, confirm how much budget the
+  emulator grants, and decide whether model-free flows are worth it.
 - **Downloads are suspended when the app is backgrounded.**
   `ohos.permission.KEEP_BACKGROUND_RUNNING` is not declared because no
   continuous task exists to justify it. Keep the app foregrounded for a long
   transfer, or add a `backgroundTaskManager` long-running task.
-- **Speech-to-text needs a Whisper runtime.** The PCM capture path is
-  implemented and verified, but `sherpa_onnx` has no OHOS build, so
-  `third_party/onnxruntime` headers are not yet backed by an OHOS
-  `libonnxruntime.so`. `voiceSupportedOnPlatform` keeps the voice UI hidden until
-  that exists, rather than showing a mic that cannot transcribe.
+- **Speech-to-text: the native libraries now exist.** `tool/build_voice_ohos.sh`
+  builds `libonnxruntime.so` and the sherpa-onnx C API for OHOS arm64 and
+  installs them into `ohos/entry/libs/arm64-v8a/`. Both are ARM64 OHOS ELFs that
+  need only `libc.so`, carry unversioned SONAMEs and package no
+  `libc++_shared.so`, and the Dart FFI reaches them because `dart:io` reports
+  OHOS as Linux, which is the branch that already loads them on Android. Text to
+  speech stays compiled **out**, so espeak-ng (GPL-3.0) is not in the shipped
+  library; the script fails the build if it is. `voiceSupportedOnPlatform`
+  includes OpenHarmony.
+  `ohos.permission.MICROPHONE` is declared, which `AudioRecordPlugin.ets`'s
+  `hasPermission` needs before HarmonyOS will grant a capture.
+  **Still unconfirmed:** end-to-end transcription. The emulator has no usable
+  microphone, so it needs a physical HarmonyOS phone. Until then treat the voice
+  button on OHOS as unproven rather than working. Read-aloud on OHOS still uses
+  the *system* engine -- `libfinn_tts.so` is not built for OHOS, and the failure
+  is expected and logged as `FINN_TTS prepare failed: ... libfinn_tts.so`.
 - **TTS is the system engine only.** The on-device Supertonic voice
   (`libfinn_tts.so` via FFI) is not built for OHOS, so read-aloud falls back to
   `flutter_tts` → HarmonyOS `textToSpeech`. `flutter_pcm_sound` (PCM playback of
   Supertonic output) is Android-only and stays that way.
 - **Device actions are honest, not generous.** `torch`, `media`, `volume`,
-  `vibrate`, `set_alarm` and `set_timer` report `unavailable`: HarmonyOS gives a
-  third-party app no public API for them. `dial`, `compose_sms`,
-  `compose_email`, `navigate`, `open_url`, `take_photo`, `open_settings`,
-  `show_alarms`, `open_app` and `share` (clipboard) all work.
+  `set_alarm` and `set_timer` report `unavailable`: HarmonyOS gives a
+  third-party app no public API for them. `vibrate` **does** work, through the
+  public `vibrator` kit with `ohos.permission.VIBRATE`, with the same 400 ms
+  default and 50..2000 ms clamp as Android. Note `startVibration` takes *two*
+  arguments on API 24 (`VibrateEffect` + `VibrateAttribute`, whose `usage` is
+  required), not one. Compiled and permission-declared, but **not yet confirmed
+  on hardware**: the emulator has no vibrator, so `startVibration` there
+  rejects and the action honestly reports `unavailable`. `dial`,
+  `compose_sms`, `compose_email`, `navigate`, `open_url`, `take_photo`,
+  `open_settings`, `show_alarms`, `open_app` and `share` (clipboard) all work.
 - **`PROCESS_TEXT` and memory-pressure callbacks** stay Android-only; neither has
   a HarmonyOS equivalent a Flutter app can subscribe to.
 - **`Emulator` screen lock.** The first `aa start` after boot fails with
@@ -278,7 +378,82 @@ per channel, wired from `FinnPlugins.ets`:
 
 ---
 
-## 8. Versioning
+## 8. Building the OHOS speech stack
+
+`tool/build_voice_ohos.sh` builds `libonnxruntime.so` and the sherpa-onnx C API
+for OHOS arm64 and installs them into `ohos/entry/libs/arm64-v8a/`. It is the OHOS
+sibling of `tool/rebuild_sherpa_android.sh`, and like
+`tool/rebuild_llama_ohos.sh` the libraries must be **rebuilt** when the SDK moves,
+never re-copied.
+
+**Why two projects.** sherpa-onnx downloads a prebuilt onnxruntime per platform
+and there is no OHOS build to download, so onnxruntime is built first and handed
+over via `SHERPA_ONNXRUNTIME_INCLUDE_DIR` / `SHERPA_ONNXRUNTIME_LIB_DIR`. The
+headers in `third_party/onnxruntime/include` are the same 1.28.x release the Dart
+FFI was generated against.
+
+### The five onnxruntime patches (`tool/onnxruntime_ohos_build.patch`)
+
+onnxruntime 1.28.2 *configures cleanly* against the stock HarmonyOS NDK
+toolchain, then needs five patches. It defines `__MUSL__` and `__OHOS__`, so they
+key off `__OHOS__` the way upstream keys off `__APPLE__`.
+
+1. **`mlas/lib/fp16_common.h`** -- require `__ARM_FEATURE_FP16_VECTOR_ARITHMETIC`
+   as well as `MLAS_F16VEC_INTRINSICS_SUPPORTED`. ORT defines the latter for every
+   non-Apple ARM64 target, but applies `-march=armv8.2-a+fp16` only *per source*
+   to the `*_fp16.cpp` kernels. The core fp32 translation units include this
+   header transitively via `mlasi.h`, so on any toolchain whose default `-march`
+   lacks FP16 -- the HarmonyOS clang, for one -- they fail on `vaddq_f16` even
+   though they call nothing in the file. The fp16 kernels, which do get the flag,
+   are unaffected.
+2. **`mlas/lib/mlasi.h`** -- same for `bfloat16_t` (`__bf16`) and the SBGEMM
+   kernel members, which need `+bf16`.
+3. **`core/platform/posix/env.cc`** -- add `__OHOS__` to the
+   `pthread_setaffinity_np` carve-out; HarmonyOS's musl has no such function.
+   Losing per-thread affinity is a throughput concern only, same as on Android.
+4. **`cmake/onnxruntime.cmake`** -- omit `VERSION`/`SOVERSION` on OHOS. The
+   sandbox resolves `DT_NEEDED` by SONAME out of `libs/arm64` and Dart's
+   `DynamicLibrary.open` uses the bare filename, so a versioned name means
+   shipping the 18 MB stripped library twice.
+5. **`core/session/model_editor_c_api.cc`** -- bind two `set().insert()` results
+   to named variables instead of structured bindings. Clang 15 rejects a
+   structured binding captured by the rollback lambda; GCC accepts it.
+
+Plus one change the script makes to the FetchContent'd **pytorch/cpuinfo**:
+its `CPUINFO_SUPPORTED_PLATFORM` gate allowlists OS names and has no `OHOS`, so
+it compiles no platform sources at all and `cpuinfo_arm_linux_init` /
+`_deinit` are undefined at link time. HarmonyOS is Linux-compatible for its
+purposes (`/proc/cpuinfo`, `sched_getaffinity`), so the allowlist is taught
+`OHOS`.
+
+### Why the FP16 kernels are not simply built with `-march=armv8.2-a+fp16`
+
+That flag would compile, and it is tempting. It must not be used: FP16 vector
+arithmetic is ARMv8.6-A, which only Snapdragon 8 Gen 3 / Kirin 9010 class parts
+have. A `libonnxruntime.so` built that way `SIGILL`s on Snapdragon 8 Gen 1/2 and
+Kirin 9000, which is most of the installed base. Patches 1 and 2 keep the fp32
+translation units off the FP16 ISA instead, so no fp32 code path can emit an
+fp16 instruction. `libonnxruntime.so` still *contains* fp16 and bf16 kernels --
+ORT compiles those TUs with the flags itself -- but executing them happens only
+when an fp16/bf16 model is loaded, and Whisper and Silero are fp32.
+
+### Gates the script enforces
+
+* espeak-ng must not appear in `libsherpa-onnx-c-api.so` (GPL-3.0). Matched as
+  `espeak[_-]ng` so the harmless `OfflineSpeaker` symbol does not trip it.
+* every shipped library must have an unversioned SONAME
+* no library may need `libc++_shared.so`
+
+Then strip (`llvm-strip --strip-unneeded`): these ship inside the HAP and carry
+~26 MB of debug info otherwise. The HAP goes from ~156 MB to ~178 MB.
+
+What this does **not** give you: on-device spoken replies. Those need
+`libfinn_tts.so` (`android/app/src/main/cpp/finn_supertonic.cc`) plus PCM
+playback, neither built for OHOS, so OHOS reads replies with the system engine.
+
+---
+
+## 9. Versioning
 
 `ohos/AppScope/app.json5` (`versionCode` / `versionName`) must be bumped **in
 lockstep with** `pubspec.yaml` (`version: 2.0.0-beta+9` → code `9`, name

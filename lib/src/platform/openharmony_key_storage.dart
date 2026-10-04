@@ -1,93 +1,158 @@
-import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import '../features/conversations/conversation_crypto.dart';
+import 'platform_target.dart';
 
-/// [SecureKeyStorage] for HarmonyOS, backed by the app's private `filesDir`
-/// through the `finn_ai/secure_key` channel implemented in
-/// `ohos/entry/src/main/ets/plugins/SecureKeyPlugin.ets`.
+/// [SecureKeyStorage] for HarmonyOS, backed by the app's private `filesDir`.
 ///
-/// `flutter_secure_storage` cannot be used here: its Dart side throws
-/// `UnsupportedError('unsupported_platform')` for every call on OpenHarmony,
-/// because `_selectOptions` only knows about
-/// Android/iOS/macOS/Linux/Windows/Web. That is why the conversation store did
-/// not open at all on the first HarmonyOS run.
+/// ## Why this is plain `dart:io` and not a method channel
 ///
-/// HUKS, HarmonyOS's equivalent of the AndroidKeyStore, cannot hold a *usable*
-/// symmetric key on API 24 either — it exposes key management but no
-/// `huks.encrypt`, and `cryptoFramework`'s symmetric generator produces only
-/// ephemeral keys. The key is therefore sealed by the per-app, per-user sandbox
-/// instead. The trade-off is written down in
-/// docs/architecture/SECURITY_AND_PRIVACY_ARCHITECTURE.md rather than left
-/// implied.
+/// This used to talk to `finn_ai/secure_key`, implemented in
+/// `ohos/entry/src/main/ets/plugins/SecureKeyPlugin.ets`. That plugin did
+/// nothing an ArkTS file API cannot do from Dart: open a file in the app's own
+/// sandbox, read 32 bytes, write 32 bytes.
+///
+/// It also did not work. The Flutter OHOS fork (3.41.10-ohos-1.0.1, engine
+/// `9161402dc0e1`) delivers some platform messages **twice under the same
+/// response id**: the handler runs and its side effects land, but Dart receives
+/// an empty reply and raises `MissingPluginException`. `finn_ai/secure_key` was
+/// one of the two affected channels, so the key read-back verification in
+/// `KeyedConversationCrypto.prepare` never saw a reply, `prepare()` threw, and
+/// conversation history could not be persisted across restarts on HarmonyOS at
+/// all — the store latched its read-only storage-error banner.
+///
+/// `path_provider` and `package_info_plus` answer reliably on the same engine,
+/// which is the tell: it is the *number of channels touching a given area*, not
+/// the platform, that decides whether the fork's bug bites. Removing this one
+/// removes the failure mode instead of retrying around it, and it is the fix
+/// `docs/guides/OHOS_BUILD.md` recommends. `finn_ai/flow_schedule` is still
+/// exposed; see that document for what remains.
+///
+/// ## Why a file and not HUKS
+///
+/// HarmonyOS 6.1.1 (API 24) offers no sealed *and* usable symmetric key:
+/// `huks` exposes key management but no `huks.encrypt`/`decrypt`,
+/// `cryptoFramework`'s symmetric generator takes no parameters and returns an
+/// ephemeral key, and `huks.importKeyItem`/`exportKeyItem` accept asymmetric
+/// keys only. The key is therefore sealed by the per-app, per-user sandbox
+/// instead — no other app and no other user can reach `filesDir`. The full
+/// trade-off is in `docs/architecture/SECURITY_AND_PRIVACY_ARCHITECTURE.md`.
+///
+/// ## On-disk format
+///
+/// Raw key bytes, at `<filesDir>/finn_secure_key_<alias>`. That is byte-for-byte
+/// what `SecureKeyPlugin.ets` wrote, so a key file left by an earlier build is
+/// picked up by this implementation without a migration.
 class OpenHarmonyKeyStorage implements SecureKeyStorage {
-  const OpenHarmonyKeyStorage();
+  OpenHarmonyKeyStorage({this.directoryOverride});
 
-  static const MethodChannel _channel = MethodChannel('finn_ai/secure_key');
+  /// Forces the key directory. Tests use this; production resolves the real
+  /// sandbox directory at first use.
+  @visibleForTesting
+  final Directory? directoryOverride;
 
-  /// Bounded retry on a dropped reply.
-  ///
-  /// The OHOS engine (3.41.10-ohos-1.0.1) intermittently loses the reply to a
-  /// platform message: the handler runs on the native side (verified in hilog,
-  /// including the file write) but Dart sees an empty reply and raises
-  /// `MissingPluginException`. `path_provider` and `package_info_plus` reply
-  /// reliably; `finn_ai/secure_key` and `finn_ai/flow_schedule` do not, and the
-  /// engine's own `handlePlatformMessage` log shows one message being delivered
-  /// twice under the same response id, which is consistent with the first reply
-  /// consuming the id and the second being discarded.
-  ///
-  /// All three verbs are idempotent, so retrying cannot corrupt state. When the
-  /// engine is fixed this ladder collapses to a single attempt.
-  static const List<Duration> _backoff = <Duration>[
-    Duration(milliseconds: 80),
-    Duration(milliseconds: 200),
-    Duration(milliseconds: 500),
-  ];
+  /// `path_provider` has no OHOS plugin, so this channel is answered by
+  /// `PathProviderPlugin.ets`, which returns `context.filesDir` for
+  /// `getApplicationSupportPath`. Unlike `finn_ai/secure_key` it replies
+  /// reliably on the OHOS fork, so it is worth one call to learn the true
+  /// sandbox path; [ohosSandboxFilesDir] covers the case where it does not.
+  static const MethodChannel _pathChannel =
+      MethodChannel('plugins.flutter.io/path_provider');
+
+  static const String _filePrefix = 'finn_secure_key_';
+
+  Directory? _cachedDirectory;
 
   @override
   Future<Uint8List?> readKey(String alias) async {
-    final b64 = await _invoke<String>('read', {'alias': alias});
-    if (b64 == null || b64.isEmpty) return null;
     try {
-      return Uint8List.fromList(base64Decode(b64));
-    } on FormatException catch (error) {
-      debugPrint('FINN_SECURE_KEY unreadable key for "$alias": $error');
+      final file = await _fileFor(alias);
+      if (!await file.exists()) return null;
+      final bytes = await file.readAsBytes();
+      return bytes.isEmpty ? null : bytes;
+    } on FileSystemException catch (error) {
+      // An unreadable key reads as "absent" rather than throwing: `prepare()`
+      // regenerates, and the read-back verification then decides whether the
+      // store is usable.
+      debugPrint('FINN_SECURE_KEY read failed for "$alias": ${error.message}');
       return null;
     }
   }
 
   @override
   Future<void> writeKey(String alias, Uint8List key) async {
-    await _invoke<String>('write', {
-      'alias': alias,
-      'key': base64Encode(key),
-    });
+    final file = await _fileFor(alias);
+    // Temp file + rename, like `ConversationStore`'s envelope writes: a process
+    // death mid-write must not leave a half-written key, because a truncated
+    // key makes every existing conversation permanently unreadable.
+    final temp = File('${file.path}.tmp');
+    await temp.writeAsBytes(key, flush: true);
+    try {
+      await temp.rename(file.path);
+    } on FileSystemException {
+      // Rename can fail if a previous temp file is still open somewhere; the
+      // direct write is worse but still better than losing the write entirely.
+      await file.writeAsBytes(key, flush: true);
+      await _deleteQuietly(temp);
+    }
   }
 
   @override
   Future<void> deleteKey(String alias) async {
-    await _invoke<String>('delete', {'alias': alias});
+    final file = await _fileFor(alias);
+    await _deleteQuietly(file);
+    await _deleteQuietly(File('${file.path}.tmp'));
   }
 
-  Future<T?> _invoke<T>(String method, Map<String, Object?> args) async {
-    for (var attempt = 0; attempt <= _backoff.length; attempt++) {
-      try {
-        return await _channel.invokeMethod<T>(method, args);
-      } on MissingPluginException {
-        // A lost reply, not a missing handler: FinnPlugins registers this
-        // channel and the native side logs it, so retry rather than give up.
-        debugPrint('FINN_SECURE_KEY $method: empty reply, retrying');
-        if (attempt < _backoff.length) {
-          await Future<void>.delayed(_backoff[attempt]);
-        }
-      } on PlatformException catch (error) {
-        debugPrint(
-            'FINN_SECURE_KEY $method failed: ${error.code} ${error.message}');
-        return null;
-      }
+  Future<void> _deleteQuietly(File file) async {
+    try {
+      if (await file.exists()) await file.delete();
+    } on FileSystemException catch (error) {
+      debugPrint('FINN_SECURE_KEY delete failed for ${file.path}: '
+          '${error.message}');
     }
-    return null;
+  }
+
+  Future<File> _fileFor(String alias) async {
+    final directory = await _resolveDirectory();
+    final safe = alias.replaceAll(RegExp('[^A-Za-z0-9._-]'), '_');
+    return File('${directory.path}/$_filePrefix$safe');
+  }
+
+  Future<Directory> _resolveDirectory() async {
+    final directory = await _locateDirectory();
+    // Applies to the injected directory too: `filesDir` is created by the
+    // system, but a nested or test directory need not exist yet, and a write
+    // into a missing directory would otherwise throw PathNotFoundException.
+    if (!await directory.exists()) {
+      await directory.create(recursive: true);
+    }
+    return directory;
+  }
+
+  Future<Directory> _locateDirectory() async {
+    final override = directoryOverride;
+    if (override != null) return override;
+    final cached = _cachedDirectory;
+    if (cached != null) return cached;
+
+    var path = ohosSandboxFilesDir;
+    try {
+      final native = await _pathChannel.invokeMethod<String>(
+        'getApplicationSupportPath',
+      );
+      if (native != null && native.isNotEmpty) path = native;
+    } on PlatformException catch (error) {
+      debugPrint('FINN_SECURE_KEY path_provider unavailable, using the '
+          'documented sandbox path: ${error.code} ${error.message}');
+    } on MissingPluginException {
+      debugPrint('FINN_SECURE_KEY path_provider unavailable, using the '
+          'documented sandbox path');
+    }
+
+    return _cachedDirectory = Directory(path);
   }
 }

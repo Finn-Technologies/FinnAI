@@ -26,7 +26,6 @@ import { FlowPlugin } from './FlowPlugin';
 import { ImagePickerPlugin } from './ImagePickerPlugin';
 import { PackageInfoPlugin } from './PackageInfoPlugin';
 import { PathProviderPlugin } from './PathProviderPlugin';
-import { SecureKeyPlugin } from './SecureKeyPlugin';
 import { SharePlugin } from './SharePlugin';
 import { TtsPlugin } from './TtsPlugin';
 import { UrlLauncherPlugin } from './UrlLauncherPlugin';
@@ -47,7 +46,6 @@ export class FinnPlugins {
     TtsPlugin.register(messenger);
     AudioRecordPlugin.register(messenger, context);
     // Finn-owned channels (finn_ai/*), mirroring the Kotlin side on Android.
-    SecureKeyPlugin.register(messenger, context);
     DeviceProfilePlugin.register(messenger);
     DeviceActionsPlugin.register(messenger, context);
     FlowPlugin.register(messenger, context);

@@ -19,8 +19,8 @@ class OpenHarmonyPathProvider extends PathProviderPlatform {
   static const MethodChannel _channel =
       MethodChannel('plugins.flutter.io/path_provider');
 
-  static const _files = '/data/storage/el2/base/haps/entry/files';
-  static const _cache = '/data/storage/el2/base/haps/entry/cache';
+  static const _files = ohosSandboxFilesDir;
+  static const _cache = ohosSandboxCacheDir;
 
   static void registerIfNeeded() {
     if (isOpenHarmony) {

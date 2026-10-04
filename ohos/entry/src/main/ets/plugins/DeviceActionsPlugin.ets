@@ -17,6 +17,7 @@
 import { BinaryMessenger, MethodCall, MethodChannel, MethodResult } from '@ohos/flutter_ohos';
 import { common, Want } from '@kit.AbilityKit';
 import { pasteboard, BusinessError } from '@kit.BasicServicesKit';
+import { vibrator } from '@kit.SensorServiceKit';
 
 const CHANNEL = 'finn_ai/device_actions';
 const TAG = 'FinnActions';
@@ -126,13 +127,18 @@ export class DeviceActionsPlugin {
         break;
       }
 
+      // vibrator is a public kit behind ohos.permission.VIBRATE, so this one
+      // really runs rather than reporting unavailable.
+      case 'vibrate':
+        DeviceActionsPlugin.vibrate(args, result);
+        break;
+
       // No public HarmonyOS API lets a normal app drive these: torch and media
       // transport belong to the system UI, alarms and timers live in the Clock
-      // extension, and volume/vibrate are session-scoped.
+      // extension, and volume is session-scoped to the system UI.
       case 'torch':
       case 'media':
       case 'volume':
-      case 'vibrate':
       case 'set_alarm':
       case 'set_timer':
         result.success(DeviceActionsPlugin.outcome(
@@ -144,6 +150,36 @@ export class DeviceActionsPlugin {
           'unavailable', '', `Unknown action ${name}.`));
         break;
     }
+  }
+
+  /**
+   * One-shot vibration through the public `vibrator` kit.
+   *
+   * Mirrors the Android bridge exactly: `milliseconds` defaults to 400 and is
+   * clamped to 50..2000, so the same spoken request produces the same buzz on
+   * both platforms. `usage` is left unset, which makes HarmonyOS apply the
+   * system default rather than borrowing the alarm or notification pattern.
+   */
+  private static vibrate(args: ActionArgs, result: MethodResult): void {
+    const requested = typeof args.milliseconds === 'number' ? args.milliseconds : 400;
+    const duration = Math.min(2000, Math.max(50, Math.round(requested)));
+    // startVibration takes an effect *and* an attribute, and `usage` is
+    // required. 'unknown' is the neutral choice: 'alarm' and 'notification'
+    // would borrow another app's pattern and may be rate-limited by the system.
+    const effect: vibrator.VibrateTime = {
+      type: 'time',
+      duration: duration,
+    };
+    const attribute: vibrator.VibrateAttribute = {
+      usage: 'unknown',
+    };
+    vibrator.startVibration(effect, attribute).then((): void => {
+      result.success(DeviceActionsPlugin.outcome('performed', '', ''));
+    }).catch((error: BusinessError): void => {
+      // A device with no vibrator, or the permission refused.
+      console.error(`${TAG} vibrate(${duration}ms) failed ${error.code}`);
+      result.success(DeviceActionsPlugin.outcome('unavailable', '', `${error.code}`));
+    });
   }
 
   /** Hands a URI to the system handler (browser, dialer, mail, maps). */

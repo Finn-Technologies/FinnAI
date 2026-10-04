@@ -177,7 +177,7 @@ abstract class ConversationCrypto {
 ConversationCrypto createConversationCrypto() {
   if (isOpenHarmony) {
     return KeyedConversationCrypto(
-      keyStorage: const OpenHarmonyKeyStorage(),
+      keyStorage: OpenHarmonyKeyStorage(),
     );
   }
   return KeyedConversationCrypto();

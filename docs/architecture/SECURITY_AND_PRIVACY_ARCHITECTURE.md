@@ -13,7 +13,7 @@ FinnAI is designed as an on-device, privacy-first AI assistant. All inference ru
 | Creations | Local App Private Storage (`creations.json`) | Android application sandbox | None |
 | Profile Preferences & Custom Instructions | Local App Private Storage (`user_personalization.json`) | Android application sandbox | None |
 | Skills | Local App Private Storage (`skills.json`) | Android application sandbox | None |
-| Encryption Master Key | `FlutterSecureStorage` on Android/iOS; `finn_ai/secure_key` on HarmonyOS | 256-bit random key; Android in the OS-enforced hardware KeyStore, HarmonyOS sealed by the per-app per-user sandbox | None |
+| Encryption Master Key | `FlutterSecureStorage` on Android/iOS; a file in `filesDir` on HarmonyOS | 256-bit random key; Android in the OS-enforced hardware KeyStore, HarmonyOS sealed by the per-app per-user sandbox | None |
 | AI Model Weights | Local Cache Directory (`.gguf` files) | SHA-256 integrity verified | Download only from Hugging Face |
 | AI Response Reports | Transient in memory until handed to the user's mail app | User-controlled email (only after review and Send) | `finn_org@proton.me`; retention is governed by the receiving mailbox |
 | Web Search Query | Transient in memory | HTTPS/TLS | Search provider, only for requests locally classified as needing web information |
@@ -36,8 +36,10 @@ Saved Envelope: { "version": "2", "algorithm": "AES-256-GCM", "nonce": "...", "c
 - **Key storage** (`ConversationCrypto` picks it per platform):
   - Android / iOS: `FlutterSecureStorage`, i.e. the Android KeyStore hardware
     security module. The key never enters app storage.
-  - HarmonyOS: `finn_ai/secure_key` writes the key into the app's private
-    `filesDir` (`SecureKeyPlugin.ets`). HarmonyOS 6.1.1 offers no sealed *and*
+  - HarmonyOS: the key is written to the app's private `filesDir` as
+    `finn_secure_key_finn_ai_conversation_master_key_v2`, by
+    `OpenHarmonyKeyStorage` using plain `dart:io` — no platform channel.
+    HarmonyOS 6.1.1 offers no sealed *and*
     usable symmetric key: HUKS exposes key management only (there is no
     `huks.encrypt`), `cryptoFramework`'s symmetric generator yields only ephemeral
     keys, and `importKeyItem`/`exportKeyItem` accept asymmetric keys only. The

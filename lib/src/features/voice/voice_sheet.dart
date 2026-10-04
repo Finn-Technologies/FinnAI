@@ -5,13 +5,28 @@ import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 import 'package:finn_ai/l10n/l10n_helper.dart';
+import 'package:finn_ai/src/platform/platform_target.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 import 'package:finn_ai/src/shared/widgets/ambient_background.dart';
 import 'package:finn_ai/src/features/voice/stt/stt_model_store.dart';
 import 'package:finn_ai/src/features/voice/voice_chat_controller.dart';
 
+/// Whether the voice UI is offered at all.
+///
+/// HarmonyOS counts from the day `libsherpa-onnx-c-api.so` and
+/// `libonnxruntime.so` are built for OHOS (see `tool/build_voice_ohos.sh`):
+/// both are ARM64 OHOS libraries that need only `libc.so`, and the Dart FFI
+/// reaches them because `dart:io` reports OHOS as Linux, which is the same
+/// branch that already loads them on Android.
+///
+/// Read spoken replies on OHOS still go through the *system* engine
+/// (`FallbackTtsBackend`), not the on-device Supertonic voice: that needs
+/// `libfinn_tts.so` and PCM playback, neither of which is built for OHOS.
 bool get voiceSupportedOnPlatform {
   try {
+    // Ask the platform seam, not Platform.isX: dart:io calls OHOS "linux", so
+    // an isLinux check here would also claim desktop Linux.
+    if (isOpenHarmony) return true;
     return Platform.isAndroid || Platform.isIOS;
   } catch (_) {
     return false;

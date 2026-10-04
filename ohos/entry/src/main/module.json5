@@ -37,6 +37,25 @@
     "requestPermissions": [
       {
         "name": "ohos.permission.INTERNET"
+      },
+      {
+        // The `vibrate` device action. system_grant, so no reason/usedScene is
+        // required; DeviceActionsPlugin.ets uses it for a one-shot buzz.
+        "name": "ohos.permission.VIBRATE"
+      },
+      {
+        // Voice mode: AudioRecordPlugin.ets's `hasPermission` requests this
+        // before opening an AudioCapturer, and HarmonyOS refuses the request
+        // outright if it is not declared here. user_grant, so the system shows
+        // the prompt and the reason is shown with it.
+        "name": "ohos.permission.MICROPHONE",
+        "reason": "$string:permission_microphone",
+        "usedScene": {
+          "abilities": [
+            "EntryAbility"
+          ],
+          "when": "inuse"
+        }
       }
     ]
     // Note: ohos.permission.KEEP_BACKGROUND_RUNNING was removed intentionally.

@@ -11,6 +11,10 @@
     {
       "name": "EntryAbility_label",
       "value": "Finn AI"
+    },
+    {
+      "name": "permission_microphone",
+      "value": "Voice mode uses the microphone to hear what you say."
     }
   ]
 }

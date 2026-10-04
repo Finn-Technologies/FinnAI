@@ -49,6 +49,16 @@ FinnPlatform get finnPlatform {
 bool get isMobile =>
     finnPlatform == FinnPlatform.android || finnPlatform == FinnPlatform.ios;
 
+/// HarmonyOS's documented directory layout for an `entry` module in the `el2`
+/// sandbox, used when the `path_provider` channel cannot be reached.
+///
+/// These are the same values `OpenHarmonyPathProvider` falls back to, kept here
+/// so the OHOS seam has one place that knows where the sandbox is. Anything that
+/// needs a real sandbox directory in Dart should prefer
+/// `PathProviderPlatform.instance` and use these only as a last resort.
+const String ohosSandboxFilesDir = '/data/storage/el2/base/haps/entry/files';
+const String ohosSandboxCacheDir = '/data/storage/el2/base/haps/entry/cache';
+
 bool _detectOpenHarmony() {
   try {
     // el2 is the writable per-application sandbox root and el1 the read-only
