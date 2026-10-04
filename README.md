@@ -1,6 +1,6 @@
 # FinnAI
 
-**A private, on-device AI assistant for Android and OpenHarmony.**
+**A private, on-device AI assistant for Android, OpenHarmony and desktop Linux.**
 
 FinnAI runs one language model entirely on your device — no server, no account, no cloud
 inference. The Flutter UI sits on top of **FinnAI-Accelerator**, a native llama.cpp runtime, and
@@ -8,7 +8,7 @@ runs **LFM2.5-VL 1.6B (Q4_0)** with its SigLIP2 vision projector. Weights are do
 Hugging Face and never leave the device.
 
 - **Package id:** `com.abhiflex.finnai`
-- **Platforms:** Android (primary), OpenHarmony
+- **Platforms:** Android (primary), OpenHarmony, Linux desktop (x86-64 / arm64; see [docs/guides/LINUX.md](docs/guides/LINUX.md))
 - **Model:** LFM2.5-VL 1.6B Q4_0 + `mmproj-LFM2.5-VL-1.6b-F16` vision projector (≈1.55 GB total), plus the on-device speech model for voice mode (Whisper base + Silero VAD, ≈161 MB) and spoken replies (Supertonic 3 voice, ≈398 MB, 31 languages), all downloaded with it
 
 ---

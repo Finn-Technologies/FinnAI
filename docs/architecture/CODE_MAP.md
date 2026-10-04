@@ -212,3 +212,29 @@ A second app inside the app: its own sessions, settings and providers, in the sa
 `test/` mirrors `lib/`: `test/engine/`, `test/features/`, `test/app/`. `test/flutter_test_config.dart`
 and `test/flux_golden_test.dart` must stay at the `test/` root (they resolve `goldens/` relatively).
 See `docs/guides/TESTING.md`.
+
+## Desktop and large screens (Linux, tablets)
+
+See `docs/guides/LINUX.md`.
+
+| To change… | Edit |
+|---|---|
+| Window-size classes, sidebar width, when the sidebar docks | `lib/src/shared/layout/finn_layout.dart` (`FinnLayout`) |
+| The docked sidebar surface | `lib/src/shared/widgets/finn_sidebar_surface.dart` (`FinnSidebarSurface.docked`), `lib/src/features/chat/shell/sidebar_surface.dart` (`_sidebarSurface`), `lib/src/features/code/code_shell.dart` |
+| Max width of sub-pages | `lib/src/shared/widgets/finn_page_route.dart` (`maxPageWidth`) |
+| Enter-to-send, Ctrl+N / Ctrl+B / Ctrl+, | `lib/src/shared/widgets/enter_to_send.dart`, `lib/src/shared/widgets/desktop_shortcuts.dart` |
+| Desktop-only guards (`isDesktop`) and ignored phone-only channel calls | `lib/src/platform/platform_target.dart`, `lib/src/platform/desktop_setup.dart` |
+| Where the conversation key lives on Linux | `lib/src/platform/linux_key_storage.dart` |
+| Read aloud on Linux | `lib/src/features/voice/linux_speech.dart`, `voice/read_aloud.dart` |
+| Finding `libllama.so`, free disk space and the CPU name on desktop Linux | `lib/src/engine/profiler/desktop_profile.dart` (`DesktopProfile`), `device_profile.dart` (`llamaLibraryPath`, `desktop`) |
+| Refusing a download that cannot fit (Linux) | `lib/src/engine/download/artifact.dart` (`_requireDesktopStorage`) |
+| Why the prefix cache is off on Linux | `lib/src/engine/session/session_prep.dart` (`_prefixCacheEnabled`) |
+| Esc / Alt+Left closes a page | `lib/src/shared/widgets/finn_page_route.dart` (`_BackKeys`) |
+| The welcome screen's starfield and glow card (drawn, not photos) | `lib/src/features/onboarding/starfield.dart` (`Starfield`, `WelcomeGlowCard`) |
+| First-run screens on a wide window (artwork left, text and controls right) | `lib/src/features/onboarding/wide_step.dart` (`WideStepLayout`, `WelcomeStartButton`) |
+| FinnAI's own title bar, window buttons and resize edges (the native GTK bar is removed) | `lib/src/shared/widgets/finn_window_frame.dart` (`FinnWindowFrame`, `FinnTitleBar`, `finnAppBuilder`), `lib/src/platform/window_chrome.dart` (the `finn_ai/window` channel) |
+| The title bar going dark over a full-bleed black screen | `FinnBlackScreen` in `finn_window_frame.dart`, used by the onboarding welcome page |
+| Vertical spacing on wide windows (phone offsets are capped) | `lib/src/shared/layout/finn_layout.dart` (`FinnLayout.scaleY`) |
+| The GTK runner: window title, size, minimum size, icon, the window channel (drag, resize, minimise, maximise, fullscreen) | `linux/runner/my_application.cc` |
+| Bundling the model runtime, `.desktop` file, icon | `linux/CMakeLists.txt`, `linux/packaging/` |
+| Building llama.cpp for Linux | `tool/rebuild_llama_linux.sh` |

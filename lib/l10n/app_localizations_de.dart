@@ -252,7 +252,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get chatAskAnything =>
-      'Frag mich alles — ich laufe komplett auf diesem Gerät, deine\nUnterhaltungen verlassen niemals dein Telefon.';
+      'Frag mich alles — ich laufe komplett auf diesem Gerät, deine\nUnterhaltungen verlassen niemals dein Gerät.';
 
   @override
   String get chatTryAsking => 'Probier mal';
@@ -488,7 +488,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get settingsInferenceEngine => 'Wie Finn läuft';
 
   @override
-  String get settingsInferenceEngineValue => 'Vollständig auf diesem Telefon';
+  String get settingsInferenceEngineValue => 'Vollständig auf diesem Gerät';
 
   @override
   String get settingsPrivacyMode => 'Datenschutzmodus';
@@ -2614,7 +2614,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get creationsUpdatesOnDevice =>
-      'Aktualisiert sich auf diesem Gerät. Nichts verlässt dein Telefon.';
+      'Aktualisiert sich auf diesem Gerät. Nichts verlässt dein Gerät.';
 
   @override
   String get creationsMadeInChat => 'Im Chat erstellt';
@@ -3365,7 +3365,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get codeGreetingCaption =>
-      'Dein Projekt liegt in einem privaten Ordner auf diesem Telefon.';
+      'Dein Projekt liegt in einem privaten Ordner auf diesem Gerät.';
 
   @override
   String get codeComposerHint =>
@@ -3570,7 +3570,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get codeSessionDeleteBody =>
-      'Die Unterhaltung und ihre Projektdateien werden von diesem Telefon entfernt.';
+      'Die Unterhaltung und ihre Projektdateien werden von diesem Gerät entfernt.';
 
   @override
   String codeCloudTitle(String provider) {
@@ -3595,7 +3595,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get codeModelsOnDeviceSub =>
-      'Läuft auf diesem Telefon. Privat, kostenlos und offline nutzbar.';
+      'Läuft auf diesem Gerät. Privat, kostenlos und offline nutzbar.';
 
   @override
   String get codeModelsAddProvider =>
@@ -3650,7 +3650,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String codeSettingsWorkspaceSub(String size) {
-    return '$size auf diesem Telefon';
+    return '$size auf diesem Gerät';
   }
 
   @override
@@ -3734,7 +3734,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get codeProviderKeyStored => 'Sicher auf diesem Telefon gespeichert';
+  String get codeProviderKeyStored => 'Sicher auf diesem Gerät gespeichert';
 
   @override
   String get codeProviderGetKey => 'Schlüssel besorgen';
@@ -4000,4 +4000,16 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get codeCloudConfirmCustom => 'Diesen Server verwenden';
+
+  @override
+  String get windowMinimize => 'Minimieren';
+
+  @override
+  String get windowMaximize => 'Maximieren';
+
+  @override
+  String get windowRestore => 'Wiederherstellen';
+
+  @override
+  String get onboardingGetStarted => 'Loslegen';
 }

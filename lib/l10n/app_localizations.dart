@@ -521,7 +521,7 @@ abstract class AppLocalizations {
   /// Welcome ask anything
   ///
   /// In en, this message translates to:
-  /// **'Ask me anything — I run entirely on this device, so your\nconversations never leave your phone.'**
+  /// **'Ask me anything — I run entirely on this device, so your\nconversations never leave your device.'**
   String get chatAskAnything;
 
   /// Try asking heading
@@ -905,7 +905,7 @@ abstract class AppLocalizations {
   /// Engine value
   ///
   /// In en, this message translates to:
-  /// **'Entirely on this phone'**
+  /// **'Entirely on this device'**
   String get settingsInferenceEngineValue;
 
   /// Privacy mode row
@@ -3377,7 +3377,7 @@ abstract class AppLocalizations {
   /// voiceLanguageSub
   ///
   /// In en, this message translates to:
-  /// **'Follows your phone'**
+  /// **'Follows your device'**
   String get voiceLanguageSub;
 
   /// accessIntro
@@ -4631,7 +4631,7 @@ abstract class AppLocalizations {
   /// creationsUpdatesOnDevice
   ///
   /// In en, this message translates to:
-  /// **'Updates on this device. Nothing leaves your phone.'**
+  /// **'Updates on this device. Nothing leaves your device.'**
   String get creationsUpdatesOnDevice;
 
   /// creationsMadeInChat
@@ -5999,7 +5999,7 @@ abstract class AppLocalizations {
   /// Caption under the empty-state greeting
   ///
   /// In en, this message translates to:
-  /// **'Your project lives in a private folder on this phone.'**
+  /// **'Your project lives in a private folder on this device.'**
   String get codeGreetingCaption;
 
   /// Placeholder of the FinnAI Code message field
@@ -6353,7 +6353,7 @@ abstract class AppLocalizations {
   /// Delete dialog body
   ///
   /// In en, this message translates to:
-  /// **'The conversation and its project files are removed from this phone.'**
+  /// **'The conversation and its project files are removed from this device.'**
   String get codeSessionDeleteBody;
 
   /// Disclosure before the first cloud model
@@ -6389,7 +6389,7 @@ abstract class AppLocalizations {
   /// On-device model row subtitle
   ///
   /// In en, this message translates to:
-  /// **'Runs on this phone. Private, free and works offline.'**
+  /// **'Runs on this device. Private, free and works offline.'**
   String get codeModelsOnDeviceSub;
 
   /// Row that leads to provider setup
@@ -6479,7 +6479,7 @@ abstract class AppLocalizations {
   /// Settings row subtitle
   ///
   /// In en, this message translates to:
-  /// **'{size} on this phone'**
+  /// **'{size} on this device'**
   String codeSettingsWorkspaceSub(String size);
 
   /// Settings row
@@ -6623,7 +6623,7 @@ abstract class AppLocalizations {
   /// Caption under the key field
   ///
   /// In en, this message translates to:
-  /// **'Stored securely on this phone'**
+  /// **'Stored securely on this device'**
   String get codeProviderKeyStored;
 
   /// Button that opens the provider’s key page
@@ -7057,6 +7057,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Use this server'**
   String get codeCloudConfirmCustom;
+
+  /// Title bar button: minimize the window
+  ///
+  /// In en, this message translates to:
+  /// **'Minimize'**
+  String get windowMinimize;
+
+  /// Title bar button: maximize the window
+  ///
+  /// In en, this message translates to:
+  /// **'Maximize'**
+  String get windowMaximize;
+
+  /// Title bar button: restore the window to its previous size
+  ///
+  /// In en, this message translates to:
+  /// **'Restore'**
+  String get windowRestore;
+
+  /// Welcome screen button on desktop and tablet, where there is no swipe
+  ///
+  /// In en, this message translates to:
+  /// **'Get started'**
+  String get onboardingGetStarted;
 }
 
 class _AppLocalizationsDelegate

@@ -115,9 +115,7 @@ abstract final class FigmaAssets {
   static const artworkDownload = '$_root/artwork_download.png';
   static const artworkConsent = '$_root/artwork_consent.png';
   static const artworkFinish = '$_root/artwork_finish.png';
-  static const welcomeStars = '$_root/welcome_stars.png';
   static const welcomeGlow = '$_root/welcome_glow.png';
-  static const welcomeGlowCard = '$_root/welcome_glow_card.png';
 }
 
 class FigmaSvg extends StatelessWidget {

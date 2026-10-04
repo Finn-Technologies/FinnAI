@@ -49,6 +49,13 @@ FinnPlatform get finnPlatform {
 bool get isMobile =>
     finnPlatform == FinnPlatform.android || finnPlatform == FinnPlatform.ios;
 
+/// True on a desktop OS, where there is a keyboard and a pointer and the
+/// window is resizable.
+bool get isDesktop =>
+    finnPlatform == FinnPlatform.linux ||
+    finnPlatform == FinnPlatform.macos ||
+    finnPlatform == FinnPlatform.windows;
+
 bool _detectOpenHarmony() {
   try {
     // el2 is the writable per-application sandbox root and el1 the read-only

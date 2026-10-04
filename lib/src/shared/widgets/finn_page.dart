@@ -66,6 +66,7 @@ class _FinnPageState extends State<FinnPage> {
             builder: (context, constraints) {
               final metrics = FinnPageHeaderMetrics.forHeight(
                 constraints.maxHeight,
+                constraints.maxWidth,
               );
               final bottom = FluxBottomInset.bottomOf(context);
               return Stack(

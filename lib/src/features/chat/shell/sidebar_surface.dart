@@ -48,3 +48,59 @@ extension _HomeShellSidebarDrag on _HomeShellState {
     _setSidebar(opening, velocity: velocity / travel);
   }
 }
+
+extension _HomeShellSidebarSurface on _HomeShellState {
+  /// The sidebar and the home screen as one surface: a panel the home screen
+  /// slides off on a phone, docked beside it on a wide window.
+  Widget _sidebarSurface({
+    required BoxConstraints constraints,
+    required Widget homeLayer,
+    required double contentLeft,
+    required double sy,
+    required bool docked,
+  }) {
+    // The panel stays put and the home screen slides aside to reveal
+    // it; the design's home sheet starts 322 of 420 points across.
+    final sidebarWidth = FinnLayout.sidebarWidth(constraints.maxWidth);
+    final sidebarLayer = !_sidebarEverOpened && !docked
+        ? const SizedBox.shrink()
+        : RepaintBoundary(
+            child: SizedBox(
+              width: sidebarWidth,
+              child: _Sidebar(
+                onNewConversation: _newConversation,
+                onConversation: _activateConversation,
+                conversations: _conversations.conversations,
+                activeConversationId: _conversations.active?.id,
+                onCreations: _openCreations,
+                onYou: _openYou,
+                onFlows: _openSkills,
+                onActions: _openDeviceActionsFromSidebar,
+                onSettings: _openSettings,
+              ),
+            ),
+          );
+    return DesktopShortcuts(
+      onNew: _newConversation,
+      onToggleSidebar: () => _setSidebar(!_sidebar),
+      onSettings: _openSettings,
+      child: AnimatedBuilder(
+        animation: _sidebarController,
+        builder: (context, _) => FinnSidebarSurface(
+          docked: docked,
+          home: homeLayer,
+          sidebar: sidebarLayer,
+          sidebarWidth: sidebarWidth,
+          progress: _sidebarController.value,
+          sidebarOpen: _sidebar,
+          toggleLeft: contentLeft,
+          toggleTop: 70 * sy,
+          onToggle: () => _setSidebar(!_sidebar),
+          onDragStart: _sidebarDragStart,
+          onDragUpdate: (d) => _sidebarDragUpdate(d, sidebarWidth),
+          onDragEnd: (d) => _sidebarDragEnd(d, sidebarWidth),
+        ),
+      ),
+    );
+  }
+}

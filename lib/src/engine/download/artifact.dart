@@ -1,6 +1,32 @@
 part of '../finn_accelerator.dart';
 
 extension FinnAcceleratorArtifacts on FinnAccelerator {
+  /// Refuses a transfer that cannot fit before it starts, on desktop Linux.
+  ///
+  /// Android's download service does this on its side. Elsewhere the Dart
+  /// downloader would write until the disk is full and report an opaque write
+  /// error, leaving a partial file behind that blocks the next attempt too.
+  /// A host that cannot report free space is let through.
+  Future<void> _requireDesktopStorage(
+    int remainingBytes, {
+    required int reserve,
+    required String what,
+  }) async {
+    final profile = await DeviceProfiler.read();
+    final available = profile.availableStorageBytes;
+    if (!profile.desktop || available == null) return;
+    if (available < remainingBytes + reserve) {
+      throw FileSystemException(
+        'Not enough storage for $what and a safety reserve: '
+        '${_formatMegabytes(remainingBytes + reserve)} needed, '
+        '${_formatMegabytes(available)} free.',
+      );
+    }
+  }
+
+  static String _formatMegabytes(int bytes) =>
+      '${(bytes / (1024 * 1024)).ceil()} MB';
+
   Future<File> _ensureDownloaded(FinnModelSpec model) async {
     final target = await _modelFile(model);
     if (_verifiedModels.contains(model.tier) ||
@@ -52,6 +78,11 @@ extension FinnAcceleratorArtifacts on FinnAccelerator {
         sha256Digest: model.sha256Digest,
       );
     }
+    await _requireDesktopStorage(
+      math.max(0, model.expectedBytes - existing),
+      reserve: math.max(256 * 1024 * 1024, model.expectedBytes ~/ 20),
+      what: 'the model',
+    );
     // Default certificate validation stays enabled: the production model is
     // additionally pinned via its SHA-256 digest after the transfer, but TLS
     // must not be weakened for every other request on this client.

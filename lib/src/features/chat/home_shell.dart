@@ -58,6 +58,10 @@ import 'package:finn_ai/src/features/you/you_page.dart';
 import 'package:finn_ai/src/features/you/you_add_page.dart';
 import 'package:finn_ai/src/features/you/you_memory_store.dart';
 import 'package:finn_ai/src/features/you/you_profile_store.dart';
+import 'package:finn_ai/src/platform/platform_target.dart';
+import 'package:finn_ai/src/shared/layout/finn_layout.dart';
+import 'package:finn_ai/src/shared/widgets/desktop_shortcuts.dart';
+import 'package:finn_ai/src/shared/widgets/enter_to_send.dart';
 import 'package:finn_ai/src/shared/widgets/finn_page_route.dart';
 import 'package:finn_ai/src/shared/widgets/finn_edge_fade.dart';
 import 'package:finn_ai/src/shared/widgets/finn_sidebar_parts.dart';
@@ -200,6 +204,7 @@ class _HomeShellState extends State<HomeShell>
     _chatScrollController.addListener(_onChatScroll);
     _startFlowScheduling();
     _listenForShortcuts();
+    _focusComposerOnDesktop();
     WidgetsBinding.instance.addObserver(this);
     // Cap decoded image bytes retained in the widget image cache.
     // 20 MiB bounds RSS from chat + composer previews; pressure
@@ -369,17 +374,18 @@ class _HomeShellState extends State<HomeShell>
         resizeToAvoidBottomInset: true,
         body: LayoutBuilder(
           builder: (context, constraints) {
-            final sy = (constraints.maxHeight / 912).clamp(.72, 1.2);
+            final sy =
+                FinnLayout.scaleY(constraints.maxHeight, constraints.maxWidth);
             final safeBottom = FluxBottomInset.bottomOf(context);
             // Lifts the composer clear of the navigation bar, and the tray and
             // scroll inset with it so they keep their gaps.
             const composerLift = 10.0;
             final horizontalGutter = constraints.maxWidth < 380 ? 20.0 : 25.0;
-            final contentWidth = math.min(
-              760.0,
-              constraints.maxWidth - horizontalGutter * 2,
-            );
-            final contentLeft = (constraints.maxWidth - contentWidth) / 2;
+            final docked = FinnLayout.isDocked(constraints.maxWidth);
+            final bodyWidth = FinnLayout.bodyWidth(constraints.maxWidth);
+            final contentWidth =
+                math.min(760.0, bodyWidth - horizontalGutter * 2);
+            final contentLeft = (bodyWidth - contentWidth) / 2;
             final activeConversation = _conversations.active;
             final activeMessages =
                 activeConversation?.messages ?? const <ConversationMessage>[];
@@ -465,6 +471,7 @@ class _HomeShellState extends State<HomeShell>
                       width: contentWidth,
                       top: 70 * sy,
                       child: _HomeHeader(
+                        showMenuSlot: !docked,
                         // The design titles a conversation once it has
                         // messages, and hides the title again while listening.
                         title: activeMessages.isEmpty || _voiceListening
@@ -554,42 +561,12 @@ class _HomeShellState extends State<HomeShell>
                 ),
               ),
             );
-            // The panel stays put and the home screen slides aside to reveal
-            // it; the design's home sheet starts 322 of 420 points across.
-            final sidebarWidth = constraints.maxWidth * (322 / 420);
-            final sidebarLayer = !_sidebarEverOpened
-                ? const SizedBox.shrink()
-                : RepaintBoundary(
-                    child: SizedBox(
-                      width: sidebarWidth,
-                      child: _Sidebar(
-                        onNewConversation: _newConversation,
-                        onConversation: _activateConversation,
-                        conversations: _conversations.conversations,
-                        activeConversationId: _conversations.active?.id,
-                        onCreations: _openCreations,
-                        onYou: _openYou,
-                        onFlows: _openSkills,
-                        onActions: _openDeviceActionsFromSidebar,
-                        onSettings: _openSettings,
-                      ),
-                    ),
-                  );
-            return AnimatedBuilder(
-              animation: _sidebarController,
-              builder: (context, _) => FinnSidebarSurface(
-                home: homeLayer,
-                sidebar: sidebarLayer,
-                sidebarWidth: sidebarWidth,
-                progress: _sidebarController.value,
-                sidebarOpen: _sidebar,
-                toggleLeft: contentLeft,
-                toggleTop: 70 * sy,
-                onToggle: () => _setSidebar(!_sidebar),
-                onDragStart: _sidebarDragStart,
-                onDragUpdate: (d) => _sidebarDragUpdate(d, sidebarWidth),
-                onDragEnd: (d) => _sidebarDragEnd(d, sidebarWidth),
-              ),
+            return _sidebarSurface(
+              constraints: constraints,
+              homeLayer: homeLayer,
+              contentLeft: contentLeft,
+              sy: sy,
+              docked: docked,
             );
           },
         ),

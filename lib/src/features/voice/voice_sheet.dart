@@ -1,22 +1,16 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 import 'package:finn_ai/l10n/l10n_helper.dart';
+import 'package:finn_ai/src/platform/platform_target.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 import 'package:finn_ai/src/shared/widgets/ambient_background.dart';
 import 'package:finn_ai/src/features/voice/stt/stt_model_store.dart';
 import 'package:finn_ai/src/features/voice/voice_chat_controller.dart';
 
-bool get voiceSupportedOnPlatform {
-  try {
-    return Platform.isAndroid || Platform.isIOS;
-  } catch (_) {
-    return false;
-  }
-}
+bool get voiceSupportedOnPlatform => isMobile;
 
 Future<void> openVoiceSheet({
   required BuildContext context,

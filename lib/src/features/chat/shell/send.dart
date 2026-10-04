@@ -203,6 +203,7 @@ extension _HomeShellSend on _HomeShellState {
       }
     } finally {
       if (mounted) setState(() => _preparing = false);
+      _focusComposerOnDesktop();
       debugPrint('FINN_SEND preparing cleared');
     }
   }

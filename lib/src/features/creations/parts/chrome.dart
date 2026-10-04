@@ -8,7 +8,12 @@ class _Filters extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final values = <CreationKind?>[null, ...CreationKind.values];
+    final values = <CreationKind?>[
+      null,
+      for (final kind in CreationKind.values)
+        // Widgets are a phone's home-screen feature.
+        if (!(isDesktop && kind == CreationKind.widget)) kind,
+    ];
     return SizedBox(
       height: 48,
       child: ListView.separated(

@@ -310,7 +310,7 @@
   "@chatFinnTyping": {
     "description": "Typing indicator"
   },
-  "chatAskAnything": "Ask me anything — I run entirely on this device, so your\nconversations never leave your phone.",
+  "chatAskAnything": "Ask me anything — I run entirely on this device, so your\nconversations never leave your device.",
   "@chatAskAnything": {
     "description": "Welcome ask anything"
   },
@@ -611,7 +611,7 @@
   "@settingsInferenceEngine": {
     "description": "Engine row"
   },
-  "settingsInferenceEngineValue": "Entirely on this phone",
+  "settingsInferenceEngineValue": "Entirely on this device",
   "@settingsInferenceEngineValue": {
     "description": "Engine value"
   },
@@ -2464,7 +2464,7 @@
   "@voiceLanguage": {
     "description": "voiceLanguage"
   },
-  "voiceLanguageSub": "Follows your phone",
+  "voiceLanguageSub": "Follows your device",
   "@voiceLanguageSub": {
     "description": "voiceLanguageSub"
   },
@@ -3406,7 +3406,7 @@
   "@creationsSizeLarge": {
     "description": "creationsSizeLarge"
   },
-  "creationsUpdatesOnDevice": "Updates on this device. Nothing leaves your phone.",
+  "creationsUpdatesOnDevice": "Updates on this device. Nothing leaves your device.",
   "@creationsUpdatesOnDevice": {
     "description": "creationsUpdatesOnDevice"
   },
@@ -4416,7 +4416,7 @@
   "@codeGreeting": {
     "description": "Empty-state greeting in FinnAI Code"
   },
-  "codeGreetingCaption": "Your project lives in a private folder on this phone.",
+  "codeGreetingCaption": "Your project lives in a private folder on this device.",
   "@codeGreetingCaption": {
     "description": "Caption under the empty-state greeting"
   },
@@ -4687,7 +4687,7 @@
   "@codeSessionDeleteTitle": {
     "description": "Delete dialog title"
   },
-  "codeSessionDeleteBody": "The conversation and its project files are removed from this phone.",
+  "codeSessionDeleteBody": "The conversation and its project files are removed from this device.",
   "@codeSessionDeleteBody": {
     "description": "Delete dialog body"
   },
@@ -4726,7 +4726,7 @@
   "@codeModelsOnDeviceTitle": {
     "description": "On-device model row title"
   },
-  "codeModelsOnDeviceSub": "Runs on this phone. Private, free and works offline.",
+  "codeModelsOnDeviceSub": "Runs on this device. Private, free and works offline.",
   "@codeModelsOnDeviceSub": {
     "description": "On-device model row subtitle"
   },
@@ -4809,7 +4809,7 @@
   "@codeSettingsWorkspace": {
     "description": "Settings row"
   },
-  "codeSettingsWorkspaceSub": "{size} on this phone",
+  "codeSettingsWorkspaceSub": "{size} on this device",
   "@codeSettingsWorkspaceSub": {
     "description": "Settings row subtitle",
     "placeholders": {
@@ -4920,7 +4920,7 @@
       }
     }
   },
-  "codeProviderKeyStored": "Stored securely on this phone",
+  "codeProviderKeyStored": "Stored securely on this device",
   "@codeProviderKeyStored": {
     "description": "Caption under the key field"
   },
@@ -5292,5 +5292,21 @@
   "codeCloudConfirmCustom": "Use this server",
   "@codeCloudConfirmCustom": {
     "description": "Disclosure confirm button for a user’s own server"
+  },
+  "windowMinimize": "Minimize",
+  "@windowMinimize": {
+    "description": "Title bar button: minimize the window"
+  },
+  "windowMaximize": "Maximize",
+  "@windowMaximize": {
+    "description": "Title bar button: maximize the window"
+  },
+  "windowRestore": "Restore",
+  "@windowRestore": {
+    "description": "Title bar button: restore the window to its previous size"
+  },
+  "onboardingGetStarted": "Get started",
+  "@onboardingGetStarted": {
+    "description": "Welcome screen button on desktop and tablet, where there is no swipe"
   }
 }

@@ -4,6 +4,7 @@ import 'package:cryptography/cryptography.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../../platform/linux_key_storage.dart';
 import '../../platform/openharmony_key_storage.dart';
 import '../../platform/platform_target.dart';
 
@@ -179,6 +180,9 @@ ConversationCrypto createConversationCrypto() {
     return KeyedConversationCrypto(
       keyStorage: const OpenHarmonyKeyStorage(),
     );
+  }
+  if (finnPlatform == FinnPlatform.linux) {
+    return KeyedConversationCrypto(keyStorage: LinuxKeyStorage());
   }
   return KeyedConversationCrypto();
 }

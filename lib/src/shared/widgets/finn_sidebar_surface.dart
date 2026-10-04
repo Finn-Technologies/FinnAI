@@ -30,7 +30,13 @@ class FinnSidebarSurface extends StatelessWidget {
     required this.onDragStart,
     required this.onDragUpdate,
     required this.onDragEnd,
+    this.docked = false,
   });
+
+  /// True when the window is wide enough to keep the panel beside the home
+  /// screen. There is then nothing to slide, scrim or toggle: the panel is
+  /// always open and [progress], the drag callbacks and [toggleLeft] go unused.
+  final bool docked;
 
   /// The main screen, which slides aside and rounds as the panel is uncovered.
   final Widget home;
@@ -59,6 +65,18 @@ class FinnSidebarSurface extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (docked) {
+      return Row(
+        children: [
+          SizedBox(width: sidebarWidth, child: sidebar),
+          ColoredBox(
+            color: FluxColors.panelEdgeOf(context),
+            child: const SizedBox(width: 1, height: double.infinity),
+          ),
+          Expanded(child: RepaintBoundary(child: home)),
+        ],
+      );
+    }
     final motion = progress;
     final radius = BorderRadius.circular(50 * motion);
     return GestureDetector(

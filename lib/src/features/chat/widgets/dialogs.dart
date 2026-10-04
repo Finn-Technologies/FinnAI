@@ -146,12 +146,14 @@ class _IMessageAttachmentMenuState extends State<_IMessageAttachmentMenu>
   Widget build(BuildContext context) {
     final l10n = L10n.of(context);
     final create = <_MenuEntry>[
-      (
-        title: l10n.plusWidget,
-        subtitle: l10n.plusWidgetSub,
-        icon: FluxIcons.canvas,
-        onTap: () => widget.onCreate('widget'),
-      ),
+      // A widget is for a phone's home screen; a desktop has none to put it on.
+      if (!isDesktop)
+        (
+          title: l10n.plusWidget,
+          subtitle: l10n.plusWidgetSub,
+          icon: FluxIcons.canvas,
+          onTap: () => widget.onCreate('widget'),
+        ),
       (
         title: l10n.plusMiniApp,
         subtitle: l10n.plusMiniAppSub,
@@ -178,12 +180,15 @@ class _IMessageAttachmentMenuState extends State<_IMessageAttachmentMenu>
         icon: HugeIcons.strokeRoundedImage01,
         onTap: widget.onSelectPhoto,
       ),
-      (
-        title: l10n.attachmentCamera,
-        subtitle: null,
-        icon: HugeIcons.strokeRoundedCamera01,
-        onTap: widget.onSelectCamera,
-      ),
+      // image_picker has no camera on a desktop; a webcam is not a photo
+      // taken for a message, and the entry would only fail.
+      if (!isDesktop)
+        (
+          title: l10n.attachmentCamera,
+          subtitle: null,
+          icon: HugeIcons.strokeRoundedCamera01,
+          onTap: widget.onSelectCamera,
+        ),
       (
         title: l10n.attachmentFiles,
         subtitle: null,

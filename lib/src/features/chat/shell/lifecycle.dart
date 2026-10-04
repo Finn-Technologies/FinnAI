@@ -2,6 +2,28 @@
 part of '../home_shell.dart';
 
 extension _HomeShellLifecycle on _HomeShellState {
+  /// With a keyboard in front of them the user expects to type at once, as in
+  /// any chat app, and the window shortcuts (Ctrl+N, Ctrl+B) only work while
+  /// focus is somewhere in the shell. So the composer takes focus back whenever
+  /// nothing else holds it: at start, after a reply (the field is disabled
+  /// while a turn is prepared, which drops its focus) and after a page closes.
+  /// A phone keeps its keyboard down until the field is tapped.
+  void _focusComposerOnDesktop() {
+    if (!isDesktop) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted ||
+          _sidebar ||
+          _composer.text.isNotEmpty && _focusNode.hasFocus) {
+        return;
+      }
+      if (ModalRoute.of(context)?.isCurrent != true) return;
+      final holder = FocusManager.instance.primaryFocus?.context;
+      // Leave a text field the user is typing in (rename, edit) alone.
+      if (holder?.findAncestorWidgetOfExactType<EditableText>() != null) return;
+      _focusNode.requestFocus();
+    });
+  }
+
   Future<void> _checkPendingProcessText() async {
     try {
       final text =
@@ -74,6 +96,7 @@ extension _HomeShellLifecycle on _HomeShellState {
       _historyUnavailable =
           failed.contains('conversations') || _conversations.storageError;
     });
+    _focusComposerOnDesktop();
     unawaited(_flowsReady());
     _schedulePrewarm();
   }
@@ -141,6 +164,7 @@ extension _HomeShellLifecycle on _HomeShellState {
     if (signature != _lastGenerationSignature) {
       _lastGenerationSignature = signature;
       setState(() {});
+      if (!_generation.busy) _focusComposerOnDesktop();
     }
     _pumpVoiceReply();
     final trace = _generation.activeTrace;

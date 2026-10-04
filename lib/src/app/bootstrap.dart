@@ -12,11 +12,14 @@ import 'package:finn_ai/src/app/speech_model_addon.dart';
 import 'package:finn_ai/src/app/tts_voices_addon.dart';
 import 'package:finn_ai/src/app/app_mode_host.dart';
 import 'package:finn_ai/src/features/onboarding/model_install.dart';
+import 'package:finn_ai/src/features/voice/voice_sheet.dart'
+    show voiceSupportedOnPlatform;
 import 'package:finn_ai/src/features/onboarding/onboarding_flow.dart';
 import 'package:finn_ai/src/inference/finn_inference.dart';
 import 'package:finn_ai/src/shared/config/app_mode.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 import 'package:finn_ai/src/shared/widgets/ambient_background.dart';
+import 'package:finn_ai/src/shared/widgets/finn_window_frame.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
 
 class FinnBootstrap extends StatefulWidget {
@@ -31,11 +34,16 @@ class _FinnBootstrapState extends State<FinnBootstrap> {
   bool _modelInstalled = false;
 
   /// Optional downloads that ride along with the language model.
+  ///
+  /// Both exist for voice mode, so a platform without it (desktop Linux) skips
+  /// them: that is about 560 MB nobody would use.
   final List<InstallAddon> _addons = [
-    SpeechModelAddon(),
-    TtsVoicesAddon(
-      deviceLanguage: PlatformDispatcher.instance.locale.languageCode,
-    ),
+    if (voiceSupportedOnPlatform) ...[
+      SpeechModelAddon(),
+      TtsVoicesAddon(
+        deviceLanguage: PlatformDispatcher.instance.locale.languageCode,
+      ),
+    ],
   ];
 
   /// False when an upgrading user is missing an add-on they have not already
@@ -107,7 +115,7 @@ class _FinnBootstrapState extends State<FinnBootstrap> {
                 GlobalCupertinoLocalizations.delegate,
               ],
               supportedLocales: AppLocalizations.supportedLocales,
-              builder: FluxTheme.applySystemUi,
+              builder: finnAppBuilder,
               home: _BootstrapErrorPage(
                 error: snapshot.error!,
                 onRetry: _retryInitialization,
@@ -134,7 +142,7 @@ class _FinnBootstrapState extends State<FinnBootstrap> {
               GlobalCupertinoLocalizations.delegate,
             ],
             supportedLocales: AppLocalizations.supportedLocales,
-            builder: FluxTheme.applySystemUi,
+            builder: finnAppBuilder,
             home: Scaffold(
               body: AmbientBackground(
                 child: Center(
@@ -202,7 +210,7 @@ class FluxApp extends StatelessWidget {
         GlobalCupertinoLocalizations.delegate,
       ],
       supportedLocales: AppLocalizations.supportedLocales,
-      builder: FluxTheme.applySystemUi,
+      builder: finnAppBuilder,
       home: FinnInference.instance.isDeviceSupported
           ? onboardingComplete
               ? modelInstalled
