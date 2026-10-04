@@ -1,6 +1,19 @@
 part of '../finn_accelerator.dart';
 
 extension FinnAcceleratorSessions on FinnAccelerator {
+  /// Whether the base prompt prefix is kept on disk between launches.
+  ///
+  /// Off on desktop Linux. There the model's recurrent state does not survive a
+  /// round trip through the stock llama.cpp build: a turn that starts from a
+  /// restored prefix stops after a token or two (an empty reply with a
+  /// "Continue" button), while the same turn from a freshly computed prefix is
+  /// fine. The prefix is about a hundred tokens, so computing it each time costs
+  /// next to nothing; Android and OpenHarmony run a patched build and keep the
+  /// cache.
+  bool get _prefixCacheEnabled =>
+      FinnAccelerator._persistentPrefixCacheEnabled &&
+      !(_deviceProfile?.desktop ?? false);
+
   Future<_PreparedSession> _prepareSession(
     _ModelRuntime runtime,
     String conversationId,
@@ -83,8 +96,8 @@ extension FinnAcceleratorSessions on FinnAccelerator {
       promptConfigurationHash: configuration,
       messageCount: history.length,
       lastUsed: ++runtime.useSequence,
-      basePrefixReady: FinnAccelerator._persistentPrefixCacheEnabled &&
-          !FinnAccelerator.debugDisablePrefixCache,
+      basePrefixReady:
+          _prefixCacheEnabled && !FinnAccelerator.debugDisablePrefixCache,
     );
     runtime.sessions[conversationId] = entry;
     return (entry: entry, cacheHit: false, prefix: prefix);
@@ -160,8 +173,7 @@ extension FinnAcceleratorSessions on FinnAccelerator {
     EngineSession session,
     PrefixCacheCompatibilityKey key,
   ) async {
-    if (!FinnAccelerator._persistentPrefixCacheEnabled ||
-        FinnAccelerator.debugDisablePrefixCache) {
+    if (!_prefixCacheEnabled || FinnAccelerator.debugDisablePrefixCache) {
       return const PrefixStateReport(cacheHit: false, tokens: 0, fileBytes: 0);
     }
     final file = await _prefixStateFile(key);
@@ -229,8 +241,7 @@ extension FinnAcceleratorSessions on FinnAccelerator {
   Future<PrefixStateReport> _prepareBasePrefixStateUnlocked(
     _ModelRuntime runtime,
   ) async {
-    if (!FinnAccelerator._persistentPrefixCacheEnabled ||
-        runtime.sessions.isNotEmpty) {
+    if (!_prefixCacheEnabled || runtime.sessions.isNotEmpty) {
       return const PrefixStateReport(cacheHit: false, tokens: 0, fileBytes: 0);
     }
     final session = await runtime.engine.createSession(seqId: 0);

@@ -75,6 +75,7 @@ class _DeckViewerState extends State<DeckViewer> {
           builder: (context, constraints) {
             final metrics = FinnPageHeaderMetrics.forHeight(
               constraints.maxHeight,
+              constraints.maxWidth,
             );
             final bottom = FluxBottomInset.bottomOf(context);
             return Stack(

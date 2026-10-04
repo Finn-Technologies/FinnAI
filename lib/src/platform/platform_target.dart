@@ -49,6 +49,13 @@ FinnPlatform get finnPlatform {
 bool get isMobile =>
     finnPlatform == FinnPlatform.android || finnPlatform == FinnPlatform.ios;
 
+/// True on a desktop OS, where there is a keyboard and a pointer and the
+/// window is resizable.
+bool get isDesktop =>
+    finnPlatform == FinnPlatform.linux ||
+    finnPlatform == FinnPlatform.macos ||
+    finnPlatform == FinnPlatform.windows;
+
 /// HarmonyOS's documented directory layout for an `entry` module in the `el2`
 /// sandbox, used when the `path_provider` channel cannot be reached.
 ///

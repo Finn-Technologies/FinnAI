@@ -273,7 +273,9 @@ class _ChatComposerState extends State<ChatComposer>
               ),
             ),
           )
-        : hasDraft
+        // Without voice mode the empty state is a resting send button, not a
+        // microphone that does nothing.
+        : (hasDraft || !widget.voiceEnabled)
             ? circle(
                 key: const ValueKey('send-button-hit'),
                 color: FluxColors.actionOf(context),
@@ -356,44 +358,56 @@ class _ChatComposerState extends State<ChatComposer>
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(minHeight: 48),
                     child: Center(
-                      child: TextField(
-                        controller: widget.controller,
-                        focusNode: widget.focusNode,
-                        inputFormatters: [
-                          LengthLimitingTextInputFormatter(4000),
-                        ],
-                        enabled: !widget.blocked,
-                        minLines: 1,
-                        maxLines: 5,
-                        textAlignVertical: TextAlignVertical.center,
-                        keyboardType: TextInputType.multiline,
-                        textInputAction: TextInputAction.send,
-                        onSubmitted: (_) => canSend ? widget.onSend() : null,
-                        onTap: () => widget.onReturnToLatest?.call(),
-                        style: TextStyle(
-                          fontFamily: 'InstrumentSans',
-                          fontSize: 16,
-                          height: 1.25,
-                          fontWeight: FontWeight.w400,
-                          color: FluxColors.inkOf(context),
-                        ),
-                        cursorColor: FluxColors.inkOf(context),
-                        decoration: InputDecoration.collapsed(
-                          hintText: widget.hintText ??
-                              (widget.preparing
-                                  ? l10n.chatFinnTyping
-                                  : l10n.chatAskAnythingHint),
-                          // One line, always. A wrapped hint stretches
-                          // the field — and with it the pill — on
-                          // narrow screens and in longer locales.
-                          hintMaxLines: 1,
-                          hintStyle: TextStyle(
-                            fontFamily: 'InstrumentSans',
-                            fontSize: 16,
-                            height: 1.25,
-                            fontWeight: FontWeight.w400,
-                            color: FluxColors.inkOf(context)
-                                .withValues(alpha: .55),
+                      child: Padding(
+// InstrumentSans carries more space above its letters than below, so the
+// laid-out line box sat ~4.5px under where the letters look centred. Measured
+// on the real window (pixel rows of the letters against the pill); the
+// bottom padding lifts the centred field by half its value.
+                        padding: const EdgeInsets.only(bottom: 9),
+                        child: EnterToSend(
+                          canSend: canSend,
+                          onSend: widget.onSend,
+                          child: TextField(
+                            controller: widget.controller,
+                            focusNode: widget.focusNode,
+                            inputFormatters: [
+                              LengthLimitingTextInputFormatter(4000),
+                            ],
+                            enabled: !widget.blocked,
+                            minLines: 1,
+                            maxLines: 5,
+                            textAlignVertical: TextAlignVertical.center,
+                            keyboardType: TextInputType.multiline,
+                            textInputAction: TextInputAction.send,
+                            onSubmitted: (_) =>
+                                canSend ? widget.onSend() : null,
+                            onTap: () => widget.onReturnToLatest?.call(),
+                            style: TextStyle(
+                              fontFamily: 'InstrumentSans',
+                              fontSize: 16,
+                              height: 1.25,
+                              fontWeight: FontWeight.w400,
+                              color: FluxColors.inkOf(context),
+                            ),
+                            cursorColor: FluxColors.inkOf(context),
+                            decoration: InputDecoration.collapsed(
+                              hintText: widget.hintText ??
+                                  (widget.preparing
+                                      ? l10n.chatFinnTyping
+                                      : l10n.chatAskAnythingHint),
+                              // One line, always. A wrapped hint stretches
+                              // the field — and with it the pill — on
+                              // narrow screens and in longer locales.
+                              hintMaxLines: 1,
+                              hintStyle: TextStyle(
+                                fontFamily: 'InstrumentSans',
+                                fontSize: 16,
+                                height: 1.25,
+                                fontWeight: FontWeight.w400,
+                                color: FluxColors.inkOf(context)
+                                    .withValues(alpha: .55),
+                              ),
+                            ),
                           ),
                         ),
                       ),

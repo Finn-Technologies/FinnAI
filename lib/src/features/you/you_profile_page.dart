@@ -96,6 +96,7 @@ class _YouProfilePageState extends State<YouProfilePage> {
           builder: (context, constraints) {
             final metrics = FinnPageHeaderMetrics.forHeight(
               constraints.maxHeight,
+              constraints.maxWidth,
             );
             return Stack(
               children: [

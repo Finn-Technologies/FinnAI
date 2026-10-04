@@ -292,7 +292,7 @@
   "@chatFinnTyping": {
     "description": "Typing indicator"
   },
-  "chatAskAnything": "Frag mich alles — ich laufe komplett auf diesem Gerät, deine\nUnterhaltungen verlassen niemals dein Telefon.",
+  "chatAskAnything": "Frag mich alles — ich laufe komplett auf diesem Gerät, deine\nUnterhaltungen verlassen niemals dein Gerät.",
   "@chatAskAnything": {
     "description": "Welcome ask anything"
   },
@@ -584,7 +584,7 @@
   "@settingsInferenceEngine": {
     "description": "Engine row"
   },
-  "settingsInferenceEngineValue": "Vollständig auf diesem Telefon",
+  "settingsInferenceEngineValue": "Vollständig auf diesem Gerät",
   "@settingsInferenceEngineValue": {
     "description": "Engine value"
   },
@@ -1885,7 +1885,7 @@
   "creationsSizeSmall": "Klein",
   "creationsSizeMedium": "Mittel",
   "creationsSizeLarge": "Groß",
-  "creationsUpdatesOnDevice": "Aktualisiert sich auf diesem Gerät. Nichts verlässt dein Telefon.",
+  "creationsUpdatesOnDevice": "Aktualisiert sich auf diesem Gerät. Nichts verlässt dein Gerät.",
   "creationsMadeInChat": "Im Chat erstellt",
   "creationsDataLabel": "Daten",
   "creationsDataSub": "In diesem Widget gespeichert",
@@ -2113,7 +2113,7 @@
   "appBrandFinnAICode": "FinnAI Code",
   "appModeSwitchSemantic": "Zwischen FinnAI und FinnAI Code wechseln",
   "codeGreeting": "Was bauen wir?",
-  "codeGreetingCaption": "Dein Projekt liegt in einem privaten Ordner auf diesem Telefon.",
+  "codeGreetingCaption": "Dein Projekt liegt in einem privaten Ordner auf diesem Gerät.",
   "codeComposerHint": "Beschreibe, was gebaut oder repariert werden soll",
   "codeNewSession": "Neue Sitzung",
   "codeSessionsTitle": "Sitzungen",
@@ -2172,13 +2172,13 @@
   "codeSessionFiles": "Projektdateien",
   "codeSessionDelete": "Sitzung löschen",
   "codeSessionDeleteTitle": "Diese Sitzung löschen?",
-  "codeSessionDeleteBody": "Die Unterhaltung und ihre Projektdateien werden von diesem Telefon entfernt.",
+  "codeSessionDeleteBody": "Die Unterhaltung und ihre Projektdateien werden von diesem Gerät entfernt.",
   "codeCloudTitle": "{provider} verwenden?",
   "codeCloudBody": "{provider} läuft in der Cloud. Was du schreibst sowie Dateiinhalte und Befehlsausgaben, die der Agent liest, werden an {provider} gesendet und unter dessen Bedingungen verarbeitet. FinnAI auf diesem Gerät behält alles auf dem Telefon.",
   "codeCloudConfirm": "{provider} verwenden",
   "codeModelsSearchHint": "Modelle suchen",
   "codeModelsOnDeviceTitle": "FinnAI",
-  "codeModelsOnDeviceSub": "Läuft auf diesem Telefon. Privat, kostenlos und offline nutzbar.",
+  "codeModelsOnDeviceSub": "Läuft auf diesem Gerät. Privat, kostenlos und offline nutzbar.",
   "codeModelsAddProvider": "Füge einen Anbieter hinzu, um mehr Modelle zu nutzen",
   "codeModelsLoading": "Modelle werden geladen …",
   "codeModelsLoad": "Modelle laden",
@@ -2193,7 +2193,7 @@
   "codeSettingsModel": "Modell",
   "codeSettingsAgent": "Agent",
   "codeSettingsWorkspace": "Projektordner",
-  "codeSettingsWorkspaceSub": "{size} auf diesem Telefon",
+  "codeSettingsWorkspaceSub": "{size} auf diesem Gerät",
   "codeSettingsData": "Datenschutz und Daten",
   "codeSettingsDataSub": "Schlüssel, Sitzungen und Projektdateien",
   "codeSettingsAbout": "Über FinnAI Code",
@@ -2217,7 +2217,7 @@
   "codeProviderKeyRemove": "Schlüssel entfernen",
   "codeProviderKeyRemoveTitle": "Diesen Schlüssel entfernen?",
   "codeProviderKeyRemoveBody": "FinnAI Code nutzt {provider} nicht mehr, bis du wieder einen Schlüssel hinzufügst.",
-  "codeProviderKeyStored": "Sicher auf diesem Telefon gespeichert",
+  "codeProviderKeyStored": "Sicher auf diesem Gerät gespeichert",
   "codeProviderGetKey": "Schlüssel besorgen",
   "codeProviderTest": "Schlüssel testen",
   "codeProviderTesting": "Wird getestet …",
@@ -2289,5 +2289,9 @@
   "codeErrorMalformedAction": "Das Modell hat eine unbrauchbare Aktion geschrieben, daher wurde nichts ausgeführt.",
   "codeCloudTitleCustom": "Diesen Server verwenden?",
   "codeCloudBodyCustom": "Was du schreibst sowie Dateiinhalte und Befehlsausgaben, die der Agent liest, werden an {address} gesendet. FinnAI auf diesem Gerät behält alles auf dem Telefon.",
-  "codeCloudConfirmCustom": "Diesen Server verwenden"
+  "codeCloudConfirmCustom": "Diesen Server verwenden",
+  "windowMinimize": "Minimieren",
+  "windowMaximize": "Maximieren",
+  "windowRestore": "Wiederherstellen",
+  "onboardingGetStarted": "Loslegen"
 }

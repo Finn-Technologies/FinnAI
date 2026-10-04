@@ -6,6 +6,7 @@ import 'package:finn_ai/src/features/code/settings/code_settings_store.dart';
 import 'package:finn_ai/src/features/code/ui/code_icons.dart';
 import 'package:finn_ai/src/features/code/ui/code_text.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
+import 'package:finn_ai/src/shared/widgets/enter_to_send.dart';
 import 'package:finn_ai/src/shared/widgets/finn_overlays.dart';
 import 'package:finn_ai/src/shared/widgets/finn_ui.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
@@ -138,33 +139,44 @@ class _CodeComposerState extends State<CodeComposer> {
             // the pill's whole maximum height and the composer balloons.
             child: Center(
               heightFactor: 1,
-              child: TextField(
-                key: const ValueKey('code-composer-field'),
-                controller: widget.controller,
-                focusNode: widget.focusNode,
-                inputFormatters: [LengthLimitingTextInputFormatter(6000)],
-                minLines: 1,
-                maxLines: 6,
-                textAlignVertical: TextAlignVertical.center,
-                keyboardType: TextInputType.multiline,
-                textInputAction: TextInputAction.newline,
-                style: TextStyle(
-                  fontFamily: 'InstrumentSans',
-                  fontSize: 16,
-                  height: 1.25,
-                  fontWeight: FontWeight.w400,
-                  color: FluxColors.inkOf(context),
-                ),
-                cursorColor: FluxColors.inkOf(context),
-                decoration: InputDecoration.collapsed(
-                  hintText: l10n.codeComposerHint,
-                  hintMaxLines: 1,
-                  hintStyle: TextStyle(
-                    fontFamily: 'InstrumentSans',
-                    fontSize: 16,
-                    height: 1.25,
-                    fontWeight: FontWeight.w400,
-                    color: FluxColors.inkOf(context).withValues(alpha: .55),
+              child: Padding(
+// InstrumentSans carries more space above its letters than below, so the
+// laid-out line box sat ~4.5px under where the letters look centred. Measured
+// on the real window (pixel rows of the letters against the pill); the
+// bottom padding lifts the centred field by half its value.
+                padding: const EdgeInsets.only(bottom: 9),
+                child: EnterToSend(
+                  canSend: canSend,
+                  onSend: widget.onSend,
+                  child: TextField(
+                    key: const ValueKey('code-composer-field'),
+                    controller: widget.controller,
+                    focusNode: widget.focusNode,
+                    inputFormatters: [LengthLimitingTextInputFormatter(6000)],
+                    minLines: 1,
+                    maxLines: 6,
+                    textAlignVertical: TextAlignVertical.center,
+                    keyboardType: TextInputType.multiline,
+                    textInputAction: TextInputAction.newline,
+                    style: TextStyle(
+                      fontFamily: 'InstrumentSans',
+                      fontSize: 16,
+                      height: 1.25,
+                      fontWeight: FontWeight.w400,
+                      color: FluxColors.inkOf(context),
+                    ),
+                    cursorColor: FluxColors.inkOf(context),
+                    decoration: InputDecoration.collapsed(
+                      hintText: l10n.codeComposerHint,
+                      hintMaxLines: 1,
+                      hintStyle: TextStyle(
+                        fontFamily: 'InstrumentSans',
+                        fontSize: 16,
+                        height: 1.25,
+                        fontWeight: FontWeight.w400,
+                        color: FluxColors.inkOf(context).withValues(alpha: .55),
+                      ),
+                    ),
                   ),
                 ),
               ),

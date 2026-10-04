@@ -48,6 +48,14 @@ Saved Envelope: { "version": "2", "algorithm": "AES-256-GCM", "nonce": "...", "c
     **This is weaker than the Android posture**: it does not defend against a
     root or debugging session on the device itself. Re-evaluate if HarmonyOS
     ships a symmetric-cipher HUKS.
+  - Linux: `LinuxKeyStorage` tries the desktop keyring (libsecret via
+    `flutter_secure_storage`) first. Many sessions have no keyring running (bare
+    window manager, container, fresh VM), where every keyring call throws; the key
+    then goes to a `0600` file in a `0700` directory under the app's data
+    directory. Reads check both places, so installing a keyring later never
+    strands existing history. **The file fallback is weaker than the keyring**:
+    anything running as the same user can read it. It is the same posture as the
+    HarmonyOS sandbox file, and is used only when no keyring is available.
 - **Key Loss & Recovery Rule**: If `conversations.v2.enc` exists on disk but its encryption key is missing or invalid, `ConversationStore` enters a read-only storage error state. It **never** generates a replacement key, **never** overwrites the existing encrypted file, and **disables scheduled saves** to protect existing history.
 
 ### Atomic Migration & Write Safeguards

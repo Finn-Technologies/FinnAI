@@ -11,7 +11,11 @@ class _HomeHeader extends StatelessWidget {
     this.title,
     this.onNewChat,
     this.onTitleTap,
+    this.showMenuSlot = true,
   });
+
+  /// False when the sidebar is docked: there is no toggle to leave room for.
+  final bool showMenuSlot;
 
   /// Width the menu/close control occupies at the row's start.
   static const double menuSlotWidth = FinnSidebarToggleButton.dimension;
@@ -32,9 +36,9 @@ class _HomeHeader extends StatelessWidget {
       height: 50,
       child: Row(
         children: [
-          const SizedBox(width: menuSlotWidth),
+          if (showMenuSlot) const SizedBox(width: menuSlotWidth),
           if (title != null && title.isNotEmpty) ...[
-            const SizedBox(width: 20),
+            if (showMenuSlot) const SizedBox(width: 20),
             Expanded(
               child: Semantics(
                 button: onTitleTap != null,

@@ -143,7 +143,7 @@ extension FinnAcceleratorLoader on FinnAccelerator {
         );
       }
       return LlamaEngine.spawn(
-        libraryPath: 'libllama.so',
+        libraryPath: profile.llamaLibraryPath ?? 'libllama.so',
         backendDirectory: profile.nativeLibraryDir,
         multimodalParams: multimodalParams,
         modelParams: modelParams,

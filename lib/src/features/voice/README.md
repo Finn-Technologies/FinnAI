@@ -14,4 +14,4 @@
 - `VoiceChatController.startLive` is the hands-free loop: listen -> send -> think -> speak -> listen. It ends on the cross, 10 s of silence, an error, or backgrounding, and never reopens the microphone while Finn is speaking. Decisions in `docs/decisions/0007-live-voice-and-spoken-replies.md`.
 - A spoken turn is short on purpose (`PromptAnalysis.spoken`, three-sentence cap, no speculative web search). Don't lengthen it without measuring `FINN_VOICE first_audio_ms`.
 - sherpa-onnx is built from source with TTS off (`tool/rebuild_sherpa_android.sh`) so espeak-ng (GPL) is not in the app; rerun the script's `espeak[_-]ng` check after upgrading it. `FINN_TTS_PROBE` (`--dart-define`) logs synthesis timings per language.
-- Android/iOS only (`voiceSupportedOnPlatform`).
+- Android/iOS only (`voiceSupportedOnPlatform`). On desktop Linux only *read aloud* works, through `spd-say`/`espeak-ng` (`linux_speech.dart`); the live voice loop needs `flutter_pcm_sound` and the Android TTS shim, neither of which has a Linux build.

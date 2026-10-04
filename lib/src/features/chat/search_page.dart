@@ -65,6 +65,7 @@ class _FinnSearchPageState extends State<FinnSearchPage> {
     final l10n = L10n.of(context);
     final metrics = FinnPageHeaderMetrics.forHeight(
       MediaQuery.sizeOf(context).height,
+      MediaQuery.sizeOf(context).width,
     );
     return Scaffold(
       body: AmbientBackground(

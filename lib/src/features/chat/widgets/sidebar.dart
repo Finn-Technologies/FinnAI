@@ -83,7 +83,12 @@ class _SidebarState extends State<_Sidebar> {
         listenable: _brand,
         builder: (context, _) => LayoutBuilder(
           builder: (context, constraints) {
-            final double sy = (constraints.maxHeight / 912).clamp(0.72, 1.3);
+            final double sy = FinnLayout.scaleY(
+              constraints.maxHeight,
+              MediaQuery.sizeOf(context).width,
+              max: 1.3,
+              wideCap: .85,
+            );
             final double headerTop = 70 * sy;
             // Three 70px destinations with the design's 30px gutters.
             final double navSize = ((constraints.maxWidth - 50 - 60) / 3).clamp(

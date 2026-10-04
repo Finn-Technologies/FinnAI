@@ -156,7 +156,7 @@ extension FinnAcceleratorOptimizer on FinnAccelerator {
     required bool compactKv,
   }) async {
     return LlamaEngine.spawn(
-      libraryPath: 'libllama.so',
+      libraryPath: profile.llamaLibraryPath ?? 'libllama.so',
       backendDirectory: profile.nativeLibraryDir,
       // The benchmark engine solely probes language model throughput and device
       // performance; do not allocate the multimodal vision projector here.

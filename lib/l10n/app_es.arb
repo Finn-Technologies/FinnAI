@@ -292,7 +292,7 @@
   "@chatFinnTyping": {
     "description": "Typing indicator"
   },
-  "chatAskAnything": "Pregúntame lo que quieras — funciono por completo en este dispositivo, así que tus\nconversaciones nunca salen de tu teléfono.",
+  "chatAskAnything": "Pregúntame lo que quieras — funciono por completo en este dispositivo, así que tus\nconversaciones nunca salen de tu dispositivo.",
   "@chatAskAnything": {
     "description": "Welcome ask anything"
   },
@@ -584,7 +584,7 @@
   "@settingsInferenceEngine": {
     "description": "Engine row"
   },
-  "settingsInferenceEngineValue": "Enteramente en este teléfono",
+  "settingsInferenceEngineValue": "Enteramente en este dispositivo",
   "@settingsInferenceEngineValue": {
     "description": "Engine value"
   },
@@ -1676,7 +1676,7 @@
   "voiceSpeedNormal": "Normal",
   "voiceSpeedFast": "Rápida",
   "voiceLanguage": "Idioma",
-  "voiceLanguageSub": "Sigue a tu teléfono",
+  "voiceLanguageSub": "Sigue a tu dispositivo",
   "accessIntro": "FinnAI solo lee lo que permites, y solo en este dispositivo.",
   "accessMaster": "Usar contexto de este dispositivo",
   "accessMasterSub": "Desactívalo para que FinnAI no lea nada",
@@ -1885,7 +1885,7 @@
   "creationsSizeSmall": "Pequeño",
   "creationsSizeMedium": "Mediano",
   "creationsSizeLarge": "Grande",
-  "creationsUpdatesOnDevice": "Se actualiza en este dispositivo. Nada sale de tu teléfono.",
+  "creationsUpdatesOnDevice": "Se actualiza en este dispositivo. Nada sale de tu dispositivo.",
   "creationsMadeInChat": "Creado en el chat",
   "creationsDataLabel": "Datos",
   "creationsDataSub": "Guardados dentro de este widget",
@@ -2113,7 +2113,7 @@
   "appBrandFinnAICode": "FinnAI Code",
   "appModeSwitchSemantic": "Cambiar entre FinnAI y FinnAI Code",
   "codeGreeting": "¿Qué construimos?",
-  "codeGreetingCaption": "Tu proyecto vive en una carpeta privada de este teléfono.",
+  "codeGreetingCaption": "Tu proyecto vive en una carpeta privada de este dispositivo.",
   "codeComposerHint": "Describe qué construir o arreglar",
   "codeNewSession": "Nueva sesión",
   "codeSessionsTitle": "Sesiones",
@@ -2172,13 +2172,13 @@
   "codeSessionFiles": "Archivos del proyecto",
   "codeSessionDelete": "Eliminar sesión",
   "codeSessionDeleteTitle": "¿Eliminar esta sesión?",
-  "codeSessionDeleteBody": "La conversación y sus archivos del proyecto se eliminan de este teléfono.",
+  "codeSessionDeleteBody": "La conversación y sus archivos del proyecto se eliminan de este dispositivo.",
   "codeCloudTitle": "¿Usar {provider}?",
   "codeCloudBody": "{provider} funciona en la nube. Lo que escribes, junto con el contenido de archivos y la salida de comandos que lee el agente, se envía a {provider} y se trata según sus condiciones. FinnAI en este dispositivo lo mantiene todo en el teléfono.",
   "codeCloudConfirm": "Usar {provider}",
   "codeModelsSearchHint": "Buscar modelos",
   "codeModelsOnDeviceTitle": "FinnAI",
-  "codeModelsOnDeviceSub": "Se ejecuta en este teléfono. Privado, gratuito y funciona sin conexión.",
+  "codeModelsOnDeviceSub": "Se ejecuta en este dispositivo. Privado, gratuito y funciona sin conexión.",
   "codeModelsAddProvider": "Añade un proveedor para usar más modelos",
   "codeModelsLoading": "Cargando modelos…",
   "codeModelsLoad": "Cargar modelos",
@@ -2193,7 +2193,7 @@
   "codeSettingsModel": "Modelo",
   "codeSettingsAgent": "Agente",
   "codeSettingsWorkspace": "Carpetas de proyecto",
-  "codeSettingsWorkspaceSub": "{size} en este teléfono",
+  "codeSettingsWorkspaceSub": "{size} en este dispositivo",
   "codeSettingsData": "Privacidad y datos",
   "codeSettingsDataSub": "Claves, sesiones y archivos del proyecto",
   "codeSettingsAbout": "Acerca de FinnAI Code",
@@ -2217,7 +2217,7 @@
   "codeProviderKeyRemove": "Quitar clave",
   "codeProviderKeyRemoveTitle": "¿Quitar esta clave?",
   "codeProviderKeyRemoveBody": "FinnAI Code dejará de usar {provider} hasta que añadas una clave de nuevo.",
-  "codeProviderKeyStored": "Guardada de forma segura en este teléfono",
+  "codeProviderKeyStored": "Guardada de forma segura en este dispositivo",
   "codeProviderGetKey": "Obtener una clave",
   "codeProviderTest": "Probar clave",
   "codeProviderTesting": "Probando…",
@@ -2289,5 +2289,9 @@
   "codeErrorMalformedAction": "El modelo escribió una acción que no se pudo usar, así que no se ejecutó nada.",
   "codeCloudTitleCustom": "¿Usar este servidor?",
   "codeCloudBodyCustom": "Lo que escribes, junto con el contenido de archivos y la salida de comandos que lee el agente, se envía a {address}. FinnAI en este dispositivo lo mantiene todo en el teléfono.",
-  "codeCloudConfirmCustom": "Usar este servidor"
+  "codeCloudConfirmCustom": "Usar este servidor",
+  "windowMinimize": "Minimizar",
+  "windowMaximize": "Maximizar",
+  "windowRestore": "Restaurar",
+  "onboardingGetStarted": "Empezar"
 }

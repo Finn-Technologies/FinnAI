@@ -9,11 +9,18 @@ import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 import 'package:finn_ai/src/features/you/you_page.dart';
 import 'package:finn_ai/src/shared/widgets/safe_markdown_text.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
+import 'package:finn_ai/src/platform/platform_target.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   testWidgets('Finn AI opens on the welcome experience', (tester) async {
+    // A phone: the swipe hint is what a touch screen gets, a wide window gets
+    // a button (see onboarding_wide_test.dart).
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(const FluxApp(enableModelDownload: false));
     await tester.pump();
 
@@ -81,6 +88,9 @@ void main() {
   testWidgets('the voice button keeps a visible glyph on its own surface', (
     tester,
   ) async {
+    // Voice mode is a phone feature; the Linux test host would hide the mic.
+    debugSetFinnPlatformOverride(FinnPlatform.android);
+    addTearDown(() => debugSetFinnPlatformOverride(null));
     // The mic sits on actionOf, which is near-white in dark mode, and
     // FigmaSvg's default dark tint is also near-white: white on white, so
     // the control vanished. Rendered dark to catch that exact pairing.
@@ -141,6 +151,9 @@ void main() {
   });
 
   testWidgets('the composer offers voice first, then send', (tester) async {
+    // Voice mode is a phone feature; the Linux test host would hide the mic.
+    debugSetFinnPlatformOverride(FinnPlatform.android);
+    addTearDown(() => debugSetFinnPlatformOverride(null));
     await tester.pumpWidget(
       MaterialApp(
         theme: FluxTheme.light,

@@ -15,6 +15,9 @@ import 'package:finn_ai/src/features/code/ui/code_models_page.dart';
 import 'package:finn_ai/src/features/code/ui/code_session_options.dart';
 import 'package:finn_ai/src/features/code/ui/code_sidebar.dart';
 import 'package:finn_ai/src/features/code/ui/code_terminal_page.dart';
+import 'package:finn_ai/src/platform/platform_target.dart';
+import 'package:finn_ai/src/shared/layout/finn_layout.dart';
+import 'package:finn_ai/src/shared/widgets/desktop_shortcuts.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 import 'package:finn_ai/src/shared/widgets/finn_page_route.dart';
 import 'package:finn_ai/src/shared/widgets/finn_sidebar_surface.dart';
@@ -62,11 +65,29 @@ class _CodeShellState extends State<CodeShell>
     super.initState();
     _scrollController.addListener(_onScroll);
     if (widget.initializeServices) unawaited(_services.initialize());
+    _services.agent.addListener(_focusComposerOnDesktop);
+    _focusComposerOnDesktop();
+  }
+
+  /// With a keyboard in front of them the user expects to type at once, and the
+  /// window shortcuts only work while focus is inside the shell: take focus
+  /// back whenever nothing else holds it (at start, when a turn ends, when a
+  /// page closes). A phone keeps its keyboard down until the field is tapped.
+  void _focusComposerOnDesktop() {
+    if (!isDesktop) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _sidebar.open || _services.agent.busy) return;
+      if (ModalRoute.of(context)?.isCurrent != true) return;
+      final holder = FocusManager.instance.primaryFocus?.context;
+      if (holder?.findAncestorWidgetOfExactType<EditableText>() != null) return;
+      _focusNode.requestFocus();
+    });
   }
 
   @override
   void dispose() {
     _scrollController.removeListener(_onScroll);
+    _services.agent.removeListener(_focusComposerOnDesktop);
     // Leaving FinnAI Code ends a request in progress: a command waiting for a
     // tap would otherwise wait for a screen that is gone, and a running model
     // would hold the engine against FinnAI's chat.
@@ -105,12 +126,15 @@ class _CodeShellState extends State<CodeShell>
 
   /// Pushes [page] from a sidebar destination, closing the panel behind it
   /// once the page has settled: one motion from the panel to the page.
-  Future<void> _pushFromSidebar(Widget page) => Navigator.of(context).push(
+  Future<void> _pushFromSidebar(Widget page) => Navigator.of(context)
+      .push(
         FinnPageRoute<void>(child: page, onSettled: _sidebar.snapClosed),
-      );
+      )
+      .whenComplete(_focusComposerOnDesktop);
 
-  Future<void> _push(Widget page) =>
-      Navigator.of(context).push(FinnPageRoute<void>(child: page));
+  Future<void> _push(Widget page) => Navigator.of(context)
+      .push(FinnPageRoute<void>(child: page))
+      .whenComplete(_focusComposerOnDesktop);
 
   Future<void> _openFiles({bool fromSidebar = true}) {
     final page = CodeFilesPage(
@@ -165,148 +189,160 @@ class _CodeShellState extends State<CodeShell>
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop && _sidebar.open) _sidebar.set(context, false);
       },
-      child: Scaffold(
-        resizeToAvoidBottomInset: true,
-        body: LayoutBuilder(
-          builder: (context, constraints) {
-            final sy = (constraints.maxHeight / 912).clamp(.72, 1.2);
-            final safeBottom = FluxBottomInset.bottomOf(context);
-            const composerLift = 10.0;
-            final gutter = constraints.maxWidth < 380 ? 20.0 : 25.0;
-            final contentWidth =
-                math.min(760.0, constraints.maxWidth - gutter * 2);
-            final contentLeft = (constraints.maxWidth - contentWidth) / 2;
-            final sidebarWidth = constraints.maxWidth * (322 / 420);
+      child: DesktopShortcuts(
+        onNew: _newSession,
+        onToggleSidebar: () => _sidebar.set(context, !_sidebar.open),
+        onSettings: _openSettings,
+        child: Scaffold(
+          resizeToAvoidBottomInset: true,
+          body: LayoutBuilder(
+            builder: (context, constraints) {
+              final sy = FinnLayout.scaleY(
+                  constraints.maxHeight, constraints.maxWidth);
+              final safeBottom = FluxBottomInset.bottomOf(context);
+              const composerLift = 10.0;
+              final gutter = constraints.maxWidth < 380 ? 20.0 : 25.0;
+              final docked = FinnLayout.isDocked(constraints.maxWidth);
+              final bodyWidth = FinnLayout.bodyWidth(constraints.maxWidth);
+              final contentWidth = math.min(760.0, bodyWidth - gutter * 2);
+              final contentLeft = (bodyWidth - contentWidth) / 2;
+              final sidebarWidth =
+                  FinnLayout.sidebarWidth(constraints.maxWidth);
 
-            final home = RepaintBoundary(
-              child: ColoredBox(
-                color: FluxColors.tileOf(context),
-                child: ListenableBuilder(
-                  listenable: Listenable.merge([
-                    _services.sessions,
-                    _services.agent,
-                    _services.providers,
-                    _services.settings,
-                  ]),
-                  builder: (context, _) {
-                    final session = _services.sessions.active;
-                    final empty = session == null || session.messages.isEmpty;
-                    return Stack(
-                      children: [
-                        if (empty)
-                          Positioned(
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            height: constraints.maxHeight * 400 / 912,
-                            child: IgnorePointer(
-                              child: DecoratedBox(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                    colors: FluxColors.ambientWashOf(context),
+              final home = RepaintBoundary(
+                child: ColoredBox(
+                  color: FluxColors.tileOf(context),
+                  child: ListenableBuilder(
+                    listenable: Listenable.merge([
+                      _services.sessions,
+                      _services.agent,
+                      _services.providers,
+                      _services.settings,
+                    ]),
+                    builder: (context, _) {
+                      final session = _services.sessions.active;
+                      final empty = session == null || session.messages.isEmpty;
+                      return Stack(
+                        children: [
+                          if (empty)
+                            Positioned(
+                              left: 0,
+                              right: 0,
+                              bottom: 0,
+                              height: constraints.maxHeight * 400 / 912,
+                              child: IgnorePointer(
+                                child: DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                      colors: FluxColors.ambientWashOf(context),
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
-                          ),
-                        Positioned(
-                          left: contentLeft,
-                          width: contentWidth,
-                          top: 0,
-                          bottom: 0,
-                          child: CodeConversation(
-                            session: session,
-                            agent: _services.agent,
-                            topInset: 125 * sy,
-                            // The chips sit above the composer, so the newest
-                            // message clears both.
-                            bottomInset: safeBottom + composerLift + 65 + 46,
-                            scrollController: _scrollController,
-                          ),
-                        ),
-                        Positioned(
-                          left: contentLeft,
-                          width: contentWidth,
-                          top: 70 * sy,
-                          child: _Header(
-                            title: empty ? null : session.title,
-                            onNewSession: empty ? null : _newSession,
-                            onTitleTap: session == null
-                                ? null
-                                : () => _sessionOptions(session),
-                          ),
-                        ),
-                        ValueListenableBuilder<bool>(
-                          valueListenable: _scrolledAway,
-                          builder: (context, away, _) => Positioned(
+                          Positioned(
                             left: contentLeft,
-                            bottom: safeBottom + composerLift + 3,
-                            child: CodeComposer(
-                              controller: _composer,
-                              focusNode: _focusNode,
-                              busy: _services.agent.busy,
-                              onSend: _send,
-                              onStop: _services.agent.stop,
-                              modelLabel: _modelLabel(context),
-                              modelIsLocal: _services.providers.active.isLocal,
-                              permission:
-                                  _services.settings.settings.permissionMode,
-                              onModel: _openModels,
-                              onPermission: (mode) => _services.settings.update(
-                                  (s) => s.copyWith(permissionMode: mode)),
-                              width: contentWidth,
-                              compact: away,
+                            width: contentWidth,
+                            top: 0,
+                            bottom: 0,
+                            child: CodeConversation(
+                              session: session,
+                              agent: _services.agent,
+                              topInset: 125 * sy,
+                              // The chips sit above the composer, so the newest
+                              // message clears both.
+                              bottomInset: safeBottom + composerLift + 65 + 46,
+                              scrollController: _scrollController,
                             ),
                           ),
-                        ),
-                      ],
-                    );
-                  },
+                          Positioned(
+                            left: contentLeft,
+                            width: contentWidth,
+                            top: 70 * sy,
+                            child: _Header(
+                              showMenuSlot: !docked,
+                              title: empty ? null : session.title,
+                              onNewSession: empty ? null : _newSession,
+                              onTitleTap: session == null
+                                  ? null
+                                  : () => _sessionOptions(session),
+                            ),
+                          ),
+                          ValueListenableBuilder<bool>(
+                            valueListenable: _scrolledAway,
+                            builder: (context, away, _) => Positioned(
+                              left: contentLeft,
+                              bottom: safeBottom + composerLift + 3,
+                              child: CodeComposer(
+                                controller: _composer,
+                                focusNode: _focusNode,
+                                busy: _services.agent.busy,
+                                onSend: _send,
+                                onStop: _services.agent.stop,
+                                modelLabel: _modelLabel(context),
+                                modelIsLocal:
+                                    _services.providers.active.isLocal,
+                                permission:
+                                    _services.settings.settings.permissionMode,
+                                onModel: _openModels,
+                                onPermission: (mode) => _services.settings
+                                    .update((s) =>
+                                        s.copyWith(permissionMode: mode)),
+                                width: contentWidth,
+                                compact: away,
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
                 ),
-              ),
-            );
+              );
 
-            final sidebar = !_sidebar.everOpened
-                ? const SizedBox.shrink()
-                : RepaintBoundary(
-                    child: SizedBox(
-                      width: sidebarWidth,
-                      child: ListenableBuilder(
-                        listenable: _services.sessions,
-                        builder: (context, _) => CodeSidebar(
-                          sessions: _services.sessions.sessions,
-                          activeSessionId: _services.sessions.activeId,
-                          onSession: _openSession,
-                          onSessionOptions: _sessionOptions,
-                          onNewSession: _newSession,
-                          onFiles: _openFiles,
-                          onTerminal: _openTerminal,
-                          onModels: () => _openModels(fromSidebar: true),
-                          onSettings: _openSettings,
+              final sidebar = !_sidebar.everOpened && !docked
+                  ? const SizedBox.shrink()
+                  : RepaintBoundary(
+                      child: SizedBox(
+                        width: sidebarWidth,
+                        child: ListenableBuilder(
+                          listenable: _services.sessions,
+                          builder: (context, _) => CodeSidebar(
+                            sessions: _services.sessions.sessions,
+                            activeSessionId: _services.sessions.activeId,
+                            onSession: _openSession,
+                            onSessionOptions: _sessionOptions,
+                            onNewSession: _newSession,
+                            onFiles: _openFiles,
+                            onTerminal: _openTerminal,
+                            onModels: () => _openModels(fromSidebar: true),
+                            onSettings: _openSettings,
+                          ),
                         ),
                       ),
-                    ),
-                  );
+                    );
 
-            return AnimatedBuilder(
-              animation: _sidebar.controller,
-              builder: (context, _) => FinnSidebarSurface(
-                home: home,
-                sidebar: sidebar,
-                sidebarWidth: sidebarWidth,
-                progress: _sidebar.controller.value,
-                sidebarOpen: _sidebar.open,
-                toggleLeft: contentLeft,
-                toggleTop: 70 * sy,
-                onToggle: () => _sidebar.set(context, !_sidebar.open),
-                onDragStart: _sidebar.dragStart,
-                onDragUpdate: (d) => _sidebar.dragUpdate(d, sidebarWidth),
-                onDragEnd: (d) => _sidebar.dragEnd(context, d, sidebarWidth),
-              ),
-            );
-          },
+              return AnimatedBuilder(
+                animation: _sidebar.controller,
+                builder: (context, _) => FinnSidebarSurface(
+                  docked: docked,
+                  home: home,
+                  sidebar: sidebar,
+                  sidebarWidth: sidebarWidth,
+                  progress: _sidebar.controller.value,
+                  sidebarOpen: _sidebar.open,
+                  toggleLeft: contentLeft,
+                  toggleTop: 70 * sy,
+                  onToggle: () => _sidebar.set(context, !_sidebar.open),
+                  onDragStart: _sidebar.dragStart,
+                  onDragUpdate: (d) => _sidebar.dragUpdate(d, sidebarWidth),
+                  onDragEnd: (d) => _sidebar.dragEnd(context, d, sidebarWidth),
+                ),
+              );
+            },
+          ),
         ),
       ),
     );
@@ -316,8 +352,15 @@ class _CodeShellState extends State<CodeShell>
 /// The top row: the control slot, the session's name, and a new-session
 /// button once there is a session on screen.
 class _Header extends StatelessWidget {
-  const _Header({this.title, this.onNewSession, this.onTitleTap});
+  const _Header({
+    this.title,
+    this.onNewSession,
+    this.onTitleTap,
+    this.showMenuSlot = true,
+  });
 
+  /// False when the sidebar is docked: there is no toggle to leave room for.
+  final bool showMenuSlot;
   final String? title;
   final VoidCallback? onNewSession;
   final VoidCallback? onTitleTap;
@@ -329,9 +372,10 @@ class _Header extends StatelessWidget {
       height: 50,
       child: Row(
         children: [
-          const SizedBox(width: FinnSidebarToggleButton.dimension),
+          if (showMenuSlot)
+            const SizedBox(width: FinnSidebarToggleButton.dimension),
           if (title != null && title.isNotEmpty) ...[
-            const SizedBox(width: 20),
+            if (showMenuSlot) const SizedBox(width: 20),
             Expanded(
               child: Semantics(
                 button: onTitleTap != null,

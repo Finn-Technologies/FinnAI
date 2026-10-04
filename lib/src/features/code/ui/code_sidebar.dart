@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import 'package:finn_ai/l10n/l10n_helper.dart';
+import 'package:finn_ai/src/shared/layout/finn_layout.dart';
 import 'package:finn_ai/src/features/code/sessions/code_session.dart';
 import 'package:finn_ai/src/features/code/ui/code_icons.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
@@ -84,7 +85,12 @@ class _CodeSidebarState extends State<CodeSidebar> {
         listenable: _brand,
         builder: (context, _) => LayoutBuilder(
           builder: (context, constraints) {
-            final sy = (constraints.maxHeight / 912).clamp(0.72, 1.3);
+            final sy = FinnLayout.scaleY(
+              constraints.maxHeight,
+              MediaQuery.sizeOf(context).width,
+              max: 1.3,
+              wideCap: .85,
+            );
             final headerTop = 70 * sy;
             const headerHeight = FinnBrandSwitcher.rowHeight;
             final navSize =

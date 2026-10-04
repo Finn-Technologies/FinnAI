@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=FinnAI
+GenericName=Private AI assistant
+Comment=A private AI assistant that runs entirely on this computer
+Exec=finn_ai
+Icon=com.abhiflex.finnai
+Terminal=false
+Categories=Utility;Office;
+StartupWMClass=com.abhiflex.finnai
+StartupNotify=true
