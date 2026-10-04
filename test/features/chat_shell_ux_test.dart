@@ -106,10 +106,10 @@ void main() {
       await _pumpComposer(tester, voiceEnabled: true);
 
       final pill = find.byKey(const ValueKey('chat-composer-motion'));
-      // The field box sits 2dp above the pill's middle on purpose: the typeface
+      // The field box sits 4.5dp above the pill's middle on purpose: the typeface
       // has more room above its letters than below, so the box has to be lifted
-      // for the *letters* to be centred (see composer_centering_test.dart).
-      const lift = 2.0;
+      // for the *letters* to look centred (calibrated on the real window).
+      const lift = 4.5;
       expect(
         tester.getCenter(find.text('Ask anything')).dy,
         closeTo(tester.getCenter(pill).dy - lift, 1.0),

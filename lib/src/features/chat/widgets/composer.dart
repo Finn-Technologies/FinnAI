@@ -359,9 +359,11 @@ class _ChatComposerState extends State<ChatComposer>
                     constraints: const BoxConstraints(minHeight: 48),
                     child: Center(
                       child: Padding(
-// InstrumentSans carries more space above its letters than below, which
-// left the text 2px under the pill's middle: lift it by that much.
-                        padding: const EdgeInsets.only(bottom: 4),
+// InstrumentSans carries more space above its letters than below, so the
+// laid-out line box sat ~4.5px under where the letters look centred. Measured
+// on the real window (pixel rows of the letters against the pill); the
+// bottom padding lifts the centred field by half its value.
+                        padding: const EdgeInsets.only(bottom: 9),
                         child: EnterToSend(
                           canSend: canSend,
                           onSend: widget.onSend,
