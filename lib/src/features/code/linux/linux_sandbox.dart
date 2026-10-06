@@ -41,6 +41,7 @@ class LinuxSandbox {
   final ProotLocator _locate;
   ProotBinaries? _binaries;
   bool _located = false;
+  bool _shimsChecked = false;
 
   /// Whether this device can run the sandbox at all. Known after [prepare].
   bool get platformSupported => _binaries != null;
@@ -142,6 +143,10 @@ class LinuxSandbox {
     }
     await workspace.ensureCreated();
     final dir = await installer.directory();
+    if (!_shimsChecked) {
+      _shimsChecked = true;
+      await LinuxSetup.ensureShims(Directory('${dir.path}/rootfs'));
+    }
     final tmp = Directory('${dir.path}/proot-tmp');
     await tmp.create(recursive: true);
     final started = DateTime.now();

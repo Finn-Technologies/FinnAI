@@ -295,10 +295,13 @@ class CodeAgent extends ChangeNotifier {
         final handled = await _handle(sessionId, messageId, action, epoch);
         if (epoch != _epoch || handled == null) return;
         acted = true;
-        // The model ran what it just ran, and it worked the same way again:
-        // the work is done and it is only failing to say so. End quietly,
-        // rather than run it a third time and report a loop.
+        // The same command worked the same way again: the work is done and
+        // the model is only failing to say so. End quietly, not as a loop.
         if (_sameSuccessAsBefore(handled, lastResult)) return;
+        if (gateway.budget.examples &&
+            SmallModelAids.finished(sessions.byId(sessionId)?.messages ?? [])) {
+          return;
+        }
         lastResult = handled;
         if (repeating) {
           _appendError(sessionId, CodeErrorCode.repeating);
@@ -484,8 +487,7 @@ class CodeAgent extends ChangeNotifier {
     _setPhase(CodeAgentPhase.running);
     _setAction(sessionId, messageId,
         action.copyWith(status: CodeActionStatus.running));
-    // A command's output is shown as it arrives: an install can take a
-    // minute.
+    // Output is shown as it arrives: an install can take a minute.
     final live = LiveOutput((text) {
       final current = _message(sessionId, messageId)?.action;
       if (current == null || current.status != CodeActionStatus.running) return;

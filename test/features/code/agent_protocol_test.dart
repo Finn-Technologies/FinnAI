@@ -532,6 +532,10 @@ void main() {
         'count.sh',
       );
       expect(SmallModelAids.fileToCreate('What does count.sh do?'), isNull);
+      expect(
+        SmallModelAids.fileToCreate('Create a Node.js script fib.js, run it.'),
+        'fib.js',
+      );
       expect(SmallModelAids.fileToCreate('Create a.py and b.py'), isNull);
       final turn = AgentProtocol.reminded(
         const CodeTurn.user('Create notes.md with a title'),
@@ -590,6 +594,16 @@ void main() {
       expect(prose.action, isNull);
     });
 
+    test('the code for the named file in a plain block becomes the file', () {
+      final reply = SmallModelAids.repair(
+        AgentProtocol.parse(
+            '```python\nfor i in range(1, 6):\n    print(i * i)\n```'),
+        request: 'Create hello.py that prints squares, then run it.',
+      );
+      expect(reply.action!.path, 'hello.py');
+      expect(reply.action!.content, contains('range(1, 6)'));
+    });
+
     test('a command in prose before an empty sh block is run', () {
       final reply = SmallModelAids.repair(
         AgentProtocol.parse('seq 1 5\n```sh\n```'),
@@ -608,7 +622,7 @@ void main() {
 
     test('opens with the file to create, then with its run command', () {
       expect(SmallModelAids.forcedStart([user(request)], shell: true),
-          '```file count.sh\n');
+          '```file count.sh\n#!/bin/sh\n');
       final written = [
         user(request),
         assistant('a1',
@@ -621,6 +635,25 @@ void main() {
         assistant('a2', action: done(const CodeAction.shell('sh count.sh'))),
       ];
       expect(SmallModelAids.forcedStart(ran, shell: true), isNull);
+      expect(SmallModelAids.finished(ran), isTrue);
+      expect(SmallModelAids.finished(written), isFalse);
+    });
+
+    test('a missing tool opens its install, not a rewrite', () {
+      const js = 'Create fib.js that prints 10 numbers, then run it.';
+      final missing = [
+        user(js),
+        assistant('a1',
+            action: done(const CodeAction.write('fib.js', 'console.log(1)'))),
+        assistant('a2',
+            action: const CodeAction.shell('node fib.js').copyWith(
+              status: CodeActionStatus.failed,
+              exitCode: 127,
+              output: '/bin/sh: node: not found',
+            )),
+      ];
+      expect(SmallModelAids.forcedStart(missing, shell: true),
+          '```sh\napk add nodejs npm');
     });
 
     test('a run whose output says what is wrong opens a rewrite', () {
@@ -633,7 +666,7 @@ void main() {
                 .copyWith(output: '{1..5}\n')),
       ];
       expect(SmallModelAids.forcedStart(broken, shell: true),
-          '```file count.sh\n');
+          '```file count.sh\n#!/bin/sh\n');
     });
 
     test('leaves the model alone once something else happened', () {

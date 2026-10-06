@@ -248,18 +248,47 @@ case "$verb" in
 esac
 ''';
 
+  /// `sudo` that just runs the command: the sandbox already acts as root,
+  /// and a model's `sudo apt-get install` should work, not fail.
+  static const String sudoShim = '#!/bin/sh\n'
+      '# FinnAI: everything here already runs as (pretend) root.\n'
+      'while [ \$# -gt 0 ]; do case "\$1" in -*) shift ;; *) break ;; esac; done\n'
+      'exec "\$@"\n';
+
+  /// Bumped when the files below change, so an existing install gets them.
+  static const int shimVersion = 2;
+
+  /// Writes the shims if this filesystem has an older set. Cheap when
+  /// current: one small file read.
+  static Future<void> ensureShims(Directory root) async {
+    final stamp = File('${root.path}/usr/local/share/finn-shims');
+    try {
+      if (await stamp.exists() &&
+          (await stamp.readAsString()).trim() == '$shimVersion') {
+        return;
+      }
+    } catch (_) {}
+    for (final (name, body) in [
+      ('apt', aptShim),
+      ('apt-get', aptShim),
+      ('sudo', sudoShim),
+    ]) {
+      final file = File('${root.path}/usr/local/bin/$name');
+      await file.parent.create(recursive: true);
+      await file.writeAsString(body);
+      await Process.run('chmod', ['755', file.path]);
+    }
+    await stamp.parent.create(recursive: true);
+    await stamp.writeAsString('$shimVersion');
+  }
+
   static Future<void> configure(Directory root) async {
     final etc = Directory('${root.path}/etc');
     await etc.create(recursive: true);
     await File('${etc.path}/resolv.conf').writeAsString(resolvConf);
     await File('${etc.path}/hosts')
         .writeAsString('127.0.0.1 localhost\n::1 localhost\n');
-    for (final name in ['apt', 'apt-get']) {
-      final file = File('${root.path}/usr/local/bin/$name');
-      await file.parent.create(recursive: true);
-      await file.writeAsString(aptShim);
-      await Process.run('chmod', ['755', file.path]);
-    }
+    await ensureShims(root);
     await Directory('${root.path}/workspace').create(recursive: true);
     await Directory('${root.path}/tmp').create(recursive: true);
   }
