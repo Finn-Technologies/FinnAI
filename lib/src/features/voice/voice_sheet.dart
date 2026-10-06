@@ -1,8 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
+import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
 import 'package:finn_ai/l10n/l10n_helper.dart';
 import 'package:finn_ai/src/platform/platform_target.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
@@ -169,8 +170,8 @@ class _VoiceSheetState extends State<VoiceSheet> {
                                 onTap: _onClose,
                                 customBorder: const CircleBorder(),
                                 child: Center(
-                                  child: HugeIcon(
-                                    icon: HugeIcons.strokeRoundedCancel01,
+                                  child: FluxIcon(
+                                    icon: PhosphorIconsFill.x,
                                     size: 24,
                                     color: FluxColors.mutedOf(context),
                                   ),
@@ -422,15 +423,14 @@ class _VoiceOrb extends StatelessWidget {
                               color: isDark ? Colors.white : Colors.black,
                             ),
                           )
-                        : HugeIcon(
+                        : FluxIcon(
                             icon: speaking
-                                ? HugeIcons.strokeRoundedMicOff01
-                                : HugeIcons.strokeRoundedMic01,
+                                ? PhosphorIconsFill.microphoneSlash
+                                : PhosphorIconsFill.microphone,
                             size: 40 * scale,
                             color: listening
                                 ? (isDark ? Colors.black : Colors.white)
                                 : FluxColors.inkOf(context),
-                            strokeWidth: 2.2,
                           ),
                   ),
                 ),

@@ -217,7 +217,6 @@ class _CodeSidebarState extends State<CodeSidebar> {
                                             ? FluxIcon(
                                                 icon: CodeIcons.pin,
                                                 size: 16,
-                                                strokeWidth: 1.5,
                                                 color: FinnSidebarHistoryTile
                                                     .badgeInk(
                                                   context,

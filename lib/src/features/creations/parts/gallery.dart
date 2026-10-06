@@ -213,7 +213,6 @@ class _CreationPreview extends StatelessWidget {
                 : FluxIcon(
                     icon: _iconFor(creation),
                     size: 34,
-                    strokeWidth: 1.5,
                     color: dark,
                   ),
           ),

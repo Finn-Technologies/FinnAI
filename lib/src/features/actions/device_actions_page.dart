@@ -13,7 +13,7 @@ import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
 import 'package:finn_ai/src/shared/widgets/flux_surfaces.dart';
 
 typedef _Example = ({
-  List<List<dynamic>> icon,
+  IconData icon,
   String Function(AppLocalizations) label,
 });
 
@@ -326,7 +326,7 @@ class _ConfirmCard extends StatelessWidget {
     );
   }
 
-  static List<List<dynamic>> _iconFor(DeviceActionInvocation call) =>
+  static IconData _iconFor(DeviceActionInvocation call) =>
       switch (call.action.name) {
         'set_alarm' || 'show_alarms' => FluxIcons.alarm,
         'set_timer' => FluxIcons.timer,
@@ -342,7 +342,7 @@ class _ConfirmCard extends StatelessWidget {
         _ => FluxIcons.magic,
       };
 
-  static List<List<dynamic>> _settingsIcon(String screen) => switch (screen) {
+  static IconData _settingsIcon(String screen) => switch (screen) {
         'wifi' || 'hotspot' || 'mobile_data' => FluxIcons.wifi,
         'bluetooth' => FluxIcons.bluetooth,
         'battery_saver' || 'battery_usage' => FluxIcons.battery,
@@ -445,7 +445,7 @@ class _Card extends StatelessWidget {
     this.iconColor,
   });
 
-  final List<List<dynamic>> icon;
+  final IconData icon;
   final String title;
   final List<Widget> actions;
   final Color? iconColor;

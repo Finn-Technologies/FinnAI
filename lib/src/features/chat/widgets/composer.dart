@@ -287,7 +287,6 @@ class _ChatComposerState extends State<ChatComposer>
                   icon: FluxIcons.arrowUp02,
                   size: 24,
                   color: FluxColors.actionInkOf(context),
-                  strokeWidth: 2,
                 ),
               )
             : circle(

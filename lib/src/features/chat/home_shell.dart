@@ -5,11 +5,11 @@ import 'dart:math' as math;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:hugeicons/hugeicons.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:finn_ai/src/features/chat/chat_options.dart';
 import 'package:finn_ai/src/features/conversations/conversation_store.dart';
 import 'package:finn_ai/src/features/conversations/pinned_chats_store.dart';

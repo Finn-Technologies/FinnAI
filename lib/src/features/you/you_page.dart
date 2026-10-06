@@ -78,7 +78,6 @@ class _YouPageState extends State<YouPage> {
                         child: FluxIcon(
                           icon: FluxIcons.you,
                           size: 44,
-                          strokeWidth: 1.4,
                           color: FluxColors.actionOf(context),
                         ),
                       ),
@@ -158,7 +157,6 @@ class _YouPageState extends State<YouPage> {
                               child: FluxIcon(
                                 icon: FluxIcons.magic,
                                 size: 22,
-                                strokeWidth: 1.5,
                                 color: FluxColors.actionOf(context),
                               ),
                             ),
@@ -187,7 +185,6 @@ class _YouPageState extends State<YouPage> {
                           FluxIcon(
                             icon: FluxIcons.arrowRight01,
                             size: 22,
-                            strokeWidth: 1.5,
                             color: FluxColors.mutedOf(context),
                           ),
                         ],
@@ -228,7 +225,6 @@ class _YouPageState extends State<YouPage> {
                     FluxIcon(
                       icon: FluxIcons.lock,
                       size: 18,
-                      strokeWidth: 1.5,
                       color: FluxColors.actionOf(context),
                     ),
                     const SizedBox(width: 10),
@@ -344,7 +340,6 @@ class _CategoryCard extends StatelessWidget {
                   FluxIcon(
                     icon: youCategoryIcon(category),
                     size: 22,
-                    strokeWidth: 1.5,
                     color: FluxColors.actionOf(context),
                   ),
                   Column(

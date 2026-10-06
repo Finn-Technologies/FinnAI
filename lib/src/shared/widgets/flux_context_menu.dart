@@ -159,7 +159,7 @@ class FluxContextMenuItem {
     this.isDestructive = false,
   });
 
-  final List<List<dynamic>> icon;
+  final IconData icon;
   final String label;
   final VoidCallback onTap;
   final bool isDestructive;
@@ -471,7 +471,6 @@ class _ContextMenuItemTile extends StatelessWidget {
                     FluxIcon(
                       icon: item.icon,
                       size: 22,
-                      strokeWidth: 1.5,
                       color: iconColor,
                     ),
                     const SizedBox(width: 15),

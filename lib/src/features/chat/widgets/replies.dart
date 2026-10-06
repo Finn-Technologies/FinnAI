@@ -425,7 +425,7 @@ class _ReplyActionButton extends StatelessWidget {
   final String? asset;
 
   /// Glyph alternative used by the notices that share this touch target.
-  final List<List<dynamic>>? icon;
+  final IconData? icon;
   final String tooltip;
   final VoidCallback onTap;
 

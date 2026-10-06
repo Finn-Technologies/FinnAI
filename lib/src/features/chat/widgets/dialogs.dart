@@ -115,7 +115,7 @@ class _IMessageAttachmentMenu extends StatefulWidget {
 typedef _MenuEntry = ({
   String title,
   String? subtitle,
-  List<List<dynamic>> icon,
+  IconData icon,
   VoidCallback onTap,
 });
 
@@ -177,7 +177,7 @@ class _IMessageAttachmentMenuState extends State<_IMessageAttachmentMenu>
       (
         title: l10n.plusPhoto,
         subtitle: null,
-        icon: HugeIcons.strokeRoundedImage01,
+        icon: PhosphorIconsFill.image,
         onTap: widget.onSelectPhoto,
       ),
       // image_picker has no camera on a desktop; a webcam is not a photo
@@ -186,13 +186,13 @@ class _IMessageAttachmentMenuState extends State<_IMessageAttachmentMenu>
         (
           title: l10n.attachmentCamera,
           subtitle: null,
-          icon: HugeIcons.strokeRoundedCamera01,
+          icon: PhosphorIconsFill.camera,
           onTap: widget.onSelectCamera,
         ),
       (
         title: l10n.attachmentFiles,
         subtitle: null,
-        icon: HugeIcons.strokeRoundedFolder01,
+        icon: PhosphorIconsFill.folder,
         onTap: widget.onSelectFile,
       ),
     ];
@@ -275,11 +275,10 @@ class _IMessageAttachmentMenuState extends State<_IMessageAttachmentMenu>
                     shape: BoxShape.circle,
                   ),
                   child: Center(
-                    child: HugeIcon(
+                    child: FluxIcon(
                       icon: item.icon,
                       color: FluxColors.actionOf(context),
                       size: 20,
-                      strokeWidth: 1.5,
                     ),
                   ),
                 ),

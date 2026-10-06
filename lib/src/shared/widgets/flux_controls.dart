@@ -3,76 +3,14 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:finn_ai/l10n/l10n_helper.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:hugeicons/hugeicons.dart';
 
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
+import 'package:finn_ai/src/shared/widgets/flux_icons.dart';
 import 'package:finn_ai/src/shared/widgets/flux_motion.dart';
 
+export 'package:finn_ai/src/shared/widgets/flux_icons.dart';
 export 'package:finn_ai/src/shared/widgets/flux_motion.dart'
     show FluxPressScale;
-
-abstract final class FluxIcons {
-  static const add = HugeIcons.strokeRoundedAdd01;
-  static const close = HugeIcons.strokeRoundedCancel01;
-  static const arrowUp01 = HugeIcons.strokeRoundedArrowUp01;
-  static const arrowUp02 = HugeIcons.strokeRoundedArrowUp02;
-  static const menu = HugeIcons.strokeRoundedMenu02;
-  static const copy = HugeIcons.strokeRoundedCopy;
-  static const exchange = HugeIcons.strokeRoundedExchange01;
-  static const internet = HugeIcons.strokeRoundedInternet;
-  static const sad = HugeIcons.strokeRoundedSad02;
-  static const canvas = HugeIcons.strokeRoundedCanvas;
-  static const you = HugeIcons.strokeRoundedRelieved02;
-  static const flows = HugeIcons.strokeRoundedBookOpenText;
-  static const chip = HugeIcons.strokeRoundedChip;
-  static const settings = HugeIcons.strokeRoundedSettings03;
-  static const edit = HugeIcons.strokeRoundedPencilEdit02;
-  static const security = HugeIcons.strokeRoundedSecurityWarning;
-  static const magic = HugeIcons.strokeRoundedAiMagic;
-  static const lock = HugeIcons.strokeRoundedCircleLock01;
-  static const download = HugeIcons.strokeRoundedDownloadCircle01;
-  static const delete = HugeIcons.strokeRoundedDelete02;
-  static const translate = HugeIcons.strokeRoundedTranslate;
-  static const voiceId = HugeIcons.strokeRoundedVoiceId;
-  static const speed = HugeIcons.strokeRoundedDashboardSpeed02;
-  static const subtitle = HugeIcons.strokeRoundedClosedCaption;
-  static const bluetooth = HugeIcons.strokeRoundedBluetooth;
-  static const robot = HugeIcons.strokeRoundedMachineRobot;
-  static const leaf = HugeIcons.strokeRoundedLeaf01;
-  static const game = HugeIcons.strokeRoundedGameController03;
-  static const refresh = HugeIcons.strokeRoundedRefresh01;
-  static const loading = HugeIcons.strokeRoundedLoading03;
-  static const check = HugeIcons.strokeRoundedCheckmarkCircle02;
-  static const flag = HugeIcons.strokeRoundedFlag01;
-  static const mic = HugeIcons.strokeRoundedMic01;
-  static const micOff = HugeIcons.strokeRoundedMicOff01;
-  static const voiceWaveform = HugeIcons.strokeRoundedAudioWave01;
-  static const cpu = HugeIcons.strokeRoundedCpu;
-  static const error = HugeIcons.strokeRoundedAlertCircle;
-  static const info = HugeIcons.strokeRoundedInformationCircle;
-  static const moreHorizontal = HugeIcons.strokeRoundedMoreHorizontal;
-  static const arrowRight01 = HugeIcons.strokeRoundedArrowRight01;
-  static const arrowRight02 = HugeIcons.strokeRoundedArrowRight02;
-  static const cloudOff = HugeIcons.strokeRoundedCloudOff;
-  static const image = HugeIcons.strokeRoundedImage01;
-  static const brokenImage = HugeIcons.strokeRoundedImage02;
-  static const note = HugeIcons.strokeRoundedNote01;
-  static const sourceCode = HugeIcons.strokeRoundedSourceCode;
-  static const education = HugeIcons.strokeRoundedGraduationScroll;
-  static const task = HugeIcons.strokeRoundedTask01;
-  static const search = HugeIcons.strokeRoundedSearch01;
-  static const alarm = HugeIcons.strokeRoundedAlarmClock;
-  static const timer = HugeIcons.strokeRoundedTimer01;
-  static const flashlight = HugeIcons.strokeRoundedFlashlight;
-  static const volume = HugeIcons.strokeRoundedVolumeHigh;
-  static const wifi = HugeIcons.strokeRoundedWifi01;
-  static const calendar = HugeIcons.strokeRoundedCalendar01;
-  static const navigation = HugeIcons.strokeRoundedNavigation01;
-  static const camera = HugeIcons.strokeRoundedCamera01;
-  static const battery = HugeIcons.strokeRoundedBatteryFull;
-  static const moon = HugeIcons.strokeRoundedMoon02;
-  static const sun = HugeIcons.strokeRoundedSun01;
-}
 
 abstract final class FigmaAssets {
   static const _root = 'assets/runtime';
@@ -229,31 +167,6 @@ class FigmaSvg extends StatelessWidget {
   }
 }
 
-class FluxIcon extends StatelessWidget {
-  const FluxIcon({
-    super.key,
-    required this.icon,
-    this.size = 24,
-    this.color,
-    this.strokeWidth = 1.7,
-  });
-
-  final List<List<dynamic>> icon;
-  final double size;
-  final Color? color;
-  final double strokeWidth;
-
-  @override
-  Widget build(BuildContext context) => HugeIcon(
-        icon: icon,
-        size: size,
-        color: color ??
-            DefaultTextStyle.of(context).style.color ??
-            FluxColors.inkOf(context),
-        strokeWidth: strokeWidth,
-      );
-}
-
 /// A selectable filter pill: "All", "Apps", "Widgets", "Presentations".
 ///
 
@@ -267,7 +180,7 @@ class FluxIconButton extends StatelessWidget {
     this.tooltip,
   });
 
-  final List<List<dynamic>> icon;
+  final IconData icon;
   final VoidCallback? onTap;
   final double size;
   final bool dark;
@@ -337,7 +250,7 @@ class FluxPillButton extends StatelessWidget {
 
   final String label;
   final VoidCallback? onTap;
-  final List<List<dynamic>>? icon;
+  final IconData? icon;
   final bool compact;
 
   @override

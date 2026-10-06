@@ -63,7 +63,6 @@ class ContextChoosePage extends StatelessWidget {
                   child: FluxIcon(
                     icon: _icons[key]!,
                     size: 22,
-                    strokeWidth: 1.5,
                     color: FluxColors.actionOf(context),
                   ),
                 ),

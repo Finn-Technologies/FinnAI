@@ -225,7 +225,7 @@ class _StageLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = L10n.of(context);
-    final steps = <(CreationStage, String, List<List<dynamic>>)>[
+    final steps = <(CreationStage, String, IconData)>[
       (CreationStage.designing, l10n.creationsStageDesigning, FluxIcons.canvas),
       (CreationStage.writing, l10n.creationsStageWriting, FluxIcons.edit),
       (
@@ -262,7 +262,6 @@ class _StageLine extends StatelessWidget {
                     child: FluxIcon(
                       icon: steps[i].$3,
                       size: 16,
-                      strokeWidth: 1.5,
                       color: FluxColors.actionInkOf(context),
                     ),
                   ),
@@ -284,7 +283,6 @@ class _StageLine extends StatelessWidget {
                   FluxIcon(
                     icon: FluxIcons.check,
                     size: 18,
-                    strokeWidth: 1.5,
                     color: ink,
                   )
                 else

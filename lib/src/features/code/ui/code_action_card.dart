@@ -74,7 +74,6 @@ class _CodeActionCardState extends State<CodeActionCard> {
                   child: FluxIcon(
                     icon: action.isShell ? CodeIcons.terminal : CodeIcons.file,
                     size: 18,
-                    strokeWidth: 1.5,
                     color: FluxColors.actionOf(context),
                   ),
                 ),
@@ -187,7 +186,6 @@ class _CodeActionCardState extends State<CodeActionCard> {
           FluxIcon(
             icon: FluxIcons.check,
             size: 16,
-            strokeWidth: 1.5,
             color: FluxColors.successOf(context),
           ),
         ),
@@ -201,7 +199,6 @@ class _CodeActionCardState extends State<CodeActionCard> {
           FluxIcon(
             icon: FluxIcons.error,
             size: 16,
-            strokeWidth: 1.5,
             color: FluxColors.destructiveOf(context),
           ),
         ),
@@ -216,7 +213,6 @@ class _CodeActionCardState extends State<CodeActionCard> {
           FluxIcon(
             icon: CodeIcons.warning,
             size: 16,
-            strokeWidth: 1.5,
             color: FluxColors.warningOf(context),
           ),
         ),

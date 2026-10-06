@@ -53,7 +53,7 @@ class ToolActivityIndicator extends StatelessWidget {
     );
   }
 
-  static List<List<dynamic>> _iconFor(ToolActivityKind kind) => switch (kind) {
+  static IconData _iconFor(ToolActivityKind kind) => switch (kind) {
         ToolActivityKind.search => FluxIcons.internet,
         ToolActivityKind.open => FluxIcons.note,
         ToolActivityKind.find => FluxIcons.search,
@@ -85,7 +85,7 @@ class _ActivityRow extends StatelessWidget {
     this.onTap,
   });
 
-  final List<List<dynamic>> icon;
+  final IconData icon;
   final String label;
   final bool done;
   final VoidCallback? onTap;
@@ -106,7 +106,6 @@ class _ActivityRow extends StatelessWidget {
             child: FluxIcon(
               icon: icon,
               size: 16,
-              strokeWidth: 1.5,
               color: FluxColors.actionInkOf(context),
             ),
           ),
@@ -122,8 +121,7 @@ class _ActivityRow extends StatelessWidget {
         ),
         const SizedBox(width: 10),
         if (done)
-          FluxIcon(
-              icon: FluxIcons.check, size: 18, strokeWidth: 1.5, color: ink)
+          FluxIcon(icon: FluxIcons.check, size: 18, color: ink)
         else
           const _ActivitySpinner(),
         if (onTap != null) ...[
@@ -131,7 +129,6 @@ class _ActivityRow extends StatelessWidget {
           FluxIcon(
             icon: FluxIcons.arrowRight01,
             size: 16,
-            strokeWidth: 1.5,
             color: FluxColors.mutedOf(context),
           ),
         ],

@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 
 import 'package:finn_ai/src/features/code/agent/action_runner.dart';
 import 'package:finn_ai/src/features/code/agent/agent_protocol.dart';
+import 'package:finn_ai/src/features/code/agent/small_model_aids.dart';
 import 'package:finn_ai/src/features/code/providers/code_gateway.dart';
 import 'package:finn_ai/src/features/code/providers/provider_errors.dart';
 import 'package:finn_ai/src/features/code/sessions/code_session.dart';
@@ -231,7 +232,7 @@ class CodeAgent extends ChangeNotifier {
                   .firstOrNull
                   ?.text ??
               '';
-          parsed = AgentProtocol.repair(parsed, request: request);
+          parsed = SmallModelAids.repair(parsed, request: request);
         }
         // A reply whose action cannot be used (cut off, or a file block with
         // no name) is not an answer: the model is told what was wrong and
@@ -343,7 +344,7 @@ class CodeAgent extends ChangeNotifier {
       conversationId: 'code-$sessionId',
       maxTokens: gateway.isLocal ? 1024 : 4096,
       start: small
-          ? AgentProtocol.forcedStart(
+          ? SmallModelAids.forcedStart(
                 [
                   for (final message in session.messages)
                     if (message.id != messageId) message,

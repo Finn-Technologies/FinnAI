@@ -75,6 +75,15 @@ String _suffix(_Device device, Brightness brightness) =>
 /// worth looking at.
 Future<void> _loadAppFont() async {
   await _loadFont('InstrumentSans', 'assets/fonts/InstrumentSans-Variable.ttf');
+  await _loadFont('JetBrainsMono', 'assets/fonts/JetBrainsMono-Variable.ttf');
+  // The app's icons are Phosphor's fill set, a font in its package.
+  final phosphor = _packagePath('phosphor_flutter');
+  if (phosphor != null) {
+    await _loadFont(
+      'packages/phosphor_flutter/PhosphorFill',
+      '$phosphor/lib/fonts/Phosphor-Fill.ttf',
+    );
+  }
   // Material's icon font is not registered in the test engine either, so a
   // dropdown arrow would capture as a box. Best-effort: the path depends on
   // where the SDK lives, and a missing icon font is not worth failing over.
@@ -86,6 +95,19 @@ Future<void> _loadAppFont() async {
   if (iconFont.existsSync()) {
     await _loadFont('MaterialIcons', iconFont.path);
   }
+}
+
+/// Where pub keeps [name], read from the package config.
+String? _packagePath(String name) {
+  final config = File('.dart_tool/package_config.json');
+  if (!config.existsSync()) return null;
+  final match = RegExp('"name":\\s*"$name",\\s*"rootUri":\\s*"([^"]+)"')
+      .firstMatch(config.readAsStringSync());
+  if (match == null) return null;
+  final uri = match.group(1)!;
+  return uri.startsWith('file://')
+      ? Uri.parse(uri).toFilePath()
+      : File('.dart_tool/$uri').absolute.path;
 }
 
 Future<void> _loadFont(String family, String path) async {

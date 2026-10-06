@@ -18,7 +18,7 @@ class FinnButton extends StatelessWidget {
 
   final String label;
   final VoidCallback? onTap;
-  final List<List<dynamic>>? icon;
+  final IconData? icon;
 
   /// A 44dp button with 14dp text, for use inside cards.
   final bool compact;
@@ -60,7 +60,6 @@ class FinnButton extends StatelessWidget {
                       FluxIcon(
                         icon: icon!,
                         size: 22,
-                        strokeWidth: 1.5,
                         color: fg,
                       ),
                       const SizedBox(width: 10),
@@ -338,7 +337,7 @@ class FinnMenuItem {
   });
 
   final String label;
-  final List<List<dynamic>> icon;
+  final IconData icon;
   final VoidCallback onTap;
   final bool destructive;
 
@@ -425,7 +424,6 @@ Future<void> showFinnMenu(
                                     FluxIcon(
                                       icon: item.icon,
                                       size: 22,
-                                      strokeWidth: 1.5,
                                       color: item.destructive
                                           ? FluxColors.destructiveOf(context)
                                           : FluxColors.actionOf(context),
@@ -450,7 +448,6 @@ Future<void> showFinnMenu(
                                       FluxIcon(
                                         icon: FluxIcons.check,
                                         size: 20,
-                                        strokeWidth: 1.5,
                                         color: FluxColors.actionOf(context),
                                       ),
                                   ],

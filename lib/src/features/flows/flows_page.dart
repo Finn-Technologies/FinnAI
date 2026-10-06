@@ -194,7 +194,6 @@ class _Empty extends StatelessWidget {
             child: FluxIcon(
               icon: FluxIcons.flows,
               size: 44,
-              strokeWidth: 1.4,
               color: FluxColors.actionOf(context),
             ),
           ),

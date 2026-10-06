@@ -314,7 +314,6 @@ class _ErrorNotice extends StatelessWidget {
                 child: FluxIcon(
                   icon: FluxIcons.error,
                   size: 20,
-                  strokeWidth: 1.5,
                   color: FluxColors.destructiveOf(context),
                 ),
               ),

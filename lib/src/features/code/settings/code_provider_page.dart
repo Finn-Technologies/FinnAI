@@ -407,7 +407,7 @@ class _CodeProviderPageState extends State<CodeProviderPage> {
 class _Note extends StatelessWidget {
   const _Note({required this.icon, required this.text, required this.color});
 
-  final List<List<dynamic>> icon;
+  final IconData icon;
   final String text;
   final Color color;
 
@@ -418,7 +418,7 @@ class _Note extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            FluxIcon(icon: icon, size: 20, strokeWidth: 1.5, color: color),
+            FluxIcon(icon: icon, size: 20, color: color),
             const SizedBox(width: 10),
             Expanded(
               child: Text(text, style: Theme.of(context).textTheme.bodySmall),

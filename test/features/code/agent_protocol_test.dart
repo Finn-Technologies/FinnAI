@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:finn_ai/src/features/code/agent/agent_protocol.dart';
+import 'package:finn_ai/src/features/code/agent/small_model_aids.dart';
 import 'package:finn_ai/src/features/code/providers/code_gateway.dart';
 import 'package:finn_ai/src/features/code/sandbox/command_policy.dart';
 import 'package:finn_ai/src/features/code/sessions/code_session.dart';
@@ -526,12 +527,12 @@ void main() {
   group('small-model aids', () {
     test('a request naming one file to create names the first action', () {
       expect(
-        AgentProtocol.fileToCreate(
+        SmallModelAids.fileToCreate(
             'Create a shell script count.sh that prints 1 to 5, then run it.'),
         'count.sh',
       );
-      expect(AgentProtocol.fileToCreate('What does count.sh do?'), isNull);
-      expect(AgentProtocol.fileToCreate('Create a.py and b.py'), isNull);
+      expect(SmallModelAids.fileToCreate('What does count.sh do?'), isNull);
+      expect(SmallModelAids.fileToCreate('Create a.py and b.py'), isNull);
       final turn = AgentProtocol.reminded(
         const CodeTurn.user('Create notes.md with a title'),
         afterReply: false,
@@ -559,7 +560,7 @@ void main() {
         exitCode: 0,
         output: '{1..5}',
       );
-      expect(AgentProtocol.hintFor(action), contains('seq 1 5'));
+      expect(SmallModelAids.hintFor(action), contains('seq 1 5'));
     });
   });
 
@@ -567,7 +568,7 @@ void main() {
     const request = 'Create a shell script count.sh that prints 1 to 5.';
 
     test('a script written as a command becomes the named file', () {
-      final reply = AgentProtocol.repair(
+      final reply = SmallModelAids.repair(
         AgentProtocol.parse('```sh\n#!/bin/sh\nseq 1 5\n```'),
         request: request,
       );
@@ -577,12 +578,12 @@ void main() {
     });
 
     test('a bare command line is run; a sentence is not', () {
-      final run = AgentProtocol.repair(
+      final run = SmallModelAids.repair(
         AgentProtocol.parse('`sh count.sh`'),
         request: request,
       );
       expect(run.action!.command, 'sh count.sh');
-      final prose = AgentProtocol.repair(
+      final prose = SmallModelAids.repair(
         AgentProtocol.parse('Done. count.sh prints the numbers 1 to 5.'),
         request: request,
       );
@@ -590,7 +591,7 @@ void main() {
     });
 
     test('a command in prose before an empty sh block is run', () {
-      final reply = AgentProtocol.repair(
+      final reply = SmallModelAids.repair(
         AgentProtocol.parse('seq 1 5\n```sh\n```'),
         request: request,
       );
@@ -606,20 +607,20 @@ void main() {
         action.copyWith(status: CodeActionStatus.done, exitCode: 0);
 
     test('opens with the file to create, then with its run command', () {
-      expect(AgentProtocol.forcedStart([user(request)], shell: true),
+      expect(SmallModelAids.forcedStart([user(request)], shell: true),
           '```file count.sh\n');
       final written = [
         user(request),
         assistant('a1',
             action: done(const CodeAction.write('count.sh', 'seq 1 5'))),
       ];
-      expect(AgentProtocol.forcedStart(written, shell: true),
+      expect(SmallModelAids.forcedStart(written, shell: true),
           '```sh\nsh count.sh');
       final ran = [
         ...written,
         assistant('a2', action: done(const CodeAction.shell('sh count.sh'))),
       ];
-      expect(AgentProtocol.forcedStart(ran, shell: true), isNull);
+      expect(SmallModelAids.forcedStart(ran, shell: true), isNull);
     });
 
     test('a run whose output says what is wrong opens a rewrite', () {
@@ -631,19 +632,20 @@ void main() {
             action: done(const CodeAction.shell('sh count.sh'))
                 .copyWith(output: '{1..5}\n')),
       ];
-      expect(
-          AgentProtocol.forcedStart(broken, shell: true), '```file count.sh\n');
+      expect(SmallModelAids.forcedStart(broken, shell: true),
+          '```file count.sh\n');
     });
 
     test('leaves the model alone once something else happened', () {
       expect(
-        AgentProtocol.forcedStart([
+        SmallModelAids.forcedStart([
           user(request),
           assistant('a1', action: done(const CodeAction.shell('ls'))),
         ], shell: true),
         isNull,
       );
-      expect(AgentProtocol.forcedStart([user('What is in here?')], shell: true),
+      expect(
+          SmallModelAids.forcedStart([user('What is in here?')], shell: true),
           isNull);
     });
   });

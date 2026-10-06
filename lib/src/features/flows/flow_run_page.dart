@@ -116,7 +116,6 @@ class _StepTile extends StatelessWidget {
           ? FluxIcon(
               icon: FluxIcons.check,
               size: 22,
-              strokeWidth: 1.5,
               color: FluxColors.actionOf(context),
             )
           : null,

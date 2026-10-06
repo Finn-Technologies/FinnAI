@@ -42,12 +42,12 @@ String _filterLabel(BuildContext context, CreationKind kind) => switch (kind) {
 /// Which surface the page is showing.
 enum _Mode { gallery, builder }
 
-List<List<dynamic>> _iconFor(FinnCreation creation) =>
+IconData _iconFor(FinnCreation creation) =>
     creation.artifact is LegacyDocumentArtifact
         ? FluxIcons.note
         : _kindIcon(creation.kind);
 
-List<List<dynamic>> _kindIcon(CreationKind kind) => switch (kind) {
+IconData _kindIcon(CreationKind kind) => switch (kind) {
       CreationKind.app => FluxIcons.canvas,
       CreationKind.widget => FluxIcons.chip,
       CreationKind.presentation => FluxIcons.flows,

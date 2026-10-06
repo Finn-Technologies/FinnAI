@@ -21,7 +21,7 @@ class FinnSidebarTile extends StatelessWidget {
     this.size = 70,
   }) : assert(icon != null || asset != null);
 
-  final List<List<dynamic>>? icon;
+  final IconData? icon;
   final String? asset;
   final String label;
   final VoidCallback onTap;
@@ -196,7 +196,7 @@ class FinnSidebarCircleButton extends StatelessWidget {
     this.asset,
   }) : assert(icon != null || asset != null);
 
-  final List<List<dynamic>>? icon;
+  final IconData? icon;
   final String? asset;
   final String tooltip;
   final Color background;

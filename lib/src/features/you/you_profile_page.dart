@@ -283,7 +283,7 @@ class _IntroCard extends StatelessWidget {
     required this.body,
   });
 
-  final List<List<dynamic>> icon;
+  final IconData icon;
   final String title;
   final String body;
 
@@ -305,7 +305,7 @@ class _IntroCard extends StatelessWidget {
                 shape: BoxShape.circle,
               ),
               child: Center(
-                child: FluxIcon(icon: icon, size: 22, strokeWidth: 1.5),
+                child: FluxIcon(icon: icon, size: 22),
               ),
             ),
             const SizedBox(width: 15),

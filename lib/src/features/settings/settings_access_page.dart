@@ -10,45 +10,46 @@ import 'package:finn_ai/src/shared/widgets/finn_ui.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
 
 /// The context kinds in the order the design lists them.
-List<({String key, List<List<dynamic>> icon, String title, String sub})>
-    contextKinds(AppLocalizations l10n) => [
-          (
-            key: 'calendar',
-            icon: FluxIcons.calendar,
-            title: l10n.ctxCalendar,
-            sub: l10n.ctxCalendarSub,
-          ),
-          (
-            key: 'contacts',
-            icon: FluxIcons.you,
-            title: l10n.ctxContacts,
-            sub: l10n.ctxContactsSub,
-          ),
-          (
-            key: 'notifications',
-            icon: FluxIcons.alarm,
-            title: l10n.ctxNotifications,
-            sub: l10n.ctxNotificationsSub,
-          ),
-          (
-            key: 'photos',
-            icon: FluxIcons.image,
-            title: l10n.ctxPhotos,
-            sub: l10n.ctxPhotosSub,
-          ),
-          (
-            key: 'files',
-            icon: FluxIcons.note,
-            title: l10n.ctxFiles,
-            sub: l10n.ctxFilesSub,
-          ),
-          (
-            key: 'location',
-            icon: FluxIcons.flag,
-            title: l10n.ctxLocation,
-            sub: l10n.ctxLocationSub,
-          ),
-        ];
+List<({String key, IconData icon, String title, String sub})> contextKinds(
+        AppLocalizations l10n) =>
+    [
+      (
+        key: 'calendar',
+        icon: FluxIcons.calendar,
+        title: l10n.ctxCalendar,
+        sub: l10n.ctxCalendarSub,
+      ),
+      (
+        key: 'contacts',
+        icon: FluxIcons.you,
+        title: l10n.ctxContacts,
+        sub: l10n.ctxContactsSub,
+      ),
+      (
+        key: 'notifications',
+        icon: FluxIcons.alarm,
+        title: l10n.ctxNotifications,
+        sub: l10n.ctxNotificationsSub,
+      ),
+      (
+        key: 'photos',
+        icon: FluxIcons.image,
+        title: l10n.ctxPhotos,
+        sub: l10n.ctxPhotosSub,
+      ),
+      (
+        key: 'files',
+        icon: FluxIcons.note,
+        title: l10n.ctxFiles,
+        sub: l10n.ctxFilesSub,
+      ),
+      (
+        key: 'location',
+        icon: FluxIcons.flag,
+        title: l10n.ctxLocation,
+        sub: l10n.ctxLocationSub,
+      ),
+    ];
 
 class SettingsAccessPage extends StatelessWidget {
   const SettingsAccessPage({super.key, this.onOpenActions});

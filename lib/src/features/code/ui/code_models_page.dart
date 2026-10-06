@@ -110,7 +110,6 @@ class _CodeModelsPageState extends State<CodeModelsPage> {
           leading: FluxIcon(
             icon: FluxIcons.search,
             size: 20,
-            strokeWidth: 1.5,
             color: FluxColors.mutedOf(context),
           ),
         ),
@@ -278,7 +277,6 @@ class _Check extends StatelessWidget {
   Widget build(BuildContext context) => FluxIcon(
         icon: FluxIcons.check,
         size: 22,
-        strokeWidth: 1.5,
         color: FluxColors.actionOf(context),
       );
 }

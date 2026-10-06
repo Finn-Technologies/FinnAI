@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart';
 import 'package:finn_ai/l10n/app_localizations.dart';
 import 'package:finn_ai/src/features/you/you_memory_store.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
@@ -12,7 +13,7 @@ String youCategoryLabel(AppLocalizations l10n, YouCategory category) =>
       YouCategory.interests => l10n.youCatInterests,
     };
 
-List<List<dynamic>> youCategoryIcon(YouCategory category) => switch (category) {
+IconData youCategoryIcon(YouCategory category) => switch (category) {
       YouCategory.people => FluxIcons.you,
       YouCategory.work => FluxIcons.task,
       YouCategory.routines => FluxIcons.alarm,

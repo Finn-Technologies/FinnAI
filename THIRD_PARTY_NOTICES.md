@@ -201,3 +201,4 @@ Used by voice mode; the model files are downloaded on first use.
 
 ## 7. Typography & Fonts
 - **Instrument Sans**: SIL Open Font License, Version 1.1.
+- **JetBrains Mono** (FinnAI Code: code, commands, output): SIL Open Font License, Version 1.1. Copyright 2020 The JetBrains Mono Project Authors. Licence text: `assets/fonts/JetBrainsMono-OFL.txt`.

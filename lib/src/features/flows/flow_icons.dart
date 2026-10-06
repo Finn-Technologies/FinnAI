@@ -1,37 +1,38 @@
-import 'package:hugeicons/hugeicons.dart';
+import 'package:flutter/widgets.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import 'package:finn_ai/src/features/flows/flow_model.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
 
 /// The icon for each thing a flow can start from, check or do.
 abstract final class FlowIcons {
-  static const plug = HugeIcons.strokeRoundedPlugSocket;
-  static const charger = HugeIcons.strokeRoundedPlug01;
-  static const batteryLow = HugeIcons.strokeRoundedBatteryLow;
-  static const batteryCharging = HugeIcons.strokeRoundedBatteryCharging01;
-  static const headphones = HugeIcons.strokeRoundedHeadphones;
-  static const wifi = HugeIcons.strokeRoundedWifi01;
-  static const wifiOff = HugeIcons.strokeRoundedWifiOff01;
-  static const airplane = HugeIcons.strokeRoundedAirplane01;
-  static const power = HugeIcons.strokeRoundedPowerSocket01;
-  static const unlock = HugeIcons.strokeRoundedSquareUnlock01;
-  static const repeat = HugeIcons.strokeRoundedRepeat;
-  static const clock = HugeIcons.strokeRoundedClock01;
-  static const bell = HugeIcons.strokeRoundedNotification01;
-  static const hourglass = HugeIcons.strokeRoundedHourglass;
-  static const branch = HugeIcons.strokeRoundedGitBranch;
-  static const stop = HugeIcons.strokeRoundedStopCircle;
-  static const chat = HugeIcons.strokeRoundedBubbleChat;
-  static const phone = HugeIcons.strokeRoundedSmartPhone01;
-  static const bolt = HugeIcons.strokeRoundedFlash;
-  static const arrowDown = HugeIcons.strokeRoundedArrowDown01;
-  static const arrowUp = HugeIcons.strokeRoundedArrowUp01;
-  static const trash = HugeIcons.strokeRoundedDelete02;
-  static const play = HugeIcons.strokeRoundedPlayCircle;
-  static const flowchart = HugeIcons.strokeRoundedFlowchart01;
-  static const hand = HugeIcons.strokeRoundedTouch01;
+  static const plug = PhosphorIconsFill.plugs;
+  static const charger = PhosphorIconsFill.plug;
+  static const batteryLow = PhosphorIconsFill.batteryLow;
+  static const batteryCharging = PhosphorIconsFill.batteryCharging;
+  static const headphones = PhosphorIconsFill.headphones;
+  static const wifi = PhosphorIconsFill.wifiHigh;
+  static const wifiOff = PhosphorIconsFill.wifiSlash;
+  static const airplane = PhosphorIconsFill.airplane;
+  static const power = PhosphorIconsFill.plug;
+  static const unlock = PhosphorIconsFill.lockOpen;
+  static const repeat = PhosphorIconsFill.repeat;
+  static const clock = PhosphorIconsFill.clock;
+  static const bell = PhosphorIconsFill.bell;
+  static const hourglass = PhosphorIconsFill.hourglass;
+  static const branch = PhosphorIconsFill.gitBranch;
+  static const stop = PhosphorIconsFill.stopCircle;
+  static const chat = PhosphorIconsFill.chatCircle;
+  static const phone = PhosphorIconsFill.deviceMobile;
+  static const bolt = PhosphorIconsFill.lightning;
+  static const arrowDown = PhosphorIconsFill.caretDown;
+  static const arrowUp = PhosphorIconsFill.caretUp;
+  static const trash = PhosphorIconsFill.trash;
+  static const play = PhosphorIconsFill.playCircle;
+  static const flowchart = PhosphorIconsFill.flowArrow;
+  static const hand = PhosphorIconsFill.handTap;
 
-  static List<List<dynamic>> forTrigger(FlowTriggerKind kind) => switch (kind) {
+  static IconData forTrigger(FlowTriggerKind kind) => switch (kind) {
         FlowTriggerKind.manual => hand,
         FlowTriggerKind.timeOfDay => clock,
         FlowTriggerKind.interval => repeat,
@@ -48,8 +49,7 @@ abstract final class FlowIcons {
         FlowTriggerKind.screenUnlocked => unlock,
       };
 
-  static List<List<dynamic>> forCondition(FlowConditionKind kind) =>
-      switch (kind) {
+  static IconData forCondition(FlowConditionKind kind) => switch (kind) {
         FlowConditionKind.batteryBelow => batteryLow,
         FlowConditionKind.batteryAbove ||
         FlowConditionKind.charging ||
@@ -67,7 +67,7 @@ abstract final class FlowIcons {
         FlowConditionKind.answerContains => FluxIcons.magic,
       };
 
-  static List<List<dynamic>> forBlock(FlowBlockKind kind) => switch (kind) {
+  static IconData forBlock(FlowBlockKind kind) => switch (kind) {
         FlowBlockKind.ask => FluxIcons.magic,
         FlowBlockKind.web => FluxIcons.internet,
         FlowBlockKind.notify => bell,

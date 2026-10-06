@@ -180,10 +180,10 @@ class FluxChip extends StatelessWidget {
 
   /// A glyph before the label. FinnAI Code's model and permission chips both
   /// carry one; it used to mean a second, private chip widget.
-  final List<List<dynamic>>? icon;
+  final IconData? icon;
 
   /// A glyph after the label — a chevron on a chip that opens something.
-  final List<List<dynamic>>? trailing;
+  final IconData? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -211,7 +211,6 @@ class FluxChip extends StatelessWidget {
                 FluxIcon(
                   icon: icon!,
                   size: 18,
-                  strokeWidth: 1.5,
                   color: selected ? fg : FluxColors.actionOf(context),
                 ),
                 const SizedBox(width: 7),
@@ -233,7 +232,6 @@ class FluxChip extends StatelessWidget {
                 FluxIcon(
                   icon: trailing!,
                   size: 16,
-                  strokeWidth: 1.5,
                   color: selected
                       ? fg.withValues(alpha: .7)
                       : FluxColors.mutedOf(context),

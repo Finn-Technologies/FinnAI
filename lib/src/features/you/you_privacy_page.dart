@@ -64,7 +64,6 @@ class YouPrivacyPage extends StatelessWidget {
                 const FluxIcon(
                   icon: FluxIcons.lock,
                   size: 22,
-                  strokeWidth: 1.5,
                   color: Color(0xFF4F378B),
                 ),
                 const SizedBox(width: 12),

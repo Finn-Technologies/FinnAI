@@ -26,8 +26,7 @@ class CodeAgentPage extends StatelessWidget {
       listenable: store,
       builder: (context, _) {
         final settings = store.settings;
-        final modes =
-            <(CodePermissionMode, String, String, List<List<dynamic>>)>[
+        final modes = <(CodePermissionMode, String, String, IconData)>[
           (
             CodePermissionMode.askEveryTime,
             l10n.codeAgentAsk,
@@ -64,7 +63,6 @@ class CodeAgentPage extends StatelessWidget {
                       ? FluxIcon(
                           icon: FluxIcons.check,
                           size: 22,
-                          strokeWidth: 1.5,
                           color: FluxColors.actionOf(context),
                         )
                       : null,

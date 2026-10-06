@@ -317,7 +317,7 @@ class _NodeCard extends StatelessWidget {
     this.note,
   });
 
-  final List<List<dynamic>> icon;
+  final IconData icon;
   final Color tint;
   final String title;
   final String summary;

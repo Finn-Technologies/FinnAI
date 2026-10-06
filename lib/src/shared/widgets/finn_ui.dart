@@ -30,7 +30,7 @@ class FinnCircleButton extends StatelessWidget {
 
   factory FinnCircleButton.icon({
     Key? key,
-    required List<List<dynamic>> icon,
+    required IconData icon,
     required String label,
     required VoidCallback? onTap,
     bool dark = false,
@@ -80,14 +80,13 @@ class FinnCircleButton extends StatelessWidget {
 class _Glyph extends StatelessWidget {
   const _Glyph({required this.icon, required this.dark});
 
-  final List<List<dynamic>> icon;
+  final IconData icon;
   final bool dark;
 
   @override
   Widget build(BuildContext context) => FluxIcon(
         icon: icon,
         size: 24,
-        strokeWidth: 1.5,
         color:
             dark ? FluxColors.canvasOf(context) : FluxColors.actionOf(context),
       );
@@ -110,7 +109,7 @@ class FinnTile extends StatelessWidget {
 
   final String title;
   final String? subtitle;
-  final List<List<dynamic>>? icon;
+  final IconData? icon;
   final Widget? leading;
   final Widget? trailing;
   final VoidCallback? onTap;
@@ -143,7 +142,6 @@ class FinnTile extends StatelessWidget {
                   child: FluxIcon(
                     icon: icon!,
                     size: 22,
-                    strokeWidth: 1.5,
                     color: destructive
                         ? FluxColors.destructiveOf(context)
                         : FluxColors.actionOf(context),
@@ -177,7 +175,6 @@ class FinnTile extends StatelessWidget {
             FluxIcon(
               icon: FluxIcons.arrowRight01,
               size: 22,
-              strokeWidth: 1.5,
               color: FluxColors.mutedOf(context),
             ),
           ],
