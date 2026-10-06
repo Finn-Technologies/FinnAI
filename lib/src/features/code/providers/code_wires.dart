@@ -73,7 +73,15 @@ abstract final class CodeWires {
           'model': modelId,
           'stream': true,
           'max_tokens': completion.maxTokens,
-          'system': completion.system,
+          // The system prompt is the same every step: marked cacheable, the
+          // provider reads it from cache instead of billing it again.
+          'system': [
+            {
+              'type': 'text',
+              'text': completion.system,
+              'cache_control': {'type': 'ephemeral'},
+            },
+          ],
           'messages': [
             for (final turn in turns)
               {'role': turn.role, 'content': turn.content},

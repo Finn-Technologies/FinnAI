@@ -231,7 +231,13 @@ void main() {
       expect(request.headers['authorization'], 'Bearer k');
       expect(request.headers['x-api-key'], 'k');
       expect(request.headers['anthropic-version'], CodeWires.anthropicVersion);
-      expect(body['system'], 'You are a coder.');
+      expect(body['system'], [
+        {
+          'type': 'text',
+          'text': 'You are a coder.',
+          'cache_control': {'type': 'ephemeral'},
+        },
+      ]);
       expect((body['messages'] as List).first['role'], 'user');
       expect(request.headers.containsKey('x-title'), isFalse);
     });
@@ -570,6 +576,7 @@ void main() {
         client: MockClient.streaming(
           (request, body) async => throw http.ClientException('down'),
         ),
+        retryDelays: const [],
       );
       await expectLater(
         client
@@ -584,6 +591,30 @@ void main() {
               .having((e) => e.failure, 'failure', ProviderFailure.network),
         ),
       );
+    });
+
+    test('a busy provider is asked again before any text', () async {
+      var calls = 0;
+      final client = CodeProviderClient(
+        client: MockClient.streaming((request, body) async {
+          calls++;
+          if (calls == 1) return sseResponse('{"error":"busy"}', 429);
+          return sseResponse(
+            'data: {"choices":[{"delta":{"content":"ok"}}]}\n\n'
+            'data: [DONE]\n\n',
+          );
+        }),
+        retryDelays: const [Duration.zero],
+      );
+      final text = await client
+          .stream(
+            model(const [CodeWire.chatCompletions]),
+            baseUrl: 'https://x/v1',
+            completion: completion,
+          )
+          .join();
+      expect(text, 'ok');
+      expect(calls, 2);
     });
 
     test('listModels sends the key and parses by provider', () async {

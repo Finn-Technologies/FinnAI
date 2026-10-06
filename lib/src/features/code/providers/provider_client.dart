@@ -82,12 +82,18 @@ class ProviderAllowance {
 /// Talks HTTP to the providers: the live model list, the allowance, a key
 /// check, and streaming a reply.
 class CodeProviderClient {
-  CodeProviderClient({http.Client? client, DateTime Function()? clock})
-      : _client = client ?? http.Client(),
+  CodeProviderClient({
+    http.Client? client,
+    DateTime Function()? clock,
+    this.retryDelays = const [Duration(seconds: 1), Duration(seconds: 3)],
+  })  : _client = client ?? http.Client(),
         _clock = clock ?? DateTime.now;
 
   final http.Client _client;
   final DateTime Function() _clock;
+
+  /// Pauses before each retry of a transient failure.
+  final List<Duration> retryDelays;
 
   static const Duration _listTimeout = Duration(seconds: 20);
   static const Duration _connectTimeout = Duration(seconds: 45);
@@ -255,6 +261,40 @@ class CodeProviderClient {
   /// would meet the same wall. If every shape says "wrong endpoint", that last
   /// answer is thrown.
   Stream<String> stream(
+    CodeModel model, {
+    required String baseUrl,
+    required CodeCompletion completion,
+    String? apiKey,
+    void Function(CodeWire wire)? onWire,
+  }) async* {
+    // A busy provider or a dropped connection before the first word is asked
+    // again, twice, with a short pause: on a phone the network blinks, and a
+    // 429 from a shared free model is routine. Nothing is retried once text
+    // has been shown.
+    for (var attempt = 0;; attempt++) {
+      var started = false;
+      try {
+        await for (final fragment in _streamWires(
+          model,
+          baseUrl: baseUrl,
+          completion: completion,
+          apiKey: apiKey,
+          onWire: onWire,
+        )) {
+          started = true;
+          yield fragment;
+        }
+        return;
+      } on ProviderException catch (error) {
+        if (started || !error.transient || attempt >= retryDelays.length) {
+          rethrow;
+        }
+        await Future<void>.delayed(retryDelays[attempt]);
+      }
+    }
+  }
+
+  Stream<String> _streamWires(
     CodeModel model, {
     required String baseUrl,
     required CodeCompletion completion,

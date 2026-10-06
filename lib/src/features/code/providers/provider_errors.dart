@@ -39,6 +39,14 @@ class ProviderException implements Exception {
   /// True when the model might work on another request shape.
   bool get triesNextWire => failure == ProviderFailure.wrongEndpoint;
 
+  /// Worth asking again after a pause: the provider was busy, or the
+  /// connection dropped before any text arrived.
+  bool get transient =>
+      failure == ProviderFailure.rateLimited ||
+      failure == ProviderFailure.server ||
+      failure == ProviderFailure.network ||
+      failure == ProviderFailure.timeout;
+
   /// Classifies an error response.
   factory ProviderException.fromResponse(
     CodeProvider provider,
