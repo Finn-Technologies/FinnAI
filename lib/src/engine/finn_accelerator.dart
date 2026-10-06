@@ -104,6 +104,11 @@ class _ConversationSession {
   String? lastTaskInstruction;
   int lastUsed;
 
+  /// Tokens of the shared base prefix at the start of the KV cache: what a
+  /// context shift must keep. Measured, not assumed — it depends on the
+  /// model's tokenizer. 0 when unknown.
+  int basePrefixTokens = 0;
+
   /// For an agent session ([AgentPrompt]): what the KV cache holds, so the
   /// next step can be appended instead of re-reading the conversation.
   String? agentHistoryKey;

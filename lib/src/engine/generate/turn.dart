@@ -363,7 +363,13 @@ extension FinnAcceleratorTurn on FinnAccelerator {
                     ? ContextShiftPolicy.auto
                     : ContextShiftPolicy.off,
                 shift: ContextShift(
-                  nKeep: entry.basePrefixReady ? 321 : 0,
+                  // The base prefix's own length; 321 is LFM2.5's, for a
+                  // prefix restored from a cache that did not record it.
+                  nKeep: !entry.basePrefixReady
+                      ? 0
+                      : (entry.basePrefixTokens > 0
+                          ? entry.basePrefixTokens
+                          : 321),
                 ),
                 sampler: (samplerProfile ??
                         PromptIntentPolicy.sampler(promptAnalysis.intent))

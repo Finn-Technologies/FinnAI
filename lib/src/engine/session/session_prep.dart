@@ -114,6 +114,7 @@ extension FinnAcceleratorSessions on FinnAccelerator {
           _prefixCacheEnabled &&
           !FinnAccelerator.debugDisablePrefixCache,
     );
+    entry.basePrefixTokens = prefix.tokens;
     runtime.sessions[conversationId] = entry;
     return (entry: entry, cacheHit: false, prefix: prefix);
   }
