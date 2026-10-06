@@ -26,7 +26,7 @@ abstract final class FinnLayout {
 
   static bool isDocked(double width) => width >= dockBreakpoint;
 
-  /// Bottom padding that optically centres a one-line InstrumentSans field in
+  /// Bottom padding that optically centres a one-line Geist field in
   /// a pill. The font carries more space above its letters than below, and
   /// how much shows depends on the text stack: measured on the Linux window
   /// (FreeType) the line box sat ~4.5px low; on Android (1080x2400 emulator)

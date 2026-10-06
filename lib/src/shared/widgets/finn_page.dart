@@ -203,7 +203,7 @@ class FinnLargeTitle extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontFamily: 'InstrumentSans',
+                    fontFamily: 'Geist',
                     fontSize: 32,
                     height: 1.15,
                     fontWeight: FontWeight.w400,

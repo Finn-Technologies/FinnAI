@@ -452,6 +452,14 @@ packages:
       relative: true
     source: path
     version: "0.9.0-dev.9"
+  lucide_icons_flutter:
+    dependency: "direct main"
+    description:
+      name: lucide_icons_flutter
+      sha256: abfff57c1f4de40204e25a15809d566b17c1a085d2aa58e00203649758c7fed4
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.1.22"
   matcher:
     dependency: transitive
     description:
@@ -572,14 +580,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.0.2"
-  phosphor_flutter:
-    dependency: "direct main"
-    description:
-      name: phosphor_flutter
-      sha256: "8a14f238f28a0b54842c5a4dc20676598dd4811fcba284ed828bd5a262c11fde"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.1.0"
   platform:
     dependency: transitive
     description:

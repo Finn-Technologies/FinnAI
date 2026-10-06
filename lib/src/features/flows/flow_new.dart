@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'package:finn_ai/l10n/l10n_helper.dart';
+import 'package:finn_ai/src/features/flows/flow_block_picker.dart';
 import 'package:finn_ai/src/features/flows/flow_block_sheet.dart';
 import 'package:finn_ai/src/features/flows/flow_describe_page.dart';
 import 'package:finn_ai/src/features/flows/flow_editor_page.dart';
@@ -59,10 +60,19 @@ String flowSlotName(BuildContext context, String key) {
 
 /// The "New flow" sheet: describe it, start from a template, or build it
 /// step by step.
-Future<void> showNewFlow(BuildContext context, FlowsActions actions) {
+Future<void> showNewFlow(
+  BuildContext context,
+  FlowsActions actions, {
+  Rect? origin,
+}) {
   final l10n = L10n.of(context);
   return showFinnSheet<void>(
     context,
+    origin: origin,
+    originColor: origin != null && origin.width > 120
+        ? FluxColors.actionOf(context)
+        : FluxColors.controlOf(context),
+    originRadius: 25,
     title: l10n.flowsNewTitle,
     subtitle: l10n.flowsNewSub,
     children: (sheet) => [

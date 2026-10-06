@@ -35,10 +35,10 @@ SOFTWARE.
 
 ---
 
-## 2. LFM2.5-VL 1.6B Model (Liquid AI)
-- **Model**: LFM2.5-VL 1.6B (GGUF format, Q4_0 weights + F16 vision projector)
+## 2. LFM2.5-VL 1.6B and 3B Models (Liquid AI)
+- **Model**: LFM2.5-VL 1.6B or, on capable devices, LFM2.5-VL 3B (GGUF format, Q4_0 weights + F16 vision projector)
 - **Creator**: Liquid AI, Inc.
-- **Source**: Downloaded at runtime from Hugging Face (`LiquidAI/LFM2.5-VL-1.6B-GGUF`)
+- **Source**: Downloaded at runtime from Hugging Face (`LiquidAI/LFM2.5-VL-1.6B-GGUF`, `LiquidAI/LFM2.5-VL-3B-GGUF`)
 - **License**: LFM Open License v1.0
 
 ```text
@@ -200,7 +200,8 @@ Used by voice mode; the model files are downloaded on first use.
 ---
 
 ## 7. Typography & Fonts
-- **Instrument Sans**: SIL Open Font License, Version 1.1.
+- **Geist** (the app's typeface): SIL Open Font License, Version 1.1. Copyright 2024 The Geist Project Authors. Licence text: `assets/fonts/Geist-OFL.txt`.
+- **Lucide** icons (`lucide_icons_flutter`): ISC License, Copyright (c) Lucide Contributors; derived from Feather, MIT License, Copyright (c) 2013-2023 Cole Bemis.
 - **JetBrains Mono** (FinnAI Code: code, commands, output): SIL Open Font License, Version 1.1. Copyright 2020 The JetBrains Mono Project Authors. Licence text: `assets/fonts/JetBrainsMono-OFL.txt`.
 
 ## FinnAI Code: Linux sandbox (Android)

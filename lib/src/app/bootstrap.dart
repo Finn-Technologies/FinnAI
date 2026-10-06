@@ -168,7 +168,7 @@ class _FinnBootstrapState extends State<FinnBootstrap> {
                         status,
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontFamily: 'InstrumentSans',
+                          fontFamily: 'Geist',
                           fontSize: 22,
                           fontWeight: FontWeight.w400,
                           color:

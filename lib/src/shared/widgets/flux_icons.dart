@@ -1,98 +1,97 @@
 import 'package:flutter/material.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 import 'package:finn_ai/src/shared/widgets/figma_assets.dart';
 
-/// The app's icon set: Phosphor, fill weight, everywhere. One style — the same
-/// 256-unit grid, rounded corners and weight — so no screen mixes outline and
-/// filled glyphs. A selected or toggled state is shown with colour or a
-/// backing, never by swapping an outline for a fill.
+/// The app's icon set: Lucide, one stroke weight, everywhere. Every glyph
+/// shares the same 24-unit grid, rounded caps and joins, and line weight, so no
+/// screen mixes outline and filled styles.
 abstract final class FluxIcons {
-  // Bare strokes (plus, close, menu) take the bold weight: their fill glyphs
-  // sit inside a filled square, which reads as a different icon. Bold is the
-  // same solid weight as the fill set, with no box.
-  static const add = PhosphorIconsBold.plus;
-  static const close = PhosphorIconsBold.x;
-  static const arrowUp01 = PhosphorIconsBold.caretUp;
-  static const arrowUp02 = PhosphorIconsBold.arrowUp;
-  static const menu = PhosphorIconsBold.list;
-  // Chevrons and arrows are strokes too: their fill glyphs are triangles
-  // and read as "play".
-  static const chevronLeft = PhosphorIconsBold.caretLeft;
-  static const chevronRight = PhosphorIconsBold.caretRight;
-  static const chevronUp = PhosphorIconsBold.caretUp;
-  static const chevronDown = PhosphorIconsBold.caretDown;
-  static const arrowLeft = PhosphorIconsBold.arrowLeft;
-  static const newChat = PhosphorIconsFill.notePencil;
-  static const creations = PhosphorIconsFill.squaresFour;
-  static const widget = PhosphorIconsFill.layout;
-  static const contacts = PhosphorIconsFill.addressBook;
-  static const notifications = PhosphorIconsFill.bell;
-  static const location = PhosphorIconsFill.mapPin;
-  static const share = PhosphorIconsFill.export;
-  static const pin = PhosphorIconsFill.pushPin;
-  static const feedback = PhosphorIconsFill.chatCircleText;
-  static const selectText = PhosphorIconsFill.textAa;
-  static const miniApp = PhosphorIconsFill.deviceMobile;
-  static const presentation = PhosphorIconsFill.presentation;
-  static const photo = PhosphorIconsFill.image;
-  static const file = PhosphorIconsFill.file;
-  static const copy = PhosphorIconsFill.copy;
-  static const exchange = PhosphorIconsFill.arrowsLeftRight;
-  static const internet = PhosphorIconsFill.globe;
-  static const sad = PhosphorIconsFill.smileySad;
-  static const canvas = PhosphorIconsFill.paintBrush;
-  static const you = PhosphorIconsFill.smiley;
-  static const flows = PhosphorIconsFill.treeStructure;
-  static const chip = PhosphorIconsFill.cpu;
-  static const settings = PhosphorIconsFill.gearSix;
-  static const edit = PhosphorIconsFill.pencilSimple;
-  static const security = PhosphorIconsFill.shieldWarning;
-  static const magic = PhosphorIconsFill.sparkle;
-  static const lock = PhosphorIconsFill.lock;
-  static const download = PhosphorIconsFill.downloadSimple;
-  static const delete = PhosphorIconsFill.trash;
-  static const translate = PhosphorIconsFill.translate;
-  static const voiceId = PhosphorIconsFill.userSound;
-  static const speed = PhosphorIconsFill.gauge;
-  static const subtitle = PhosphorIconsFill.closedCaptioning;
-  static const bluetooth = PhosphorIconsFill.bluetooth;
-  static const robot = PhosphorIconsFill.robot;
-  static const leaf = PhosphorIconsFill.leaf;
-  static const game = PhosphorIconsFill.gameController;
-  static const refresh = PhosphorIconsFill.arrowClockwise;
-  static const loading = PhosphorIconsFill.spinnerGap;
-  static const check = PhosphorIconsFill.checkCircle;
-  static const flag = PhosphorIconsFill.flag;
-  static const mic = PhosphorIconsFill.microphone;
-  static const micOff = PhosphorIconsFill.microphoneSlash;
-  static const voiceWaveform = PhosphorIconsBold.waveform;
-  static const cpu = PhosphorIconsFill.cpu;
-  static const error = PhosphorIconsFill.warningCircle;
-  static const info = PhosphorIconsFill.info;
-  static const moreHorizontal = PhosphorIconsBold.dotsThree;
-  static const arrowRight01 = PhosphorIconsBold.caretRight;
-  static const arrowRight02 = PhosphorIconsBold.arrowRight;
-  static const cloudOff = PhosphorIconsFill.cloudSlash;
-  static const image = PhosphorIconsFill.image;
-  static const brokenImage = PhosphorIconsFill.imageBroken;
-  static const note = PhosphorIconsFill.note;
-  static const sourceCode = PhosphorIconsFill.codeBlock;
-  static const education = PhosphorIconsFill.graduationCap;
-  static const task = PhosphorIconsFill.clipboardText;
-  static const search = PhosphorIconsFill.magnifyingGlass;
-  static const alarm = PhosphorIconsFill.alarm;
-  static const timer = PhosphorIconsFill.timer;
-  static const flashlight = PhosphorIconsFill.flashlight;
-  static const volume = PhosphorIconsFill.speakerHigh;
-  static const wifi = PhosphorIconsFill.wifiHigh;
-  static const calendar = PhosphorIconsFill.calendarBlank;
-  static const navigation = PhosphorIconsFill.navigationArrow;
-  static const camera = PhosphorIconsFill.camera;
-  static const battery = PhosphorIconsFill.batteryFull;
-  static const moon = PhosphorIconsFill.moon;
-  static const sun = PhosphorIconsFill.sun;
+  // Lucide at a 1.55 stroke on its 24-unit grid ("300"): a thin, rounded
+  // line that reads as one family with the type, the way the references
+  // (libraries.dev, SF Symbols' regular weight) draw their chrome. One
+  // weight everywhere; a selected or toggled state is shown with colour or
+  // a backing, never by swapping the glyph for a filled one.
+  static const add = LucideIcons.plus300;
+  static const close = LucideIcons.x300;
+  static const arrowUp01 = LucideIcons.chevronUp300;
+  static const arrowUp02 = LucideIcons.arrowUp300;
+  static const menu = LucideIcons.menu300;
+  static const chevronLeft = LucideIcons.chevronLeft300;
+  static const chevronRight = LucideIcons.chevronRight300;
+  static const chevronUp = LucideIcons.chevronUp300;
+  static const chevronDown = LucideIcons.chevronDown300;
+  static const arrowLeft = LucideIcons.arrowLeft300;
+  static const newChat = LucideIcons.squarePen300;
+  static const creations = LucideIcons.layoutGrid300;
+  static const widget = LucideIcons.panelsTopLeft300;
+  static const contacts = LucideIcons.bookUser300;
+  static const notifications = LucideIcons.bell300;
+  static const location = LucideIcons.mapPin300;
+  static const share = LucideIcons.share300;
+  static const pin = LucideIcons.pin300;
+  static const feedback = LucideIcons.messageSquareText300;
+  static const selectText = LucideIcons.textCursorInput300;
+  static const miniApp = LucideIcons.smartphone300;
+  static const presentation = LucideIcons.presentation300;
+  static const photo = LucideIcons.image300;
+  static const file = LucideIcons.file300;
+  static const copy = LucideIcons.copy300;
+  static const exchange = LucideIcons.arrowLeftRight300;
+  static const internet = LucideIcons.globe300;
+  static const sad = LucideIcons.frown300;
+  static const canvas = LucideIcons.paintbrush300;
+  static const you = LucideIcons.smile300;
+  static const flows = LucideIcons.workflow300;
+  static const chip = LucideIcons.cpu300;
+  static const settings = LucideIcons.settings300;
+  static const edit = LucideIcons.pencil300;
+  static const security = LucideIcons.shieldAlert300;
+  static const magic = LucideIcons.sparkles300;
+  static const lock = LucideIcons.lock300;
+  static const download = LucideIcons.download300;
+  static const delete = LucideIcons.trash2300;
+  static const translate = LucideIcons.languages300;
+  static const voiceId = LucideIcons.speech300;
+  static const speed = LucideIcons.gauge300;
+  static const subtitle = LucideIcons.captions300;
+  static const bluetooth = LucideIcons.bluetooth300;
+  static const robot = LucideIcons.bot300;
+  static const leaf = LucideIcons.leaf300;
+  static const game = LucideIcons.gamepad2300;
+  static const refresh = LucideIcons.rotateCw300;
+  static const loading = LucideIcons.loaderCircle300;
+  static const check = LucideIcons.circleCheck300;
+  static const flag = LucideIcons.flag300;
+  static const mic = LucideIcons.mic300;
+  static const micOff = LucideIcons.micOff300;
+  static const voiceWaveform = LucideIcons.audioLines300;
+  static const cpu = LucideIcons.cpu300;
+  static const error = LucideIcons.circleAlert300;
+  static const info = LucideIcons.info300;
+  static const moreHorizontal = LucideIcons.ellipsis300;
+  static const arrowRight01 = LucideIcons.chevronRight300;
+  static const arrowRight02 = LucideIcons.arrowRight300;
+  static const cloudOff = LucideIcons.cloudOff300;
+  static const image = LucideIcons.image300;
+  static const brokenImage = LucideIcons.imageOff300;
+  static const note = LucideIcons.stickyNote300;
+  static const sourceCode = LucideIcons.codeXml300;
+  static const education = LucideIcons.graduationCap300;
+  static const task = LucideIcons.clipboardList300;
+  static const search = LucideIcons.search300;
+  static const alarm = LucideIcons.alarmClock300;
+  static const timer = LucideIcons.timer300;
+  static const flashlight = LucideIcons.flashlight300;
+  static const volume = LucideIcons.volume2300;
+  static const wifi = LucideIcons.wifi300;
+  static const calendar = LucideIcons.calendar300;
+  static const navigation = LucideIcons.navigation300;
+  static const camera = LucideIcons.camera300;
+  static const battery = LucideIcons.batteryFull300;
+  static const moon = LucideIcons.moon300;
+  static const sun = LucideIcons.sun300;
 
   /// The design's chrome icons, drawn from the app's one icon set instead of
   /// their mixed outline/filled SVGs (`FluxIcons`). Artwork is untouched.
@@ -136,9 +135,9 @@ class FluxIcon extends StatelessWidget {
     this.color,
   });
 
-  /// A filled glyph from [FluxIcons] (Phosphor, fill weight). One style app
-  /// wide: selection is shown with colour or a backing, never by swapping an
-  /// outline for a fill.
+  /// A glyph from [FluxIcons] (Lucide, one stroke weight). One style app
+  /// wide: selection is shown with colour or a backing, never by swapping
+  /// the glyph.
   final IconData icon;
   final double size;
   final Color? color;
@@ -146,9 +145,7 @@ class FluxIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Icon(
         icon,
-        // Phosphor's fill glyphs sit a little heavier than the stroke set they
-        // replace; 92% keeps the optical size every caller was tuned for.
-        size: size * .92,
+        size: size,
         color: color ??
             DefaultTextStyle.of(context).style.color ??
             FluxColors.inkOf(context),

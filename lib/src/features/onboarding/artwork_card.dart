@@ -61,7 +61,7 @@ class OnboardingArtworkCard extends StatelessWidget {
                 child: Text(
                   title,
                   style: const TextStyle(
-                    fontFamily: 'InstrumentSans',
+                    fontFamily: 'Geist',
                     fontSize: 24,
                     height: 1.2,
                     fontWeight: FontWeight.w400,

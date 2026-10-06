@@ -26,7 +26,7 @@ class _Bubble extends StatelessWidget {
         // 16px on a 1.25 line box, the size and rhythm of the design's
         // messages in both bubbles.
         final style = TextStyle(
-          fontFamily: 'InstrumentSans',
+          fontFamily: 'Geist',
           fontSize: 16,
           height: 1.25,
           fontWeight: FontWeight.w400,
@@ -353,7 +353,7 @@ class _StreamingReplyState extends State<_StreamingReply>
     with SingleTickerProviderStateMixin {
   late final AnimationController _pulse = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 1400),
+    duration: const Duration(milliseconds: 1700),
   );
 
   late String _text = widget.generation.activeJob?.responseText ?? widget.text;
@@ -364,13 +364,13 @@ class _StreamingReplyState extends State<_StreamingReply>
     super.initState();
     // The pulse is only drawn by the empty-text "Finn is generating" row; once
     // tokens arrive it would tick vsync forever for nothing.
-    if (_text.isEmpty && _activityCount == 0) _pulse.repeat(reverse: true);
+    if (_text.isEmpty && _activityCount == 0) _pulse.repeat();
     widget.generation.addListener(_onGenerationChanged);
   }
 
   void _setPulse(bool visible) {
     if (visible) {
-      if (!_pulse.isAnimating) _pulse.repeat(reverse: true);
+      if (!_pulse.isAnimating) _pulse.repeat();
     } else if (_pulse.isAnimating) {
       _pulse.stop();
     }
@@ -405,8 +405,26 @@ class _StreamingReplyState extends State<_StreamingReply>
     super.dispose();
   }
 
+  // "Generating" hands over to the first words with a crossfade, not a
+  // cut: the orb and its line fade as the text fades up in their place.
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => AnimatedSwitcher(
+        duration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : const Duration(milliseconds: 260),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        layoutBuilder: (current, previous) => Stack(
+          alignment: Alignment.topLeft,
+          children: [...previous, if (current != null) current],
+        ),
+        child: KeyedSubtree(
+          key: ValueKey(_text.isEmpty),
+          child: _content(context),
+        ),
+      );
+
+  Widget _content(BuildContext context) {
     final fullText = _text;
     final activities = widget.generation.toolActivities;
     // Answer tokens only start once the browsing is over, so the moment text
@@ -428,31 +446,23 @@ class _StreamingReplyState extends State<_StreamingReply>
         label: L10n.of(context).chatFinnGenerating,
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 4),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              AnimatedBuilder(
-                animation: _pulse,
-                builder: (context, _) => Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: FluxColors.inkOf(
-                      context,
-                    ).withValues(alpha: .3 + .5 * _pulse.value),
-                    shape: BoxShape.circle,
-                  ),
+          child: AnimatedBuilder(
+            animation: _pulse,
+            builder: (context, _) => Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                FinnThinkingOrb(t: _pulse.value),
+                const SizedBox(width: 10),
+                FinnShimmerText(
+                  text: L10n.of(context).chatFinnGenerating,
+                  t: _pulse.value,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        fontSize: 14,
+                        letterSpacing: -0.1,
+                      ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                L10n.of(context).chatFinnGenerating,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: FluxColors.mutedOf(context),
-                      fontStyle: FontStyle.italic,
-                    ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       );
@@ -473,7 +483,26 @@ class _StreamingReplyState extends State<_StreamingReply>
           _ArticlePhotoSlideshow(imageUrls: imageUrls),
           const SizedBox(height: 12),
         ],
-        Semantics(liveRegion: true, child: SafeMarkdownText(text: fullText)),
+        // The line being written comes up out of a soft fade, so text
+        // arrives rather than pops in; finished lines above are untouched.
+        Semantics(
+          liveRegion: true,
+          child: ShaderMask(
+            blendMode: BlendMode.dstIn,
+            shaderCallback: (bounds) {
+              final edge = bounds.height <= 0
+                  ? 1.0
+                  : (1 - 26 / bounds.height).clamp(0.0, 1.0);
+              return LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: const [Colors.white, Colors.white, Color(0x59FFFFFF)],
+                stops: [0, edge, 1],
+              ).createShader(bounds);
+            },
+            child: SafeMarkdownText(text: fullText),
+          ),
+        ),
         // Below the answer, in the same slot the finished reply uses, so the
         // pill never jumps position when the turn completes — and it stays on
         // screen while a long answer streams past it.

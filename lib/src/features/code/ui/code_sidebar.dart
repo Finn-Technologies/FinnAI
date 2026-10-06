@@ -6,6 +6,7 @@ import 'package:finn_ai/l10n/l10n_helper.dart';
 import 'package:finn_ai/src/shared/layout/finn_layout.dart';
 import 'package:finn_ai/src/features/code/sessions/code_session.dart';
 import 'package:finn_ai/src/features/code/ui/code_icons.dart';
+import 'package:finn_ai/src/features/code/ui/code_session_row.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 import 'package:finn_ai/src/shared/widgets/finn_sidebar_parts.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
@@ -68,6 +69,65 @@ class _CodeSidebarState extends State<CodeSidebar> {
     _scrollOffset.dispose();
     _brand.dispose();
     super.dispose();
+  }
+
+  /// The sessions as Cursor's mobile app lists agents: pinned first, then
+  /// today's, then the rest, each section a quiet label over plain rows.
+  List<Widget> _sessionList(BuildContext context, List<CodeSession> sessions) {
+    final l10n = L10n.of(context);
+    final now = DateTime.now();
+    bool today(CodeSession s) =>
+        s.updatedAt.year == now.year &&
+        s.updatedAt.month == now.month &&
+        s.updatedAt.day == now.day;
+    final sections = <(String, List<CodeSession>)>[
+      (
+        l10n.codeSessionsPinned,
+        [
+          for (final s in sessions)
+            if (s.pinned) s
+        ]
+      ),
+      (
+        l10n.codeSessionsToday,
+        [
+          for (final s in sessions)
+            if (!s.pinned && today(s)) s
+        ],
+      ),
+      (
+        l10n.codeSessionsEarlier,
+        [
+          for (final s in sessions)
+            if (!s.pinned && !today(s)) s
+        ],
+      ),
+    ];
+    return [
+      for (final (label, items) in sections)
+        if (items.isNotEmpty) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 14, 8, 4),
+            child: Text(
+              label,
+              style: TextStyle(
+                fontFamily: 'Geist',
+                fontSize: 12.5,
+                fontWeight: FontWeight.w500,
+                color: FluxColors.timestampOf(context),
+              ),
+            ),
+          ),
+          for (final session in items)
+            CodeSessionRow(
+              key: ValueKey('code-session-${session.id}'),
+              session: session,
+              selected: session.id == widget.activeSessionId,
+              onTap: () => widget.onSession(session.id),
+              onLongPress: () => widget.onSessionOptions(session),
+            ),
+        ],
+    ];
   }
 
   @override
@@ -189,52 +249,9 @@ class _CodeSidebarState extends State<CodeSidebar> {
                                     ),
                                   ),
                                 )
-                              : SliverGrid(
-                                  gridDelegate:
-                                      const SliverGridDelegateWithFixedCrossAxisCount(
-                                    crossAxisCount: 2,
-                                    mainAxisSpacing: 10,
-                                    crossAxisSpacing: 10,
-                                    mainAxisExtent: 100,
-                                  ),
-                                  delegate: SliverChildBuilderDelegate(
-                                    (context, index) {
-                                      final session = sessions[index];
-                                      final selected =
-                                          session.id == widget.activeSessionId;
-                                      final tile = FinnSidebarHistoryTile(
-                                        key: ValueKey(
-                                            'code-session-${session.id}'),
-                                        title: session.title.isEmpty
-                                            ? l10n.codeNewSession
-                                            : session.title,
-                                        selected: selected,
-                                        onTap: () =>
-                                            widget.onSession(session.id),
-                                        onLongPress: () =>
-                                            widget.onSessionOptions(session),
-                                        badge: session.pinned
-                                            ? FluxIcon(
-                                                icon: CodeIcons.pin,
-                                                size: 16,
-                                                color: FinnSidebarHistoryTile
-                                                    .badgeInk(
-                                                  context,
-                                                  selected,
-                                                ),
-                                              )
-                                            : null,
-                                      );
-                                      // The design's staggered grid: the right
-                                      // column starts half a card lower.
-                                      return index.isOdd
-                                          ? Transform.translate(
-                                              offset: const Offset(0, 55),
-                                              child: tile,
-                                            )
-                                          : tile;
-                                    },
-                                    childCount: sessions.length,
+                              : SliverList(
+                                  delegate: SliverChildListDelegate(
+                                    _sessionList(context, sessions),
                                   ),
                                 ),
                         ),

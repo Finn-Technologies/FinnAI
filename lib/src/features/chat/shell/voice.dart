@@ -6,9 +6,10 @@ extension _HomeShellVoice on _HomeShellState {
     if (!voiceSupportedOnPlatform || _busy) return;
     _voice.setSpokenResponses(VoiceSettingsStore.instance.spokenResponses);
     _voice.onTranscript = _onLiveTranscript;
-    // Put the keyboard away first: the field it belongs to is about to become
-    // the pill.
+    // Put the keyboard away first: the field it belongs to is about to
+    // dissolve into the screen's light. A firm tick marks the moment it opens.
     _focusNode.unfocus();
+    unawaited(HapticFeedback.mediumImpact());
     setState(() => _voiceListening = true);
     // Warm the language model while the user is still talking, so the first
     // question is not also paying to load it.

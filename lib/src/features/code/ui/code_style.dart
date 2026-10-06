@@ -9,7 +9,7 @@ import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 abstract final class CodeStyle {
   /// Monospace for code, commands and output.
   static const String mono = 'JetBrainsMono';
-  static const String sans = 'InstrumentSans';
+  static const String sans = 'Geist';
 
   // Type.
   static const double proseSize = 14;

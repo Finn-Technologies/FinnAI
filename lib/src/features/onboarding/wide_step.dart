@@ -139,7 +139,7 @@ class WideStepLayout extends StatelessWidget {
                               child: Text(
                                 hint,
                                 style: TextStyle(
-                                  fontFamily: 'InstrumentSans',
+                                  fontFamily: 'Geist',
                                   fontSize: 14,
                                   height: 1.2,
                                   color: FluxColors.secondaryInkOf(context),
@@ -252,7 +252,7 @@ class _Pill extends StatelessWidget {
                     child: Text(
                       label,
                       style: TextStyle(
-                        fontFamily: 'InstrumentSans',
+                        fontFamily: 'Geist',
                         fontSize: 16,
                         height: 1.2,
                         fontWeight: FontWeight.w400,
@@ -336,7 +336,7 @@ class WelcomeStartButton extends StatelessWidget {
                       child: Text(
                         label,
                         style: const TextStyle(
-                          fontFamily: 'InstrumentSans',
+                          fontFamily: 'Geist',
                           fontSize: 18,
                           height: 1.2,
                           color: Colors.black,

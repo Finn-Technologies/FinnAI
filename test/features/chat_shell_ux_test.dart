@@ -371,10 +371,7 @@ void main() {
 
       final tile = find.byKey(ValueKey(conversation.id));
       expect(tile, findsOneWidget);
-      final tileBox =
-          find.descendant(of: tile, matching: find.byType(Container));
-      expect(tileBox, findsWidgets);
-      expect(tester.getSize(tileBox.first).height, greaterThanOrEqualTo(48));
+      expect(tester.getSize(tile).height, greaterThanOrEqualTo(48));
     });
 
     // The design sets the reply glyphs on a 40dp pitch (25px artwork, 15px

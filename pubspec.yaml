@@ -47,7 +47,7 @@ dependencies:
       url: https://gitcode.com/openharmony-tpc/flutter_packages.git
       ref: 2f21e26e09efb92b8429c840ae7ca0cb024f036c
       path: packages/webview_flutter/webview_flutter_ohos
-  phosphor_flutter: ^2.1.0
+  lucide_icons_flutter: ^3.1.22
 
 dependency_overrides:
   # webview_flutter_ohos pins a git copy of the platform interface (2.10);
@@ -77,12 +77,17 @@ flutter:
   uses-material-design: true
 
   fonts:
-    - family: InstrumentSans
+    - family: Geist
       fonts:
-        - asset: assets/fonts/InstrumentSans-Variable.ttf
+        - asset: assets/fonts/Geist-Variable.ttf
     - family: JetBrainsMono
       fonts:
         - asset: assets/fonts/JetBrainsMono-Variable.ttf
+
+  # Compiled at build time for the device's GPU (lib/src/features/chat/
+  # widgets/voice_glow.dart draws it; the gradient painter is the fallback).
+  shaders:
+    - shaders/voice_glow.frag
 
   assets:
     - assets/icon/

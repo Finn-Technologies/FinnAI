@@ -50,7 +50,7 @@ class _HomeHeader extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontFamily: 'InstrumentSans',
+                      fontFamily: 'Geist',
                       fontSize: 18,
                       height: 1.2,
                       fontWeight: FontWeight.w400,
@@ -109,14 +109,122 @@ class _ConversationEmpty extends StatelessWidget {
   Widget build(BuildContext context) => Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 25),
-          child: Text(
-            greeting,
-            textAlign: TextAlign.center,
+          child: _WordReveal(
+            key: ValueKey(greeting),
+            text: greeting,
             style: const TextStyle(
-              fontFamily: 'InstrumentSans',
-              fontSize: 24,
+              fontFamily: 'Geist',
+              fontSize: 26,
               height: 1.2,
               fontWeight: FontWeight.w400,
+              letterSpacing: -0.7,
+            ),
+          ),
+        ),
+      );
+}
+
+/// [text] arriving rather than appearing: a soft edge sweeps across it from
+/// the start of the line while it comes up out of a blur, so a greeting is
+/// said rather than printed. Still one `Text`; reduced motion shows it at
+/// once.
+class _WordReveal extends StatefulWidget {
+  const _WordReveal({super.key, required this.text, required this.style});
+
+  final String text;
+  final TextStyle style;
+
+  @override
+  State<_WordReveal> createState() => _WordRevealState();
+}
+
+class _WordRevealState extends State<_WordReveal>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1100),
+  );
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _controller.value = 1;
+    } else if (_controller.value == 0 && !_controller.isAnimating) {
+      _controller.forward();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Text(
+      widget.text,
+      textAlign: TextAlign.center,
+      style: widget.style,
+    );
+    return AnimatedBuilder(
+      animation: _controller,
+      child: text,
+      builder: (context, child) {
+        final t = Curves.easeOutCubic.transform(_controller.value);
+        if (t >= 1) return child!;
+        final rtl = Directionality.of(context) == TextDirection.rtl;
+        // The edge travels from before the start to past the end.
+        final edge = -.3 + 1.6 * t;
+        return ShaderMask(
+          blendMode: BlendMode.dstIn,
+          shaderCallback: (bounds) => LinearGradient(
+            begin: rtl ? Alignment.centerRight : Alignment.centerLeft,
+            end: rtl ? Alignment.centerLeft : Alignment.centerRight,
+            colors: const [Colors.white, Color(0x00FFFFFF)],
+            stops: [(edge - .3).clamp(0.0, 1.0), edge.clamp(0.0, 1.0)],
+          ).createShader(bounds),
+          child: Transform.translate(
+            offset: Offset(0, 6 * (1 - t)),
+            child: ImageFiltered(
+              imageFilter: ui.ImageFilter.blur(
+                sigmaX: 5 * (1 - t),
+                sigmaY: 5 * (1 - t),
+              ),
+              child: child,
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// The ambient green wash under an empty chat. It belongs to the empty state
+/// only: once a conversation has messages the canvas is flat, as in the
+/// design's chat screens. Resolved per theme: the light wash is a soft green
+/// over a near-white canvas, and the same 25% green on #18181C reads as a
+/// lurid glow rather than depth.
+class _AmbientWash extends StatelessWidget {
+  const _AmbientWash({required this.height});
+
+  final double height;
+
+  @override
+  Widget build(BuildContext context) => Positioned(
+        left: 0,
+        right: 0,
+        bottom: 0,
+        height: height,
+        child: IgnorePointer(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: FluxColors.ambientWashOf(context),
+              ),
             ),
           ),
         ),

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'package:finn_ai/l10n/l10n_helper.dart';
+import 'package:finn_ai/src/features/flows/flow_block_picker.dart';
 import 'package:finn_ai/src/features/flows/flow_block_sheet.dart';
 import 'package:finn_ai/src/features/flows/flow_chart.dart';
 import 'package:finn_ai/src/features/flows/flow_condition_sheet.dart';

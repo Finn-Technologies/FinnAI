@@ -238,8 +238,8 @@ void main() {
       expect(tester.getSize(_pill).height, inInclusiveRange(50, 57));
       expect(find.text('Listening…'), findsNothing,
           reason: 'the controller is idle in this harness');
-      expect(_gradientLayers(tester), findsOneWidget,
-          reason: 'it has become the colour pill');
+      expect(_gradientLayers(tester), findsNothing,
+          reason: 'no colour pill: the screen\'s own light is the visual');
     });
 
     testWidgets('the right-hand button hands over to the microphone',
@@ -318,7 +318,7 @@ void main() {
       expect(after.dx, greaterThan(left.dx + 40));
     });
 
-    testWidgets('the caption opens last', (tester) async {
+    testWidgets('the caption opens last, where the field was', (tester) async {
       final h = _Harness();
       await h.pump(tester);
       await h.voice.startListening();
@@ -326,13 +326,31 @@ void main() {
       h.isLive.value = true;
       await tester.pump();
       await _run(tester, 80);
-      final early = tester.getSize(find.byType(ChatComposer)).height;
+      final early = tester.widget<Opacity>(
+        find
+            .ancestor(
+              of: find.text('Listening…'),
+              matching: find.byType(Opacity),
+            )
+            .first,
+      );
       await _run(tester, 800);
-      final late = tester.getSize(find.byType(ChatComposer)).height;
+      final late = tester.widget<Opacity>(
+        find
+            .ancestor(
+              of: find.text('Listening…'),
+              matching: find.byType(Opacity),
+            )
+            .first,
+      );
 
-      expect(find.text('Listening…'), findsOneWidget);
-      expect(late, greaterThan(early),
-          reason: 'it grows once the pill has arrived');
+      expect(early.opacity, lessThan(.2), reason: 'it waits for the field');
+      expect(late.opacity, 1);
+      final caption = tester.getCenter(find.text('Listening…'));
+      final pill = tester.getCenter(_pill);
+      expect(caption.dx, closeTo(pill.dx, 1));
+      expect(caption.dy, closeTo(pill.dy, 4),
+          reason: 'it sits between the buttons, not above them');
       await h.voice.cancelListening();
     });
 

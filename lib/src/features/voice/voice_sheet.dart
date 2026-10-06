@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
 import 'package:finn_ai/l10n/l10n_helper.dart';
@@ -424,9 +423,7 @@ class _VoiceOrb extends StatelessWidget {
                             ),
                           )
                         : FluxIcon(
-                            icon: speaking
-                                ? PhosphorIconsFill.microphoneSlash
-                                : PhosphorIconsFill.microphone,
+                            icon: speaking ? FluxIcons.micOff : FluxIcons.mic,
                             size: 40 * scale,
                             color: listening
                                 ? (isDark ? Colors.black : Colors.white)

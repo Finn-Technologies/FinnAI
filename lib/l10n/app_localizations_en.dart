@@ -2311,6 +2311,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chatRenamePrompt => 'Rename chat';
 
   @override
+  String get flowsSearchEmpty => 'No flows match that search.';
+
+  @override
+  String get flowsPickerDevice => 'Device';
+
+  @override
+  String get flowsPickerLogic => 'Logic';
+
+  @override
+  String get flowsPickerEmpty => 'No step matches that search.';
+
+  @override
   String get flowsFilterAll => 'All';
 
   @override
@@ -3402,6 +3414,32 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String codeActionFailedExit(String code) {
     return 'Failed (exit $code)';
+  }
+
+  @override
+  String get codeSessionsPinned => 'Pinned';
+
+  @override
+  String get codeSessionsToday => 'Today';
+
+  @override
+  String get codeSessionsEarlier => 'Earlier';
+
+  @override
+  String get codeSessionWorking => 'Working';
+
+  @override
+  String get codeSessionNeedsYou => 'Needs you';
+
+  @override
+  String get codeSessionNoChanges => 'No changes';
+
+  @override
+  String get codeSessionOneFile => '1 file';
+
+  @override
+  String codeSessionFileCount(int count) {
+    return '$count files';
   }
 
   @override

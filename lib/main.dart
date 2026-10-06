@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'package:finn_ai/src/app/frame_log.dart';
 import 'package:finn_ai/flow_background.dart' show flowBackgroundMain;
 import 'package:finn_ai/src/app/bootstrap.dart';
 import 'package:finn_ai/src/engine/eval/benchmark.dart';
@@ -24,6 +25,7 @@ final _flowBackgroundEntry = flowBackgroundMain;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  FrameLog.start();
   OpenHarmonyPathProvider.registerIfNeeded();
   if (isDesktop) ignoreUnimplementedDesktopChannels();
   await WindowChrome.instance.initialize();

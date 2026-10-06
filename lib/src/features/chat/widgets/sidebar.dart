@@ -163,36 +163,11 @@ class _SidebarState extends State<_Sidebar> {
                                     ),
                                   ),
                                 )
-                              : SliverGrid(
-                                  gridDelegate:
-                                      const SliverGridDelegateWithFixedCrossAxisCount(
-                                    crossAxisCount: 2,
-                                    mainAxisSpacing: 10,
-                                    crossAxisSpacing: 10,
-                                    mainAxisExtent: 100,
-                                  ),
-                                  delegate: SliverChildBuilderDelegate(
-                                    (context, index) {
-                                      final conversation = ordered[index];
-                                      final card = _SidebarConversationTile(
-                                        key: ValueKey(conversation.id),
-                                        conversation: conversation,
-                                        selected: conversation.id ==
-                                            widget.activeConversationId,
-                                        onTap: () => widget
-                                            .onConversation(conversation.id),
-                                      );
-                                      // The design's staggered grid: the right
-                                      // column starts half a card lower than the
-                                      // left one.
-                                      return index.isOdd
-                                          ? Transform.translate(
-                                              offset: const Offset(0, 55),
-                                              child: card,
-                                            )
-                                          : card;
-                                    },
-                                    childCount: ordered.length,
+                              : SliverToBoxAdapter(
+                                  child: _HistoryMasonry(
+                                    conversations: ordered,
+                                    activeId: widget.activeConversationId,
+                                    onOpen: widget.onConversation,
                                   ),
                                 ),
                         ),
@@ -449,6 +424,64 @@ class _SidebarState extends State<_Sidebar> {
           },
         ),
       ),
+    );
+  }
+}
+
+/// The history as two columns of cards of their own heights, each card going
+/// to whichever column is shorter so far — the Siri app's history grid. Cards
+/// keep their order reading left, right, left as far as the heights allow.
+class _HistoryMasonry extends StatelessWidget {
+  const _HistoryMasonry({
+    required this.conversations,
+    required this.activeId,
+    required this.onOpen,
+  });
+
+  final List<FinnConversation> conversations;
+  final String? activeId;
+  final ValueChanged<String> onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final columns = [<Widget>[], <Widget>[]];
+    final heights = [0.0, 0.0];
+    for (final (i, conversation) in conversations.indexed) {
+      final column = heights[0] <= heights[1] ? 0 : 1;
+      if (columns[column].isNotEmpty) {
+        columns[column].add(const SizedBox(height: 10));
+      }
+      columns[column].add(
+        // Cards settle in one after another the first time the panel shows.
+        TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0, end: 1),
+          duration: Duration(milliseconds: 320 + 45 * i.clamp(0, 8)),
+          curve: Curves.easeOutCubic,
+          builder: (context, t, child) => Opacity(
+            opacity: t,
+            child: Transform.translate(
+              offset: Offset(0, 14 * (1 - t)),
+              child: child,
+            ),
+          ),
+          child: _SidebarConversationTile(
+            key: ValueKey(conversation.id),
+            conversation: conversation,
+            selected: conversation.id == activeId,
+            onTap: () => onOpen(conversation.id),
+          ),
+        ),
+      );
+      heights[column] +=
+          _SidebarConversationTile.estimatedHeight(conversation) + 10;
+    }
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(child: Column(children: columns[0])),
+        const SizedBox(width: 10),
+        Expanded(child: Column(children: columns[1])),
+      ],
     );
   }
 }

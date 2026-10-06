@@ -3,7 +3,10 @@ import 'package:flutter/services.dart';
 
 import 'package:finn_ai/l10n/l10n_helper.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
+import 'package:finn_ai/src/shared/widgets/finn_morph_sheet.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
+
+export 'package:finn_ai/src/shared/widgets/finn_morph_sheet.dart';
 
 /// A tall primary action: `#414141`, 50dp, 25dp radius, 18dp label.
 class FinnButton extends StatelessWidget {
@@ -217,7 +220,16 @@ class _DialogBlock extends StatelessWidget {
             ? FluxColors.destructiveOf(context)
             : FluxColors.actionOf(context))
         : FluxColors.tileOf(context);
-    final fg = dark ? Colors.white : FluxColors.inkOf(context);
+    // On the filled button the label takes the fill's own ink: white on the
+    // light theme's #414141, near-black on the dark theme's near-white (white
+    // on white made "Allow" vanish there).
+    final fg = !dark
+        ? FluxColors.inkOf(context)
+        : destructive
+            ? (FluxColors.isDark(context)
+                ? FluxColors.darkCanvas
+                : Colors.white)
+            : FluxColors.actionInkOf(context);
     return Semantics(
       button: true,
       label: label,
@@ -247,20 +259,27 @@ class _DialogBlock extends StatelessWidget {
   }
 }
 
-/// The design's bottom sheet: a canvas-coloured panel with a grab handle, a
-/// title, an optional sentence, and [children] stacked below.
+/// The app's sheet: a floating glass panel with a grab handle, a title, an
+/// optional sentence, and [children] stacked below.
+///
+/// Pass the opener's on-screen rectangle as [origin] (see [globalRectOf]) and
+/// the sheet grows out of that control and shrinks back into it on close;
+/// [originColor] and [originRadius] describe the control so the first frame of
+/// the sheet is the control itself.
 Future<T?> showFinnSheet<T>(
   BuildContext context, {
   required String title,
   String? subtitle,
   required List<Widget> Function(BuildContext context) children,
+  Rect? origin,
+  Color? originColor,
+  double? originRadius,
 }) =>
-    showModalBottomSheet<T>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: Colors.transparent,
-      barrierColor: const Color(0x1A000000),
+    showFinnMorphSheet<T>(
+      context,
+      origin: origin,
+      originColor: originColor,
+      originRadius: originRadius,
       builder: (context) => FinnSheetFrame(
         title: title,
         subtitle: subtitle,
@@ -268,6 +287,8 @@ Future<T?> showFinnSheet<T>(
       ),
     );
 
+/// The inside of a [showFinnSheet]: handle, title, sentence, children. The
+/// panel itself — glass, margins, corners — is [FinnFloatingSheet]'s.
 class FinnSheetFrame extends StatelessWidget {
   const FinnSheetFrame({
     super.key,
@@ -281,44 +302,40 @@ class FinnSheetFrame extends StatelessWidget {
   final List<Widget> children;
 
   @override
-  Widget build(BuildContext context) => Container(
-        decoration: BoxDecoration(
-          color: FluxColors.canvasOf(context),
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
-        ),
-        padding: EdgeInsets.fromLTRB(
-          25,
-          12,
-          25,
-          FluxBottomInset.bottomOf(context) + 15,
-        ),
+  Widget build(BuildContext context) => Material(
+        type: MaterialType.transparency,
         child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFCAC4D0),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 18),
-              Text(title, style: Theme.of(context).textTheme.titleMedium),
-              if (subtitle != null) ...[
-                const SizedBox(height: 6),
-                Text(
-                  subtitle!,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: FluxColors.actionOf(context),
+              const FinnSheetHandle(),
+              const SizedBox(height: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: -0.3,
                       ),
                 ),
+              ),
+              if (subtitle != null) ...[
+                const SizedBox(height: 4),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Text(
+                    subtitle!,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: FluxColors.secondaryInkOf(context),
+                          height: 1.35,
+                        ),
+                  ),
+                ),
               ],
-              const SizedBox(height: 14),
+              const SizedBox(height: 16),
               ...children,
             ],
           ),
@@ -357,23 +374,12 @@ Future<void> showFinnMenu(
       barrierDismissible: true,
       barrierLabel: L10n.of(context).commonDismiss,
       barrierColor: const Color(0x1A000000),
-      transitionDuration: FluxMotion.modalDuration,
-      transitionBuilder: (context, animation, _, child) {
-        final curved = CurvedAnimation(
-          parent: animation,
-          curve: FluxMotion.modalCurve,
-          reverseCurve: FluxMotion.modalReverseCurve,
-        );
-        return FadeTransition(
-          opacity: curved,
-          child: ScaleTransition(
-            alignment: Alignment.topRight,
-            scale: Tween<double>(begin: .92, end: 1).animate(curved),
-            child: child,
-          ),
-        );
-      },
-      pageBuilder: (context, _, __) {
+      transitionDuration: const Duration(milliseconds: 380),
+      // The menu grows out of the control that opened it (see
+      // [FinnMorphSurface]); a long-pressed card is too big to grow from, so
+      // a menu for one simply rises into place.
+      transitionBuilder: (context, animation, _, child) => child,
+      pageBuilder: (context, animation, __) {
         final size = MediaQuery.sizeOf(context);
         const width = 260.0;
         final left =
@@ -393,70 +399,81 @@ Future<void> showFinnMenu(
               left: left,
               top: top,
               width: width,
-              child: Material(
-                color: FluxColors.controlOf(context),
-                borderRadius: BorderRadius.circular(25),
-                child: Padding(
-                  padding: const EdgeInsets.all(8),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      for (final item in items)
-                        Semantics(
-                          button: true,
-                          selected: item.selected,
-                          label: item.label,
-                          excludeSemantics: true,
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(17),
-                            onTap: () {
-                              HapticFeedback.selectionClick();
-                              Navigator.of(context).pop();
-                              item.onTap();
-                            },
-                            child: SizedBox(
-                              height: 50,
-                              child: Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 14),
-                                child: Row(
-                                  children: [
-                                    FluxIcon(
-                                      icon: item.icon,
-                                      size: 22,
-                                      color: item.destructive
-                                          ? FluxColors.destructiveOf(context)
-                                          : FluxColors.actionOf(context),
-                                    ),
-                                    const SizedBox(width: 15),
-                                    Expanded(
-                                      child: Text(
-                                        item.label,
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .bodyMedium
-                                            ?.copyWith(
-                                              color: item.destructive
-                                                  ? FluxColors.destructiveOf(
-                                                      context,
-                                                    )
-                                                  : null,
-                                            ),
-                                      ),
-                                    ),
-                                    if (item.selected)
+              child: FinnMorphSurface(
+                progress: MediaQuery.disableAnimationsOf(context)
+                    ? animation
+                    : CurvedAnimation(
+                        parent: animation,
+                        curve: FluxMotion.morphCurve,
+                        reverseCurve: FluxMotion.morphReverseCurve,
+                      ),
+                origin: anchor.shortestSide <= 64 ? anchor : null,
+                originColor: FluxColors.controlOf(context),
+                radius: 25,
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        for (final item in items)
+                          Semantics(
+                            button: true,
+                            selected: item.selected,
+                            label: item.label,
+                            excludeSemantics: true,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(17),
+                              onTap: () {
+                                HapticFeedback.selectionClick();
+                                Navigator.of(context).pop();
+                                item.onTap();
+                              },
+                              child: SizedBox(
+                                height: 50,
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 14),
+                                  child: Row(
+                                    children: [
                                       FluxIcon(
-                                        icon: FluxIcons.check,
-                                        size: 20,
-                                        color: FluxColors.actionOf(context),
+                                        icon: item.icon,
+                                        size: 22,
+                                        color: item.destructive
+                                            ? FluxColors.destructiveOf(context)
+                                            : FluxColors.actionOf(context),
                                       ),
-                                  ],
+                                      const SizedBox(width: 15),
+                                      Expanded(
+                                        child: Text(
+                                          item.label,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodyMedium
+                                              ?.copyWith(
+                                                color: item.destructive
+                                                    ? FluxColors.destructiveOf(
+                                                        context,
+                                                      )
+                                                    : null,
+                                              ),
+                                        ),
+                                      ),
+                                      if (item.selected)
+                                        FluxIcon(
+                                          icon: FluxIcons.check,
+                                          size: 20,
+                                          color: FluxColors.actionOf(context),
+                                        ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),

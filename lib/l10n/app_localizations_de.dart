@@ -2337,6 +2337,18 @@ class AppLocalizationsDe extends AppLocalizations {
   String get chatRenamePrompt => 'Chat umbenennen';
 
   @override
+  String get flowsSearchEmpty => 'Keine Flows passen zu dieser Suche.';
+
+  @override
+  String get flowsPickerDevice => 'Gerät';
+
+  @override
+  String get flowsPickerLogic => 'Logik';
+
+  @override
+  String get flowsPickerEmpty => 'Kein Schritt passt zu dieser Suche.';
+
+  @override
   String get flowsFilterAll => 'Alle';
 
   @override
@@ -3442,6 +3454,32 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String codeActionFailedExit(String code) {
     return 'Fehlgeschlagen (Code $code)';
+  }
+
+  @override
+  String get codeSessionsPinned => 'Angeheftet';
+
+  @override
+  String get codeSessionsToday => 'Heute';
+
+  @override
+  String get codeSessionsEarlier => 'Früher';
+
+  @override
+  String get codeSessionWorking => 'Arbeitet';
+
+  @override
+  String get codeSessionNeedsYou => 'Wartet auf dich';
+
+  @override
+  String get codeSessionNoChanges => 'Keine Änderungen';
+
+  @override
+  String get codeSessionOneFile => '1 Datei';
+
+  @override
+  String codeSessionFileCount(int count) {
+    return '$count Dateien';
   }
 
   @override

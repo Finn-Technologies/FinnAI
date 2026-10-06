@@ -2,8 +2,9 @@ part of '../home_shell.dart';
 
 /// The chat's "+" sheet: what you can make (widget, mini app, presentation,
 /// flow) as a grid of cards, and what you can add to the message (photo,
-/// camera, file). Rises from the bottom over a light scrim, the way the
-/// design shows it; a tap outside or a drag down puts it away.
+/// camera, file). The "+" button itself grows into the sheet — a floating
+/// glass panel kept clear of the screen edges — and the sheet shrinks back
+/// into it on close; a tap outside or a drag down puts it away.
 class _PlusSheet extends StatefulWidget {
   const _PlusSheet({
     required this.open,
@@ -12,7 +13,7 @@ class _PlusSheet extends StatefulWidget {
     required this.onSelectPhoto,
     required this.onSelectFile,
     required this.onCreate,
-    required this.bottomInset,
+    required this.originKey,
     required this.maxWidth,
   });
 
@@ -24,7 +25,9 @@ class _PlusSheet extends StatefulWidget {
 
   /// Starts building something: `widget`, `app`, `presentation` or `flow`.
   final ValueChanged<String> onCreate;
-  final double bottomInset;
+
+  /// The "+" button the sheet grows out of.
+  final GlobalKey originKey;
   final double maxWidth;
 
   @override
@@ -42,13 +45,13 @@ class _PlusSheetState extends State<_PlusSheet>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
-    duration: FluxMotion.emphasisDuration,
-    reverseDuration: const Duration(milliseconds: 220),
+    duration: FluxMotion.morphDuration,
+    reverseDuration: FluxMotion.morphReverseDuration,
     value: widget.open ? 1 : 0,
   );
 
-  /// How far a drag has pulled the sheet down, in logical pixels.
-  double _drag = 0;
+  /// Where the "+" button was when the sheet opened.
+  Rect? _origin;
 
   @override
   void didUpdateWidget(covariant _PlusSheet oldWidget) {
@@ -59,10 +62,11 @@ class _PlusSheetState extends State<_PlusSheet>
       return;
     }
     if (widget.open) {
-      _drag = 0;
+      _origin = globalRectOf(widget.originKey);
       HapticFeedback.selectionClick();
       _controller.forward();
     } else {
+      _origin = globalRectOf(widget.originKey) ?? _origin;
       _controller.reverse();
     }
   }
@@ -138,21 +142,19 @@ class _PlusSheetState extends State<_PlusSheet>
       builder: (context, _) {
         final t = _controller.value;
         if (t == 0 && !widget.open) return const SizedBox.shrink();
-        // Rises on a soft spring, falls on a plain ease.
-        final rise = _controller.status == AnimationStatus.reverse
-            ? Curves.easeInCubic.transform(t)
-            : const ElasticOutCurve(.85).transform(t).clamp(0.0, 1.06);
         var index = 0;
         Widget card(_PlusEntry entry) {
           final i = index++;
-          // Each card lands a beat after the one before it.
-          final start = (i * .055).clamp(0.0, .5);
-          final local = ((t - start) / .5).clamp(0.0, 1.0);
+          // Each card lands a beat after the one before it, once the panel
+          // has grown enough to hold them.
+          final closing = _controller.status == AnimationStatus.reverse;
+          final start = closing ? .62 : .34 + i * .045;
+          final local = ((t - start) / (closing ? .38 : .42)).clamp(0.0, 1.0);
           final curve = Curves.easeOutCubic.transform(local);
           return Opacity(
             opacity: curve,
             child: Transform.translate(
-              offset: Offset(0, 14 * (1 - curve)),
+              offset: Offset(0, 10 * (1 - curve)),
               child: _PlusCard(
                 key: ValueKey('plus-${entry.title}'),
                 entry: entry,
@@ -171,47 +173,29 @@ class _PlusSheetState extends State<_PlusSheet>
                 onTap: widget.onClose,
                 child: ColoredBox(
                   color: Colors.black.withValues(
-                    alpha: (FluxColors.isDark(context) ? .35 : .1) *
+                    alpha: (FluxColors.isDark(context) ? .35 : .12) *
                         Curves.easeOut.transform(t),
                   ),
                 ),
               ),
             ),
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth: widget.maxWidth),
-                  child: FractionalTranslation(
-                    translation: Offset(0, 1 - rise),
-                    child: Transform.translate(
-                      offset: Offset(0, _drag),
-                      child: GestureDetector(
-                        onVerticalDragUpdate: (d) => setState(
-                            () => _drag = math.max(0, _drag + d.delta.dy)),
-                        onVerticalDragEnd: (d) {
-                          if (_drag > 80 || (d.primaryVelocity ?? 0) > 500) {
-                            widget.onClose();
-                          } else {
-                            setState(() => _drag = 0);
-                          }
-                        },
-                        child: _sheet(context, [
-                          _heading(l10n.plusCreate),
-                          _grid([
-                            for (final entry in create) card(entry),
-                          ], columns: 2),
-                          _heading(l10n.plusAddToChat),
-                          _grid([
-                            for (final entry in attach) card(entry),
-                          ], columns: 3),
-                        ]),
-                      ),
-                    ),
-                  ),
-                ),
+            Positioned.fill(
+              child: FinnFloatingSheet(
+                animation: _controller,
+                origin: _origin,
+                originColor: FluxColors.controlOf(context),
+                maxWidth: widget.maxWidth,
+                onDismiss: widget.onClose,
+                child: _sheet(context, [
+                  _heading(l10n.plusCreate),
+                  _grid([
+                    for (final entry in create) card(entry),
+                  ], columns: 2),
+                  _heading(l10n.plusAddToChat),
+                  _grid([
+                    for (final entry in attach) card(entry),
+                  ], columns: 3),
+                ]),
               ),
             ),
           ],
@@ -222,27 +206,14 @@ class _PlusSheetState extends State<_PlusSheet>
 
   Widget _sheet(BuildContext context, List<Widget> children) => Material(
         key: const ValueKey('plus-sheet'),
-        color: FluxColors.tileOf(context),
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
-        ),
-        clipBehavior: Clip.antiAlias,
+        type: MaterialType.transparency,
         child: Padding(
-          padding: EdgeInsets.fromLTRB(25, 12, 25, 24 + widget.bottomInset),
+          padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: FluxColors.lineOf(context),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
+              const FinnSheetHandle(),
               ...children,
             ],
           ),
@@ -250,13 +221,16 @@ class _PlusSheetState extends State<_PlusSheet>
       );
 
   Widget _heading(String text) => Padding(
-        padding: const EdgeInsets.only(top: 18, bottom: 12),
+        padding: const EdgeInsets.fromLTRB(6, 14, 6, 10),
         child: Text(
           text,
-          style: const TextStyle(
-            fontFamily: 'InstrumentSans',
-            fontSize: 18,
-            height: 22 / 18,
+          style: TextStyle(
+            fontFamily: 'Geist',
+            fontSize: 13,
+            height: 16 / 13,
+            fontWeight: FontWeight.w500,
+            letterSpacing: .1,
+            color: FluxColors.secondaryInkOf(context),
           ),
         ),
       );
@@ -268,7 +242,7 @@ class _PlusSheetState extends State<_PlusSheet>
       rows.add(Row(
         children: [
           for (var j = 0; j < columns; j++) ...[
-            if (j > 0) const SizedBox(width: 10),
+            if (j > 0) const SizedBox(width: 8),
             Expanded(
                 child: j < slice.length ? slice[j] : const SizedBox.shrink()),
           ],
@@ -278,7 +252,7 @@ class _PlusSheetState extends State<_PlusSheet>
     return Column(
       children: [
         for (final (i, row) in rows.indexed) ...[
-          if (i > 0) const SizedBox(height: 10),
+          if (i > 0) const SizedBox(height: 8),
           row,
         ],
       ],
@@ -307,22 +281,24 @@ class _PlusCard extends StatelessWidget {
       excludeSemantics: true,
       child: FluxPressScale(
         child: Material(
-          color: FluxColors.controlOf(context),
+          color: FluxColors.isDark(context)
+              ? const Color(0x12FFFFFF)
+              : const Color(0x0B000000),
           borderRadius: BorderRadius.circular(20),
           child: InkWell(
             onTap: onTap,
             borderRadius: BorderRadius.circular(20),
             child: SizedBox(
-              height: 110,
+              height: subtitle == null ? 92 : 104,
               child: Padding(
-                padding: const EdgeInsets.all(15),
+                padding: const EdgeInsets.all(14),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     FluxIcon(
                       icon: entry.icon,
-                      size: 26,
-                      color: FluxColors.actionOf(context),
+                      size: 24,
+                      color: FluxColors.inkOf(context),
                     ),
                     const Spacer(),
                     Text(
@@ -330,9 +306,11 @@ class _PlusCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontFamily: 'InstrumentSans',
-                        fontSize: 14,
-                        height: 17 / 14,
+                        fontFamily: 'Geist',
+                        fontSize: 15,
+                        height: 19 / 15,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: -0.2,
                         color: FluxColors.inkOf(context),
                       ),
                     ),
@@ -342,7 +320,7 @@ class _PlusCard extends StatelessWidget {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontFamily: 'InstrumentSans',
+                          fontFamily: 'Geist',
                           fontSize: 13,
                           height: 16 / 13,
                           color: FluxColors.secondaryInkOf(context),

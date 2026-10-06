@@ -4136,6 +4136,30 @@ abstract class AppLocalizations {
   /// **'Rename chat'**
   String get chatRenamePrompt;
 
+  /// Shown under the Flows search field when no flow matches
+  ///
+  /// In en, this message translates to:
+  /// **'No flows match that search.'**
+  String get flowsSearchEmpty;
+
+  /// Flow step picker: flowsPickerDevice
+  ///
+  /// In en, this message translates to:
+  /// **'Device'**
+  String get flowsPickerDevice;
+
+  /// Flow step picker: flowsPickerLogic
+  ///
+  /// In en, this message translates to:
+  /// **'Logic'**
+  String get flowsPickerLogic;
+
+  /// Flow step picker: flowsPickerEmpty
+  ///
+  /// In en, this message translates to:
+  /// **'No step matches that search.'**
+  String get flowsPickerEmpty;
+
   /// flowsFilterAll
   ///
   /// In en, this message translates to:
@@ -6139,6 +6163,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Failed (exit {code})'**
   String codeActionFailedExit(String code);
+
+  /// FinnAI Code session list: codeSessionsPinned
+  ///
+  /// In en, this message translates to:
+  /// **'Pinned'**
+  String get codeSessionsPinned;
+
+  /// FinnAI Code session list: codeSessionsToday
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get codeSessionsToday;
+
+  /// FinnAI Code session list: codeSessionsEarlier
+  ///
+  /// In en, this message translates to:
+  /// **'Earlier'**
+  String get codeSessionsEarlier;
+
+  /// FinnAI Code session list: codeSessionWorking
+  ///
+  /// In en, this message translates to:
+  /// **'Working'**
+  String get codeSessionWorking;
+
+  /// FinnAI Code session list: codeSessionNeedsYou
+  ///
+  /// In en, this message translates to:
+  /// **'Needs you'**
+  String get codeSessionNeedsYou;
+
+  /// FinnAI Code session list: codeSessionNoChanges
+  ///
+  /// In en, this message translates to:
+  /// **'No changes'**
+  String get codeSessionNoChanges;
+
+  /// FinnAI Code session list: codeSessionOneFile
+  ///
+  /// In en, this message translates to:
+  /// **'1 file'**
+  String get codeSessionOneFile;
+
+  /// How many files a Code session changed (two or more)
+  ///
+  /// In en, this message translates to:
+  /// **'{count} files'**
+  String codeSessionFileCount(int count);
 
   /// Status of an action that failed
   ///

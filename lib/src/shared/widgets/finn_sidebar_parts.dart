@@ -75,7 +75,7 @@ class FinnSidebarTile extends StatelessWidget {
                           label,
                           maxLines: 1,
                           style: TextStyle(
-                            fontFamily: 'InstrumentSans',
+                            fontFamily: 'Geist',
                             fontSize: 14,
                             height: 1.2,
                             fontWeight: FontWeight.w400,
@@ -168,7 +168,7 @@ class FinnSidebarHistoryTile extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontFamily: 'InstrumentSans',
+                      fontFamily: 'Geist',
                       fontSize: 14,
                       height: 1.2,
                       fontWeight: FontWeight.w400,

@@ -12,6 +12,7 @@ class ChatComposer extends StatefulWidget {
     this.compact = false,
     this.attachmentPath,
     this.isAttachmentMenuOpen = false,
+    this.plusKey,
     this.onPickAttachment,
     this.onRemoveAttachment,
     this.onReturnToLatest,
@@ -49,6 +50,9 @@ class ChatComposer extends StatefulWidget {
 
   /// True when the iMessage-style floating attachment menu is open.
   final bool isAttachmentMenuOpen;
+
+  /// Marks the "+" button, so the "+" sheet can grow out of it.
+  final GlobalKey? plusKey;
 
   /// Invoked when the user taps the '+' attachment button on the left.
   final VoidCallback? onPickAttachment;
@@ -104,8 +108,24 @@ class ChatComposer extends StatefulWidget {
 }
 
 class _ChatComposerState extends State<ChatComposer>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late bool _hasText;
+
+  /// 0 = three controls (the circles and the field between them), 1 = one
+  /// panel: text on top, "+" bottom-left, mic and send bottom-right, while
+  /// the keyboard is up on a phone (see [KeyboardFuse]).
+  late final KeyboardFuse _fuse = KeyboardFuse(
+    this,
+    vsync: this,
+    focusNode: widget.focusNode,
+    allowed: () => !widget.voiceListening,
+  );
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _fuse.sync();
+  }
 
   /// 0 = chatting, 1 = a live voice conversation: the one motion the whole
   /// bottom row follows (see [VoiceMorphBar]). Slower going in than coming
@@ -116,6 +136,7 @@ class _ChatComposerState extends State<ChatComposer>
   @override
   void didUpdateWidget(covariant ChatComposer oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.voiceListening != oldWidget.voiceListening) _fuse.sync();
     if (widget.voiceListening == oldWidget.voiceListening) return;
     final target = widget.voiceListening ? 1.0 : 0.0;
     if (MediaQuery.disableAnimationsOf(context)) {
@@ -166,6 +187,7 @@ class _ChatComposerState extends State<ChatComposer>
   @override
   void dispose() {
     _morph.dispose();
+    _fuse.dispose();
     widget.controller.removeListener(_changed);
     widget.focusNode.removeListener(_onFocusChanged);
     super.dispose();
@@ -184,6 +206,7 @@ class _ChatComposerState extends State<ChatComposer>
     // One circular control of the composer row: 50dp, flat colour, glyph.
     Widget circle({
       required Key key,
+      Key? surfaceKey,
       required Color color,
       required Widget child,
       VoidCallback? onTap,
@@ -199,6 +222,7 @@ class _ChatComposerState extends State<ChatComposer>
           child: FluxPressScale(
             enabled: onTap != null,
             child: Material(
+              key: surfaceKey,
               color: color,
               shape: const CircleBorder(),
               child: SizedBox.square(
@@ -219,9 +243,10 @@ class _ChatComposerState extends State<ChatComposer>
     // Left: attachments, turning into the design's cancel cross as voice
     // mode arrives. The turn belongs to the same motion as the rest of the
     // row, with a little overshoot so it lands rather than stops.
-    Widget leadingFor(double c) => circle(
+    Widget leadingFor(double c, {Color? color}) => circle(
           key: const ValueKey('add-attachment-button'),
-          color: FluxColors.controlOf(context),
+          surfaceKey: widget.plusKey,
+          color: color ?? FluxColors.controlOf(context),
           label: c > .5
               ? l10n.voiceCancelSemantic
               : widget.pickAttachmentSemanticLabel ??
@@ -240,10 +265,10 @@ class _ChatComposerState extends State<ChatComposer>
               turns: widget.isAttachmentMenuOpen ? .125 : 0.0,
               duration: FluxMotion.modalDuration,
               curve: Curves.easeOutCubic,
-              child: const FigmaSvg(
-                asset: FigmaAssets.composerAdd,
-                width: 25,
-                height: 25,
+              child: FluxIcon(
+                icon: FluxIcons.add,
+                size: 26,
+                color: FluxColors.inkOf(context),
               ),
             ),
           ),
@@ -252,9 +277,12 @@ class _ChatComposerState extends State<ChatComposer>
     // Right, in chat: stop while generating, send once there is something to
     // send, and the design's voice button otherwise. The key is what lets the
     // swap between them animate instead of blinking.
+    // While fused the mic has its own place beside send, so the right-hand
+    // control is send even before anything is typed.
+    final fusing = _fuse.fusing;
     final chatMode = widget.busy
         ? 'stop'
-        : hasDraft
+        : (hasDraft || fusing)
             ? 'send'
             : 'mic';
     final chatControl = widget.busy
@@ -275,7 +303,7 @@ class _ChatComposerState extends State<ChatComposer>
           )
         // Without voice mode the empty state is a resting send button, not a
         // microphone that does nothing.
-        : (hasDraft || !widget.voiceEnabled)
+        : (hasDraft || fusing || !widget.voiceEnabled)
             ? circle(
                 key: const ValueKey('send-button-hit'),
                 color: FluxColors.actionOf(context),
@@ -358,7 +386,7 @@ class _ChatComposerState extends State<ChatComposer>
                     constraints: const BoxConstraints(minHeight: 48),
                     child: Center(
                       child: Padding(
-// InstrumentSans carries more space above its letters than below, so the
+// Geist carries more space above its letters than below, so the
 // laid-out line box sat ~4.5px under where the letters look centred. Measured
 // on the real window (pixel rows of the letters against the pill); the
 // bottom padding lifts the centred field by half its value. The value is per
@@ -384,7 +412,7 @@ class _ChatComposerState extends State<ChatComposer>
                                 canSend ? widget.onSend() : null,
                             onTap: () => widget.onReturnToLatest?.call(),
                             style: TextStyle(
-                              fontFamily: 'InstrumentSans',
+                              fontFamily: 'Geist',
                               fontSize: 16,
                               height: 1.25,
                               fontWeight: FontWeight.w400,
@@ -401,7 +429,7 @@ class _ChatComposerState extends State<ChatComposer>
                               // narrow screens and in longer locales.
                               hintMaxLines: 1,
                               hintStyle: TextStyle(
-                                fontFamily: 'InstrumentSans',
+                                fontFamily: 'Geist',
                                 fontSize: 16,
                                 height: 1.25,
                                 fontWeight: FontWeight.w400,
@@ -423,26 +451,104 @@ class _ChatComposerState extends State<ChatComposer>
     );
     const fieldInset = EdgeInsets.fromLTRB(17, 1, 4, 1);
 
-    // The middle pill outside live voice: just the field. Flat in both
-    // themes — no shadow. A blur renders differently per GPU and, on dark,
-    // reads as a haze around the pill on some panels; the pill separates
-    // from the chat background with its fill plus a 1px hairline instead.
-    final pill = AnimatedContainer(
-      key: const ValueKey('chat-composer-motion'),
-      duration:
-          reducedMotion ? Duration.zero : const Duration(milliseconds: 180),
-      curve: Curves.easeOutCubic,
-      decoration: BoxDecoration(
-        color: FluxColors.controlOf(context),
-        borderRadius: BorderRadius.circular(
-          hasAttachment ? FluxRadius.sheet : FluxRadius.pill,
-        ),
-        border: Border.all(color: FluxColors.lineOf(context), width: 1),
-      ),
-      constraints: const BoxConstraints(minHeight: 50, maxHeight: 220),
-      padding: fieldInset,
-      child: fieldColumn,
-    );
+    // Outside live voice the row is three controls — the "+" circle, the
+    // field pill, the send/mic circle — or, while typing on a phone, one
+    // panel holding all three. Flat in both themes: no shadow, the pill
+    // separates from the chat on its fill plus a 1px hairline.
+    final fusedMic = widget.voiceEnabled && !widget.busy
+        ? Semantics(
+            button: true,
+            label: l10n.voiceMicSemantic,
+            excludeSemantics: true,
+            child: FluxPressScale(
+              child: InkResponse(
+                key: const ValueKey('fused-mic-button'),
+                onTap: widget.onMic,
+                radius: 22,
+                child: SizedBox.square(
+                  dimension: 44,
+                  child: Center(
+                    child: FluxIcon(
+                      icon: FluxIcons.mic,
+                      size: 23,
+                      color: FluxColors.inkOf(context),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          )
+        : null;
+    Widget threeOrOne(double t) {
+      // Each value is the three-control layout at t = 0 and the fused panel
+      // at t = 1; the overshoot of the curve is allowed to carry through.
+      double lerp(double a, double b) => a + (b - a) * t;
+      final u = t.clamp(0.0, 1.0);
+      final side = lerp(70, 0);
+      final bar = lerp(0, 50);
+      final radius = hasAttachment ? FluxRadius.sheet : lerp(25, 28);
+      return Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: side.clamp(0, 70)),
+            child: Container(
+              key: const ValueKey('chat-composer-motion'),
+              decoration: BoxDecoration(
+                color: FluxColors.controlOf(context),
+                borderRadius: BorderRadius.circular(radius),
+                border: Border.all(color: FluxColors.lineOf(context), width: 1),
+              ),
+              constraints: BoxConstraints(
+                minHeight: 50 + bar.clamp(0, 60),
+                maxHeight: 220 + bar.clamp(0, 60),
+              ),
+              padding: EdgeInsets.fromLTRB(
+                lerp(17, 18),
+                lerp(1, 8),
+                lerp(4, 14),
+                1 + bar.clamp(0, 60),
+              ),
+              child: fieldColumn,
+            ),
+          ),
+          // "+" travels into the panel's bottom-left corner; its own fill is
+          // the panel's, so once inside it reads as a bare glyph.
+          Positioned(
+            left: lerp(0, 3),
+            bottom: lerp(0, 3),
+            child: Transform.scale(
+              scale: lerp(1, .9),
+              alignment: Alignment.bottomLeft,
+              child: leadingFor(0),
+            ),
+          ),
+          if (fusedMic != null && u > 0)
+            Positioned(
+              right: 52,
+              bottom: 5,
+              child: Opacity(
+                opacity:
+                    Curves.easeOut.transform(((u - .45) / .55).clamp(0, 1)),
+                child: Transform.translate(
+                  offset: Offset(12 * (1 - u), 0),
+                  child: fusedMic,
+                ),
+              ),
+            ),
+          // Send keeps its fill and settles into the bottom-right corner.
+          Positioned(
+            right: lerp(0, 6),
+            bottom: lerp(0, 6),
+            child: Transform.scale(
+              scale: lerp(1, .8),
+              alignment: Alignment.bottomRight,
+              child: trailing,
+            ),
+          ),
+        ],
+      );
+    }
 
     // The control row condenses around its own centre while scrolled away: it
     // scales down uniformly to 85%, so the length shortens a bit while the
@@ -459,26 +565,31 @@ class _ChatComposerState extends State<ChatComposer>
       ),
       child: SizedBox(
         width: widget.width,
+        // Fusing or fused while typing (never during a live voice
+        // conversation): one panel. Otherwise the voice bar owns the row.
         child: widget.voice == null
-            ? Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  leadingFor(0),
-                  const SizedBox(width: 20),
-                  Expanded(child: pill),
-                  const SizedBox(width: 20),
-                  trailing,
-                ],
+            ? AnimatedBuilder(
+                animation: _fuse.value,
+                builder: (context, _) => threeOrOne(_fuse.value.value),
               )
-            : VoiceMorphBar(
-                progress: _progress,
-                voice: widget.voice!,
-                leading: leadingFor,
-                chatTrailing: trailing,
-                voiceTrailing: voiceTrailing,
-                field: Padding(padding: fieldInset, child: fieldColumn),
-                fieldRadius: hasAttachment ? FluxRadius.sheet : FluxRadius.pill,
-                onVoiceTap: widget.onVoiceTap ?? widget.onVoiceToggle,
+            : AnimatedBuilder(
+                animation: Listenable.merge([_morph, _fuse.value]),
+                // The two agree exactly at rest, so the hand-over is unseen.
+                builder: (context, voiceBar) =>
+                    _morph.value == 0 && _fuse.controller.value > 0
+                        ? threeOrOne(_fuse.value.value)
+                        : voiceBar!,
+                child: VoiceMorphBar(
+                  progress: _progress,
+                  voice: widget.voice!,
+                  leading: leadingFor,
+                  chatTrailing: trailing,
+                  voiceTrailing: voiceTrailing,
+                  field: Padding(padding: fieldInset, child: fieldColumn),
+                  fieldRadius:
+                      hasAttachment ? FluxRadius.sheet : FluxRadius.pill,
+                  onVoiceTap: widget.onVoiceTap ?? widget.onVoiceToggle,
+                ),
               ),
       ),
     );

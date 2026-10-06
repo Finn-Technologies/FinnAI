@@ -74,17 +74,15 @@ String _suffix(_Device device, Brightness brightness) =>
 /// that no one could review. Loading the real font is what makes a golden
 /// worth looking at.
 Future<void> _loadAppFont() async {
-  await _loadFont('InstrumentSans', 'assets/fonts/InstrumentSans-Variable.ttf');
+  await _loadFont('Geist', 'assets/fonts/Geist-Variable.ttf');
   await _loadFont('JetBrainsMono', 'assets/fonts/JetBrainsMono-Variable.ttf');
-  // The app's icons are Phosphor's fill set, a font in its package.
-  final phosphor = _packagePath('phosphor_flutter');
-  if (phosphor != null) {
-    for (final weight in ['Fill', 'Bold']) {
-      await _loadFont(
-        'packages/phosphor_flutter/Phosphor$weight',
-        '$phosphor/lib/fonts/Phosphor-$weight.ttf',
-      );
-    }
+  // The app's icons are Lucide's 300-weight set, a font in its package.
+  final lucide = _packagePath('lucide_icons_flutter');
+  if (lucide != null) {
+    await _loadFont(
+      'packages/lucide_icons_flutter/Lucide300',
+      '$lucide/assets/build_font/LucideVariable-w300.ttf',
+    );
   }
   // Material's icon font is not registered in the test engine either, so a
   // dropdown arrow would capture as a box. Best-effort: the path depends on
@@ -299,7 +297,7 @@ void main() {
                                 badge: const Text(
                                   '2m',
                                   style: TextStyle(
-                                    fontFamily: 'InstrumentSans',
+                                    fontFamily: 'Geist',
                                     fontSize: 14,
                                   ),
                                 ),

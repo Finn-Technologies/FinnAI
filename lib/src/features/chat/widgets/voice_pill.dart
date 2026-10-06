@@ -31,7 +31,13 @@ class VoicePill extends StatefulWidget {
     this.field,
     this.fieldOpacity = 0,
     this.fieldRadius = FluxRadius.pill,
+    this.ghost = false,
   });
+
+  /// True when the screen's own light (`VoiceGlow`) is the voice visual: the
+  /// field still narrows and dissolves, but no colour pill arrives in its
+  /// place — what is left is the tap target that finishes a turn.
+  final bool ghost;
 
   final VoiceChatController voice;
   final VoidCallback? onTap;
@@ -74,15 +80,18 @@ class _VoicePillState extends State<VoicePill>
   void initState() {
     super.initState();
     _ticker = createTicker(_onTick)..start();
-    _ticker.muted = widget.expand >= 1;
+    _ticker.muted = _still;
   }
+
+  /// Nothing to animate: just the message field, or a ghost that has landed.
+  bool get _still => widget.expand >= 1 || (widget.ghost && widget.expand <= 0);
 
   @override
   void didUpdateWidget(covariant VoicePill oldWidget) {
     super.didUpdateWidget(oldWidget);
     // A pill that is just the message field has nothing to animate; leaving
     // the ticker on would redraw the chat screen sixty times a second.
-    _ticker.muted = widget.expand >= 1;
+    _ticker.muted = _still;
     if (_ticker.muted) _last = Duration.zero;
   }
 
@@ -142,12 +151,13 @@ class _VoicePillState extends State<VoicePill>
     // 48dp band plus its padding still fits with the border on.
     final height = lerpDouble(pillHeight + 2, 52, expand)!;
     final angle = _phase * 1.4;
-    final glow = reduced ? 0.0 : (0.12 + 0.30 * swell) * _awake;
+    final glow = reduced || widget.ghost ? 0.0 : (0.12 + 0.30 * swell) * _awake;
     final hot = colors.last;
 
     final c = 1 - expand;
-    final pillFill =
-        const Interval(.15, .65, curve: Curves.easeOut).transform(c);
+    final pillFill = widget.ghost
+        ? 0.0
+        : const Interval(.15, .65, curve: Curves.easeOut).transform(c);
     // The white stays solid under the arriving colour and only then goes, so
     // the shape never thins out half way: two see-through layers would.
     final fieldFill =
@@ -320,10 +330,12 @@ class VoiceCaption extends StatelessWidget {
               key: ValueKey(label),
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontFamily: 'InstrumentSans',
-                fontSize: 14,
+                fontFamily: 'Geist',
+                fontSize: 15,
                 height: 1.2,
-                color: FluxColors.mutedOf(context),
+                fontWeight: FontWeight.w500,
+                letterSpacing: -0.2,
+                color: FluxColors.inkOf(context).withValues(alpha: .78),
               ),
             ),
           );

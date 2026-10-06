@@ -478,7 +478,7 @@ class _ContextMenuItemTile extends StatelessWidget {
                       child: Text(
                         item.label,
                         style: TextStyle(
-                          fontFamily: 'InstrumentSans',
+                          fontFamily: 'Geist',
                           fontSize: 16,
                           fontWeight: FontWeight.w400,
                           color: textColor,

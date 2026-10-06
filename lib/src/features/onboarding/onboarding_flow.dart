@@ -9,9 +9,9 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:finn_ai/src/app/app_mode_host.dart';
 import 'package:finn_ai/src/features/onboarding/artwork_card.dart';
 import 'package:finn_ai/src/features/onboarding/context_choose_page.dart';
-import 'package:finn_ai/src/features/onboarding/starfield.dart';
+import 'package:finn_ai/src/features/onboarding/step_transition.dart';
+import 'package:finn_ai/src/features/onboarding/welcome_morph.dart';
 import 'package:finn_ai/src/features/onboarding/wide_step.dart';
-import 'package:finn_ai/src/shared/widgets/finn_window_frame.dart';
 import 'package:finn_ai/src/features/onboarding/context_consent_store.dart';
 import 'package:finn_ai/src/inference/device_profile.dart';
 import 'package:finn_ai/src/features/onboarding/model_install.dart';
@@ -45,8 +45,20 @@ class OnboardingFlow extends StatefulWidget {
   State<OnboardingFlow> createState() => _OnboardingFlowState();
 }
 
-class _OnboardingFlowState extends State<OnboardingFlow> {
+class _OnboardingFlowState extends State<OnboardingFlow>
+    with SingleTickerProviderStateMixin {
   final _pageController = PageController();
+
+  /// Welcome (0) to the first step (1): the welcome card growing into the
+  /// step's artwork card. Its own motion, not the PageView's (see
+  /// [WelcomeMorphPage]).
+  /// The steps a running change goes between (see [StepTransition]).
+  final _span = ValueNotifier<(int, int)?>(null);
+
+  late final AnimationController _welcome = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 700),
+  );
   final _modelInstallerKey = GlobalKey<_AutomaticModelPageState>();
   bool _modelInstallRequested = false;
 
@@ -58,11 +70,28 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     }
     HapticFeedback.selectionClick();
     final reduced = MediaQuery.disableAnimationsOf(context);
-    _pageController.animateToPage(
-      page,
-      duration: reduced ? Duration.zero : const Duration(milliseconds: 400),
-      curve: Curves.easeInOutCubicEmphasized,
-    );
+    final from = (_pageController.page ?? 0).round();
+    if (!reduced && from == 0 && page == 1) {
+      // The welcome card grows into the step's card, then the real step
+      // takes over the frame it was already drawing.
+      _welcome.animateTo(1, curve: Curves.easeOutCubic).whenComplete(() {
+        if (mounted && _welcome.value == 1) _pageController.jumpToPage(1);
+      });
+    } else if (!reduced && from == 1 && page == 0) {
+      _welcome.value = 1;
+      _pageController.jumpToPage(0);
+      _welcome.animateBack(0, curve: Curves.easeInOutCubic);
+    } else {
+      _span.value = (from, page);
+      _pageController
+          .animateToPage(
+            page,
+            duration:
+                reduced ? Duration.zero : const Duration(milliseconds: 520),
+            curve: Curves.easeInOutCubic,
+          )
+          .whenComplete(() => _span.value = null);
+    }
     if (page == 2 && widget.enableModelDownload) {
       if (!_modelInstallRequested) {
         setState(() => _modelInstallRequested = true);
@@ -117,6 +146,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
   @override
   void dispose() {
+    _welcome.dispose();
+    _span.dispose();
     _pageController.dispose();
     super.dispose();
   }
@@ -138,254 +169,48 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
           controller: _pageController,
           physics: const NeverScrollableScrollPhysics(),
           children: [
-            _WelcomePage(onNext: () => _to(1)),
-            _PrivacyPage(onBack: () => _to(0), onNext: () => _to(2)),
-            _AutomaticModelPage(
-              key: _modelInstallerKey,
-              startRequested: _modelInstallRequested,
-              addons: widget.addons,
-              onBack: () => _to(1),
-              onNext: () => _to(3),
+            WelcomeMorphPage(
+              progress: _welcome,
+              artwork: FigmaAssets.artworkPrivacy,
+              stepTitle: L10n.of(context).onboardingPrivacyTitle,
+              step: _PrivacyPage(onBack: () {}, onNext: () {}),
+              onAdvance: () => _to(1),
             ),
-            _ConsentPage(
-              store: widget.consentStore,
-              onBack: () => _to(2),
-              // Choosing what to share only makes sense after a "Yes".
-              onNext: () => _to(
-                (widget.consentStore ?? ContextConsentStore.instance).granted
-                    ? 4
-                    : 5,
+            for (final (i, step) in <Widget>[
+              _PrivacyPage(onBack: () => _to(0), onNext: () => _to(2)),
+              _AutomaticModelPage(
+                key: _modelInstallerKey,
+                startRequested: _modelInstallRequested,
+                addons: widget.addons,
+                onBack: () => _to(1),
+                onNext: () => _to(3),
               ),
-            ),
-            ContextChoosePage(
-              store: widget.consentStore,
-              onBack: () => _to(3),
-              onNext: () => _to(5),
-            ),
-            _FinishPage(onDone: _finish),
+              _ConsentPage(
+                store: widget.consentStore,
+                onBack: () => _to(2),
+                // Choosing what to share only makes sense after a "Yes".
+                onNext: () => _to(
+                  (widget.consentStore ?? ContextConsentStore.instance).granted
+                      ? 4
+                      : 5,
+                ),
+              ),
+              ContextChoosePage(
+                store: widget.consentStore,
+                onBack: () => _to(3),
+                onNext: () => _to(5),
+              ),
+              _FinishPage(onDone: _finish),
+            ].indexed)
+              StepTransition(
+                controller: _pageController,
+                index: i + 1,
+                span: _span,
+                child: step,
+              ),
           ],
         ),
       ),
-    );
-  }
-}
-
-class _WelcomePage extends StatelessWidget {
-  const _WelcomePage({required this.onNext});
-  final VoidCallback onNext;
-
-  @override
-  Widget build(BuildContext context) => _SwipeAdvance(
-        onAdvance: onNext,
-        child: FinnBlackScreen(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              // Only the sky bleeds; content stays inside the safe area.
-              final padding = MediaQuery.paddingOf(context);
-              final avail =
-                  constraints.maxHeight - padding.top - padding.bottom;
-              final sy = (avail / 912).clamp(.4, 1.0);
-              final bottom = padding.bottom;
-              final glowInset = welcomeGlowInset(constraints);
-              return Stack(
-                children: [
-                  const Positioned.fill(child: Starfield()),
-                  // Brand bloom from the bottom edge, bottom-anchored so tall
-                  // screens grow the empty middle (wash bleeds 65px past it).
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: -65 * sy,
-                    height: 276 * sy,
-                    child: Opacity(
-                      opacity: .7,
-                      child: Image.asset(
-                        FigmaAssets.welcomeGlow,
-                        fit: BoxFit.fill,
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    left: glowInset,
-                    right: glowInset,
-                    bottom: bottom + 20 * sy,
-                    height: 106 * sy,
-                    child: WelcomeGlowCard(
-                      radius: welcomeGlowRadius(constraints),
-                    ),
-                  ),
-                  Positioned(
-                    top: padding.top + 441 * sy,
-                    left: 0,
-                    right: 0,
-                    child: Center(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Text(
-                          L10n.of(context).onboardingWelcome,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontFamily: 'InstrumentSans',
-                            fontSize: 24,
-                            height: 1.2,
-                            fontWeight: FontWeight.w400,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    bottom: bottom + 156 * sy,
-                    left: 0,
-                    right: 0,
-                    child: wideStepFits(constraints)
-                        ? WelcomeStartButton(onTap: onNext)
-                        : Column(
-                            children: [
-                              const _FloatingArrow(color: Colors.white),
-                              const SizedBox(height: 15),
-                              Text(
-                                L10n.of(context).onboardingSwipeToStart,
-                                style: const TextStyle(
-                                  fontFamily: 'InstrumentSans',
-                                  fontSize: 18,
-                                  height: 1.2,
-                                  fontWeight: FontWeight.w400,
-                                  color: Color(0x80FFFFFF),
-                                ),
-                              ),
-                            ],
-                          ),
-                  ),
-                ],
-              );
-            },
-          ),
-        ),
-      );
-}
-
-class _SwipeAdvance extends StatefulWidget {
-  const _SwipeAdvance({required this.child, required this.onAdvance});
-
-  final Widget child;
-  final VoidCallback onAdvance;
-
-  @override
-  State<_SwipeAdvance> createState() => _SwipeAdvanceState();
-}
-
-class _SwipeAdvanceState extends State<_SwipeAdvance> {
-  double _distance = 0;
-  bool _dragging = false;
-  bool _committing = false;
-
-  void _update(DragUpdateDetails details) {
-    if (_committing) return;
-    setState(() {
-      _distance = (_distance - details.delta.dy).clamp(0, 90);
-    });
-  }
-
-  void _end(DragEndDetails details) {
-    if (_committing) return;
-    final shouldAdvance =
-        _distance >= 42 || (details.primaryVelocity ?? 0) < -420;
-    setState(() {
-      _dragging = false;
-      _distance = shouldAdvance ? 90 : 0;
-      _committing = shouldAdvance;
-    });
-    if (shouldAdvance) {
-      HapticFeedback.selectionClick();
-      Future<void>.delayed(const Duration(milliseconds: 180), () {
-        if (!mounted) return;
-        widget.onAdvance();
-        setState(() {
-          _distance = 0;
-          _committing = false;
-        });
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final reduced = MediaQuery.disableAnimationsOf(context);
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onVerticalDragStart: (_) => setState(() => _dragging = true),
-      onVerticalDragUpdate: _update,
-      onVerticalDragEnd: _end,
-      onVerticalDragCancel: () => setState(() {
-        _dragging = false;
-        _distance = 0;
-      }),
-      child: AnimatedContainer(
-        duration: reduced || _dragging
-            ? Duration.zero
-            : const Duration(milliseconds: 180),
-        curve: Curves.easeOutCubic,
-        transform: Matrix4.translationValues(0, -_distance * .18, 0),
-        child: widget.child,
-      ),
-    );
-  }
-}
-
-class _FloatingArrow extends StatefulWidget {
-  const _FloatingArrow({this.color});
-
-  /// Tint for the glyph. The asset ships black, so screens drawn on a dark
-  /// backdrop pass their own colour.
-  final Color? color;
-
-  @override
-  State<_FloatingArrow> createState() => _FloatingArrowState();
-}
-
-class _FloatingArrowState extends State<_FloatingArrow>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 1800),
-  );
-  late final Animation<double> _animation = Tween<double>(
-    begin: 0,
-    end: -6,
-  ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOutSine));
-
-  @override
-  void initState() {
-    super.initState();
-    _controller.repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final arrow = FigmaSvg(
-      asset: FigmaAssets.swipeUp,
-      width: 24,
-      height: 24,
-      color: widget.color,
-    );
-    if (MediaQuery.disableAnimationsOf(context)) {
-      return arrow;
-    }
-    return AnimatedBuilder(
-      animation: _animation,
-      builder: (context, child) => Transform.translate(
-        offset: Offset(0, _animation.value),
-        child: child,
-      ),
-      child: arrow,
     );
   }
 }
@@ -498,6 +323,10 @@ class _StepPage extends StatelessWidget {
         final bodyMax =
             math.max(bodyMaxFloor, math.max(0.0, budget - cardHeight));
         final body = this.body;
+        // Drawn under the welcome morph: its card stands in for this one.
+        final reveal = StepReveal.maybeOf(context);
+        Widget enter(Widget child, double start) =>
+            reveal?.enter(child, start: start) ?? child;
         return ColoredBox(
           color: FluxColors.cardOf(context),
           child: Padding(
@@ -509,27 +338,33 @@ class _StepPage extends StatelessWidget {
                   child: SizedBox(
                     width: cardWidth,
                     height: cardHeight,
-                    child: OnboardingArtworkCard(
-                      artwork: artwork,
-                      title: title,
-                      twoLineTitle: twoLineTitle,
+                    key: reveal?.cardKey,
+                    child: Opacity(
+                      opacity: reveal == null ? 1 : 0,
+                      child: OnboardingArtworkCard(
+                        artwork: artwork,
+                        title: title,
+                        twoLineTitle: twoLineTitle,
+                      ),
                     ),
                   ),
                 ),
                 SizedBox(height: gap * sy),
                 if (body != null)
-                  Center(
-                    child: SizedBox(
-                      width: cardWidth,
-                      height: bodyMax,
-                      child: scrollBody
-                          ? Align(
-                              alignment: Alignment.topLeft,
-                              child: SingleChildScrollView(child: body),
-                            )
-                          : body,
-                    ),
-                  ),
+                  enter(
+                      Center(
+                        child: SizedBox(
+                          width: cardWidth,
+                          height: bodyMax,
+                          child: scrollBody
+                              ? Align(
+                                  alignment: Alignment.topLeft,
+                                  child: SingleChildScrollView(child: body),
+                                )
+                              : body,
+                        ),
+                      ),
+                      .45),
                 const Spacer(),
                 if (hint != null)
                   SizedBox(
@@ -541,7 +376,7 @@ class _StepPage extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontFamily: 'InstrumentSans',
+                          fontFamily: 'Geist',
                           fontSize: 13,
                           height: 1.2,
                           color: FluxColors.secondaryInkOf(context),
@@ -549,18 +384,20 @@ class _StepPage extends StatelessWidget {
                       ),
                     ),
                   ),
-                Center(
-                  child: SizedBox(
-                    width: cardWidth,
-                    child: footer ??
-                        _StepControls(
-                          progress: progress,
-                          backEnabled: backEnabled,
-                          onBack: onBack,
-                          onNext: onNext,
-                        ),
-                  ),
-                ),
+                enter(
+                    Center(
+                      child: SizedBox(
+                        width: cardWidth,
+                        child: footer ??
+                            _StepControls(
+                              progress: progress,
+                              backEnabled: backEnabled,
+                              onBack: onBack,
+                              onNext: onNext,
+                            ),
+                      ),
+                    ),
+                    .6),
                 SizedBox(height: gap * sy + bottomReserve + lift),
               ],
             ),
@@ -690,6 +527,11 @@ class _StepProgressBar extends StatelessWidget {
   static const double _track = 200;
   static const double _gap = 8;
 
+  /// What the bar last showed. A step's bar grows on from the previous
+  /// step's instead of from empty, so the bar reads as one bar filling up
+  /// while the steps fade through each other.
+  static double _shown = 0;
+
   @override
   Widget build(BuildContext context) {
     // The design carves the gap out of the fill so each step lands on a
@@ -699,10 +541,11 @@ class _StepProgressBar extends StatelessWidget {
     final target = (_track * quarters / 4 - 4).clamp(0.0, _track);
     final reduced = MediaQuery.disableAnimationsOf(context);
     return TweenAnimationBuilder<double>(
-      tween: Tween<double>(begin: 0, end: target),
+      tween: Tween<double>(begin: _shown, end: target),
       duration: reduced ? Duration.zero : const Duration(milliseconds: 520),
       curve: Curves.easeOutCubic,
       builder: (context, filled, _) {
+        _shown = filled;
         final rest =
             (_track - filled - (filled > 0 && filled < _track ? _gap : 0))
                 .clamp(0.0, _track);
@@ -803,7 +646,7 @@ class _PrivacyBodyState extends State<_PrivacyBody> {
 
 /// The step copy's typography: 20px Instrument Sans on a 1.2 line height.
 TextStyle _bodyStyle(Color color) => TextStyle(
-      fontFamily: 'InstrumentSans',
+      fontFamily: 'Geist',
       fontSize: 20,
       height: 1.2,
       fontWeight: FontWeight.w400,
@@ -1128,7 +971,7 @@ class _RetryPill extends StatelessWidget {
 
 /// The transfer read-out's typography: 18px on the design's 22px line box.
 TextStyle _readoutStyle(Color color) => TextStyle(
-      fontFamily: 'InstrumentSans',
+      fontFamily: 'Geist',
       fontSize: 18,
       height: 1.22,
       fontWeight: FontWeight.w400,
@@ -1418,7 +1261,7 @@ class _ConsentChoice extends StatelessWidget {
                 child: Text(
                   label,
                   style: TextStyle(
-                    fontFamily: 'InstrumentSans',
+                    fontFamily: 'Geist',
                     fontSize: 20,
                     height: 1.2,
                     fontWeight: FontWeight.w400,
@@ -1462,7 +1305,7 @@ class _PrimaryActionButton extends StatelessWidget {
                     child: Text(
                       label,
                       style: TextStyle(
-                        fontFamily: 'InstrumentSans',
+                        fontFamily: 'Geist',
                         fontSize: 18,
                         height: 1.2,
                         fontWeight: FontWeight.w400,

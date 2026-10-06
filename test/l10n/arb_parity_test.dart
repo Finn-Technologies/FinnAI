@@ -46,6 +46,7 @@ const Map<String, String> _identicalAllowlist = {
   'codeActionOutput': 'loanword (it)',
   'codeAgentTimeoutValue': 'unit-only template',
   'codeSessionsTitle': 'cognate (fr)',
+  'codeSessionOneFile': 'loanword (it)',
   'appBrandFinnAI': 'product name',
   'appTitle': 'product name',
   'chatFinnAI': 'product name',

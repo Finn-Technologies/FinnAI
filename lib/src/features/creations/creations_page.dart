@@ -445,7 +445,8 @@ class _CreationsPageState extends State<CreationsPage> {
                           child: _mode == _Mode.gallery
                               ? FinnCreateButton(
                                   label: L10n.of(context).creationsNewCreation,
-                                  onTap: () => unawaited(_pickKind()),
+                                  onTapFrom: (origin) =>
+                                      unawaited(_pickKind(origin)),
                                 )
                               : _Composer(
                                   hint: _turns.isNotEmpty &&
@@ -486,10 +487,12 @@ class _CreationsPageState extends State<CreationsPage> {
   }
 
   /// "Create": pick what to make, then land in the builder with it chosen.
-  Future<void> _pickKind() async {
+  Future<void> _pickKind([Rect? origin]) async {
     final l10n = L10n.of(context);
     final kind = await showFinnSheet<CreationKind>(
       context,
+      origin: origin,
+      originColor: FluxColors.controlOf(context),
       title: l10n.plusCreate,
       subtitle: l10n.creationsNewSheetSub,
       children: (sheet) => [

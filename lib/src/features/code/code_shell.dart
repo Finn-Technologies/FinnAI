@@ -346,10 +346,12 @@ class _CodeShellState extends State<CodeShell>
               final sidebarWidth =
                   FinnLayout.sidebarWidth(constraints.maxWidth);
               final headerTop = safeTop + 8;
-              // With the keyboard up the body has already shrunk: the panel
-              // then takes everything under the header, so the scrollback is
-              // not squeezed to a few lines.
-              final keyboard = MediaQuery.viewInsetsOf(context).bottom > 0;
+              // The keyboard, from the physical view (the resized body hides
+              // it). With it up the panel takes all under the header and the
+              // composer sits close above it, fused on a phone (CodeComposer).
+              final keyboard = View.of(context).viewInsets.bottom > 0;
+              final composerBottom = keyboard ? 4.0 : safeBottom + 4;
+              final fusedExtra = keyboard && !isDesktop ? 46.0 : 0.0;
               final panelHeight = keyboard
                   ? constraints.maxHeight - headerTop - CodeStyle.control - 12
                   : math.min(constraints.maxHeight * .48, 460.0 + safeBottom);
@@ -397,8 +399,8 @@ class _CodeShellState extends State<CodeShell>
                               session: session,
                               agent: agent,
                               topInset: headerTop + CodeStyle.control + 14,
-                              // The field and the status line under it.
-                              bottomInset: safeBottom + 10 + 44 + 30,
+                              // A gap, the field (44) and the status line (30).
+                              bottomInset: composerBottom + 80 + fusedExtra,
                               scrollController: _scrollController,
                             ),
                           ),
@@ -418,7 +420,7 @@ class _CodeShellState extends State<CodeShell>
                           Positioned(
                             left: contentLeft,
                             width: contentWidth,
-                            bottom: safeBottom + 4,
+                            bottom: composerBottom,
                             child: CodeComposer(
                               controller: _composer,
                               focusNode: _focusNode,

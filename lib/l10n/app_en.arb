@@ -3040,6 +3040,22 @@
   "@chatRenamePrompt": {
     "description": "chatRenamePrompt"
   },
+  "flowsSearchEmpty": "No flows match that search.",
+  "@flowsSearchEmpty": {
+    "description": "Shown under the Flows search field when no flow matches"
+  },
+  "flowsPickerDevice": "Device",
+  "@flowsPickerDevice": {
+    "description": "Flow step picker: flowsPickerDevice"
+  },
+  "flowsPickerLogic": "Logic",
+  "@flowsPickerLogic": {
+    "description": "Flow step picker: flowsPickerLogic"
+  },
+  "flowsPickerEmpty": "No step matches that search.",
+  "@flowsPickerEmpty": {
+    "description": "Flow step picker: flowsPickerEmpty"
+  },
   "flowsFilterAll": "All",
   "@flowsFilterAll": {
     "description": "flowsFilterAll"
@@ -4529,6 +4545,43 @@
     "placeholders": {
       "code": {
         "type": "String"
+      }
+    }
+  },
+  "codeSessionsPinned": "Pinned",
+  "@codeSessionsPinned": {
+    "description": "FinnAI Code session list: codeSessionsPinned"
+  },
+  "codeSessionsToday": "Today",
+  "@codeSessionsToday": {
+    "description": "FinnAI Code session list: codeSessionsToday"
+  },
+  "codeSessionsEarlier": "Earlier",
+  "@codeSessionsEarlier": {
+    "description": "FinnAI Code session list: codeSessionsEarlier"
+  },
+  "codeSessionWorking": "Working",
+  "@codeSessionWorking": {
+    "description": "FinnAI Code session list: codeSessionWorking"
+  },
+  "codeSessionNeedsYou": "Needs you",
+  "@codeSessionNeedsYou": {
+    "description": "FinnAI Code session list: codeSessionNeedsYou"
+  },
+  "codeSessionNoChanges": "No changes",
+  "@codeSessionNoChanges": {
+    "description": "FinnAI Code session list: codeSessionNoChanges"
+  },
+  "codeSessionOneFile": "1 file",
+  "@codeSessionOneFile": {
+    "description": "FinnAI Code session list: codeSessionOneFile"
+  },
+  "codeSessionFileCount": "{count} files",
+  "@codeSessionFileCount": {
+    "description": "How many files a Code session changed (two or more)",
+    "placeholders": {
+      "count": {
+        "type": "int"
       }
     }
   },

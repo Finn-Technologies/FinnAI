@@ -354,7 +354,7 @@ class FluxPillField extends StatelessWidget {
           ? null
           : [LengthLimitingTextInputFormatter(maxLength!)],
       style: TextStyle(
-        fontFamily: monospace ? 'monospace' : 'InstrumentSans',
+        fontFamily: monospace ? 'monospace' : 'Geist',
         fontSize: fontSize,
         color: ink,
       ),
@@ -362,7 +362,7 @@ class FluxPillField extends StatelessWidget {
       decoration: InputDecoration.collapsed(
         hintText: hint,
         hintStyle: TextStyle(
-          fontFamily: monospace ? 'monospace' : 'InstrumentSans',
+          fontFamily: monospace ? 'monospace' : 'Geist',
           fontSize: fontSize,
           color: ink.withValues(alpha: .55),
         ),

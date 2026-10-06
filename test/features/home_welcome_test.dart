@@ -67,7 +67,8 @@ void main() {
         ),
       ),
     );
-    await tester.pump(const Duration(milliseconds: 300));
+    // Past the greeting's reveal, which lifts it the last few pixels.
+    await tester.pump(const Duration(milliseconds: 1200));
 
     // The design centres the 24px greeting on the screen: 442..471 on a
     // 420x912 canvas.

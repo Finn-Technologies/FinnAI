@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 
 import 'package:finn_ai/l10n/l10n_helper.dart';
 import 'package:finn_ai/src/features/flows/flow_editor_page.dart';
-import 'package:finn_ai/src/features/flows/flow_icons.dart';
-import 'package:finn_ai/src/features/flows/flow_labels.dart';
 import 'package:finn_ai/src/features/flows/flow_new.dart';
+import 'package:finn_ai/src/features/flows/flow_run_page.dart';
+import 'package:finn_ai/src/features/flows/flow_tile.dart';
 import 'package:finn_ai/src/features/flows/flow_runner.dart';
 import 'package:finn_ai/src/features/flows/flow_scheduler.dart';
 import 'package:finn_ai/src/features/flows/flows_actions.dart';
@@ -80,11 +80,47 @@ class _FlowsPageState extends State<FlowsPage> {
 
   @override
   void dispose() {
+    _search.dispose();
     _actions.dispose();
     super.dispose();
   }
 
-  Future<void> _newFlow() => showNewFlow(context, _actions);
+  final _search = TextEditingController();
+
+  /// Two columns of tiles, with the app's 10dp gutter.
+  Widget _grid(List<Widget> tiles) => Column(
+        children: [
+          for (var i = 0; i < tiles.length; i += 2) ...[
+            if (i > 0) const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(child: tiles[i]),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: i + 1 < tiles.length
+                      ? tiles[i + 1]
+                      : const SizedBox.shrink(),
+                ),
+              ],
+            ),
+          ],
+        ],
+      );
+
+  Future<void> _run(FinnFlow flow) async {
+    final run = await _actions.run(context, flow);
+    if (run == null || !mounted) return;
+    unawaited(
+      Navigator.of(context).push(
+        FinnPageRoute<void>(
+          child: FlowRunPage(flow: flow, run: run, actions: _actions),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _newFlow([Rect? origin]) =>
+      showNewFlow(context, _actions, origin: origin);
 
   void _open(FinnFlow flow) => Navigator.of(context).push(
         FinnPageRoute<void>(
@@ -116,43 +152,71 @@ class _FlowsPageState extends State<FlowsPage> {
               },
             )
             .toList();
+        final query = _search.text.trim().toLowerCase();
+        final searched = query.isEmpty
+            ? shown
+            : shown
+                .where((flow) =>
+                    flow.name.toLowerCase().contains(query) ||
+                    flow.description.toLowerCase().contains(query))
+                .toList();
         return FinnPage(
           title: l10n.flowsTitle,
           onBack: widget.onBack,
           footer: FinnCreateButton(
             key: const Key('add-flow-button'),
             label: l10n.flowsNewTitle,
-            onTap: () => unawaited(_newFlow()),
+            onTapFrom: (origin) => unawaited(_newFlow(origin)),
           ),
           children: [
             if (automations.isEmpty)
               FinnReveal(child: _Empty(onCreate: _newFlow))
             else ...[
-              Row(
-                children: [
-                  for (final filter in _Filter.values) ...[
-                    FluxChip(
-                      label: switch (filter) {
-                        _Filter.all => l10n.flowsFilterAll,
-                        _Filter.active => l10n.flowsFilterActive,
-                        _Filter.paused => l10n.flowsFilterPaused,
-                      },
-                      selected: _filter == filter,
-                      onTap: () => setState(() => _filter = filter),
-                    ),
-                    const SizedBox(width: 10),
-                  ],
-                ],
-              ),
-              for (var i = 0; i < shown.length; i++)
-                FinnReveal(
-                  index: i,
-                  child: _FlowRow(
-                    flow: shown[i],
-                    actions: _actions,
-                    onTap: () => _open(shown[i]),
-                  ),
+              // Like the Shortcuts library: search first, then the tiles.
+              FluxPillField(
+                key: const Key('flows-search'),
+                controller: _search,
+                hint: l10n.searchHint,
+                onChanged: (_) => setState(() {}),
+                leading: FluxIcon(
+                  icon: FluxIcons.search,
+                  size: 20,
+                  color: FluxColors.mutedOf(context),
                 ),
+              ),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                clipBehavior: Clip.none,
+                child: Row(
+                  children: [
+                    for (final filter in _Filter.values) ...[
+                      FluxChip(
+                        label: switch (filter) {
+                          _Filter.all => l10n.flowsFilterAll,
+                          _Filter.active => l10n.flowsFilterActive,
+                          _Filter.paused => l10n.flowsFilterPaused,
+                        },
+                        selected: _filter == filter,
+                        onTap: () => setState(() => _filter = filter),
+                      ),
+                      const SizedBox(width: 10),
+                    ],
+                  ],
+                ),
+              ),
+              _grid([
+                for (var i = 0; i < searched.length; i++)
+                  FinnReveal(
+                    index: i,
+                    child: FlowTile(
+                      flow: searched[i],
+                      actions: _actions,
+                      onTap: () => _open(searched[i]),
+                      onRun: () => unawaited(_run(searched[i])),
+                    ),
+                  ),
+              ]),
+              if (searched.isEmpty) FinnCaption(l10n.flowsSearchEmpty),
             ],
             if (_store.failure != null) FinnCaption(l10n.flowsSaveFailed),
           ],
@@ -165,7 +229,7 @@ class _FlowsPageState extends State<FlowsPage> {
 class _Empty extends StatelessWidget {
   const _Empty({required this.onCreate});
 
-  final Future<void> Function() onCreate;
+  final Future<void> Function([Rect? origin]) onCreate;
 
   @override
   Widget build(BuildContext context) {
@@ -200,57 +264,15 @@ class _Empty extends StatelessWidget {
               ),
         ),
         const SizedBox(height: 25),
-        FinnButton(
-          label: l10n.flowsEmptyCreate,
-          icon: FluxIcons.add,
-          onTap: () => unawaited(onCreate()),
+        // The sheet grows out of the button.
+        Builder(
+          builder: (button) => FinnButton(
+            label: l10n.flowsEmptyCreate,
+            icon: FluxIcons.add,
+            onTap: () => unawaited(onCreate(globalRectOfContext(button))),
+          ),
         ),
       ],
-    );
-  }
-}
-
-class _FlowRow extends StatelessWidget {
-  const _FlowRow({
-    required this.flow,
-    required this.actions,
-    required this.onTap,
-  });
-
-  final FinnFlow flow;
-  final FlowsActions actions;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = L10n.of(context);
-    final runs = actions.store.runsOf(flow.id);
-    final last = runs.isEmpty ? null : runs.first;
-    final lastLine = !flow.enabled
-        ? l10n.flowsPausedLine
-        : last == null
-            ? l10n.flowsNeverRun
-            : l10n.flowsLastRunLine(
-                flowWhen(context, last.startedAt),
-                switch (last.outcome) {
-                  FlowRunOutcome.completed => l10n.flowsResultDone,
-                  FlowRunOutcome.interrupted => l10n.flowsResultStopped,
-                  FlowRunOutcome.skipped => l10n.flowsRunSkipped,
-                  _ => l10n.flowsResultFailed,
-                },
-              );
-    return FinnTile(
-      icon: FlowIcons.forTrigger(flow.trigger.kind),
-      title: flow.name,
-      subtitle: '${flowTriggerLabel(l10n, flow.trigger)}\n$lastLine',
-      onTap: onTap,
-      chevron: false,
-      trailing: FinnSwitch(
-        key: Key('flow-toggle-${flow.id}'),
-        value: flow.enabled,
-        label: l10n.flowsNameSemantic(flow.name),
-        onChanged: (v) => unawaited(actions.setEnabled(context, flow, v)),
-      ),
     );
   }
 }

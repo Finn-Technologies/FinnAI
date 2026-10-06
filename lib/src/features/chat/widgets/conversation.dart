@@ -20,6 +20,7 @@ class _Conversation extends StatefulWidget {
     required this.scrollController,
     required this.greeting,
     required this.cards,
+    this.receded = false,
     this.searchFailed = false,
     this.onDismissSearchNotice,
     this.historyUnavailable = false,
@@ -45,6 +46,10 @@ class _Conversation extends StatefulWidget {
   /// Greeting shown on the empty slate; the design greets a listening session
   /// with a different line than a typed one.
   final String greeting;
+
+  /// True during a live voice conversation: the transcript steps back, a
+  /// little smaller and dimmer, so the screen's light has the foreground.
+  final bool receded;
 
   /// True when the conversation store could not be opened, so the notice
   /// explaining that history is not being kept should be shown.
@@ -206,6 +211,21 @@ class _ConversationState extends State<_Conversation> {
               message.text.isNotEmpty && message.id != streamingMessageId,
         )
         .toList(growable: false);
+    return _Recede(
+      active: widget.receded,
+      child: _transcript(context, visibleMessages, failedTurn, visibleError,
+          ownsGeneration, activeJob),
+    );
+  }
+
+  Widget _transcript(
+    BuildContext context,
+    List<ConversationMessage> visibleMessages,
+    ConversationMessage? failedTurn,
+    String? visibleError,
+    bool ownsGeneration,
+    ChatGenerationJob? activeJob,
+  ) {
     return Stack(
       key: const ValueKey('chat-edge-fade'),
       children: [
@@ -251,7 +271,7 @@ class _ConversationState extends State<_Conversation> {
                   if (ownsGeneration)
                     _StreamingReply(
                       generation: widget.generation,
-                      text: activeJob.responseText,
+                      text: activeJob!.responseText,
                     )
                   else if (widget.preparing)
                     _StreamingReply(generation: widget.generation, text: '')
@@ -377,4 +397,29 @@ class _ConversationState extends State<_Conversation> {
       ],
     );
   }
+}
+
+/// Steps [child] back while [active]: scaled toward its centre and dimmed.
+/// Transform and opacity only, so it costs no more than the frame it is in.
+class _Recede extends StatelessWidget {
+  const _Recede({required this.active, required this.child});
+
+  final bool active;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => TweenAnimationBuilder<double>(
+        tween: Tween(end: active ? 1.0 : 0.0),
+        duration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : const Duration(milliseconds: 650),
+        curve: Curves.easeOutCubic,
+        child: child,
+        builder: (context, t, child) => t == 0
+            ? child!
+            : Opacity(
+                opacity: 1 - .55 * t,
+                child: Transform.scale(scale: 1 - .045 * t, child: child),
+              ),
+      );
 }

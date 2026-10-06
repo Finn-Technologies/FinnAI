@@ -13,30 +13,6 @@ import 'package:finn_ai/src/shared/widgets/finn_overlays.dart';
 import 'package:finn_ai/src/shared/widgets/finn_ui.dart';
 import 'package:finn_ai/src/shared/widgets/flux_surfaces.dart';
 
-/// Which block to add. Null when dismissed.
-Future<FlowBlockKind?> pickFlowBlockKind(
-  BuildContext context, {
-  required bool canBranch,
-}) {
-  final l10n = L10n.of(context);
-  return showFinnSheet<FlowBlockKind>(
-    context,
-    title: l10n.flowsEdChooseStep,
-    children: (sheet) => [
-      for (final kind in FlowBlockKind.values)
-        if (kind != FlowBlockKind.branch || canBranch)
-          FinnTile(
-            key: Key('block-kind-${kind.name}'),
-            icon: FlowIcons.forBlock(kind),
-            title: flowBlockTitle(l10n, kind),
-            subtitle: flowBlockHint(l10n, kind),
-            chevron: false,
-            onTap: () => Navigator.of(sheet).pop(kind),
-          ),
-    ],
-  );
-}
-
 /// What the user did in the block sheet.
 enum FlowBlockOp { save, remove, moveUp, moveDown }
 

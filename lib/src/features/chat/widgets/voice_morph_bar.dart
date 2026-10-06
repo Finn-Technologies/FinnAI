@@ -17,7 +17,8 @@ import 'package:finn_ai/src/features/voice/voice_chat_controller.dart';
 ///    [leading]);
 ///  * the dark voice button becomes the light microphone, one circle's colour
 ///    and glyph handing over to the other's with a small pulse between;
-///  * the caption opens above, last, once the pill has arrived.
+///  * there is no colour pill: the field dissolves into the screen's own
+///    light (VoiceGlow), and the caption fades up where it was, last.
 class VoiceMorphBar extends StatelessWidget {
   const VoiceMorphBar({
     super.key,
@@ -111,29 +112,19 @@ class VoiceMorphBar extends StatelessWidget {
       ),
     );
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    // No pill of its own: the screen's light (VoiceGlow) is the voice
+    // visual. The field narrows and dissolves into it, and the line saying
+    // what the conversation is doing takes its place between the buttons.
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        if (c > 0)
-          ClipRect(
-            child: Align(
-              heightFactor: caption,
-              child: Opacity(
-                opacity: caption,
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: VoiceCaption(voice: voice),
-                ),
-              ),
-            ),
-          ),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
+        SizedBox.square(dimension: _side, child: leading(c)),
+        SizedBox(width: gap),
+        Stack(
+          alignment: Alignment.center,
+          clipBehavior: Clip.none,
           children: [
-            SizedBox.square(dimension: _side, child: leading(c)),
-            SizedBox(width: gap),
             VoicePill(
               voice: voice,
               onTap: onVoiceTap,
@@ -142,11 +133,27 @@ class VoiceMorphBar extends StatelessWidget {
               field: field,
               fieldOpacity: fieldText,
               fieldRadius: fieldRadius,
+              ghost: true,
             ),
-            SizedBox(width: gap),
-            trailing,
+            if (c > 0)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: OverflowBox(
+                    maxWidth: slot + 2 * gap + 40,
+                    child: Opacity(
+                      opacity: caption,
+                      child: Transform.translate(
+                        offset: Offset(0, 8 * (1 - caption)),
+                        child: VoiceCaption(voice: voice),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
+        SizedBox(width: gap),
+        trailing,
       ],
     );
   }

@@ -3,6 +3,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+export 'package:finn_ai/src/shared/theme/flux_motion_tokens.dart';
+
 /// The app's colour system.
 ///
 /// Every colour is declared twice — once for light, once for dark — and read
@@ -353,48 +355,6 @@ abstract final class FluxColors {
       Theme.of(context).brightness == Brightness.dark;
 }
 
-/// The app's single motion language.
-///
-/// The audit found three page motions and three modal motions with different
-/// durations and curves, so the same gesture felt like a different app on
-/// different screens. There is now exactly one duration and one curve per kind
-/// of transition, named here, and every shared widget routes through them. Any
-/// screen-level motion that is not one of these — a long-press preview, a
-/// progress ring — is a bug, and the call site belongs in the handoff list.
-abstract final class FluxMotion {
-  /// Push/pop of a secondary page (Settings, You, Creations, Flows).
-  static const Duration pageDuration = Duration(milliseconds: 320);
-  static const Duration pageReverseDuration = Duration(milliseconds: 260);
-  static const Curve pageCurve = Curves.easeOutCubic;
-  static const Curve pageReverseCurve = Curves.easeInCubic;
-
-  /// Presentation of a modal surface (context menu, bottom sheet, dialog).
-  static const Duration modalDuration = Duration(milliseconds: 220);
-  static const Curve modalCurve = Curves.easeOutCubic;
-  static const Curve modalReverseCurve = Curves.easeInCubic;
-
-  /// In-place content change: a disclosure opening, a chevron turning.
-  static const Duration revealDuration = Duration(milliseconds: 180);
-  static const Curve revealCurve = Curves.easeOutCubic;
-
-  /// Something arriving that should be noticed: a sheet rising, a message
-  /// landing. Pairs with [springCurve] when it may overshoot a little.
-  static const Duration emphasisDuration = Duration(milliseconds: 400);
-  static const Curve springCurve = ElasticOutCurve(.85);
-
-  /// Press feedback. Shared by every tappable surface so a thumb gets the same
-  /// answer everywhere.
-  static const Duration pressIn = Duration(milliseconds: 120);
-  static const Duration pressOut = Duration(milliseconds: 240);
-  static const Curve pressCurve = Curves.easeOutCubic;
-  static const Curve pressReturnCurve = Curves.easeOutBack;
-
-  /// Minimum touch target, in logical pixels. Everything tappable in
-  /// `lib/src/shared/widgets` reserves at least this much hit area even when
-  /// the painted control is smaller.
-  static const double minTapTarget = 48;
-}
-
 /// Bottom edge geometry shared by every screen that parks UI against the
 /// bottom of the display.
 ///
@@ -470,25 +430,25 @@ abstract final class FluxTheme {
           fontSize: 24,
           height: 1.08,
           fontWeight: FontWeight.w500,
-          letterSpacing: -0.55,
+          letterSpacing: -0.7,
         ),
         headlineMedium: TextStyle(
           fontSize: 22,
           height: 1.1,
           fontWeight: FontWeight.w500,
-          letterSpacing: -0.45,
+          letterSpacing: -0.6,
         ),
         titleLarge: TextStyle(
           fontSize: 24,
           height: 1.2,
           fontWeight: FontWeight.w400,
-          letterSpacing: -0.2,
+          letterSpacing: -0.55,
         ),
         titleMedium: TextStyle(
           fontSize: 18,
           height: 1.22,
           fontWeight: FontWeight.w400,
-          letterSpacing: -0.1,
+          letterSpacing: -0.3,
         ),
         titleSmall: TextStyle(
           fontSize: 14,
@@ -506,7 +466,7 @@ abstract final class FluxTheme {
           fontSize: 16,
           height: 1.25,
           fontWeight: FontWeight.w400,
-          letterSpacing: -0.08,
+          letterSpacing: -0.15,
         ),
         bodySmall: TextStyle(
           fontSize: 14,
@@ -558,11 +518,34 @@ abstract final class FluxTheme {
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(_round)),
       );
 
+  // Snackbars float like the sheets do: off the edges, rounded, and in the
+  // theme's own inverse surface rather than Material's stock grey slab.
+  static SnackBarThemeData _snack({required bool dark}) => SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: dark ? FluxColors.controlDark : FluxColors.ink,
+        contentTextStyle: TextStyle(
+          fontFamily: 'Geist',
+          fontSize: 15,
+          height: 1.35,
+          letterSpacing: -0.1,
+          color: FluxColors.darkInk,
+        ),
+        actionTextColor: FluxColors.linkDark,
+        elevation: 0,
+        insetPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(FluxRadius.card),
+          side: dark
+              ? const BorderSide(color: Color(0x1FFFFFFF))
+              : BorderSide.none,
+        ),
+      );
+
   static ThemeData get light => ThemeData(
         useMaterial3: true,
         brightness: Brightness.light,
         scaffoldBackgroundColor: FluxColors.canvas,
-        fontFamily: 'InstrumentSans',
+        fontFamily: 'Geist',
         colorScheme: const ColorScheme.light(
           primary: FluxColors.ink,
           surface: FluxColors.canvas,
@@ -573,6 +556,7 @@ abstract final class FluxTheme {
         dialogTheme: _dialog(FluxColors.controlLight),
         bottomSheetTheme: _sheet(FluxColors.controlLight),
         popupMenuTheme: _popup(FluxColors.controlLight),
+        snackBarTheme: _snack(dark: false),
         pageTransitionsTheme: const PageTransitionsTheme(
           builders: {TargetPlatform.android: ZoomPageTransitionsBuilder()},
         ),
@@ -582,7 +566,7 @@ abstract final class FluxTheme {
         useMaterial3: true,
         brightness: Brightness.dark,
         scaffoldBackgroundColor: FluxColors.darkCanvas,
-        fontFamily: 'InstrumentSans',
+        fontFamily: 'Geist',
         colorScheme: const ColorScheme.dark(
           primary: FluxColors.darkInk,
           surface: FluxColors.darkCanvas,
@@ -593,6 +577,7 @@ abstract final class FluxTheme {
         dialogTheme: _dialog(FluxColors.controlDark),
         bottomSheetTheme: _sheet(FluxColors.controlDark),
         popupMenuTheme: _popup(FluxColors.controlDark),
+        snackBarTheme: _snack(dark: true),
         pageTransitionsTheme: const PageTransitionsTheme(
           builders: {TargetPlatform.android: ZoomPageTransitionsBuilder()},
         ),

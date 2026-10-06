@@ -232,7 +232,7 @@ class FinnTitleBar extends StatelessWidget {
                         Text(
                           l10n.appBrandFinnAI,
                           style: TextStyle(
-                            fontFamily: 'InstrumentSans',
+                            fontFamily: 'Geist',
                             fontSize: 13,
                             height: 1.2,
                             fontWeight: FontWeight.w500,

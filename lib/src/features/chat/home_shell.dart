@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -46,8 +47,11 @@ import 'package:finn_ai/src/features/flows/flows_page.dart';
 import 'package:finn_ai/src/features/flows/flows_store.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 import 'package:finn_ai/src/shared/widgets/flux_motion.dart';
+import 'package:finn_ai/src/shared/widgets/finn_thinking.dart';
+import 'package:finn_ai/src/shared/widgets/keyboard_fuse.dart';
 import 'package:finn_ai/src/shared/widgets/finn_overlays.dart';
 import 'package:finn_ai/src/app/data_export.dart';
+import 'package:finn_ai/src/features/chat/widgets/voice_glow.dart';
 import 'package:finn_ai/src/features/chat/widgets/voice_morph_bar.dart';
 import 'package:finn_ai/src/features/voice/read_aloud.dart';
 import 'package:finn_ai/src/features/voice/reply_chunker.dart';
@@ -184,6 +188,9 @@ class _HomeShellState extends State<HomeShell>
   String? _attachedImagePath;
   Uint8List? _attachedImageBytes;
   bool _attachmentMenuOpen = false;
+
+  /// The composer's "+" button, which the "+" sheet grows out of.
+  final _plusKey = GlobalKey();
   late bool _storesReady = !widget.initializeServices;
 
   /// 0 = closed, 1 = open. It is read directly (no easing curve) so a drag
@@ -378,9 +385,13 @@ class _HomeShellState extends State<HomeShell>
             final sy =
                 FinnLayout.scaleY(constraints.maxHeight, constraints.maxWidth);
             final safeBottom = FluxBottomInset.bottomOf(context);
-            // Lifts the composer clear of the navigation bar, and the tray and
-            // scroll inset with it so they keep their gaps.
-            const composerLift = 10.0;
+            // Clear of the navigation bar; with the keyboard up on a phone
+            // (the physical view's: the Scaffold hides it from this
+            // MediaQuery) just above it, fused taller (ChatComposer).
+            final keyboardUp =
+                !isDesktop && View.of(context).viewInsets.bottom > 0;
+            final composerBottom = keyboardUp ? 6.0 : safeBottom + 13;
+            final fusedExtra = keyboardUp ? 52.0 : 0.0;
             final horizontalGutter = constraints.maxWidth < 380 ? 20.0 : 25.0;
             final docked = FinnLayout.isDocked(constraints.maxWidth);
             final bodyWidth = FinnLayout.bodyWidth(constraints.maxWidth);
@@ -395,30 +406,12 @@ class _HomeShellState extends State<HomeShell>
                 color: FluxColors.tileOf(context),
                 child: Stack(
                   children: [
-                    // The ambient green wash is part of the empty state only:
-                    // once a conversation has messages the canvas is flat, as
-                    // in the design's chat screens.
                     if (activeMessages.isEmpty)
-                      Positioned(
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        height: constraints.maxHeight * 400 / 912,
-                        child: IgnorePointer(
-                          // Resolved per theme: the light wash is a soft green
-                          // over a near-white canvas, and the same 25% green on
-                          // #18181C reads as a lurid glow rather than depth.
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: FluxColors.ambientWashOf(context),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
+                      _AmbientWash(height: constraints.maxHeight * 400 / 912),
+                    // Voice mode's colour, rising from the bottom edge.
+                    Positioned.fill(
+                      child: VoiceGlow(voice: _voice, active: _voiceListening),
+                    ),
                     // 0. The scrolling chat list, full-bleed so content can
                     // slide beneath the glass regions at the very top and
                     // very bottom.
@@ -441,6 +434,7 @@ class _HomeShellState extends State<HomeShell>
                         onEdit: _editUserMessage,
                         onOpenConversation: _activateConversation,
                         cards: MessageCardHost(flowActions: _flows.actions),
+                        receded: _voiceListening,
                         preparing: _preparing,
                         greeting: _voiceListening
                             ? L10n.of(context).voiceGreeting
@@ -448,7 +442,7 @@ class _HomeShellState extends State<HomeShell>
                         // First message starts below the header; newest
                         // message sits above the composer.
                         topInset: 125 * sy,
-                        bottomInset: safeBottom + composerLift + 65,
+                        bottomInset: composerBottom + 52 + fusedExtra,
                         scrollController: _chatScrollController,
                         // The notice belongs to the turn that failed to reach
                         // the web, so it renders with that reply instead of
@@ -488,14 +482,12 @@ class _HomeShellState extends State<HomeShell>
                     ),
                     ValueListenableBuilder<bool>(
                       valueListenable: _chatScrolledAway,
-                      builder: (context, scrolledAway, _) => AnimatedPositioned(
+                      // Not animated: it follows the keyboard frame by frame;
+                      // an implicit animation left it trailing the keyboard.
+                      builder: (context, scrolledAway, _) => Positioned(
                         left: contentLeft,
                         // Rests just above the navigation bar, per [FluxBottomInset.bottomOf].
-                        bottom: safeBottom + composerLift + 3,
-                        duration: MediaQuery.disableAnimationsOf(context)
-                            ? Duration.zero
-                            : const Duration(milliseconds: 220),
-                        curve: Curves.easeOutCubic,
+                        bottom: composerBottom,
                         child: ChatComposer(
                           controller: _composer,
                           focusNode: _focusNode,
@@ -509,6 +501,7 @@ class _HomeShellState extends State<HomeShell>
                           compact: scrolledAway,
                           attachmentPath: _attachedImagePath,
                           isAttachmentMenuOpen: _attachmentMenuOpen,
+                          plusKey: _plusKey,
                           onPickAttachment: _toggleAttachmentMenu,
                           onRemoveAttachment: _removeAttachment,
                           onReturnToLatest: () {
@@ -535,7 +528,7 @@ class _HomeShellState extends State<HomeShell>
                         onSelectPhoto: _pickFromGallery,
                         onSelectFile: _pickFromFileSystem,
                         onCreate: _startCreate,
-                        bottomInset: safeBottom,
+                        originKey: _plusKey,
                         maxWidth: math.max(560, contentWidth + 50),
                       ),
                     ),

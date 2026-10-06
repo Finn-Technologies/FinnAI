@@ -43,7 +43,9 @@ Use this before grepping. Paths are relative to the repository root.
 | Chat screen state and `build` | `lib/src/features/chat/home_shell.dart` |
 | Message bubbles, replies, sources, dialogs | `lib/src/features/chat/widgets/` (`bubbles.dart`, `replies.dart`, `sources.dart`, `dialogs.dart`, `conversation.dart`) |
 | Composer | `lib/src/features/chat/widgets/composer.dart` |
-| Sidebar | `lib/src/features/chat/widgets/sidebar.dart`, `sidebar_tiles.dart` |
+| Voice mode's light (Siri-style rim and blurred orbs, one GPU pass) | `shaders/voice_glow.frag` drawn by `lib/src/features/chat/widgets/voice_glow.dart` (gradient fallback in the same file) |
+| Frame timing on a device (`--dart-define=FINN_FRAME_LOG=true`, `FINN_FRAMES` lines) | `lib/src/app/frame_log.dart` |
+| Sidebar, and its history cards (Siri-style masonry: time, title, preview, photo) | `lib/src/features/chat/widgets/sidebar.dart` (`_HistoryMasonry`), `sidebar_tiles.dart` |
 | The panel, its scrim, the menu/close morph and the open/close swipe (shared by FinnAI and FinnAI Code) | `lib/src/shared/widgets/finn_sidebar_surface.dart` (`FinnSidebarSurface`, `FinnSidebarToggleButton`), the chat drag logic in `lib/src/features/chat/shell/sidebar_surface.dart` |
 | The sidebar's circle destinations, buttons, and the history-grid card (a chat in FinnAI, a session in FinnAI Code) | `lib/src/shared/widgets/finn_sidebar_parts.dart` (`FinnSidebarHistoryTile`) |
 | The brand row and its reveal (the other app's name, blurred, inline) | `lib/src/shared/widgets/finn_brand_switcher.dart` (`FinnBrandSwitcher`, `BrandExpansion` — both sidebars share one expansion value so they resize on the same frame) |
@@ -86,7 +88,8 @@ A flow is a tree of blocks (ask, web, notify, speak, action, wait, branch, save-
 | Runs with the app closed (headless engine) | `lib/flow_background.dart` + `android/…/FlowBackgroundRunner.kt` |
 | Tap-a-notification-to-run, trigger sync at startup | `lib/src/features/chat/shell/flows.dart` |
 | A flow told in a sentence (phrases, line DSL, model fallback) | `lib/src/features/flows/{flow_phrases,flow_script,flow_author,flow_intent}.dart` |
-| The Flows list and filters | `lib/src/features/flows/flows_page.dart` |
+| The Flows list: search, filters, the tile grid | `lib/src/features/flows/flows_page.dart`, tiles (colour per trigger, run, on/off) in `flow_tile.dart` |
+| Choosing a step to add (search, families, coloured rows) | `lib/src/features/flows/flow_block_picker.dart` (`pickFlowBlockKind`, `flowBlockColor`) |
 | The flowchart editor and its sheets | `lib/src/features/flows/{flow_editor_page,flow_chart,flow_edit,flow_trigger_sheet,flow_condition_sheet,flow_block_sheet,flow_schedule_sheet}.dart` |
 | Block icons and labels | `lib/src/features/flows/{flow_icons,flow_labels}.dart` |
 | "New flow" (describe / template / blank) and the describe page | `lib/src/features/flows/{flow_new,flow_describe_page}.dart` |
@@ -134,6 +137,7 @@ A second app inside the app: its own sessions, settings and providers, in the sa
 |---|---|
 | Switching between FinnAI and FinnAI Code (the brand row, the remembered choice) | `lib/src/shared/widgets/finn_brand_switcher.dart`, `lib/src/shared/config/app_mode.dart`, `lib/src/app/app_mode_host.dart` |
 | The Code screen (sidebar, header, transcript, composer, navigation) | `lib/src/features/code/code_shell.dart`, `lib/src/features/code/ui/` |
+| A session's row in the Code sidebar (state dot, files, +/− lines; Pinned / Today / Earlier) | `lib/src/features/code/ui/code_session_row.dart`, sections in `code_sidebar.dart` (`_sessionList`) |
 | What the model is told, and how its reply is read (the action protocol) | `lib/src/features/code/agent/agent_protocol.dart` |
 | On-device model aids: format repair, guided reply starts, failure hints | `lib/src/features/code/agent/small_model_aids.dart` |
 | Search/replace edits (cloud models) | `lib/src/features/code/agent/edit_blocks.dart` |
@@ -195,14 +199,18 @@ A second app inside the app: its own sessions, settings and providers, in the sa
 
 | To change… | Edit |
 |---|---|
-| Colors, radii, text theme, system UI overlays | `lib/src/shared/theme/flux_theme.dart` |
+| Colors, radii, text theme (Geist), snackbars, system UI overlays | `lib/src/shared/theme/flux_theme.dart` |
+| Motion tokens (durations, curves, the control→surface morph) | `lib/src/shared/theme/flux_motion_tokens.dart` (`FluxMotion`, re-exported by `flux_theme.dart`) |
 | Space reserved below bottom-anchored UI (composer, nav bar height) | `lib/src/shared/theme/flux_theme.dart` (`FluxBottomInset.bottomOf`) |
 | Buttons, pills, glass surfaces | `lib/src/shared/widgets/flux_controls.dart` |
-| The icon set (`FluxIcons`, Phosphor fill; bold for bare strokes), `FluxIcon`, and the design-asset → icon map | `lib/src/shared/widgets/flux_icons.dart` |
+| The icon set (`FluxIcons`, Lucide at the 300 stroke weight), `FluxIcon`, and the design-asset → icon map | `lib/src/shared/widgets/flux_icons.dart` |
 | Paths of the design's exported SVGs | `lib/src/shared/widgets/figma_assets.dart` |
 | Shimmering placeholder rows while a list loads | `lib/src/shared/widgets/finn_skeleton.dart` |
 | The bottom-centre "+" that starts something new on list screens (Creations, Flows, You) | `lib/src/shared/widgets/finn_create_button.dart` |
-| The chat's "+" sheet (create cards, add to chat) | `lib/src/features/chat/widgets/plus_sheet.dart` |
+| The chat's "+" sheet (create cards, add to chat), grown out of the "+" button | `lib/src/features/chat/widgets/plus_sheet.dart` |
+| Floating glass sheets that grow out of the control that opened them (margins, corners, drag to dismiss) | `lib/src/shared/widgets/finn_morph_sheet.dart` (`FinnMorphSurface`, `FinnFloatingSheet`, `showFinnMorphSheet`, `globalRectOf`) |
+| A composer fusing into one panel while the keyboard is up (chat and Code) | `lib/src/shared/widgets/keyboard_fuse.dart` (`KeyboardFuse`), layouts in `chat/widgets/composer.dart` and `code/ui/code_composer.dart` |
+| The "thinking" orb and shimmering status text | `lib/src/shared/widgets/finn_thinking.dart` |
 | Flat raised surfaces (fill + 1px hairline, never a shadow), the pill text field, filter chips, the progressive backdrop blur | `lib/src/shared/widgets/flux_surfaces.dart` (`FluxSurfaces`, `FluxPillField`, `FluxChip`, `FluxProgressiveBlur`, `FluxGlass`) |
 | Page header used by every sub-page | `lib/src/shared/widgets/finn_page_header.dart` |
 | Design primitives (circle button, row tile, switch, reveal animation) | `lib/src/shared/widgets/finn_ui.dart` |
@@ -253,9 +261,11 @@ See `docs/guides/LINUX.md`.
 | Why the prefix cache is off on Linux | `lib/src/engine/session/session_prep.dart` (`_prefixCacheEnabled`) |
 | Esc / Alt+Left closes a page | `lib/src/shared/widgets/finn_page_route.dart` (`_BackKeys`) |
 | The welcome screen's starfield and glow card (drawn, not photos) | `lib/src/features/onboarding/starfield.dart` (`Starfield`, `WelcomeGlowCard`) |
+| The welcome screen and its swipe: the glow card growing into the first step's artwork | `lib/src/features/onboarding/welcome_morph.dart` (`WelcomeMorphPage`, `StepReveal`) |
+| How one step gives way to the next (fade through in place, skipped steps hidden) | `lib/src/features/onboarding/step_transition.dart` |
 | First-run screens on a wide window (artwork left, text and controls right) | `lib/src/features/onboarding/wide_step.dart` (`WideStepLayout`, `WelcomeStartButton`) |
 | FinnAI's own title bar, window buttons and resize edges (the native GTK bar is removed) | `lib/src/shared/widgets/finn_window_frame.dart` (`FinnWindowFrame`, `FinnTitleBar`, `finnAppBuilder`), `lib/src/platform/window_chrome.dart` (the `finn_ai/window` channel) |
-| The title bar going dark over a full-bleed black screen | `FinnBlackScreen` in `finn_window_frame.dart`, used by the onboarding welcome page |
+| The title bar going dark over a full-bleed black screen | `FinnBlackScreen` in `finn_window_frame.dart`, used by the onboarding welcome page (`welcome_morph.dart`) |
 | Vertical spacing on wide windows (phone offsets are capped) | `lib/src/shared/layout/finn_layout.dart` (`FinnLayout.scaleY`) |
 | The GTK runner: window title, size, minimum size, icon, the window channel (drag, resize, minimise, maximise, fullscreen) | `linux/runner/my_application.cc` |
 | Bundling the model runtime, `.desktop` file, icon | `linux/CMakeLists.txt`, `linux/packaging/` |

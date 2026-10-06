@@ -83,6 +83,13 @@ class FinnSidebarSurface extends StatelessWidget {
     }
     final motion = progress;
     final radius = BorderRadius.circular(50 * motion);
+    // Depth: the home sheet steps back a little as it slides away (scaled
+    // toward its left edge, so its edge still meets the panel) while the
+    // panel, which never moves, brightens in behind it. Transforms of layers
+    // that are already cached, so the motion repaints nothing.
+    final scale = 1 - .06 * motion;
+    final height = MediaQuery.sizeOf(context).height;
+    double scaledY(double y) => height / 2 + (y - height / 2) * scale;
     return GestureDetector(
       // Horizontal only: the chat list underneath scrolls vertically and must
       // keep doing so, and the recognizer only accepts once the finger has
@@ -106,7 +113,10 @@ class FinnSidebarSurface extends StatelessWidget {
                 ignoring: !sidebarOpen,
                 child: ExcludeSemantics(
                   excluding: !sidebarOpen,
-                  child: sidebar,
+                  child: Opacity(
+                    opacity: (.35 + .65 * motion).clamp(0.0, 1.0),
+                    child: sidebar,
+                  ),
                 ),
               ),
             ),
@@ -117,66 +127,72 @@ class FinnSidebarSurface extends StatelessWidget {
           // the panel itself reach the panel.
           Transform.translate(
             offset: Offset(sidebarWidth * motion, 0),
-            child: Stack(
-              children: [
-                ExcludeSemantics(
-                  excluding: sidebarOpen,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      borderRadius: radius,
-                      // The design outlines the home sheet with a hairline, so
-                      // the sliver beside the panel reads as an edge rather
-                      // than as the panel simply stopping. It fades in with
-                      // the sheet's rounding.
-                      border: Border.all(
-                        color: FluxColors.panelEdgeOf(context).withValues(
-                          alpha: motion,
-                        ),
-                        width: 1,
-                      ),
-                      boxShadow: [
-                        if (motion > 0)
-                          BoxShadow(
-                            // The only shadow in the app that had no dark
-                            // branch at all: 10% black on a near-black canvas left
-                            // the home sheet with no lift.
-                            color: FluxColors.elevationOf(context).withValues(
-                              alpha: 0.10,
-                            ),
-                            blurRadius: 55,
-                            offset: const Offset(-10, 0),
+            child: Transform.scale(
+              scale: scale,
+              alignment: Alignment.centerLeft,
+              child: Stack(
+                children: [
+                  ExcludeSemantics(
+                    excluding: sidebarOpen,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        borderRadius: radius,
+                        // The design outlines the home sheet with a hairline, so
+                        // the sliver beside the panel reads as an edge rather
+                        // than as the panel simply stopping. It fades in with
+                        // the sheet's rounding.
+                        border: Border.all(
+                          color: FluxColors.panelEdgeOf(context).withValues(
+                            alpha: motion,
                           ),
-                      ],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: radius,
-                      // Rasterised once: sliding the sheet then moves a cached
-                      // layer instead of repainting the whole screen every
-                      // frame.
-                      child: RepaintBoundary(child: home),
+                          width: 1,
+                        ),
+                        boxShadow: [
+                          if (motion > 0)
+                            BoxShadow(
+                              // The only shadow in the app that had no dark
+                              // branch at all: 10% black on a near-black canvas left
+                              // the home sheet with no lift.
+                              color: FluxColors.elevationOf(context).withValues(
+                                alpha: 0.10,
+                              ),
+                              blurRadius: 55,
+                              offset: const Offset(-10, 0),
+                            ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: radius,
+                        // Rasterised once: sliding the sheet then moves a cached
+                        // layer instead of repainting the whole screen every
+                        // frame.
+                        child: RepaintBoundary(child: home),
+                      ),
                     ),
                   ),
-                ),
-                Positioned.fill(
-                  child: IgnorePointer(
-                    ignoring: !sidebarOpen,
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () => onToggle(),
-                      child: const SizedBox.expand(),
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      ignoring: !sidebarOpen,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () => onToggle(),
+                        child: const SizedBox.expand(),
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           // Above the panel and the home screen, so it stays reachable in both
           // states. It rides the home screen's own travel: the design shows
           // the control sliding off to the right with the surface it belongs
           // to, rather than staying put over the panel.
+          // It travels exactly the panel's width and follows the sheet's step
+          // back vertically, so it stays level with its slot.
           Positioned(
             left: toggleLeft + sidebarWidth * motion,
-            top: toggleTop,
+            top: scaledY(toggleTop + toggleDimension / 2) - toggleDimension / 2,
             child: FinnSidebarToggleButton(
               size: toggleDimension,
               progress: motion,

@@ -10,17 +10,20 @@ import 'package:finn_ai/src/features/flows/flow_model.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
 
-/// What each kind of node is tinted with. The same pastels the creations use,
-/// restated here because `flows/` does not import other features.
+/// What each kind of node is coloured with: the saturated hues of the step
+/// picker (`flowBlockColor`), so a flow reads as the same coloured sequence
+/// in the picker and in the chart. Restated here rather than imported so the
+/// chart has no dependency on the sheets.
 abstract final class FlowTints {
-  static const trigger = Color(0xFFBDECCB);
-  static const condition = Color(0xFFFCE3B4);
-  static const ask = Color(0xFFE5D4F5);
-  static const web = Color(0xFFB9DFF1);
-  static const notify = Color(0xFFF8C6CB);
-  static const speak = Color(0xFFC9E6F5);
-  static const action = Color(0xFFDFF3B0);
-  static const quiet = Color(0xFFE6E6E2);
+  static const trigger = Color(0xFF22A35A);
+  static const condition = Color(0xFFE0A100);
+  static const ask = Color(0xFF8B5CF6);
+  static const web = Color(0xFF3B82F6);
+  static const notify = Color(0xFFF97316);
+  static const speak = Color(0xFFEC4899);
+  static const action = Color(0xFF14A3A0);
+  static const save = Color(0xFF6366F1);
+  static const quiet = Color(0xFF6B7280);
 
   static Color forBlock(FlowBlockKind kind) => switch (kind) {
         FlowBlockKind.ask => ask,
@@ -29,7 +32,7 @@ abstract final class FlowTints {
         FlowBlockKind.speak => speak,
         FlowBlockKind.action => action,
         FlowBlockKind.branch => condition,
-        FlowBlockKind.saveToChat => trigger,
+        FlowBlockKind.saveToChat => save,
         FlowBlockKind.wait || FlowBlockKind.stop => quiet,
       };
 }
@@ -326,7 +329,6 @@ class _NodeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dark = FluxColors.isDark(context);
     final theme = Theme.of(context).textTheme;
     return Semantics(
       button: true,
@@ -348,15 +350,16 @@ class _NodeCard extends StatelessWidget {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: tint.withValues(alpha: dark ? .3 : 1),
-                      shape: BoxShape.circle,
+                      borderRadius: BorderRadius.circular(12),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [Color.lerp(tint, Colors.white, .18)!, tint],
+                      ),
                     ),
                     child: Center(
-                      child: FluxIcon(
-                        icon: icon,
-                        size: 20,
-                        color: dark ? Colors.white : const Color(0xFF121212),
-                      ),
+                      child:
+                          FluxIcon(icon: icon, size: 20, color: Colors.white),
                     ),
                   ),
                   const SizedBox(width: 14),

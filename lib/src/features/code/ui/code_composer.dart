@@ -9,6 +9,7 @@ import 'package:finn_ai/src/features/code/ui/code_style.dart';
 import 'package:finn_ai/src/features/code/ui/code_suggestions.dart';
 import 'package:finn_ai/src/shared/layout/finn_layout.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
+import 'package:finn_ai/src/shared/widgets/keyboard_fuse.dart';
 import 'package:finn_ai/src/shared/widgets/enter_to_send.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
 import 'package:finn_ai/src/shared/widgets/flux_motion.dart';
@@ -62,8 +63,24 @@ class CodeComposer extends StatefulWidget {
   State<CodeComposer> createState() => _CodeComposerState();
 }
 
-class _CodeComposerState extends State<CodeComposer> {
+class _CodeComposerState extends State<CodeComposer>
+    with SingleTickerProviderStateMixin {
   late bool _hasText = widget.controller.text.trim().isNotEmpty;
+
+  /// Attach, field and send merge into one panel while the keyboard is up on
+  /// a phone, as the chat composer does.
+  late final KeyboardFuse _fuse = KeyboardFuse(
+    this,
+    vsync: this,
+    focusNode: widget.focusNode,
+  );
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _fuse.sync();
+  }
+
   CodeCompletionQuery? _query;
   List<String>? _files;
 
@@ -85,6 +102,7 @@ class _CodeComposerState extends State<CodeComposer> {
 
   @override
   void dispose() {
+    _fuse.dispose();
     widget.controller.removeListener(_changed);
     super.dispose();
   }
@@ -234,52 +252,44 @@ class _CodeComposerState extends State<CodeComposer> {
             ),
           );
 
-    final field = Container(
-      constraints: const BoxConstraints(
-        minHeight: CodeStyle.inputHeight,
-        maxHeight: 180,
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 14),
-      decoration: FluxSurfaces.flat(context, radius: CodeStyle.inputHeight / 2),
-      child: Semantics(
-        label: l10n.codeComposerHint,
-        textField: true,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          excludeFromSemantics: true,
-          onTap: widget.focusNode.requestFocus,
-          child: Center(
-            heightFactor: 1,
-            child: Padding(
-              // Same optical centring as the chat field (see
-              // FinnLayout.fieldTextLift), at Code's size.
-              padding: EdgeInsets.only(
-                top: 6,
-                bottom: 6 + FinnLayout.fieldTextLift * .8,
-              ),
-              child: EnterToSend(
-                canSend: canSend,
-                onSend: _send,
-                child: TextField(
-                  key: const ValueKey('code-composer-field'),
-                  controller: widget.controller,
-                  focusNode: widget.focusNode,
-                  inputFormatters: [LengthLimitingTextInputFormatter(6000)],
-                  minLines: 1,
-                  maxLines: 6,
-                  textAlignVertical: TextAlignVertical.center,
-                  keyboardType: TextInputType.multiline,
-                  textInputAction: TextInputAction.newline,
-                  style: CodeStyle.prose(context).copyWith(height: 1.3),
-                  cursorColor: FluxColors.inkOf(context),
-                  cursorWidth: 1.6,
-                  decoration: InputDecoration.collapsed(
-                    hintText: l10n.codeComposerHint,
-                    hintMaxLines: 1,
-                    hintStyle: CodeStyle.prose(context).copyWith(
-                      height: 1.3,
-                      color: FluxColors.inkOf(context).withValues(alpha: .5),
-                    ),
+    final fieldText = Semantics(
+      label: l10n.codeComposerHint,
+      textField: true,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        excludeFromSemantics: true,
+        onTap: widget.focusNode.requestFocus,
+        child: Center(
+          heightFactor: 1,
+          child: Padding(
+            // Same optical centring as the chat field (see
+            // FinnLayout.fieldTextLift), at Code's size.
+            padding: EdgeInsets.only(
+              top: 6,
+              bottom: 6 + FinnLayout.fieldTextLift * .8,
+            ),
+            child: EnterToSend(
+              canSend: canSend,
+              onSend: _send,
+              child: TextField(
+                key: const ValueKey('code-composer-field'),
+                controller: widget.controller,
+                focusNode: widget.focusNode,
+                inputFormatters: [LengthLimitingTextInputFormatter(6000)],
+                minLines: 1,
+                maxLines: 6,
+                textAlignVertical: TextAlignVertical.center,
+                keyboardType: TextInputType.multiline,
+                textInputAction: TextInputAction.newline,
+                style: CodeStyle.prose(context).copyWith(height: 1.3),
+                cursorColor: FluxColors.inkOf(context),
+                cursorWidth: 1.6,
+                decoration: InputDecoration.collapsed(
+                  hintText: l10n.codeComposerHint,
+                  hintMaxLines: 1,
+                  hintStyle: CodeStyle.prose(context).copyWith(
+                    height: 1.3,
+                    color: FluxColors.inkOf(context).withValues(alpha: .5),
                   ),
                 ),
               ),
@@ -288,6 +298,74 @@ class _CodeComposerState extends State<CodeComposer> {
         ),
       ),
     );
+
+    final attachButton = widget.onAttach == null
+        ? null
+        : _RoundButton(
+            key: const ValueKey('code-attach-button'),
+            label: l10n.codeAttachFiles,
+            onTap: widget.busy ? null : widget.onAttach,
+            child: FluxIcon(
+              icon: FluxIcons.add,
+              size: 18,
+              color: FluxColors.inkOf(context),
+            ),
+          );
+    const button = CodeStyle.inputHeight;
+    // The row at t = 0 — attach, field, send side by side — and one panel at
+    // t = 1: text on top, attach bottom-left, send bottom-right.
+    Widget row(double t) {
+      double lerp(double a, double b) => a + (b - a) * t;
+      final bar = lerp(0, button + 2).clamp(0.0, button + 6);
+      final left = attachButton == null ? 0.0 : lerp(button + 8, 0);
+      return Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Padding(
+            padding: EdgeInsets.only(
+              left: left.clamp(0, button + 8),
+              right: lerp(button + 8, 0).clamp(0, button + 8),
+            ),
+            child: Container(
+              constraints: BoxConstraints(
+                minHeight: button + bar,
+                maxHeight: 180 + bar,
+              ),
+              padding: EdgeInsets.fromLTRB(
+                lerp(14, 16),
+                lerp(0, 6),
+                lerp(14, 16),
+                bar,
+              ),
+              decoration: FluxSurfaces.flat(
+                context,
+                radius: lerp(button / 2, 24),
+              ),
+              child: fieldText,
+            ),
+          ),
+          if (attachButton != null)
+            Positioned(
+              left: lerp(0, 2),
+              bottom: lerp(0, 2),
+              child: Transform.scale(
+                scale: lerp(1, .92),
+                alignment: Alignment.bottomLeft,
+                child: attachButton,
+              ),
+            ),
+          Positioned(
+            right: lerp(0, 5),
+            bottom: lerp(0, 5),
+            child: Transform.scale(
+              scale: lerp(1, .82),
+              alignment: Alignment.bottomRight,
+              child: FluxSwap(swapKey: widget.busy, child: trailing),
+            ),
+          ),
+        ],
+      );
+    }
 
     return SizedBox(
       width: widget.width,
@@ -326,26 +404,9 @@ class _CodeComposerState extends State<CodeComposer> {
                 ],
               ),
             ),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              if (widget.onAttach != null) ...[
-                _RoundButton(
-                  key: const ValueKey('code-attach-button'),
-                  label: l10n.codeAttachFiles,
-                  onTap: widget.busy ? null : widget.onAttach,
-                  child: FluxIcon(
-                    icon: FluxIcons.add,
-                    size: 17,
-                    color: FluxColors.inkOf(context),
-                  ),
-                ),
-                const SizedBox(width: 8),
-              ],
-              Expanded(child: field),
-              const SizedBox(width: 8),
-              FluxSwap(swapKey: widget.busy, child: trailing),
-            ],
+          AnimatedBuilder(
+            animation: _fuse.value,
+            builder: (context, _) => row(_fuse.value.value),
           ),
           const SizedBox(height: 2),
           widget.status,
