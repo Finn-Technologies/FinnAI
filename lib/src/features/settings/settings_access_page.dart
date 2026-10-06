@@ -21,13 +21,13 @@ List<({String key, IconData icon, String title, String sub})> contextKinds(
       ),
       (
         key: 'contacts',
-        icon: FluxIcons.you,
+        icon: FluxIcons.contacts,
         title: l10n.ctxContacts,
         sub: l10n.ctxContactsSub,
       ),
       (
         key: 'notifications',
-        icon: FluxIcons.alarm,
+        icon: FluxIcons.notifications,
         title: l10n.ctxNotifications,
         sub: l10n.ctxNotificationsSub,
       ),
@@ -39,13 +39,13 @@ List<({String key, IconData icon, String title, String sub})> contextKinds(
       ),
       (
         key: 'files',
-        icon: FluxIcons.note,
+        icon: FluxIcons.file,
         title: l10n.ctxFiles,
         sub: l10n.ctxFilesSub,
       ),
       (
         key: 'location',
-        icon: FluxIcons.flag,
+        icon: FluxIcons.location,
         title: l10n.ctxLocation,
         sub: l10n.ctxLocationSub,
       ),

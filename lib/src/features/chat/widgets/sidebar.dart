@@ -392,6 +392,31 @@ class _SidebarState extends State<_Sidebar> {
                   ),
                 ),
 
+                // The shortcuts float over the chat cards; a fade into the panel
+                // colour gives them a floor instead of cards showing through.
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  height: math.max(safeBottom + 3, 38 * sy) + 90,
+                  child: IgnorePointer(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          stops: const [0, .45, 1],
+                          colors: [
+                            FluxColors.controlOf(context).withValues(alpha: 0),
+                            FluxColors.controlOf(context)
+                                .withValues(alpha: .94),
+                            FluxColors.controlOf(context),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
                 // 6. The two shortcuts that used to sit in the header.
                 // The design leaves 38px under these circles on its 912pt canvas.
                 // That is a design-canvas gap, so it scales with everything else

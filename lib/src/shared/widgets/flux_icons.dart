@@ -25,8 +25,11 @@ abstract final class FluxIcons {
   static const chevronDown = PhosphorIconsBold.caretDown;
   static const arrowLeft = PhosphorIconsBold.arrowLeft;
   static const newChat = PhosphorIconsFill.notePencil;
-  static const creations = PhosphorIconsFill.shapes;
-  static const widget = PhosphorIconsFill.squaresFour;
+  static const creations = PhosphorIconsFill.squaresFour;
+  static const widget = PhosphorIconsFill.layout;
+  static const contacts = PhosphorIconsFill.addressBook;
+  static const notifications = PhosphorIconsFill.bell;
+  static const location = PhosphorIconsFill.mapPin;
   static const miniApp = PhosphorIconsFill.deviceMobile;
   static const presentation = PhosphorIconsFill.presentation;
   static const photo = PhosphorIconsFill.image;

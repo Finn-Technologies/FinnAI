@@ -356,6 +356,31 @@ class _CodeSidebarState extends State<CodeSidebar> {
                     ),
                   ),
                 ),
+                // The shortcuts float over the chat cards; a fade into the panel
+                // colour gives them a floor instead of cards showing through.
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  height: math.max(safeBottom + 3, 38 * sy) + 90,
+                  child: IgnorePointer(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          stops: const [0, .45, 1],
+                          colors: [
+                            FluxColors.controlOf(context).withValues(alpha: 0),
+                            FluxColors.controlOf(context)
+                                .withValues(alpha: .94),
+                            FluxColors.controlOf(context),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
                 Positioned(
                   left: 25,
                   bottom: math.max(safeBottom + 3, 38 * sy),
