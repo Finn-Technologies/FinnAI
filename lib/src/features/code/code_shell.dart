@@ -25,7 +25,7 @@ import 'package:finn_ai/src/features/code/ui/code_style.dart';
 import 'package:finn_ai/src/features/code/ui/code_suggestions.dart';
 import 'package:finn_ai/src/features/code/agent/code_agent.dart';
 import 'package:finn_ai/src/features/code/settings/code_agent_page.dart';
-import 'package:finn_ai/src/inference/model_catalog.dart';
+import 'package:finn_ai/src/inference/finn_inference.dart';
 import 'package:finn_ai/src/platform/platform_target.dart';
 import 'package:finn_ai/src/shared/layout/finn_layout.dart';
 import 'package:finn_ai/src/shared/widgets/desktop_shortcuts.dart';
@@ -372,7 +372,7 @@ class _CodeShellState extends State<CodeShell>
                         // The chip icon already says "on this device"; the
                         // line names the model itself.
                         modelLabel: _services.providers.active.isLocal
-                            ? finnModels.single.name
+                            ? FinnInference.instance.selected.name
                             : _modelLabel(context),
                         modelIsLocal: _services.providers.active.isLocal,
                         environment: _services.runner.environment,

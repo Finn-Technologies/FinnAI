@@ -158,6 +158,8 @@ extension FinnAcceleratorResidency on FinnAccelerator {
       final file = await _mmprojFile();
       // removeModelArtifactFiles already clears the .part range side-files.
       await removeModelArtifactFiles(file);
+      // And the other tier's projector, if a switch left one behind.
+      failures.addAll(await _removeProjectorsExcept(null));
     } catch (error) {
       if (!error.toString().contains('MissingPluginException')) {
         debugPrint('Projector file removal error: $error');

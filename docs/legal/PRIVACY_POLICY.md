@@ -61,7 +61,7 @@ FinnAI uses network access exclusively for the following specific purposes:
 
 ### A. Model Downloads
 When you download or update an AI model, the application connects to Hugging
-Face (`huggingface.co`) over HTTPS to fetch the licensed LFM2.5-VL 1.6B `.gguf`
+Face (`huggingface.co`) over HTTPS to fetch the licensed LFM2.5-VL `.gguf` (1.6B, or 3B on capable devices)
 model files. The request necessarily exposes ordinary network metadata, such as
 an IP address, to that host, but it does not include prompts or conversation
 content. FinnAI itself is proprietary software, not an open-source application.

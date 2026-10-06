@@ -8,12 +8,12 @@ extension FinnAcceleratorInstall on FinnAccelerator {
     _plan = DeviceProfiler.plan(_deviceProfile!);
     // Clean up any retired legacy artifacts in background without blocking startup
     unawaited(_removeRetiredModelArtifacts());
-    _selected = finnModels.single;
+    await _initTier(_deviceProfile!);
     _automaticSelection = true;
   }
 
   void select(FinnModelTier tier) {
-    if (tier != FinnModelTier.standard || !_automaticSelection) return;
+    if (tier != _selected.tier || !_automaticSelection) return;
     _automaticSelection = false;
     _setStatus(
       InferencePhase.idle,
@@ -56,9 +56,7 @@ extension FinnAcceleratorInstall on FinnAccelerator {
     return states;
   }
 
-  Future<FinnModelTier> recommendedTier() async {
-    return FinnModelTier.standard;
-  }
+  Future<FinnModelTier> recommendedTier() async => _recommendedTier;
 
   Future<void> install(FinnModelSpec model) {
     // A model can be verified from a previous app run while the post-model
@@ -116,7 +114,7 @@ extension FinnAcceleratorInstall on FinnAccelerator {
     if (await isMmprojInstalled()) return;
     // The projector is only meaningful once the language model is present;
     // otherwise onboarding drives the whole install.
-    final model = finnModels.single;
+    final model = _selected;
     if (!await _isVerifiedModelFile(model, await _modelFile(model))) return;
     final target = await _mmprojFile();
     final partial = File('${target.path}.part');
@@ -134,7 +132,7 @@ extension FinnAcceleratorInstall on FinnAccelerator {
     // guard leaves it untouched.
     var trackedStandalone = false;
     if (_installTotalBytes <= 0) {
-      _installTotalBytes = finnMmproj.expectedBytes;
+      _installTotalBytes = activeProjector.expectedBytes;
       _installCompletedBytes = 0;
       trackedStandalone = true;
     }
@@ -167,7 +165,7 @@ extension FinnAcceleratorInstall on FinnAccelerator {
       final modelAlreadyInstalled = await isInstalled(model);
       final componentAlreadyInstalled = await isMmprojInstalled();
       _installTotalBytes = (modelAlreadyInstalled ? 0 : model.expectedBytes) +
-          (componentAlreadyInstalled ? 0 : finnMmproj.expectedBytes);
+          (componentAlreadyInstalled ? 0 : activeProjector.expectedBytes);
       _installCompletedBytes = 0;
       await _ensureDownloaded(model);
       _verifiedModels.add(model.tier);

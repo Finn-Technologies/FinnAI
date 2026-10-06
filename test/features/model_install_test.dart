@@ -19,7 +19,7 @@ class _FakeSource extends ChangeNotifier implements ModelInstallSource {
   bool installed = false;
 
   @override
-  List<FinnModelSpec> get requiredModels => finnModels;
+  List<FinnModelSpec> get requiredModels => [finnModels.first];
 
   @override
   double? installProgress;
@@ -81,7 +81,7 @@ class _FakeAddon implements InstallAddon {
 }
 
 void main() {
-  final modelBytes = finnModels.single.expectedBytes + finnMmproj.expectedBytes;
+  final modelBytes = finnModels.first.totalBytes;
 
   test('installs the language model first, then the add-on', () async {
     final source = _FakeSource();
@@ -331,7 +331,7 @@ class _VoiceStore extends TtsVoiceStore {
 
 class _UnverifiedSource extends ChangeNotifier implements ModelInstallSource {
   @override
-  List<FinnModelSpec> get requiredModels => finnModels;
+  List<FinnModelSpec> get requiredModels => [finnModels.first];
 
   @override
   double? get installProgress => null;

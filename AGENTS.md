@@ -2,7 +2,7 @@
 
 FinnAI is a **private, on-device AI assistant** for Android, OpenHarmony and desktop Linux: a Flutter UI over a
 native llama.cpp runtime (`FinnAI-Accelerator`) that runs a single downloaded model
-(`LFM2.5-VL 1.6B Q4_0`) entirely on the device. There is no server, no account, and no cloud
+(`LFM2.5-VL Q4_0`: the 3B on capable phones, the 1.6B elsewhere) entirely on the device. There is no server, no account, and no cloud
 inference.
 
 This file is the contract for any agent or engineer working in this repository. Read it before
@@ -15,7 +15,7 @@ editing. `docs/architecture/CODE_MAP.md` tells you *which file to edit for which
 | Rule | Why | How it is enforced |
 |---|---|---|
 | **Only `lib/src/engine/**` may import `package:llama_cpp_dart`.** Everything else depends on the engine facade. | Keeps the native runtime swappable and the app buildable without the FFI package. | `bash tool/verify_engine_seam.sh` (runs in CI) |
-| **There is exactly one model.** Never add a second catalog entry or a tier. | Download, verification, storage, settings and deletion all key off a single artifact identity. | `finnModels.single`, `FinnModelTier.standard` |
+| **One model family, two tiers, one tier per device** (ADR 0013). The 3B goes to devices `ModelTierPolicy` clears, the 1.6B everywhere else; a device downloads only its selected tier. Never add a third tier without measuring it on a real device. | Download, verification, storage, settings and deletion key off the selected tier's artifacts (model + its own projector). | `FinnAccelerator.selected`, `ModelTierPolicy`, `test/engine/model_tier_policy_test.dart` |
 | **Never change the model's `downloadUrl`, `expectedBytes` or `sha256Digest` without verifying against Hugging Face.** | A wrong digest makes downloads fail; a wrong size silently corrupts installs. | `test/app/release_hardening_test.dart` |
 | **`lib/l10n/app_localizations*.dart` are generated.** Edit `lib/l10n/app_*.arb`, never the generated files. | `flutter gen-l10n` overwrites them. | `flutter pub get` / build |
 | **Code must be `dart format` clean.** | CI gate. | `dart format --output=none --set-exit-if-changed .` |
@@ -120,8 +120,9 @@ command with `--no-pub` (`flutter test --no-pub`), or use `dart analyze .` direc
 ## 4. Common tasks
 
 ### Change the on-device model
-1. Update `lib/src/engine/catalog/model_catalog.dart` (`name`, `parameterLabel`, `fileName`,
-   `downloadUrl`, `expectedBytes`, `sha256Digest`) **and** `finnMmproj` if the projector changes.
+1. Update the tier's entry in `lib/src/engine/catalog/model_catalog.dart` (`name`, `parameterLabel`,
+   `fileName`, `downloadUrl`, `expectedBytes`, `sha256Digest`) **and** its `projector` if that changes.
+   Which device gets which tier is `ModelTierPolicy` (ADR 0013).
 2. Verify `expectedBytes` and the SHA-256 against the Hugging Face LFS metadata:
    `curl -s "https://huggingface.co/api/models/<repo>/tree/<revision>"` — the `lfs.oid` **is** the
    sha256 and `size` is the byte count.

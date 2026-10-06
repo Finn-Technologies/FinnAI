@@ -40,24 +40,24 @@ extension FinnAcceleratorModelFiles on FinnAccelerator {
   Future<File> _mmprojFile() async {
     final directory = await (_modelDirectoryJob ??= _createModelDirectory());
     return File(
-      '${directory.path}${Platform.pathSeparator}${finnMmproj.fileName}',
+      '${directory.path}${Platform.pathSeparator}${activeProjector.fileName}',
     );
   }
 
   Future<bool> hasMmprojFile() async {
     final file = await _mmprojFile();
     return await file.exists() &&
-        await file.length() == finnMmproj.expectedBytes;
+        await file.length() == activeProjector.expectedBytes;
   }
 
   Future<bool> isMmprojInstalled() async {
     final file = await _mmprojFile();
     if (!await file.exists() ||
-        await file.length() != finnMmproj.expectedBytes) {
+        await file.length() != activeProjector.expectedBytes) {
       return false;
     }
     try {
-      await _verifyArtifactDigest(file, finnMmproj.sha256Digest);
+      await _verifyArtifactDigest(file, activeProjector.sha256Digest);
       return true;
     } catch (_) {
       return false;
@@ -71,14 +71,14 @@ extension FinnAcceleratorModelFiles on FinnAccelerator {
       final availableStorage = storageProfile.availableStorageBytes;
       const reserve = 256 * 1024 * 1024;
       if (availableStorage != null &&
-          availableStorage < finnMmproj.expectedBytes + reserve) {
+          availableStorage < activeProjector.expectedBytes + reserve) {
         throw const FileSystemException(
           'Not enough storage for the multimodal component and safety reserve.',
         );
       }
     }
     final target = await _mmprojFile();
-    if (!await isInstalled(finnModels.single)) {
+    if (!await isInstalled(_selected)) {
       throw StateError(
         'Download the language model before its component.',
       );
@@ -86,12 +86,12 @@ extension FinnAcceleratorModelFiles on FinnAccelerator {
     if (Platform.isAndroid) {
       final partial = File('${target.path}.part');
       await _ensureArtifactWithService(
-        url: finnMmproj.downloadUrl,
+        url: activeProjector.downloadUrl,
         target: target,
         partial: partial,
-        expectedBytes: finnMmproj.expectedBytes,
+        expectedBytes: activeProjector.expectedBytes,
         label: 'Multimodal vision component',
-        sha256Digest: finnMmproj.sha256Digest,
+        sha256Digest: activeProjector.sha256Digest,
       );
       return;
     }
@@ -99,16 +99,16 @@ extension FinnAcceleratorModelFiles on FinnAccelerator {
         ? await File('${target.path}.part').length()
         : 0;
     await _requireDesktopStorage(
-      math.max(0, finnMmproj.expectedBytes - partialBytes),
+      math.max(0, activeProjector.expectedBytes - partialBytes),
       reserve: 256 * 1024 * 1024,
       what: 'the multimodal component',
     );
     await _ensureArtifactDart(
-      url: finnMmproj.downloadUrl,
+      url: activeProjector.downloadUrl,
       target: target,
-      expectedBytes: finnMmproj.expectedBytes,
+      expectedBytes: activeProjector.expectedBytes,
       label: 'Multimodal vision component',
-      sha256Digest: finnMmproj.sha256Digest,
+      sha256Digest: activeProjector.sha256Digest,
     );
   }
 

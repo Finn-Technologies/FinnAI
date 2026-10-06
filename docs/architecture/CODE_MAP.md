@@ -137,6 +137,8 @@ A second app inside the app: its own sessions, settings and providers, in the sa
 | What the model is told, and how its reply is read (the action protocol) | `lib/src/features/code/agent/agent_protocol.dart` |
 | On-device model aids: format repair, guided reply starts, failure hints | `lib/src/features/code/agent/small_model_aids.dart` |
 | Search/replace edits (cloud models) | `lib/src/features/code/agent/edit_blocks.dart` |
+| Which model tier a device gets (RAM, chipset list, CPU score) | `lib/src/engine/profiler/model_tier_policy.dart` |
+| Storing, switching and cleaning up the selected tier | `lib/src/engine/install/model_tier.dart` |
 | The agent prompt shape in the engine (no chat persona, cache continuation) | `lib/src/engine/prompt/agent_prompt.dart` |
 | The request loop: steps, approvals, stop, loop guards | `lib/src/features/code/agent/code_agent.dart` |
 | What an action does (file write, command) | `lib/src/features/code/agent/action_runner.dart` |

@@ -14,6 +14,7 @@ import 'package:finn_ai/src/engine/prompt/tool_tag_filter.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'package:finn_ai/src/engine/profiler/device_profile.dart';
+import 'package:finn_ai/src/engine/profiler/model_tier_policy.dart';
 import 'package:finn_ai/src/engine/metrics/perf_logging.dart';
 import 'package:finn_ai/src/engine/metrics/ttft_metrics.dart';
 import 'package:finn_ai/src/engine/policy/residency_policy.dart';
@@ -25,6 +26,7 @@ import 'package:finn_ai/src/engine/api/web_source.dart';
 export 'package:finn_ai/src/engine/finn_engine_types.dart';
 
 part 'install/install_lifecycle.dart';
+part 'install/model_tier.dart';
 part 'loader/residency.dart';
 part 'loader/projector.dart';
 part 'generate/reply_api.dart';
@@ -187,9 +189,17 @@ class FinnAccelerator extends ChangeNotifier {
   /// "Delete All Local Data" left a third of a gigabyte on the device.
   static const modelFileSuffixes = <String>['', '.part', '.finn_repack'];
 
-  FinnModelSpec _selected = finnModels.single;
+  FinnModelSpec _selected = finnModels.first;
   FinnModelSpec get selected => _selected;
-  List<FinnModelSpec> get requiredModels => finnModels;
+
+  /// Only the selected tier is ever downloaded.
+  List<FinnModelSpec> get requiredModels => [_selected];
+
+  /// The vision projector that belongs to the selected tier.
+  FinnModelArtifact get activeProjector => _selected.projector ?? finnMmproj;
+
+  /// What [ModelTierPolicy] recommends for this device; set by [initialize].
+  FinnModelTier _recommendedTier = FinnModelTier.standard;
 
   /// Last known llama.cpp commit, surfaced by the adaptive engine so its
   /// profile cache key invalidates when the native build changes.

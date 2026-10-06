@@ -4,12 +4,12 @@
 
 FinnAI runs one language model entirely on your device — no server, no account, no cloud
 inference. The Flutter UI sits on top of **FinnAI-Accelerator**, a native llama.cpp runtime, and
-runs **LFM2.5-VL 1.6B (Q4_0)** with its SigLIP2 vision projector. Weights are downloaded once from
+runs **LFM2.5-VL (Q4_0)** with its vision projector: the 3B on phones at Snapdragon 845 level or better with 8 GB of RAM, the 1.6B elsewhere (ADR 0013). Weights are downloaded once from
 Hugging Face and never leave the device.
 
 - **Package id:** `com.abhiflex.finnai`
 - **Platforms:** Android (primary), OpenHarmony, Linux desktop (x86-64 / arm64; see [docs/guides/LINUX.md](docs/guides/LINUX.md))
-- **Model:** LFM2.5-VL 1.6B Q4_0 + `mmproj-LFM2.5-VL-1.6b-F16` vision projector (≈1.55 GB total), plus the on-device speech model for voice mode (Whisper base + Silero VAD, ≈161 MB) and spoken replies (Supertonic 3 voice, ≈398 MB, 31 languages), all downloaded with it
+- **Model:** LFM2.5-VL 1.6B Q4_0 + its F16 vision projector (≈1.55 GB total), or on capable phones LFM2.5-VL 3B Q4_0 + its F16 projector (≈2.45 GB total), plus the on-device speech model for voice mode (Whisper base + Silero VAD, ≈161 MB) and spoken replies (Supertonic 3 voice, ≈398 MB, 31 languages), all downloaded with it
 
 ---
 
@@ -101,5 +101,5 @@ export FINN_TERMS_URL="https://finn-org.vercel.app/terms"
 ## License
 
 FinnAI is proprietary software. Third-party components — including `llama.cpp`, `ggml`,
-`llama_cpp_dart`, and the LFM2.5-VL 1.6B model under the LFM Open License v1.0 — are attributed in
+`llama_cpp_dart`, and the LFM2.5-VL 1.6B and 3B models under the LFM Open License v1.0 — are attributed in
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and in the in-app licence screen.

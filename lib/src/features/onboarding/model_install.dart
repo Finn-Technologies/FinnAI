@@ -108,8 +108,7 @@ class ModelInstall {
   }
 
   int get _modelBytes =>
-      _inference.requiredModels.fold<int>(0, (s, m) => s + m.expectedBytes) +
-      finnMmproj.expectedBytes;
+      _inference.requiredModels.fold<int>(0, (s, m) => s + m.totalBytes);
 
   int get _addonBytes => _addons.fold<int>(0, (s, a) => s + a.totalBytes);
 
