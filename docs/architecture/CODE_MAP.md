@@ -135,6 +135,9 @@ A second app inside the app: its own sessions, settings and providers, in the sa
 | Switching between FinnAI and FinnAI Code (the brand row, the remembered choice) | `lib/src/shared/widgets/finn_brand_switcher.dart`, `lib/src/shared/config/app_mode.dart`, `lib/src/app/app_mode_host.dart` |
 | The Code screen (sidebar, header, transcript, composer, navigation) | `lib/src/features/code/code_shell.dart`, `lib/src/features/code/ui/` |
 | What the model is told, and how its reply is read (the action protocol) | `lib/src/features/code/agent/agent_protocol.dart` |
+| On-device model aids: format repair, guided reply starts, failure hints | `lib/src/features/code/agent/small_model_aids.dart` |
+| Search/replace edits (cloud models) | `lib/src/features/code/agent/edit_blocks.dart` |
+| The agent prompt shape in the engine (no chat persona, cache continuation) | `lib/src/engine/prompt/agent_prompt.dart` |
 | The request loop: steps, approvals, stop, loop guards | `lib/src/features/code/agent/code_agent.dart` |
 | What an action does (file write, command) | `lib/src/features/code/agent/action_runner.dart` |
 | What a command may not do | `lib/src/features/code/sandbox/command_policy.dart` |
@@ -185,7 +188,8 @@ A second app inside the app: its own sessions, settings and providers, in the sa
 |---|---|
 | Colors, radii, text theme, system UI overlays | `lib/src/shared/theme/flux_theme.dart` |
 | Space reserved below bottom-anchored UI (composer, nav bar height) | `lib/src/shared/theme/flux_theme.dart` (`FluxBottomInset.bottomOf`) |
-| Buttons, pills, icon registry (`FluxIcons`), glass surfaces | `lib/src/shared/widgets/flux_controls.dart` |
+| Buttons, pills, glass surfaces | `lib/src/shared/widgets/flux_controls.dart` |
+| The icon set (`FluxIcons`, Phosphor fill) and `FluxIcon` | `lib/src/shared/widgets/flux_icons.dart` |
 | Flat raised surfaces (fill + 1px hairline, never a shadow), the pill text field, filter chips, the progressive backdrop blur | `lib/src/shared/widgets/flux_surfaces.dart` (`FluxSurfaces`, `FluxPillField`, `FluxChip`, `FluxProgressiveBlur`, `FluxGlass`) |
 | Page header used by every sub-page | `lib/src/shared/widgets/finn_page_header.dart` |
 | Design primitives (circle button, row tile, switch, reveal animation) | `lib/src/shared/widgets/finn_ui.dart` |
