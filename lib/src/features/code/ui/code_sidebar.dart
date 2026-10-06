@@ -206,7 +206,7 @@ class _CodeSidebarState extends State<CodeSidebar> {
                                         key: ValueKey(
                                             'code-session-${session.id}'),
                                         title: session.title.isEmpty
-                                            ? '…'
+                                            ? l10n.codeNewSession
                                             : session.title,
                                         selected: selected,
                                         onTap: () =>
