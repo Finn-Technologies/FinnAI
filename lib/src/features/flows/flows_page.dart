@@ -12,6 +12,7 @@ import 'package:finn_ai/src/features/flows/flow_scheduler.dart';
 import 'package:finn_ai/src/features/flows/flows_actions.dart';
 import 'package:finn_ai/src/features/flows/flows_store.dart';
 import 'package:finn_ai/src/shared/widgets/finn_create_button.dart';
+import 'package:finn_ai/src/shared/widgets/finn_skeleton.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 import 'package:finn_ai/src/shared/widgets/finn_overlays.dart';
 import 'package:finn_ai/src/shared/widgets/finn_page.dart';
@@ -101,17 +102,7 @@ class _FlowsPageState extends State<FlowsPage> {
           return FinnPage(
             title: l10n.flowsTitle,
             onBack: widget.onBack,
-            children: const [
-              Center(
-                child: Padding(
-                  padding: EdgeInsets.only(top: 80),
-                  child: SizedBox.square(
-                    dimension: 22,
-                    child: CircularProgressIndicator(strokeWidth: 1.5),
-                  ),
-                ),
-              ),
-            ],
+            children: const [FinnSkeletonList()],
           );
         }
         final automations =

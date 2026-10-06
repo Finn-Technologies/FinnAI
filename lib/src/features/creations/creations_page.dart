@@ -309,7 +309,7 @@ class _CreationsPageState extends State<CreationsPage> {
       if (!_transcriptScroll.hasClients) return;
       _transcriptScroll.animateTo(
         _transcriptScroll.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 240),
+        duration: FluxMotion.modalDuration,
         curve: Curves.easeOutCubic,
       );
     });
@@ -397,7 +397,7 @@ class _CreationsPageState extends State<CreationsPage> {
                                   ),
                                 ),
                               AnimatedSize(
-                                duration: const Duration(milliseconds: 180),
+                                duration: FluxMotion.revealDuration,
                                 curve: Curves.easeOutCubic,
                                 child: _controller.failure == null ||
                                         _mode == _Mode.builder
@@ -432,7 +432,7 @@ class _CreationsPageState extends State<CreationsPage> {
                           ),
                         ),
                         AnimatedPadding(
-                          duration: const Duration(milliseconds: 180),
+                          duration: FluxMotion.revealDuration,
                           curve: Curves.easeOutCubic,
                           padding: EdgeInsets.fromLTRB(
                             20,

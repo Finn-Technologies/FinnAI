@@ -139,7 +139,7 @@ class _FadeRiseState extends State<_FadeRise>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 380),
+    duration: FluxMotion.emphasisDuration,
   );
   late final CurvedAnimation _curve = CurvedAnimation(
     parent: _controller,

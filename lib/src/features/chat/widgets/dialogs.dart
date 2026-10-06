@@ -114,7 +114,7 @@ class _ControlSwapState extends State<_ControlSwap>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 240),
+    duration: FluxMotion.modalDuration,
     value: 1,
   );
   late final Animation<double> _pop = CurvedAnimation(

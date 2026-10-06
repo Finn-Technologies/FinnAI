@@ -142,7 +142,7 @@ class _ConversationState extends State<_Conversation> {
         unawaited(
           widget.scrollController.animateTo(
             0,
-            duration: const Duration(milliseconds: 320),
+            duration: FluxMotion.pageDuration,
             curve: Curves.easeOutQuart,
           ),
         );

@@ -133,7 +133,7 @@ extension _HomeShellLifecycle on _HomeShellState {
       unawaited(
         _chatScrollController.animateTo(
           0,
-          duration: const Duration(milliseconds: 260),
+          duration: FluxMotion.modalDuration,
           curve: Curves.easeOutCubic,
         ),
       );

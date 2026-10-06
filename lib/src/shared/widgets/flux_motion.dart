@@ -20,7 +20,7 @@ class _FluxSwapState extends State<FluxSwap>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 280),
+    duration: FluxMotion.modalDuration,
     value: 1,
   );
   late final Animation<double> _pop =

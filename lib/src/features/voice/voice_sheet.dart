@@ -373,7 +373,7 @@ class _VoiceOrb extends StatelessWidget {
 
                 // Mid fluid breathing layer
                 AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
+                  duration: FluxMotion.revealDuration,
                   curve: Curves.easeOutCubic,
                   width: primarySize * (1.12 + soundExpansion * 0.2),
                   height: primarySize * (1.12 + soundExpansion * 0.2),
@@ -389,7 +389,7 @@ class _VoiceOrb extends StatelessWidget {
 
                 // Core fluid orb: pure Apple monochromatic depth
                 AnimatedContainer(
-                  duration: const Duration(milliseconds: 160),
+                  duration: FluxMotion.revealDuration,
                   curve: Curves.easeOutCubic,
                   width: primarySize,
                   height: primarySize,

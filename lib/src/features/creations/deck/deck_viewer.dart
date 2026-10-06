@@ -53,7 +53,7 @@ class _DeckViewerState extends State<DeckViewer> {
     if (next == _index) return;
     _pageController.animateToPage(
       next,
-      duration: const Duration(milliseconds: 240),
+      duration: FluxMotion.modalDuration,
       curve: Curves.easeOutCubic,
     );
   }
@@ -232,7 +232,7 @@ class _PresentPageState extends State<_PresentPage> {
               GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: () => _controller.nextPage(
-                  duration: const Duration(milliseconds: 240),
+                  duration: FluxMotion.modalDuration,
                   curve: Curves.easeOutCubic,
                 ),
                 child: PageView.builder(

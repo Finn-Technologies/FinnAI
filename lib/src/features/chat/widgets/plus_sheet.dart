@@ -42,7 +42,7 @@ class _PlusSheetState extends State<_PlusSheet>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 420),
+    duration: FluxMotion.emphasisDuration,
     reverseDuration: const Duration(milliseconds: 220),
     value: widget.open ? 1 : 0,
   );

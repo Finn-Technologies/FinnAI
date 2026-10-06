@@ -377,6 +377,11 @@ abstract final class FluxMotion {
   static const Duration revealDuration = Duration(milliseconds: 180);
   static const Curve revealCurve = Curves.easeOutCubic;
 
+  /// Something arriving that should be noticed: a sheet rising, a message
+  /// landing. Pairs with [springCurve] when it may overshoot a little.
+  static const Duration emphasisDuration = Duration(milliseconds: 400);
+  static const Curve springCurve = ElasticOutCurve(.85);
+
   /// Press feedback. Shared by every tappable surface so a thumb gets the same
   /// answer everywhere.
   static const Duration pressIn = Duration(milliseconds: 120);

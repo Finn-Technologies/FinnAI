@@ -238,7 +238,7 @@ class _ChatComposerState extends State<ChatComposer>
                 Interval(0, .85, curve: Curves.easeOutBack).transform(c),
             child: AnimatedRotation(
               turns: widget.isAttachmentMenuOpen ? .125 : 0.0,
-              duration: const Duration(milliseconds: 220),
+              duration: FluxMotion.modalDuration,
               curve: Curves.easeOutCubic,
               child: const FigmaSvg(
                 asset: FigmaAssets.composerAdd,

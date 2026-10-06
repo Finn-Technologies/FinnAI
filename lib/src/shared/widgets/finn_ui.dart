@@ -290,7 +290,7 @@ class _FinnSwitchState extends State<FinnSwitch> {
                   alignment:
                       value ? Alignment.centerRight : Alignment.centerLeft,
                   child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 160),
+                    duration: FluxMotion.revealDuration,
                     curve: Curves.easeOutCubic,
                     width: _pressed ? 32 : 26,
                     height: 26,
