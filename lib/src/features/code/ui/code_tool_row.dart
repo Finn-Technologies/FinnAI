@@ -367,6 +367,8 @@ class _Body extends StatelessWidget {
         command: action.command,
         output: output,
         truncated: action.truncated,
+        // Not run yet, or still running: no "No output" verdict.
+        tail: action.open,
       ));
     } else {
       if (action.status == CodeActionStatus.failed &&
