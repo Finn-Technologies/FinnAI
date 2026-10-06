@@ -4,7 +4,9 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:finn_ai/src/features/code/agent/action_runner.dart';
 import 'package:finn_ai/src/features/code/agent/agent_protocol.dart';
+import 'package:finn_ai/src/features/code/agent/code_mentions.dart';
 import 'package:finn_ai/src/features/code/agent/edit_blocks.dart';
+import 'package:finn_ai/src/features/code/sandbox/workspace.dart';
 import 'package:finn_ai/src/features/code/sessions/code_session.dart';
 import 'package:finn_ai/src/features/code/sessions/code_session_store.dart';
 import 'package:finn_ai/src/features/code/settings/code_settings_store.dart';
@@ -109,5 +111,26 @@ void main() {
       final workspace = await sessions.workspaceOf(id);
       expect(await workspace.readFile('run.sh'), 'echo bye\n');
     });
+  });
+
+  test('an @mention brings the file in, within the budget', () async {
+    final temp = await Directory.systemTemp.createTemp('finn_mention');
+    final workspace = CodeWorkspace(Directory('${temp.path}/w'));
+    await workspace.writeFile('src/app.py', 'print("hi")\n');
+    final context = await CodeMentions.read(
+      workspace,
+      'Fix @src/app.py, and ignore @nothing.txt.',
+      budget: 1200,
+    );
+    expect(context, contains('Contents of src/app.py:'));
+    expect(context, contains('print("hi")'));
+    expect(context, isNot(contains('nothing.txt')));
+    final tight = await CodeMentions.read(
+      workspace,
+      '@src/app.py',
+      budget: 90,
+    );
+    expect(tight.length, lessThan(140));
+    await temp.delete(recursive: true);
   });
 }

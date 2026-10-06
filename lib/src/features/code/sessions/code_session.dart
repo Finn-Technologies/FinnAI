@@ -213,6 +213,7 @@ class CodeMessage {
     this.errorCode,
     this.errorDetail = '',
     this.modelLabel,
+    this.context = '',
   });
 
   final String id;
@@ -227,6 +228,11 @@ class CodeMessage {
 
   /// Which model wrote it (assistant messages).
   final String? modelLabel;
+
+  /// For a request: the files it @-mentioned, read when it was sent. The
+  /// model is shown it after [text]; the screen shows only [text]. Kept with
+  /// the message so the replay stays the same from step to step.
+  final String context;
 
   bool get isUser => role == CodeRole.user;
   bool get failed => errorCode != null;
@@ -247,6 +253,7 @@ class CodeMessage {
         errorCode: errorCode ?? this.errorCode,
         errorDetail: errorDetail ?? this.errorDetail,
         modelLabel: modelLabel,
+        context: context,
       );
 
   Map<String, Object?> toJson() => {
@@ -258,6 +265,7 @@ class CodeMessage {
         if (errorCode != null) 'error': errorCode,
         if (errorDetail.isNotEmpty) 'errorDetail': errorDetail,
         if (modelLabel != null) 'model': modelLabel,
+        if (context.isNotEmpty) 'context': context,
       };
 
   static CodeMessage? fromJson(Object? json) {
@@ -276,6 +284,7 @@ class CodeMessage {
       errorCode: json['error'] as String?,
       errorDetail: json['errorDetail'] as String? ?? '',
       modelLabel: json['model'] as String?,
+      context: json['context'] as String? ?? '',
     );
   }
 }

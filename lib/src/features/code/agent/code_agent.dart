@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 
 import 'package:finn_ai/src/features/code/agent/action_runner.dart';
 import 'package:finn_ai/src/features/code/agent/agent_protocol.dart';
+import 'package:finn_ai/src/features/code/agent/code_mentions.dart';
 import 'package:finn_ai/src/features/code/agent/small_model_aids.dart';
 import 'package:finn_ai/src/features/code/providers/code_gateway.dart';
 import 'package:finn_ai/src/features/code/providers/provider_errors.dart';
@@ -93,9 +94,14 @@ class CodeAgent extends ChangeNotifier {
   /// [attachments] are files the user picked: they are copied into the
   /// session's project folder first, and the request names them, so the
   /// agent knows to look. Returns the names of any that could not be added.
+  ///
+  /// Files named with `@path` are read now and shown to the model with the
+  /// request, up to [mentionChars] in all (the on-device model's window is
+  /// small; a cloud model's is not).
   Future<List<String>> send(
     String text, {
     List<File> attachments = const [],
+    int mentionChars = 1200,
   }) async {
     var trimmed = text.trim();
     if ((trimmed.isEmpty && attachments.isEmpty) || busy) return const [];
@@ -121,6 +127,11 @@ class CodeAgent extends ChangeNotifier {
       }
       if (trimmed.isEmpty) return failed;
     }
+    final context = await CodeMentions.read(
+      await sessions.workspaceOf(session.id),
+      trimmed,
+      budget: mentionChars,
+    );
     sessions.appendMessage(
       session.id,
       CodeMessage(
@@ -128,6 +139,7 @@ class CodeAgent extends ChangeNotifier {
         role: CodeRole.user,
         createdAt: DateTime.now(),
         text: trimmed,
+        context: context,
       ),
     );
     await _run(session.id);

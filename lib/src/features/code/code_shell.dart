@@ -161,7 +161,11 @@ class _CodeShellState extends State<CodeShell>
       _focusNode.unfocus();
     }
     if (_scrollController.hasClients) _scrollController.jumpTo(0);
-    final failed = await _services.agent.send(text, attachments: attachments);
+    final failed = await _services.agent.send(
+      text,
+      attachments: attachments,
+      mentionChars: _services.providers.active.isLocal ? 1200 : 16000,
+    );
     if (failed.isNotEmpty && mounted) _snack(failedMessage(failed.join(', ')));
   }
 

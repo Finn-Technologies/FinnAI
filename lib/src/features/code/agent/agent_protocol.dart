@@ -517,7 +517,9 @@ abstract final class AgentProtocol {
     for (var index = 0; index < messages.length; index++) {
       final message = messages[index];
       if (message.isUser) {
-        turns.add(CodeTurn.user(message.text));
+        turns.add(CodeTurn.user(message.context.isEmpty
+            ? message.text
+            : '${message.text}\n\n${message.context}'));
         continue;
       }
       final action = message.action;
