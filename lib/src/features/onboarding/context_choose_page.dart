@@ -29,7 +29,7 @@ class ContextChoosePage extends StatelessWidget {
     'notifications': FluxIcons.alarm,
     'photos': FluxIcons.image,
     'files': FluxIcons.note,
-    'location': FluxIcons.flag,
+    'location': FluxIcons.location,
   };
 
   Widget _row(

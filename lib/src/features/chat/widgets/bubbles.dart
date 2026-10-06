@@ -256,7 +256,7 @@ class _MessageBubbleState extends State<_MessageBubble> {
         onTap: _copy,
       ),
       FluxContextMenuItem(
-        icon: FluxIcons.canvas,
+        icon: FluxIcons.selectText,
         label: L10n.of(context).chatSelectText,
         onTap: () => setState(() => _selecting = true),
       ),

@@ -18,7 +18,7 @@ IconData youCategoryIcon(YouCategory category) => switch (category) {
       YouCategory.work => FluxIcons.task,
       YouCategory.routines => FluxIcons.alarm,
       YouCategory.preferences => FluxIcons.check,
-      YouCategory.places => FluxIcons.flag,
+      YouCategory.places => FluxIcons.location,
       YouCategory.interests => FluxIcons.magic,
     };
 

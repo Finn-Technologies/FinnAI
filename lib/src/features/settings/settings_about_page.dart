@@ -106,7 +106,7 @@ class SettingsAboutPage extends StatelessWidget {
         FinnReveal(
           index: 4,
           child: FinnTile(
-            icon: FluxIcons.flag,
+            icon: FluxIcons.feedback,
             title: l10n.aboutFeedback,
             onTap: () => unawaited(
               _open(

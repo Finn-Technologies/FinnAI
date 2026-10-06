@@ -30,6 +30,10 @@ abstract final class FluxIcons {
   static const contacts = PhosphorIconsFill.addressBook;
   static const notifications = PhosphorIconsFill.bell;
   static const location = PhosphorIconsFill.mapPin;
+  static const share = PhosphorIconsFill.export;
+  static const pin = PhosphorIconsFill.pushPin;
+  static const feedback = PhosphorIconsFill.chatCircleText;
+  static const selectText = PhosphorIconsFill.textAa;
   static const miniApp = PhosphorIconsFill.deviceMobile;
   static const presentation = PhosphorIconsFill.presentation;
   static const photo = PhosphorIconsFill.image;

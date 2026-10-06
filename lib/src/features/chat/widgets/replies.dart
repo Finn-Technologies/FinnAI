@@ -315,20 +315,21 @@ class _ReplyActionsState extends State<_ReplyActions> {
     showFluxContextMenu<void>(
       context: context,
       targetKey: _overflowKey,
+      // The control it opened from, lifted: the menu belongs to it. A preview
+      // of the reply drawn into this 40dp slot showed only its first letter.
       previewWidget: Container(
-        constraints: BoxConstraints(
-          maxWidth: math.min(MediaQuery.sizeOf(context).width * .82, 620),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        width: 40,
+        height: 40,
         decoration: BoxDecoration(
-          color: FluxColors.cardOf(context),
-          borderRadius: BorderRadius.circular(FluxRadius.sm),
+          color: FluxColors.controlOf(context),
+          borderRadius: BorderRadius.circular(12),
         ),
-        child: Text(
-          widget.text,
-          maxLines: 3,
-          overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.bodySmall,
+        child: Center(
+          child: FluxIcon(
+            icon: FluxIcons.moreHorizontal,
+            size: 22,
+            color: FluxColors.inkOf(context),
+          ),
         ),
       ),
       items: <FluxContextMenuItem>[
@@ -358,7 +359,7 @@ class _ReplyActionsState extends State<_ReplyActions> {
           ),
         ),
         FluxContextMenuItem(
-          icon: FluxIcons.arrowUp01,
+          icon: FluxIcons.share,
           label: l10n.chatShare,
           onTap: () => unawaited(_share()),
         ),

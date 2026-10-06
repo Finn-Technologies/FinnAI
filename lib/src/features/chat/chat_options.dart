@@ -52,7 +52,7 @@ Future<void> showChatOptions(
       ),
       const SizedBox(height: 10),
       FinnTile(
-        icon: FluxIcons.flag,
+        icon: FluxIcons.pin,
         title: pins.isPinned(conversation.id)
             ? l10n.optionsUnpin
             : l10n.optionsPin,
@@ -74,7 +74,7 @@ Future<void> showChatOptions(
       ),
       const SizedBox(height: 10),
       FinnTile(
-        icon: FluxIcons.close,
+        icon: FluxIcons.delete,
         title: l10n.optionsDelete,
         destructive: true,
         onTap: () async {
