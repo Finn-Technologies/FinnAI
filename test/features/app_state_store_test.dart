@@ -2,6 +2,8 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:finn_ai/src/app/app_state_store.dart';
+import 'package:finn_ai/src/features/code/container/container_installer.dart';
+import 'package:finn_ai/src/features/code/container/container_shell.dart';
 import 'package:finn_ai/src/features/code/code_services.dart';
 import 'package:finn_ai/src/features/code/providers/code_provider.dart';
 import 'package:finn_ai/src/features/code/providers/provider_store.dart';
@@ -128,7 +130,15 @@ void main() {
         sessions: sessions,
         providers: providers,
         settings: settings,
+        container: ContainerShell(
+          installer: ContainerInstaller(directoryProvider: () async => tempDir),
+          platformSupported: false,
+        ),
       );
+      // A downloaded Linux container image goes too.
+      final image = File('${tempDir.path}/code/container/bzimage.bin');
+      await image.parent.create(recursive: true);
+      await image.writeAsBytes([1, 2, 3]);
 
       final session = sessions.create(title: 'Private project');
       await (await sessions.workspaceOf(session.id))
@@ -151,6 +161,7 @@ void main() {
       expect(result.failedItems, isEmpty);
       expect(result.deletedItems, contains('FinnAI Code'));
       expect(Directory('${tempDir.path}/code').existsSync(), isFalse);
+      expect(image.existsSync(), isFalse);
       expect(secrets.values, isEmpty);
       expect(sessions.sessions, isEmpty);
       expect(providers.hasKey(CodeProvider.openRouter), isFalse);

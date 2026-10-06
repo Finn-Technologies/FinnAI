@@ -11,6 +11,23 @@ class L10n {
       AppLocalizations.of(context) ?? AppLocalizationsEn();
 }
 
+/// Picks the app's language from the system's preference list: the first
+/// language FinnAI ships (by language code, so `de_AT` gets German), and
+/// English when none of them is. Flutter's own fallback is the *first*
+/// supported locale, which gen-l10n sorts alphabetically: a Chinese or
+/// Japanese phone came up in German.
+Locale finnResolveLocale(List<Locale>? preferred, Iterable<Locale> supported) {
+  for (final locale in preferred ?? const <Locale>[]) {
+    for (final candidate in supported) {
+      if (candidate.languageCode == locale.languageCode) return candidate;
+    }
+  }
+  return supported.firstWhere(
+    (locale) => locale.languageCode == 'en',
+    orElse: () => supported.first,
+  );
+}
+
 /// Maps an engine [FinnStatusKey] to a localized display string.
 ///
 /// Values the engine composes from dynamic parts (artifact downloads) get the

@@ -376,7 +376,9 @@ class _GlyphPainter extends CustomPainter {
 }
 
 /// A full-bleed black screen that also asks the window's title bar to go black
-/// while it is showing, so the light bar does not cut across it.
+/// while it is showing, so the light bar does not cut across it, and gives a
+/// phone's status and navigation bars light icons whatever the app theme is:
+/// in light mode they were drawn dark on black.
 class FinnBlackScreen extends StatefulWidget {
   const FinnBlackScreen({super.key, required this.child});
 
@@ -401,6 +403,12 @@ class _FinnBlackScreenState extends State<FinnBlackScreen> {
   }
 
   @override
-  Widget build(BuildContext context) =>
-      ColoredBox(color: Colors.black, child: widget.child);
+  Widget build(BuildContext context) => AnnotatedRegion<SystemUiOverlayStyle>(
+        value: FluxTheme.systemUiOverlayStyle(context).copyWith(
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
+          systemNavigationBarIconBrightness: Brightness.light,
+        ),
+        child: ColoredBox(color: Colors.black, child: widget.child),
+      );
 }

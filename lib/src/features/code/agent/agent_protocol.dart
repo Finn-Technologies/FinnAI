@@ -64,7 +64,10 @@ abstract final class AgentProtocol {
 
   /// The instructions the model is given. Short on purpose: on the on-device
   /// model every token here is a token less for the project.
-  static String systemPrompt({required bool shell}) {
+  ///
+  /// [container] says commands run in the Linux container (busybox, scripts
+  /// can be made executable) rather than in the device's toybox shell.
+  static String systemPrompt({required bool shell, bool container = false}) {
     final buffer = StringBuffer()
       ..writeln('You are FinnAI Code, a coding agent in a project folder on '
           "the user's phone. You act by writing ONE action per reply, then "
@@ -93,7 +96,12 @@ abstract final class AgentProtocol {
       ..writeln('- Never invent the result of an action. Wait for it.')
       ..writeln('- When the task is done, reply in plain text with a short '
           'summary and no action. Answer in the language the user wrote in.');
-    if (shell) {
+    if (shell && container) {
+      buffer.writeln('- Commands run in a small Linux machine (busybox ash): '
+          'ls cat head tail wc grep sed awk find sort uniq cut tr diff tar '
+          'gzip vi chmod. Shell scripts run (chmod +x, then ./x.sh). There is '
+          'no python, node, git, compiler or network.');
+    } else if (shell) {
       buffer.writeln('- Commands: ls cat head tail wc grep sed awk find sort '
           'uniq cut tr diff tar gzip bc mkdir cp mv rm touch stat. There is '
           'no python, node, git or compiler.');

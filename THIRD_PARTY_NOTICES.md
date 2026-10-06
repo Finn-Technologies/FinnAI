@@ -192,5 +192,12 @@ Used by voice mode; the model files are downloaded on first use.
 
 ---
 
+## 6a. FinnAI Code Linux container
+- **v86** (`assets/code_container/libv86.js`, `v86.wasm`, version 0.5.470, commit `6db8b15`): BSD 2-Clause License, Copyright (c) 2012, The v86 contributors. https://github.com/copy/v86 — the licence text is bundled as `assets/code_container/LICENSE.v86`.
+- Downloaded on request from the v86 project, not shipped in the app: the **Linux kernel** and **BusyBox** userland in its Buildroot image (GPL-2.0; sources at https://kernel.org and https://busybox.net, build configuration in the v86 repository), and **SeaBIOS** with its VGA BIOS (LGPL-3.0; https://www.seabios.org). FinnAI does not modify or redistribute them; each file is checked against a pinned SHA-256 (ADR 0011).
+- **webview_flutter** (hosts the emulator): BSD 3-Clause License.
+
+---
+
 ## 7. Typography & Fonts
 - **Instrument Sans**: SIL Open Font License, Version 1.1.

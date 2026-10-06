@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
@@ -20,6 +21,7 @@ class FinnPage extends StatefulWidget {
     this.footer,
     this.spacing = 10,
     this.resizeForKeyboard = true,
+    this.controller,
   });
 
   final String title;
@@ -34,12 +36,17 @@ class FinnPage extends StatefulWidget {
   final double spacing;
   final bool resizeForKeyboard;
 
+  /// Scrolls the content; for a page that follows what it appends (a
+  /// terminal). The page makes its own when none is given.
+  final ScrollController? controller;
+
   @override
   State<FinnPage> createState() => _FinnPageState();
 }
 
 class _FinnPageState extends State<FinnPage> {
-  final ScrollController _controller = ScrollController();
+  late final ScrollController _controller =
+      widget.controller ?? ScrollController();
   final ValueNotifier<double> _offset = ValueNotifier<double>(0);
 
   @override
@@ -52,7 +59,7 @@ class _FinnPageState extends State<FinnPage> {
 
   @override
   void dispose() {
-    _controller.dispose();
+    if (widget.controller == null) _controller.dispose();
     _offset.dispose();
     super.dispose();
   }
@@ -84,10 +91,16 @@ class _FinnPageState extends State<FinnPage> {
                               25,
                               widget.footer == null ? 30 + bottom : 20,
                             ),
-                            itemCount: widget.children.length,
-                            separatorBuilder: (_, __) =>
-                                SizedBox(height: widget.spacing),
-                            itemBuilder: (_, i) => widget.children[i],
+                            itemCount: widget.children.length + 1,
+                            separatorBuilder: (_, i) => SizedBox(
+                              height: i == 0 ? 0 : widget.spacing,
+                            ),
+                            itemBuilder: (_, i) => i == 0
+                                ? FinnLargeTitle(
+                                    title: widget.title,
+                                    scrollOffset: _offset,
+                                  )
+                                : widget.children[i - 1],
                           ),
                         ),
                         if (widget.footer != null)
@@ -107,6 +120,7 @@ class _FinnPageState extends State<FinnPage> {
                       metrics: metrics,
                       scrollOffset: _offset,
                       actions: widget.actions,
+                      largeTitle: true,
                     ),
                   ),
                 ],
@@ -135,6 +149,70 @@ class FinnCaption extends StatelessWidget {
                 // it, and in light it was #414141 rather than #121212.
                 color: FluxColors.secondaryInkOf(context),
               ),
+        ),
+      );
+}
+
+/// The page's name, large, at the top of its content. Pages that build their
+/// own scaffold around [FinnPageHeader] put it first in their scroll view and
+/// pass `largeTitle: true` to the header, so every page reads the same.
+///
+/// It drifts up a little slower than the content and fades as it goes under
+/// the bar, where the compact title takes over.
+class FinnLargeTitle extends StatelessWidget {
+  const FinnLargeTitle({
+    super.key,
+    required this.title,
+    required this.scrollOffset,
+  });
+
+  final String title;
+  final ValueListenable<double> scrollOffset;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        height: FinnPageHeader.largeTitleExtent,
+        child: ValueListenableBuilder<double>(
+          valueListenable: scrollOffset,
+          builder: (context, offset, child) {
+            final progress =
+                (offset / FinnPageHeader.largeTitleExtent).clamp(0.0, 1.0);
+            // Pulled down past the top it grows a touch, like a sheet.
+            final stretch =
+                offset < 0 ? (1 + (-offset / 900)).clamp(1.0, 1.08) : 1.0;
+            return Opacity(
+              opacity: 1 - Curves.easeIn.transform(progress),
+              child: Transform.translate(
+                offset: Offset(0, offset > 0 ? offset * .25 : 0),
+                child: Transform.scale(
+                  scale: stretch,
+                  alignment: Alignment.centerLeft,
+                  child: child,
+                ),
+              ),
+            );
+          },
+          child: Align(
+            alignment: Alignment.topLeft,
+            child: Padding(
+              padding: const EdgeInsets.only(left: 2),
+              child: Semantics(
+                header: true,
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontFamily: 'InstrumentSans',
+                    fontSize: 32,
+                    height: 1.15,
+                    fontWeight: FontWeight.w400,
+                    letterSpacing: -0.8,
+                  ).copyWith(color: FluxColors.inkOf(context)),
+                ),
+              ),
+            ),
+          ),
         ),
       );
 }

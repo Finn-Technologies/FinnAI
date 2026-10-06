@@ -4420,7 +4420,7 @@
   "@codeGreetingCaption": {
     "description": "Caption under the empty-state greeting"
   },
-  "codeComposerHint": "Describe what to build or fix",
+  "codeComposerHint": "Describe a task",
   "@codeComposerHint": {
     "description": "Placeholder of the FinnAI Code message field"
   },
@@ -5308,5 +5308,150 @@
   "onboardingGetStarted": "Get started",
   "@onboardingGetStarted": {
     "description": "Welcome screen button on desktop and tablet, where there is no swipe"
+  },
+  "codeSettingsContainer": "Linux container",
+  "@codeSettingsContainer": {
+    "description": "FinnAI Code Linux container"
+  },
+  "codeSettingsContainerSubReady": "Commands run in Linux",
+  "@codeSettingsContainerSubReady": {
+    "description": "FinnAI Code Linux container"
+  },
+  "codeSettingsContainerSubMissing": "Not set up",
+  "@codeSettingsContainerSubMissing": {
+    "description": "FinnAI Code Linux container"
+  },
+  "codeContainerTitle": "Linux container",
+  "@codeContainerTitle": {
+    "description": "FinnAI Code Linux container"
+  },
+  "codeContainerIntro": "Commands run in a small Linux computer that FinnAI emulates on this device. It works the same on every phone and computer, and it can’t see or change anything outside the project. It has the busybox tools (sh, sed, awk, vi, tar…) but no python, git, compiler or network.",
+  "@codeContainerIntro": {
+    "description": "FinnAI Code Linux container"
+  },
+  "codeContainerStatusReady": "Downloaded and verified",
+  "@codeContainerStatusReady": {
+    "description": "FinnAI Code Linux container"
+  },
+  "codeContainerStatusRunning": "Running",
+  "@codeContainerStatusRunning": {
+    "description": "FinnAI Code Linux container"
+  },
+  "codeContainerStatusStarting": "Starting…",
+  "@codeContainerStatusStarting": {
+    "description": "FinnAI Code Linux container"
+  },
+  "codeContainerStatusMissing": "Not downloaded ({size})",
+  "@codeContainerStatusMissing": {
+    "description": "FinnAI Code Linux container",
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "codeContainerStatusDownloading": "Downloading… {percent}%",
+  "@codeContainerStatusDownloading": {
+    "description": "FinnAI Code Linux container",
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "codeContainerErrorNetwork": "The download failed. Check your connection and try again.",
+  "@codeContainerErrorNetwork": {
+    "description": "FinnAI Code Linux container"
+  },
+  "codeContainerErrorVerification": "The download didn’t match its checksum, so it was discarded. Try again.",
+  "@codeContainerErrorVerification": {
+    "description": "FinnAI Code Linux container"
+  },
+  "codeContainerErrorStorage": "There isn’t enough room to save it.",
+  "@codeContainerErrorStorage": {
+    "description": "FinnAI Code Linux container"
+  },
+  "codeContainerUnsupported": "This device can’t run the container, so commands use its own shell.",
+  "@codeContainerUnsupported": {
+    "description": "FinnAI Code Linux container"
+  },
+  "codeContainerDownload": "Download ({size})",
+  "@codeContainerDownload": {
+    "description": "FinnAI Code Linux container",
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "codeContainerCancel": "Cancel download",
+  "@codeContainerCancel": {
+    "description": "FinnAI Code Linux container"
+  },
+  "codeContainerUse": "Run commands in the container",
+  "@codeContainerUse": {
+    "description": "FinnAI Code Linux container"
+  },
+  "codeContainerUseSub": "Off runs them in this device’s own shell instead.",
+  "@codeContainerUseSub": {
+    "description": "FinnAI Code Linux container"
+  },
+  "codeContainerRestart": "Restart container",
+  "@codeContainerRestart": {
+    "description": "FinnAI Code Linux container"
+  },
+  "codeContainerRestartSub": "Project files are kept; they live on this device.",
+  "@codeContainerRestartSub": {
+    "description": "FinnAI Code Linux container"
+  },
+  "codeContainerRemove": "Remove container",
+  "@codeContainerRemove": {
+    "description": "FinnAI Code Linux container"
+  },
+  "codeContainerRemoveTitle": "Remove the Linux container?",
+  "@codeContainerRemoveTitle": {
+    "description": "FinnAI Code Linux container"
+  },
+  "codeContainerRemoveBody": "Your project files stay. Commands will run in this device’s shell until you download it again.",
+  "@codeContainerRemoveBody": {
+    "description": "FinnAI Code Linux container"
+  },
+  "codeContainerLicence": "The emulator is v86 (BSD licence). The Linux kernel, busybox and SeaBIOS are downloaded from the v86 project under their GPL and LGPL licences.",
+  "@codeContainerLicence": {
+    "description": "FinnAI Code Linux container"
+  },
+  "codeTerminalIntroContainer": "Runs in this session’s project folder, inside the Linux container. The first command starts it.",
+  "@codeTerminalIntroContainer": {
+    "description": "FinnAI Code Linux container"
+  },
+  "codeTerminalSetUpContainer": "Set up the Linux container",
+  "@codeTerminalSetUpContainer": {
+    "description": "FinnAI Code Linux container"
+  },
+  "codeTerminalSetUpContainerSub": "Commands run on this device for now. The container isolates them and works the same everywhere.",
+  "@codeTerminalSetUpContainerSub": {
+    "description": "FinnAI Code Linux container"
+  },
+  "codeAttachFiles": "Add files",
+  "@codeAttachFiles": {
+    "description": "FinnAI Code attachments"
+  },
+  "codeAttachmentRemove": "Remove {name}",
+  "@codeAttachmentRemove": {
+    "description": "FinnAI Code attachments",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "codeAttachFailed": "Couldn’t add {names}",
+  "@codeAttachFailed": {
+    "description": "FinnAI Code attachments",
+    "placeholders": {
+      "names": {
+        "type": "String"
+      }
+    }
   }
 }

@@ -4,7 +4,9 @@ import 'package:finn_ai/l10n/l10n_helper.dart';
 import 'package:finn_ai/src/features/code/code_services.dart';
 import 'package:finn_ai/src/features/code/providers/code_provider.dart';
 import 'package:finn_ai/src/features/code/settings/code_about_page.dart';
+import 'package:finn_ai/src/features/code/agent/action_runner.dart';
 import 'package:finn_ai/src/features/code/settings/code_agent_page.dart';
+import 'package:finn_ai/src/features/code/settings/code_container_page.dart';
 import 'package:finn_ai/src/features/code/settings/code_data_page.dart';
 import 'package:finn_ai/src/features/code/settings/code_providers_page.dart';
 import 'package:finn_ai/src/features/code/settings/code_workspace_page.dart';
@@ -31,7 +33,11 @@ class CodeSettingsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = L10n.of(context);
     return ListenableBuilder(
-      listenable: Listenable.merge([services.providers, services.settings]),
+      listenable: Listenable.merge([
+        services.providers,
+        services.settings,
+        services.container.installer,
+      ]),
       builder: (context, _) {
         final providers = services.providers;
         final connected = [
@@ -81,6 +87,20 @@ class CodeSettingsPage extends StatelessWidget {
             FinnReveal(
               index: 3,
               child: FinnTile(
+                key: const ValueKey('code-settings-container'),
+                icon: CodeIcons.container,
+                title: l10n.codeSettingsContainer,
+                subtitle:
+                    services.runner.environment == CommandEnvironment.container
+                        ? l10n.codeSettingsContainerSubReady
+                        : l10n.codeSettingsContainerSubMissing,
+                onTap: () =>
+                    _push(context, CodeContainerPage(services: services)),
+              ),
+            ),
+            FinnReveal(
+              index: 4,
+              child: FinnTile(
                 icon: CodeIcons.folder,
                 title: l10n.codeSettingsWorkspace,
                 onTap: () =>
@@ -88,7 +108,7 @@ class CodeSettingsPage extends StatelessWidget {
               ),
             ),
             FinnReveal(
-              index: 4,
+              index: 5,
               child: FinnTile(
                 icon: FluxIcons.lock,
                 title: l10n.codeSettingsData,
@@ -97,7 +117,7 @@ class CodeSettingsPage extends StatelessWidget {
               ),
             ),
             FinnReveal(
-              index: 5,
+              index: 6,
               child: FinnTile(
                 icon: FluxIcons.info,
                 title: l10n.codeSettingsAbout,

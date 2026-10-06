@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
@@ -87,10 +88,38 @@ class CodeAgent extends ChangeNotifier {
 
   /// Adds [text] to the active session (starting one if there is none) and
   /// runs the request. Completes when the request ends.
-  Future<void> send(String text) async {
-    final trimmed = text.trim();
-    if (trimmed.isEmpty || busy) return;
+  ///
+  /// [attachments] are files the user picked: they are copied into the
+  /// session's project folder first, and the request names them, so the
+  /// agent knows to look. Returns the names of any that could not be added.
+  Future<List<String>> send(
+    String text, {
+    List<File> attachments = const [],
+  }) async {
+    var trimmed = text.trim();
+    if ((trimmed.isEmpty && attachments.isEmpty) || busy) return const [];
     final session = sessions.active ?? sessions.create();
+    // Named after what was asked, not after the attachment note.
+    if (session.title.isEmpty && trimmed.isNotEmpty) {
+      sessions.rename(session.id, CodeSessionStore.titleFrom(trimmed));
+    }
+    final failed = <String>[];
+    if (attachments.isNotEmpty) {
+      final workspace = await sessions.workspaceOf(session.id);
+      final added = <String>[];
+      for (final file in attachments) {
+        try {
+          added.add(await workspace.importFile(file));
+        } catch (_) {
+          failed.add(file.uri.pathSegments.last);
+        }
+      }
+      if (added.isNotEmpty) {
+        final note = 'Attached: ${added.join(', ')}';
+        trimmed = trimmed.isEmpty ? note : '$note\n\n$trimmed';
+      }
+      if (trimmed.isEmpty) return failed;
+    }
     sessions.appendMessage(
       session.id,
       CodeMessage(
@@ -101,6 +130,7 @@ class CodeAgent extends ChangeNotifier {
       ),
     );
     await _run(session.id);
+    return failed;
   }
 
   /// Carries on from where the session stopped: after a step limit, an error,
@@ -295,7 +325,10 @@ class CodeAgent extends ChangeNotifier {
       );
     }
     final completion = CodeCompletion(
-      system: AgentProtocol.systemPrompt(shell: runner.canRunCommands),
+      system: AgentProtocol.systemPrompt(
+        shell: runner.canRunCommands,
+        container: runner.environment == CommandEnvironment.container,
+      ),
       turns: turns,
       conversationId: 'code-$sessionId',
       maxTokens: gateway.isLocal ? 768 : 4096,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
@@ -183,7 +184,7 @@ class FinnTile extends StatelessWidget {
         ],
       ),
     );
-    return Material(
+    final card = Material(
       color: FluxColors.controlOf(context),
       borderRadius: radius,
       clipBehavior: Clip.antiAlias,
@@ -194,14 +195,31 @@ class FinnTile extends StatelessWidget {
               label: title,
               onTap: onTap,
               excludeSemantics: true,
-              child: InkWell(onTap: onTap, child: body),
+              // A soft wash rather than the Material ripple: the card dims
+              // under the thumb and settles back, the same answer as the
+              // circle buttons give.
+              child: InkWell(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  onTap!();
+                },
+                splashFactory: NoSplash.splashFactory,
+                highlightColor:
+                    FluxColors.inkOf(context).withValues(alpha: .05),
+                child: body,
+              ),
             ),
     );
+    return onTap == null ? card : FluxPressScale(scale: .985, child: card);
   }
 }
 
-/// The design's 54x32 switch: `#414141` when on, a soft lilac-grey when off.
-class FinnSwitch extends StatelessWidget {
+/// The design's 54x32 switch: `#414141` when on, a quiet neutral when off.
+///
+/// The knob stretches toward its destination while pressed and settles with
+/// a little overshoot, and casts a soft shadow so it reads as a part on top of
+/// the track rather than a hole in it.
+class FinnSwitch extends StatefulWidget {
   const FinnSwitch({
     super.key,
     required this.value,
@@ -214,45 +232,83 @@ class FinnSwitch extends StatelessWidget {
   final String label;
 
   @override
+  State<FinnSwitch> createState() => _FinnSwitchState();
+}
+
+class _FinnSwitchState extends State<FinnSwitch> {
+  bool _pressed = false;
+
+  void _toggle() {
+    final onChanged = widget.onChanged;
+    if (onChanged == null) return;
+    HapticFeedback.lightImpact();
+    onChanged(!widget.value);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final value = widget.value;
+    final enabled = widget.onChanged != null;
+    final dark = FluxColors.isDark(context);
     final onColor = FluxColors.actionOf(context);
-    final offColor = FluxColors.isDark(context)
-        ? FluxColors.darkLine
-        : const Color(0xFFE6E0E9);
-    final knob =
-        FluxColors.isDark(context) ? FluxColors.darkCanvas : Colors.white;
+    final offColor = dark ? FluxColors.darkLine : const Color(0xFFE3E3E8);
+    final knob = dark ? FluxColors.darkCanvas : Colors.white;
+    final duration = MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : const Duration(milliseconds: 260);
+    // A disabled switch shows where it would be, faded, so "off because the
+    // section is off" never reads as "on".
     return Semantics(
       toggled: value,
-      label: label,
-      enabled: onChanged != null,
-      onTap: onChanged == null ? null : () => onChanged!(!value),
+      label: widget.label,
+      enabled: enabled,
+      onTap: enabled ? _toggle : null,
       excludeSemantics: true,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: onChanged == null ? null : () => onChanged!(!value),
-        child: SizedBox(
-          width: 54,
-          height: 48,
-          child: Center(
-            child: AnimatedContainer(
-              duration: FluxMotion.revealDuration,
-              curve: FluxMotion.revealCurve,
-              width: 54,
-              height: 32,
-              decoration: BoxDecoration(
-                color: value ? onColor : offColor,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: AnimatedAlign(
-                duration: FluxMotion.revealDuration,
-                curve: Curves.easeOutBack,
-                alignment: value ? Alignment.centerRight : Alignment.centerLeft,
-                child: Padding(
-                  padding: const EdgeInsets.all(3),
-                  child: DecoratedBox(
-                    decoration:
-                        BoxDecoration(color: knob, shape: BoxShape.circle),
-                    child: const SizedBox.square(dimension: 26),
+        onTap: enabled ? _toggle : null,
+        onTapDown: enabled ? (_) => setState(() => _pressed = true) : null,
+        onTapUp: (_) => setState(() => _pressed = false),
+        onTapCancel: () => setState(() => _pressed = false),
+        child: AnimatedOpacity(
+          duration: duration,
+          opacity: enabled ? 1 : .45,
+          child: SizedBox(
+            width: 54,
+            height: 48,
+            child: Center(
+              child: AnimatedContainer(
+                duration: duration,
+                curve: Curves.easeOutCubic,
+                width: 54,
+                height: 32,
+                padding: const EdgeInsets.all(3),
+                decoration: BoxDecoration(
+                  color: value ? onColor : offColor,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: AnimatedAlign(
+                  duration: duration,
+                  curve: Curves.easeOutBack,
+                  alignment:
+                      value ? Alignment.centerRight : Alignment.centerLeft,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 160),
+                    curve: Curves.easeOutCubic,
+                    width: _pressed ? 32 : 26,
+                    height: 26,
+                    decoration: BoxDecoration(
+                      color: knob,
+                      borderRadius: BorderRadius.circular(13),
+                      boxShadow: [
+                        BoxShadow(
+                          color:
+                              Colors.black.withValues(alpha: dark ? .4 : .16),
+                          blurRadius: 4,
+                          offset: const Offset(0, 1.5),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),

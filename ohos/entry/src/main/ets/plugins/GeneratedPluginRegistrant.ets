@@ -1,4 +1,5 @@
 import { FlutterEngine, Log } from '@ohos/flutter_ohos';
+import WebViewFlutterPlugin from 'webview_flutter_ohos';
 
 /**
  * Generated file. Do not edit.
@@ -12,6 +13,7 @@ export class GeneratedPluginRegistrant {
 
   static registerWith(flutterEngine: FlutterEngine) {
     try {
+      flutterEngine.getPlugins()?.add(new WebViewFlutterPlugin());
     } catch (e) {
       Log.e(
         TAG,

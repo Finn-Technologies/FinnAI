@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -64,7 +67,9 @@ class _CodeShellState extends State<CodeShell>
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-    if (widget.initializeServices) unawaited(_services.initialize());
+    if (widget.initializeServices) {
+      unawaited(_services.initialize().then((_) => _warmContainer()));
+    }
     _services.agent.addListener(_focusComposerOnDesktop);
     _focusComposerOnDesktop();
   }
@@ -92,6 +97,9 @@ class _CodeShellState extends State<CodeShell>
     // tap would otherwise wait for a screen that is gone, and a running model
     // would hold the engine against FinnAI's chat.
     unawaited(_services.agent.stop());
+    // The Linux container is ~150 MB of emulated machine; chat has no use
+    // for it.
+    unawaited(_services.container.stop());
     _scrollController.dispose();
     _scrolledAway.dispose();
     _composer.dispose();
@@ -100,18 +108,66 @@ class _CodeShellState extends State<CodeShell>
     super.dispose();
   }
 
+  /// Boots the Linux container in the background when Code opens, so the
+  /// first command does not wait for a cold boot (seconds on a phone). It is
+  /// stopped again when Code closes.
+  void _warmContainer() {
+    if (!mounted) return;
+    final container = _services.container;
+    if (!container.ready || !_services.settings.settings.useContainer) return;
+    unawaited(container.host.start().catchError((Object _) {
+      // A failed warm-up is retried by the first command, which reports it.
+    }));
+  }
+
   void _onScroll() {
     if (!_scrollController.hasClients) return;
     _scrolledAway.value = _scrollController.offset > _awayThreshold;
   }
 
+  /// Files picked for the next message; copied into the project folder when
+  /// it is sent.
+  final List<File> _attachments = [];
+
+  Future<void> _attach() async {
+    try {
+      final result = await FilePicker.pickFiles(allowMultiple: true);
+      if (result == null || !mounted) return;
+      setState(() {
+        for (final picked in result.files) {
+          final path = picked.path;
+          if (path != null) _attachments.add(File(path));
+        }
+      });
+    } catch (_) {
+      // The picker could not open (no file provider); nothing was chosen.
+    }
+  }
+
+  void _snack(String message) => ScaffoldMessenger.of(context)
+    ..clearSnackBars()
+    ..showSnackBar(
+      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+    );
+
   Future<void> _send() async {
     final text = _composer.text.trim();
-    if (text.isEmpty || _services.agent.busy) return;
+    if ((text.isEmpty && _attachments.isEmpty) || _services.agent.busy) {
+      return;
+    }
     HapticFeedback.lightImpact();
+    final attachments = List<File>.of(_attachments);
+    final failedMessage = L10n.of(context).codeAttachFailed;
     _composer.clear();
+    setState(_attachments.clear);
+    // Sending hands the screen to the transcript: the keyboard goes away on
+    // a phone instead of covering the agent's first action.
+    if (!FinnLayout.isDocked(MediaQuery.sizeOf(context).width)) {
+      _focusNode.unfocus();
+    }
     if (_scrollController.hasClients) _scrollController.jumpTo(0);
-    await _services.agent.send(text);
+    final failed = await _services.agent.send(text, attachments: attachments);
+    if (failed.isNotEmpty && mounted) _snack(failedMessage(failed.join(', ')));
   }
 
   void _newSession() {
@@ -292,6 +348,13 @@ class _CodeShellState extends State<CodeShell>
                                         s.copyWith(permissionMode: mode)),
                                 width: contentWidth,
                                 compact: away,
+                                attachments: [
+                                  for (final file in _attachments)
+                                    file.uri.pathSegments.last,
+                                ],
+                                onAttach: _attach,
+                                onRemoveAttachment: (i) =>
+                                    setState(() => _attachments.removeAt(i)),
                               ),
                             ),
                           ),
@@ -397,6 +460,8 @@ class _Header extends StatelessWidget {
                 ),
               ),
             ),
+            // A title that just fits must not touch the button.
+            if (onNewSession != null) const SizedBox(width: 12),
           ] else
             const Spacer(),
           if (onNewSession != null)

@@ -5,7 +5,9 @@ import 'package:finn_ai/l10n/l10n_helper.dart';
 import 'package:finn_ai/src/features/code/settings/code_settings_store.dart';
 import 'package:finn_ai/src/features/code/ui/code_icons.dart';
 import 'package:finn_ai/src/features/code/ui/code_text.dart';
+import 'package:finn_ai/src/shared/layout/finn_layout.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
+import 'package:finn_ai/src/shared/widgets/flux_motion.dart';
 import 'package:finn_ai/src/shared/widgets/enter_to_send.dart';
 import 'package:finn_ai/src/shared/widgets/finn_overlays.dart';
 import 'package:finn_ai/src/shared/widgets/finn_ui.dart';
@@ -30,6 +32,9 @@ class CodeComposer extends StatefulWidget {
     required this.onPermission,
     this.width,
     this.compact = false,
+    this.attachments = const [],
+    this.onAttach,
+    this.onRemoveAttachment,
   });
 
   final TextEditingController controller;
@@ -50,6 +55,14 @@ class CodeComposer extends StatefulWidget {
   /// Shrinks the whole control to 85% while the transcript is scrolled away
   /// from the newest message, as the chat composer does.
   final bool compact;
+
+  /// Names of the files waiting to go with the next message.
+  final List<String> attachments;
+
+  /// Opens the file picker; null hides the add button (no session can take
+  /// files, or the platform has no picker).
+  final VoidCallback? onAttach;
+  final ValueChanged<int>? onRemoveAttachment;
 
   @override
   State<CodeComposer> createState() => _CodeComposerState();
@@ -89,7 +102,7 @@ class _CodeComposerState extends State<CodeComposer> {
   Widget build(BuildContext context) {
     final l10n = L10n.of(context);
     final reducedMotion = MediaQuery.disableAnimationsOf(context);
-    final canSend = _hasText && !widget.busy;
+    final canSend = (_hasText || widget.attachments.isNotEmpty) && !widget.busy;
 
     final trailing = widget.busy
         ? FinnCircleButton(
@@ -143,8 +156,14 @@ class _CodeComposerState extends State<CodeComposer> {
 // InstrumentSans carries more space above its letters than below, so the
 // laid-out line box sat ~4.5px under where the letters look centred. Measured
 // on the real window (pixel rows of the letters against the pill); the
-// bottom padding lifts the centred field by half its value.
-                padding: const EdgeInsets.only(bottom: 9),
+// bottom padding lifts the centred field by half its value; per platform, see
+// FinnLayout.fieldTextLift.
+                padding: EdgeInsets.only(
+                  // Room above and below so a second line does not
+                  // touch the pill; one line still centres in it.
+                  top: 8,
+                  bottom: 8 + FinnLayout.fieldTextLift,
+                ),
                 child: EnterToSend(
                   canSend: canSend,
                   onSend: widget.onSend,
@@ -212,12 +231,41 @@ class _CodeComposerState extends State<CodeComposer> {
                 onPermission: widget.onPermission,
               ),
             ),
+            if (widget.attachments.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final (i, name) in widget.attachments.indexed)
+                      FluxChip(
+                        key: ValueKey('code-attachment-$i'),
+                        icon: CodeIcons.file,
+                        label: name,
+                        dense: true,
+                        semanticLabel: l10n.codeAttachmentRemove(name),
+                        trailing: FluxIcons.close,
+                        onTap: () => widget.onRemoveAttachment?.call(i),
+                      ),
+                  ],
+                ),
+              ),
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
+                if (widget.onAttach != null) ...[
+                  FinnCircleButton.icon(
+                    key: const ValueKey('code-attach-button'),
+                    icon: FluxIcons.add,
+                    label: l10n.codeAttachFiles,
+                    onTap: widget.busy ? null : widget.onAttach,
+                  ),
+                  const SizedBox(width: 12),
+                ],
                 Expanded(child: pill),
                 const SizedBox(width: 12),
-                trailing,
+                FluxSwap(swapKey: widget.busy, child: trailing),
               ],
             ),
           ],

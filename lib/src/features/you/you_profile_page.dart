@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
+import 'package:finn_ai/src/shared/widgets/finn_page.dart';
 import 'package:finn_ai/src/shared/widgets/ambient_background.dart';
 import 'package:finn_ai/src/shared/widgets/finn_page_header.dart';
 import 'package:finn_ai/src/shared/widgets/finn_ui.dart';
@@ -120,6 +121,10 @@ class _YouProfilePageState extends State<YouProfilePage> {
                             24 + MediaQuery.viewInsetsOf(context).bottom,
                           ),
                           children: [
+                            FinnLargeTitle(
+                              title: L10n.of(context).youTitle,
+                              scrollOffset: _scrollOffset,
+                            ),
                             Center(
                               child: ConstrainedBox(
                                 constraints: const BoxConstraints(
@@ -259,6 +264,7 @@ class _YouProfilePageState extends State<YouProfilePage> {
                     onBack: widget.onBack,
                     metrics: metrics,
                     scrollOffset: _scrollOffset,
+                    largeTitle: true,
                   ),
                 ),
               ],

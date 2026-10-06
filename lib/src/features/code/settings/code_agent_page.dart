@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:finn_ai/l10n/l10n_helper.dart';
+import 'package:finn_ai/src/features/code/agent/action_runner.dart';
 import 'package:finn_ai/src/features/code/code_services.dart';
 import 'package:finn_ai/src/features/code/settings/code_settings_store.dart';
 import 'package:finn_ai/src/features/code/ui/code_icons.dart';
@@ -117,7 +118,11 @@ class CodeAgentPage extends StatelessWidget {
                 ),
               ),
             ),
-            FinnCaption(l10n.codeSandboxNote),
+            FinnCaption(
+              services.runner.environment == CommandEnvironment.container
+                  ? l10n.codeContainerIntro
+                  : l10n.codeSandboxNote,
+            ),
           ],
         );
       },

@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import 'package:finn_ai/l10n/l10n_helper.dart';
+import 'package:finn_ai/src/features/code/agent/action_runner.dart';
 import 'package:finn_ai/src/features/code/code_services.dart';
 import 'package:finn_ai/src/features/code/ui/code_icons.dart';
 import 'package:finn_ai/src/features/code/ui/code_text.dart';
@@ -77,7 +78,11 @@ class _CodeWorkspacePageState extends State<CodeWorkspacePage> {
     return FinnPage(
       title: l10n.codeWorkspaceTitle,
       children: [
-        FinnCaption(l10n.codeSandboxNote),
+        FinnCaption(
+          widget.services.runner.environment == CommandEnvironment.container
+              ? l10n.codeContainerIntro
+              : l10n.codeSandboxNote,
+        ),
         if (bytes != null)
           FinnTile(
             icon: CodeIcons.folder,

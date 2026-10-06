@@ -101,6 +101,7 @@ class SettingsVoicePage extends StatelessWidget {
           children: [
             FinnReveal(
               child: FinnTile(
+                icon: FluxIcons.translate,
                 title: l10n.voiceLanguage,
                 subtitle: l10n.voiceLanguageSub,
               ),
@@ -108,6 +109,7 @@ class SettingsVoicePage extends StatelessWidget {
             FinnReveal(
               index: 1,
               child: FinnTile(
+                icon: FluxIcons.voiceId,
                 title: l10n.voiceStyle,
                 subtitle: ttsStyleLabel(l10n, store.ttsStyle),
                 onTap: () => unawaited(_pickStyle(context)),
@@ -116,6 +118,7 @@ class SettingsVoicePage extends StatelessWidget {
             FinnReveal(
               index: 2,
               child: FinnTile(
+                icon: FluxIcons.speed,
                 title: l10n.voiceSpeed,
                 subtitle: voiceSpeedLabel(l10n, store.speed),
                 onTap: () => unawaited(_pickSpeed(context)),
@@ -124,6 +127,7 @@ class SettingsVoicePage extends StatelessWidget {
             FinnReveal(
               index: 3,
               child: FinnTile(
+                icon: FluxIcons.volume,
                 title: l10n.voiceReadAloud,
                 subtitle: l10n.voiceReadAloudSub,
                 trailing: FinnSwitch(
@@ -136,6 +140,7 @@ class SettingsVoicePage extends StatelessWidget {
             FinnReveal(
               index: 4,
               child: FinnTile(
+                icon: FluxIcons.subtitle,
                 title: l10n.voiceTranscript,
                 subtitle: l10n.voiceTranscriptSub,
                 trailing: FinnSwitch(

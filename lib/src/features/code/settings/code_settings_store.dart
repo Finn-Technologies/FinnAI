@@ -26,6 +26,7 @@ class CodeSettings {
     this.maxSteps,
     this.allowNetwork = false,
     this.commandTimeoutSeconds = 20,
+    this.useContainer = true,
   });
 
   final CodePermissionMode permissionMode;
@@ -38,6 +39,10 @@ class CodeSettings {
   final bool allowNetwork;
   final int commandTimeoutSeconds;
 
+  /// Runs commands in the Linux container once it is installed. Off sends
+  /// them to the device's own shell, as before the container existed.
+  final bool useContainer;
+
   static const List<int> stepChoices = [4, 8, 12, 20, 30];
   static const List<int> timeoutChoices = [10, 20, 60, 120];
 
@@ -46,6 +51,7 @@ class CodeSettings {
     int? Function()? maxSteps,
     bool? allowNetwork,
     int? commandTimeoutSeconds,
+    bool? useContainer,
   }) =>
       CodeSettings(
         permissionMode: permissionMode ?? this.permissionMode,
@@ -53,6 +59,7 @@ class CodeSettings {
         allowNetwork: allowNetwork ?? this.allowNetwork,
         commandTimeoutSeconds:
             commandTimeoutSeconds ?? this.commandTimeoutSeconds,
+        useContainer: useContainer ?? this.useContainer,
       );
 
   Map<String, Object?> toJson() => {
@@ -60,6 +67,7 @@ class CodeSettings {
         if (maxSteps != null) 'maxSteps': maxSteps,
         'network': allowNetwork,
         'timeout': commandTimeoutSeconds,
+        'container': useContainer,
       };
 
   factory CodeSettings.fromJson(Map<String, Object?> json) => CodeSettings(
@@ -74,6 +82,7 @@ class CodeSettings {
         commandTimeoutSeconds: json['timeout'] is int
             ? (json['timeout'] as int).clamp(5, 300)
             : 20,
+        useContainer: json['container'] != false,
       );
 }
 

@@ -1,0 +1,124 @@
+<!doctype html>
+<!--
+  FinnAI Code's Linux container host. Loaded by a hidden WebView from the
+  app's own loopback server (ContainerHost); it does nothing but relay:
+
+    serial console bytes  -> {"ev":"out","data":"..."}
+    {"op":"send","data"}  -> typed into the serial console
+    {"op":"put","path","b64"} / {"op":"get","id","path"} -> the 9p share (/mnt)
+    {"op":"restart"}      -> reboots the machine
+
+  Every decision (what to run, when to give up) is made in Dart, where it is
+  tested. The page reads its token from the URL hash so the socket only
+  answers to this page.
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<title>FinnAI container</title>
+<script src="libv86.js"></script>
+</head>
+<body>
+<script>
+(function () {
+  "use strict";
+  var token = location.hash.slice(1);
+  var socket = new WebSocket("ws://" + location.host + "/" + token + "/socket");
+  var emulator = null;
+  var pending = "";
+  var flushTimer = null;
+
+  function send(message) {
+    if (socket.readyState === 1) socket.send(JSON.stringify(message));
+  }
+
+  function flush() {
+    flushTimer = null;
+    if (pending) {
+      send({ ev: "out", data: pending });
+      pending = "";
+    }
+  }
+
+  function b64ToBytes(text) {
+    var raw = atob(text);
+    var bytes = new Uint8Array(raw.length);
+    for (var i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+    return bytes;
+  }
+
+  function bytesToB64(bytes) {
+    var out = "";
+    for (var i = 0; i < bytes.length; i += 0x8000) {
+      out += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    }
+    return btoa(out);
+  }
+
+  function boot(memoryMb) {
+    var base = "/" + token + "/";
+    fetch(base + "v86.wasm")
+      .then(function (r) { if (!r.ok) throw new Error("v86.wasm " + r.status); return r.arrayBuffer(); })
+      .then(function (wasm) {
+        emulator = new V86({
+          wasm_fn: function (imports) {
+            return WebAssembly.instantiate(wasm, imports).then(function (r) {
+              return r.instance.exports;
+            });
+          },
+          bios: { url: base + "seabios.bin" },
+          vga_bios: { url: base + "vgabios.bin" },
+          bzimage: { url: base + "bzimage.bin" },
+          cmdline: "tsc=reliable mitigations=off random.trust_cpu=on",
+          filesystem: {},
+          memory_size: memoryMb * 1024 * 1024,
+          autostart: true,
+          disable_keyboard: true,
+          disable_mouse: true,
+          disable_speaker: true,
+        });
+        emulator.add_listener("serial0-output-byte", function (byte) {
+          pending += String.fromCharCode(byte);
+          if (pending.length > 4096) flush();
+          else if (!flushTimer) flushTimer = setTimeout(flush, 15);
+        });
+      })
+      .catch(function (error) { send({ ev: "error", message: String(error) }); });
+  }
+
+  socket.onopen = function () { send({ ev: "ready" }); };
+  socket.onmessage = function (event) {
+    var message = JSON.parse(event.data);
+    try {
+      switch (message.op) {
+        case "boot":
+          boot(message.memoryMb || 128);
+          break;
+        case "send":
+          emulator.serial0_send(message.data);
+          break;
+        case "put":
+          emulator.create_file(message.path, b64ToBytes(message.b64)).then(
+            function () { send({ ev: "put", id: message.id }); },
+            function (e) { send({ ev: "put", id: message.id, error: String(e) }); });
+          break;
+        case "get":
+          emulator.read_file(message.path).then(
+            function (bytes) { send({ ev: "file", id: message.id, b64: bytesToB64(bytes) }); },
+            function (e) { send({ ev: "file", id: message.id, error: String(e) }); });
+          break;
+        case "restart":
+          emulator.restart();
+          break;
+      }
+    } catch (error) {
+      send({ ev: "error", id: message.id, message: String(error) });
+    }
+  };
+  socket.onclose = function () {
+    if (emulator) emulator.destroy();
+  };
+})();
+</script>
+</body>
+</html>

@@ -838,8 +838,6 @@ class _AutomaticModelPageState extends State<_AutomaticModelPage> {
   bool _ready = false;
   String? _error;
 
-  double get _progress => _install.progress;
-
   @override
   void initState() {
     super.initState();
@@ -924,7 +922,7 @@ class _AutomaticModelPageState extends State<_AutomaticModelPage> {
       backEnabled: _ready,
       onNext: _ready ? widget.onNext : null,
       body: _DownloadStatus(
-        progress: _progress,
+        install: _install,
         ready: _ready,
         started: _started,
         error: _error,
@@ -940,7 +938,7 @@ class _AutomaticModelPageState extends State<_AutomaticModelPage> {
 /// transfer read-out (percent, speed, bytes, ETA) from the design.
 class _DownloadStatus extends StatelessWidget {
   const _DownloadStatus({
-    required this.progress,
+    required this.install,
     required this.ready,
     required this.started,
     required this.error,
@@ -949,7 +947,8 @@ class _DownloadStatus extends StatelessWidget {
     required this.onRetry,
   });
 
-  final double progress;
+  /// Progress and bytes from one place, so the read-out agrees with itself.
+  final ModelInstall install;
   final bool ready;
   final bool started;
   final String? error;
@@ -970,7 +969,7 @@ class _DownloadStatus extends StatelessWidget {
 
     if (error != null) {
       // The design's "Download paused": progress is kept, and it resumes.
-      final pct = (progress * 100).round().clamp(0, 100);
+      final pct = (install.progress * 100).round().clamp(0, 100);
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -988,19 +987,16 @@ class _DownloadStatus extends StatelessWidget {
       );
     }
 
-    final totalBytes = inference.requiredModels.fold<int>(
-          0,
-          (sum, model) => sum + model.expectedBytes,
-        ) +
-        finnMmproj.expectedBytes;
+    final totalBytes = install.totalBytes;
     final downloading =
         started && inference.phase == InferencePhase.downloading;
-    final percent = (ready ? 100 : (progress * 100).round()).clamp(0, 100);
+    final percent =
+        (ready ? 100 : (install.progress * 100).round()).clamp(0, 100);
     final speed = inference.downloadSpeedLabel;
     final meta = [
       if (downloading && speed != null) speed,
-      if (downloading && totalBytes > 0)
-        '${_formatBytes(inference.installReceivedBytes)}/'
+      if (started && !ready && install.receivedBytes > 0)
+        '${_formatBytes(install.receivedBytes)}/'
             '${_formatBytes(totalBytes)}',
     ].join('. ');
     final eta = inference.downloadEta;
@@ -1029,7 +1025,7 @@ class _DownloadStatus extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _DownloadRing(value: ready ? 1 : progress),
+            _DownloadRing(value: ready ? 1 : install.progress),
             const SizedBox(width: 16),
             Expanded(
               child: started
@@ -1163,8 +1159,6 @@ class _SoftwareUpgradeScreenState extends State<SoftwareUpgradeScreen> {
   bool _ready = false;
   String? _error;
 
-  double get _progress => _install.progress;
-
   @override
   void initState() {
     super.initState();
@@ -1254,7 +1248,7 @@ class _SoftwareUpgradeScreenState extends State<SoftwareUpgradeScreen> {
         backEnabled: false,
         onNext: _ready ? _enterHome : null,
         body: _DownloadStatus(
-          progress: _progress,
+          install: _install,
           ready: _ready,
           started: _started,
           error: _error,
@@ -1522,9 +1516,9 @@ class _FinishPage extends StatelessWidget {
 /// "668MB" — the design sets the numbers tight against the slash.
 String _formatBytes(int bytes) {
   if (bytes >= 1000 * 1000 * 1000) {
-    return '${(bytes / 1000 / 1000 / 1000).toStringAsFixed(2)}GB';
+    return '${(bytes / 1000 / 1000 / 1000).toStringAsFixed(2)} GB';
   }
-  return '${(bytes / 1000 / 1000).round()}MB';
+  return '${(bytes / 1000 / 1000).round()} MB';
 }
 
 /// Remaining download time in the design's clock form: "3:41", "1:05:12".

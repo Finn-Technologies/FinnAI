@@ -89,6 +89,48 @@ void main() {
     });
   });
 
+  group('attachments', () {
+    test('are copied into the project and named in the request', () async {
+      final source = File('${temp.path}/data.csv')
+        ..writeAsStringSync('a,b\n1,2\n');
+      final agent = agentFor(FakeGateway(['Got it.']));
+
+      final failed = await agent.send('sum b', attachments: [source]);
+
+      expect(failed, isEmpty);
+      expect(messages().first.text, 'Attached: data.csv\n\nsum b');
+      expect(sessions.active!.title, 'sum b');
+      final workspace = await sessions.workspaceOf(sessions.active!.id);
+      expect(await workspace.readFile('data.csv'), 'a,b\n1,2\n');
+    });
+
+    test('a file alone is a request, and a taken name is not overwritten',
+        () async {
+      final source = File('${temp.path}/notes.txt')..writeAsStringSync('new');
+      final agent = agentFor(FakeGateway(['ok', 'ok']));
+      await agent.send('start');
+      final workspace = await sessions.workspaceOf(sessions.active!.id);
+      await workspace.writeFile('notes.txt', 'old');
+
+      await agent.send('', attachments: [source]);
+
+      expect(messages()[2].text, 'Attached: notes (2).txt');
+      expect(await workspace.readFile('notes.txt'), 'old');
+      expect(await workspace.readFile('notes (2).txt'), 'new');
+    });
+
+    test('a file that cannot be read is reported, the rest still go', () async {
+      final good = File('${temp.path}/ok.txt')..writeAsStringSync('ok');
+      final agent = agentFor(FakeGateway(['ok']));
+
+      final failed = await agent
+          .send('look', attachments: [File('${temp.path}/missing.txt'), good]);
+
+      expect(failed, ['missing.txt']);
+      expect(messages().first.text, 'Attached: ok.txt\n\nlook');
+    });
+  });
+
   test('a small model is shown a worked example before the conversation',
       () async {
     final gateway = FakeGateway(

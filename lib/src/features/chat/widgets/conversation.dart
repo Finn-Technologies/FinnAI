@@ -284,7 +284,11 @@ class _ConversationState extends State<_Conversation> {
             return Padding(
               key: ValueKey('chat-message-${message.id}'),
               padding: const EdgeInsets.only(bottom: 14),
-              child: _AnimatedIn(
+              child: FluxEntrance(
+                // A message grows out of the side it belongs to.
+                alignment: message.role == ConversationRole.user
+                    ? Alignment.bottomRight
+                    : Alignment.bottomLeft,
                 child: message.role == ConversationRole.user
                     ? Align(
                         alignment: Alignment.centerRight,

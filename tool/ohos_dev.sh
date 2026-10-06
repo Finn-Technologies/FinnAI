@@ -53,7 +53,7 @@ case "${1:-}" in
   longtap)  "${H[@]}" shell "uitest uiInput longClick ${2:?x} ${3:?y}" >/dev/null; sleep 1 ;;
   swipe)    "${H[@]}" shell "uitest uiInput swipe ${2:?x} ${3:?y} ${4:?x} ${5:?y}" >/dev/null; sleep 1 ;;
   fling)    "${H[@]}" shell "uitest uiInput fling ${2:?x} ${3:?y} ${4:?x} ${5:?y}" >/dev/null; sleep 1 ;;
-  text)     "${H[@]}" shell "uitest uiInput text ${2:?text}" >/dev/null; sleep 1 ;;
+  text)     "${H[@]}" shell "uitest uiInput text '${2:?text}'" >/dev/null; sleep 1 ;;
   key)
     case "${2:-}" in
       back)  "${H[@]}" shell "uitest uiInput keyEvent BACK" >/dev/null ;;

@@ -173,7 +173,7 @@ class _SettingsDataPageState extends State<SettingsDataPage> {
         FinnReveal(
           index: 2,
           child: FinnTile(
-            icon: FluxIcons.refresh,
+            icon: FluxIcons.delete,
             title: l10n.dataDeleteChats,
             subtitle: l10n.dataDeleteChatsSub,
             destructive: true,

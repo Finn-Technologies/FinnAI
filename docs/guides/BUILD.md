@@ -40,6 +40,15 @@ flutter build apk --no-pub  # same, for builds
 
 `--no-pub` is safe as long as `flutter pub get` has already been run and no `.arb` file changed.
 
+**Adding or upgrading a plugin needs a real `pub get`.** With `--no-pub` the plugin registrant
+(`GeneratedPluginRegistrant.java`, `.flutter-plugins-dependencies`) is not regenerated, so the build
+succeeds and the plugin fails at runtime ("unregistered type", "Unable to establish connection on
+channel"). Without a Hmos SDK, move `ohos/` aside for the one command:
+
+```bash
+mv ohos /tmp/finn_ohos_aside && flutter pub get; mv /tmp/finn_ohos_aside ohos
+```
+
 ## Known issue: "built with the incorrect architecture"
 
 If the SDK cache contains x86_64 host tools (for example `impellerc`, `flutter_tester`,

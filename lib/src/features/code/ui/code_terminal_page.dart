@@ -3,11 +3,16 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'package:finn_ai/l10n/l10n_helper.dart';
+import 'package:finn_ai/src/features/code/agent/action_runner.dart';
 import 'package:finn_ai/src/features/code/code_services.dart';
+import 'package:finn_ai/src/features/code/settings/code_container_page.dart';
+import 'package:finn_ai/src/features/code/ui/code_icons.dart';
 import 'package:finn_ai/src/features/code/sessions/code_session.dart';
 import 'package:finn_ai/src/features/code/ui/code_action_card.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
+import 'package:finn_ai/src/shared/widgets/flux_motion.dart';
 import 'package:finn_ai/src/shared/widgets/finn_page.dart';
+import 'package:finn_ai/src/shared/widgets/finn_page_route.dart';
 import 'package:finn_ai/src/shared/widgets/finn_ui.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
 import 'package:finn_ai/src/shared/widgets/flux_surfaces.dart';
@@ -30,6 +35,7 @@ class CodeTerminalPage extends StatefulWidget {
 class _CodeTerminalPageState extends State<CodeTerminalPage> {
   final _input = TextEditingController();
   final _focus = FocusNode();
+  final _scroll = ScrollController();
 
   /// Commands run on this visit, oldest first. Not stored: a terminal's
   /// scrollback is not part of the project.
@@ -40,13 +46,17 @@ class _CodeTerminalPageState extends State<CodeTerminalPage> {
   void dispose() {
     _input.dispose();
     _focus.dispose();
+    _scroll.dispose();
     super.dispose();
   }
 
   Future<void> _run() async {
-    final session = widget.services.sessions.activeOrLatest;
     final command = _input.text.trim();
-    if (session == null || command.isEmpty || _running) return;
+    if (command.isEmpty || _running) return;
+    // A terminal with no session yet starts one: its folder is where the
+    // command runs, and where the agent will find what it made.
+    final sessions = widget.services.sessions;
+    final session = sessions.activeOrLatest ?? sessions.create();
     _input.clear();
     final pending =
         CodeAction.shell(command).copyWith(status: CodeActionStatus.running);
@@ -54,6 +64,7 @@ class _CodeTerminalPageState extends State<CodeTerminalPage> {
       _running = true;
       _log.add(pending);
     });
+    _followLatest();
     final result =
         await widget.services.runner.run(session.id, CodeAction.shell(command));
     if (!mounted) return;
@@ -61,78 +72,109 @@ class _CodeTerminalPageState extends State<CodeTerminalPage> {
       _running = false;
       _log[_log.length - 1] = result;
     });
+    _followLatest();
+    // Ready for the next command without another tap.
+    _focus.requestFocus();
+  }
+
+  /// Keeps the newest command and its output in view, as a terminal does.
+  void _followLatest() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scroll.hasClients) return;
+      _scroll.animateTo(
+        _scroll.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+      );
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = L10n.of(context);
-    final session = widget.services.sessions.activeOrLatest;
-    final supported = widget.services.runner.canRunCommands;
-    final usable = session != null && supported;
+    final environment = widget.services.runner.environment;
+    final supported = environment != CommandEnvironment.none;
+    final container = widget.services.container;
+    // On a device that could host the container but has not got it, say so
+    // where commands are typed: that is where its absence matters.
+    final offerContainer = container.platformSupported &&
+        !container.installer.installed &&
+        widget.services.settings.settings.useContainer;
+    final usable = supported;
+    // The same shape as every other composer: a pill to type in, and the
+    // send control as its own circle beside it, never inside the field.
     final footer = usable
-        ? Container(
-            padding: const EdgeInsets.fromLTRB(17, 1, 4, 1),
-            constraints: const BoxConstraints(minHeight: 50),
-            // Flat with a hairline, like the chat and Code composer pills.
-            decoration: FluxSurfaces.flat(context, radius: FluxRadius.pill),
-            child: Row(
-              children: [
-                Text(
-                  r'$ ',
-                  style: TextStyle(
-                    fontFamily: 'monospace',
-                    fontSize: 15,
-                    color: FluxColors.mutedOf(context),
-                  ),
-                ),
-                Expanded(
-                  child: TextField(
-                    key: const ValueKey('terminal-input'),
-                    controller: _input,
-                    focusNode: _focus,
-                    enabled: !_running,
-                    autocorrect: false,
-                    enableSuggestions: false,
-                    textInputAction: TextInputAction.go,
-                    onSubmitted: (_) => _run(),
-                    style: TextStyle(
-                      fontFamily: 'monospace',
+        ? ValueListenableBuilder<TextEditingValue>(
+            valueListenable: _input,
+            builder: (context, value, _) {
+              final canRun = !_running && value.text.trim().isNotEmpty;
+              return Row(
+                children: [
+                  Expanded(
+                    child: FluxPillField(
+                      fieldKey: const ValueKey('terminal-input'),
+                      controller: _input,
+                      focusNode: _focus,
+                      hint: l10n.codeTerminalHint,
+                      monospace: true,
                       fontSize: 15,
-                      color: FluxColors.inkOf(context),
-                    ),
-                    cursorColor: FluxColors.inkOf(context),
-                    decoration: InputDecoration.collapsed(
-                      hintText: l10n.codeTerminalHint,
-                      hintStyle: TextStyle(
-                        fontFamily: 'monospace',
-                        fontSize: 15,
-                        color: FluxColors.inkOf(context).withValues(alpha: .55),
+                      maxLength: 2000,
+                      enabled: !_running,
+                      textInputAction: TextInputAction.go,
+                      onSubmitted: (_) => _run(),
+                      leading: Text(
+                        r'$',
+                        style: TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 15,
+                          color: FluxColors.mutedOf(context),
+                        ),
                       ),
                     ),
                   ),
-                ),
-                FinnCircleButton.icon(
-                  icon: FluxIcons.arrowUp02,
-                  label: l10n.codeActionRun,
-                  onTap: _running ? null : _run,
-                  dark: true,
-                ),
-              ],
-            ),
+                  const SizedBox(width: 12),
+                  FluxSwap(
+                    swapKey: canRun,
+                    child: FinnCircleButton.icon(
+                      key: const ValueKey('terminal-run-button'),
+                      icon: FluxIcons.arrowUp02,
+                      label: l10n.codeActionRun,
+                      onTap: canRun ? _run : null,
+                      dark: true,
+                      dimmed: !canRun,
+                    ),
+                  ),
+                ],
+              );
+            },
           )
         : null;
     return FinnPage(
       title: l10n.codeTerminalTitle,
       onBack: widget.onBack,
+      controller: _scroll,
       footer: footer,
       children: [
         FinnCaption(
           !supported
               ? l10n.codeTerminalUnsupported
-              : (session == null
-                  ? l10n.codeFilesNoSession
+              : (environment == CommandEnvironment.container
+                  ? l10n.codeTerminalIntroContainer
                   : l10n.codeTerminalIntro),
         ),
+        if (offerContainer)
+          FinnTile(
+            key: const ValueKey('terminal-set-up-container'),
+            icon: CodeIcons.container,
+            title: l10n.codeTerminalSetUpContainer,
+            subtitle: l10n.codeTerminalSetUpContainerSub,
+            onTap: () async {
+              await Navigator.of(context).push(FinnPageRoute<void>(
+                child: CodeContainerPage(services: widget.services),
+              ));
+              if (mounted) setState(() {});
+            },
+          ),
         for (final (i, action) in _log.indexed)
           FinnReveal(
             key: ValueKey('terminal-entry-$i'),

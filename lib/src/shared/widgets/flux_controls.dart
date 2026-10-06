@@ -6,6 +6,10 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
+import 'package:finn_ai/src/shared/widgets/flux_motion.dart';
+
+export 'package:finn_ai/src/shared/widgets/flux_motion.dart'
+    show FluxPressScale;
 
 abstract final class FluxIcons {
   static const add = HugeIcons.strokeRoundedAdd01;
@@ -27,6 +31,11 @@ abstract final class FluxIcons {
   static const magic = HugeIcons.strokeRoundedAiMagic;
   static const lock = HugeIcons.strokeRoundedCircleLock01;
   static const download = HugeIcons.strokeRoundedDownloadCircle01;
+  static const delete = HugeIcons.strokeRoundedDelete02;
+  static const translate = HugeIcons.strokeRoundedTranslate;
+  static const voiceId = HugeIcons.strokeRoundedVoiceId;
+  static const speed = HugeIcons.strokeRoundedDashboardSpeed02;
+  static const subtitle = HugeIcons.strokeRoundedClosedCaption;
   static const bluetooth = HugeIcons.strokeRoundedBluetooth;
   static const robot = HugeIcons.strokeRoundedMachineRobot;
   static const leaf = HugeIcons.strokeRoundedLeaf01;
@@ -394,77 +403,6 @@ class FluxPillButton extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-/// Scales whatever it wraps down slightly while a finger is on it.
-///
-/// Observes pointers with a [Listener] rather than a gesture recogniser, so the
-/// wrapped control keeps its own tap handling and ink ripple.
-class FluxPressScale extends StatefulWidget {
-  const FluxPressScale({
-    super.key,
-    required this.child,
-    this.scale = .94,
-    this.enabled = true,
-    this.alignment = Alignment.center,
-  });
-
-  final Widget child;
-  final double scale;
-  final bool enabled;
-
-  /// The point it shrinks toward. Defaults to the centre; a control wider than
-  /// it is tall — the brand row — names an edge so the glyph does not drift
-  /// sideways on press.
-  final Alignment alignment;
-
-  @override
-  State<FluxPressScale> createState() => _FluxPressScaleState();
-}
-
-class _FluxPressScaleState extends State<FluxPressScale>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: FluxMotion.pressIn,
-    reverseDuration: FluxMotion.pressOut,
-  );
-  late final Animation<double> _scale =
-      Tween<double>(begin: 1, end: widget.scale).animate(
-    CurvedAnimation(
-      parent: _controller,
-      curve: FluxMotion.pressCurve,
-      reverseCurve: FluxMotion.pressReturnCurve,
-    ),
-  );
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _press() {
-    if (widget.enabled) _controller.forward();
-  }
-
-  void _release(PointerEvent _) => _controller.reverse();
-
-  @override
-  Widget build(BuildContext context) {
-    final scale = _scale; // made while mounted; dispose must not be first
-    if (MediaQuery.disableAnimationsOf(context)) return widget.child;
-    return Listener(
-      onPointerDown: (_) => _press(),
-      onPointerUp: _release,
-      onPointerCancel: _release,
-      child: ScaleTransition(
-        scale: scale,
-        alignment: widget.alignment,
-        child: widget.child,
       ),
     );
   }

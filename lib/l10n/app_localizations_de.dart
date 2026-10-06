@@ -3368,8 +3368,7 @@ class AppLocalizationsDe extends AppLocalizations {
       'Dein Projekt liegt in einem privaten Ordner auf diesem Gerät.';
 
   @override
-  String get codeComposerHint =>
-      'Beschreibe, was gebaut oder repariert werden soll';
+  String get codeComposerHint => 'Aufgabe beschreiben';
 
   @override
   String get codeNewSession => 'Neue Sitzung';
@@ -4012,4 +4011,115 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get onboardingGetStarted => 'Loslegen';
+
+  @override
+  String get codeSettingsContainer => 'Linux-Container';
+
+  @override
+  String get codeSettingsContainerSubReady => 'Befehle laufen in Linux';
+
+  @override
+  String get codeSettingsContainerSubMissing => 'Nicht eingerichtet';
+
+  @override
+  String get codeContainerTitle => 'Linux-Container';
+
+  @override
+  String get codeContainerIntro =>
+      'Befehle laufen in einem kleinen Linux-Computer, den FinnAI auf diesem Gerät emuliert. Er funktioniert auf jedem Telefon und Computer gleich und kann nichts außerhalb des Projekts sehen oder ändern. Er hat die busybox-Werkzeuge (sh, sed, awk, vi, tar …), aber kein python, git, keinen Compiler und kein Netzwerk.';
+
+  @override
+  String get codeContainerStatusReady => 'Heruntergeladen und geprüft';
+
+  @override
+  String get codeContainerStatusRunning => 'Läuft';
+
+  @override
+  String get codeContainerStatusStarting => 'Startet …';
+
+  @override
+  String codeContainerStatusMissing(String size) {
+    return 'Nicht heruntergeladen ($size)';
+  }
+
+  @override
+  String codeContainerStatusDownloading(String percent) {
+    return 'Wird heruntergeladen … $percent %';
+  }
+
+  @override
+  String get codeContainerErrorNetwork =>
+      'Der Download ist fehlgeschlagen. Prüfe die Verbindung und versuche es erneut.';
+
+  @override
+  String get codeContainerErrorVerification =>
+      'Der Download stimmte nicht mit seiner Prüfsumme überein und wurde verworfen. Versuche es erneut.';
+
+  @override
+  String get codeContainerErrorStorage =>
+      'Es ist nicht genug Speicherplatz frei.';
+
+  @override
+  String get codeContainerUnsupported =>
+      'Dieses Gerät kann den Container nicht ausführen, daher nutzen Befehle seine eigene Shell.';
+
+  @override
+  String codeContainerDownload(String size) {
+    return 'Herunterladen ($size)';
+  }
+
+  @override
+  String get codeContainerCancel => 'Download abbrechen';
+
+  @override
+  String get codeContainerUse => 'Befehle im Container ausführen';
+
+  @override
+  String get codeContainerUseSub =>
+      'Aus führt sie stattdessen in der Shell dieses Geräts aus.';
+
+  @override
+  String get codeContainerRestart => 'Container neu starten';
+
+  @override
+  String get codeContainerRestartSub =>
+      'Projektdateien bleiben erhalten; sie liegen auf diesem Gerät.';
+
+  @override
+  String get codeContainerRemove => 'Container entfernen';
+
+  @override
+  String get codeContainerRemoveTitle => 'Linux-Container entfernen?';
+
+  @override
+  String get codeContainerRemoveBody =>
+      'Deine Projektdateien bleiben. Befehle laufen in der Shell dieses Geräts, bis du ihn erneut herunterlädst.';
+
+  @override
+  String get codeContainerLicence =>
+      'Der Emulator ist v86 (BSD-Lizenz). Linux-Kernel, busybox und SeaBIOS werden vom v86-Projekt unter ihren GPL- und LGPL-Lizenzen heruntergeladen.';
+
+  @override
+  String get codeTerminalIntroContainer =>
+      'Läuft im Projektordner dieser Sitzung, im Linux-Container. Der erste Befehl startet ihn.';
+
+  @override
+  String get codeTerminalSetUpContainer => 'Linux-Container einrichten';
+
+  @override
+  String get codeTerminalSetUpContainerSub =>
+      'Befehle laufen vorerst auf diesem Gerät. Der Container isoliert sie und funktioniert überall gleich.';
+
+  @override
+  String get codeAttachFiles => 'Dateien hinzufügen';
+
+  @override
+  String codeAttachmentRemove(String name) {
+    return '$name entfernen';
+  }
+
+  @override
+  String codeAttachFailed(String names) {
+    return '$names konnte nicht hinzugefügt werden';
+  }
 }

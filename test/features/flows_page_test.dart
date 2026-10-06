@@ -205,6 +205,11 @@ void main() {
         scrollable: find.byType(Scrollable).first,
       );
       expect(find.text('Recent runs'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.textContaining('Ran by itself'),
+        120,
+        scrollable: find.byType(Scrollable).first,
+      );
       expect(find.textContaining('Ran by itself'), findsOneWidget);
       expect(find.textContaining('Finished'), findsOneWidget);
     });

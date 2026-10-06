@@ -117,6 +117,37 @@ class CodeWorkspace {
     return relative;
   }
 
+  /// Largest file the user may add from outside the folder.
+  static const int maxImportBytes = 8 * 1024 * 1024;
+
+  /// Copies [source] (a file the user picked) into the top of the folder and
+  /// returns its relative path. A name already taken gets " (2)", " (3)"…
+  /// so an import never overwrites the project.
+  Future<String> importFile(File source, {String? name}) async {
+    final length = await source.length();
+    if (length > maxImportBytes) {
+      throw FileSystemException(
+        'File is larger than ${maxImportBytes ~/ (1024 * 1024)} MB',
+        source.path,
+      );
+    }
+    final original =
+        normalize((name ?? source.uri.pathSegments.last).replaceAll('/', '_'));
+    final dot = original.lastIndexOf('.');
+    final stem = dot > 0 ? original.substring(0, dot) : original;
+    final extension = dot > 0 ? original.substring(dot) : '';
+    var candidate = original;
+    for (var n = 2;
+        await File('${root.path}/$candidate').exists() ||
+            await Directory('${root.path}/$candidate').exists();
+        n++) {
+      candidate = '$stem ($n)$extension';
+    }
+    await ensureCreated();
+    await source.copy('${root.path}/$candidate');
+    return candidate;
+  }
+
   /// Reads up to [maxReadBytes] of [path] as text.
   Future<String> readFile(String path) async {
     final file = fileFor(path);

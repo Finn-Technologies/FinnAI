@@ -11,6 +11,8 @@ import 'package:finn_ai/src/app/app_state_store.dart';
 import 'package:finn_ai/src/app/speech_model_addon.dart';
 import 'package:finn_ai/src/app/tts_voices_addon.dart';
 import 'package:finn_ai/src/app/app_mode_host.dart';
+import 'package:finn_ai/src/features/code/code_services.dart';
+import 'package:finn_ai/src/features/code/container/container_view.dart';
 import 'package:finn_ai/src/features/onboarding/model_install.dart';
 import 'package:finn_ai/src/features/voice/voice_sheet.dart'
     show voiceSupportedOnPlatform;
@@ -115,6 +117,7 @@ class _FinnBootstrapState extends State<FinnBootstrap> {
                 GlobalCupertinoLocalizations.delegate,
               ],
               supportedLocales: AppLocalizations.supportedLocales,
+              localeListResolutionCallback: finnResolveLocale,
               builder: finnAppBuilder,
               home: _BootstrapErrorPage(
                 error: snapshot.error!,
@@ -142,6 +145,7 @@ class _FinnBootstrapState extends State<FinnBootstrap> {
               GlobalCupertinoLocalizations.delegate,
             ],
             supportedLocales: AppLocalizations.supportedLocales,
+            localeListResolutionCallback: finnResolveLocale,
             builder: finnAppBuilder,
             home: Scaffold(
               body: AmbientBackground(
@@ -210,7 +214,16 @@ class FluxApp extends StatelessWidget {
         GlobalCupertinoLocalizations.delegate,
       ],
       supportedLocales: AppLocalizations.supportedLocales,
-      builder: finnAppBuilder,
+      localeListResolutionCallback: finnResolveLocale,
+      // FinnAI Code's Linux container runs in a WebView that lives above the
+      // navigator, so it keeps running under any Code page.
+      builder: (context, child) => finnAppBuilder(
+        context,
+        ContainerView(
+          host: CodeServices.instance.container.host,
+          child: child ?? const SizedBox.shrink(),
+        ),
+      ),
       home: FinnInference.instance.isDeviceSupported
           ? onboardingComplete
               ? modelInstalled

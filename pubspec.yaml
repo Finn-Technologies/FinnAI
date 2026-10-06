@@ -37,8 +37,23 @@ dependencies:
   record: ^6.2.1
   flutter_pcm_sound: ^3.3.3
   ffi: ^2.2.0
+  # Upstream for Android and iOS; OpenHarmony gets the SIG's ArkWeb
+  # implementation as a direct dependency (a federated plugin can be added
+  # beside the app-facing one). FinnAI Code's Linux container runs in it
+  # (ADR 0011). The SIG's own app-facing fork cannot be used: its Android side
+  # still uses the v1 embedding Flutter 3.41 removed.
+  webview_flutter: ^4.14.1
+  webview_flutter_ohos:
+    git:
+      url: https://gitcode.com/openharmony-tpc/flutter_packages.git
+      ref: 2f21e26e09efb92b8429c840ae7ca0cb024f036c
+      path: packages/webview_flutter/webview_flutter_ohos
 
 dependency_overrides:
+  # webview_flutter_ohos pins a git copy of the platform interface (2.10);
+  # upstream webview_flutter needs ^2.15. The interface only grew, so the
+  # OpenHarmony implementation runs against the upstream one.
+  webview_flutter_platform_interface: ^2.15.1
   # Upstream's prebuilt libsherpa-onnx-c-api.so links espeak-ng (GPL-3.0). This
   # copy is built from the same source with TTS compiled out.
   sherpa_onnx_android_arm64:
@@ -69,6 +84,7 @@ flutter:
   assets:
     - assets/icon/
     - assets/runtime/
+    - assets/code_container/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

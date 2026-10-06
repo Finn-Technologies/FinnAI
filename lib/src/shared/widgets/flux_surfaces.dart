@@ -306,6 +306,7 @@ class FluxPillField extends StatelessWidget {
     this.fontSize = 16,
     this.horizontalInset = 18,
     this.trailing,
+    this.focusNode,
   });
 
   final TextEditingController controller;
@@ -334,6 +335,7 @@ class FluxPillField extends StatelessWidget {
   final double fontSize;
   final double horizontalInset;
   final Widget? trailing;
+  final FocusNode? focusNode;
 
   @override
   Widget build(BuildContext context) {
@@ -341,6 +343,7 @@ class FluxPillField extends StatelessWidget {
     final field = TextField(
       key: fieldKey,
       controller: controller,
+      focusNode: focusNode,
       onChanged: onChanged,
       onSubmitted: onSubmitted,
       obscureText: obscure,

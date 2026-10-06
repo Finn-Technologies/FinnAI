@@ -31,8 +31,9 @@ struct Index {
     // that is what builds the engine it is later called with.
     this.flutterEntry.setFlutterEngineConfigurator({
       configureFlutterEngine: (flutterEngine: FlutterEngine): void => {
-        // `GeneratedPluginRegistrant` is empty: none of FinnAI's Flutter
-        // plugins ship an OpenHarmony implementation, so the Dart side falls
+        // `GeneratedPluginRegistrant` registers the one plugin with a real
+        // OpenHarmony implementation, webview_flutter_ohos (FinnAI Code's
+        // Linux container). The others ship none, so the Dart side falls
         // back to each plugin's default method-channel implementation.
         // `FinnPlugins` answers those same channels, plus the `finn_ai/*`
         // channels Android implements in Kotlin.
@@ -58,6 +59,16 @@ struct Index {
 
   onPageHide() {
     this.flutterEntry?.onPageHide();
+  }
+
+  // The system back key and gesture go to Flutter, which pops a page or, on
+  // the root, closes the app (SystemNavigator.pop). Without this the page
+  // handled back itself and Flutter never saw it: back did nothing inside
+  // the app. FlutterView listens for exactly this event name.
+  onBackPress(): boolean {
+    Log.i(TAG, 'FINN_BACK forwarded to Flutter');
+    getContext(this).eventHub.emit('EVENT_BACK_PRESS');
+    return true;
   }
 
   build() {

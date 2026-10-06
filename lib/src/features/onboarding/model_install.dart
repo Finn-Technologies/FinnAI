@@ -87,6 +87,9 @@ class ModelInstall {
 
   double progress = .02;
 
+  /// Bytes counted in [progress], so a read-out beside it agrees with it.
+  int receivedBytes = 0;
+
   bool _modelDone = false;
   double _modelFraction = 0;
 
@@ -129,6 +132,7 @@ class ModelInstall {
       done += addon.progress.value * addon.totalBytes;
     }
     progress = (done / total).clamp(0.0, 1.0);
+    receivedBytes = done.round().clamp(0, total);
     onChanged();
   }
 

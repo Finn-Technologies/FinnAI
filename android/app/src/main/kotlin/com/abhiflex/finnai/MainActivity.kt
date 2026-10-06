@@ -14,6 +14,7 @@ import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
     private var pendingProcessText: String? = null
+    private var askedDownloadNotifications = false
     private var pendingFlowId: String? = null
     private var pendingNotificationResult: MethodChannel.Result? = null
 
@@ -280,9 +281,13 @@ class MainActivity : FlutterActivity() {
                         putExtra(ModelDownloadService.EXTRA_EXPECTED_BYTES, (args["expectedBytes"] as? Number)?.toLong() ?: 0L)
                         putExtra(ModelDownloadService.EXTRA_LABEL, args["label"] as? String)
                     }
+                    // Asked once per launch: an install downloads several
+                    // files, and asking again after "Don't allow" is a nag.
                     if (Build.VERSION.SDK_INT >= 33 &&
+                        !askedDownloadNotifications &&
                         checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
                     ) {
+                        askedDownloadNotifications = true
                         requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 4102)
                     }
                     try {

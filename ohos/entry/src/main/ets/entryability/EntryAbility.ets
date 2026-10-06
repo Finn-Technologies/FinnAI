@@ -21,10 +21,11 @@ export default class EntryAbility extends FlutterAbility {
   configureFlutterEngine(flutterEngine: FlutterEngine): void {
     super.configureFlutterEngine(flutterEngine);
 
-    // `GeneratedPluginRegistrant` is empty: none of FinnAI's Flutter plugins
-    // (flutter_secure_storage, image_picker, file_picker, url_launcher,
-    // package_info_plus, flutter_tts, record) ship an OpenHarmony
-    // implementation, so the Dart side falls back to each plugin's default
+    // `GeneratedPluginRegistrant` registers the one plugin with a real
+    // OpenHarmony implementation, webview_flutter_ohos (FinnAI Code's Linux
+    // container, ADR 0011). The others (flutter_secure_storage, image_picker,
+    // file_picker, url_launcher, package_info_plus, flutter_tts, record) ship
+    // none, so the Dart side falls back to each plugin's default
     // method-channel implementation. `FinnPlugins` answers those same channels,
     // plus the `finn_ai/*` channels Android implements in Kotlin.
     GeneratedPluginRegistrant.registerWith(flutterEngine);

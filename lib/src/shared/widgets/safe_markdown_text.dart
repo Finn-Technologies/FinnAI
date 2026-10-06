@@ -285,8 +285,6 @@ class SafeMarkdownTextState extends State<SafeMarkdownText> {
 
     for (var index = 0; index < rawBlocks.length; index++) {
       final line = rawBlocks[index];
-
-      // Code block start/end handling
       if (line.trim().startsWith('```')) {
         if (inCodeBlock) {
           widgets.add(_buildCodeBlock(
@@ -308,7 +306,10 @@ class SafeMarkdownTextState extends State<SafeMarkdownText> {
       }
 
       if (line.trim().isEmpty) {
-        widgets.add(const SizedBox(height: 10));
+        // A run of blank lines is one paragraph break, none before the first.
+        if (widgets.isNotEmpty && widgets.last is! SizedBox) {
+          widgets.add(const SizedBox(height: 10));
+        }
         continue;
       }
 
@@ -518,7 +519,6 @@ class SafeMarkdownTextState extends State<SafeMarkdownText> {
 
   Widget _line(BuildContext context, String line, TextStyle base, bool isFirst,
       bool isDark) {
-    if (line.trim().isEmpty) return const SizedBox(height: 8);
     final heading = _headingLine.firstMatch(line);
     final bullet = _bulletLine.firstMatch(line);
     final numbered = _numberedLine.firstMatch(line);

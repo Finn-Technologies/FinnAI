@@ -96,7 +96,19 @@ class FinnPageRoute<T> extends PageRouteBuilder<T> {
               begin: const Offset(_travel, 0),
               end: Offset.zero,
             ).animate(slide),
-            child: page,
+            // When the next page arrives on top, this one recedes a little
+            // the other way: two layers, not one picture replacing another.
+            child: SlideTransition(
+              position: Tween(
+                begin: Offset.zero,
+                end: const Offset(-_travel * .45, 0),
+              ).animate(CurvedAnimation(
+                parent: secondaryAnimation,
+                curve: FluxMotion.pageCurve,
+                reverseCurve: FluxMotion.pageReverseCurve,
+              )),
+              child: page,
+            ),
           ),
         ),
       ],

@@ -25,9 +25,14 @@ extension FinnAcceleratorProgress on FinnAccelerator {
         _downloadTotalBytes <= 0) {
       return null;
     }
-    final remaining = _downloadRemainingBytes > 0
-        ? _downloadRemainingBytes
-        : _downloadTotalBytes - _downloadReceivedBytes;
+    // The whole install when it is known: the progress shown beside the
+    // estimate counts every artifact, so the estimate must too, not just the
+    // file downloading now.
+    final remaining = _installTotalBytes > 0
+        ? installRemainingBytes
+        : (_downloadRemainingBytes > 0
+            ? _downloadRemainingBytes
+            : _downloadTotalBytes - _downloadReceivedBytes);
     if (remaining <= 0) return Duration.zero;
     return Duration(seconds: (remaining / _downloadSpeedBps).floor());
   }

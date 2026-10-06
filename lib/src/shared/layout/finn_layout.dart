@@ -1,5 +1,7 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
+
 /// Window-size classes shared by FinnAI and FinnAI Code, so a phone, a tablet
 /// and a desktop window all make the same layout decisions from one place.
 ///
@@ -23,6 +25,14 @@ abstract final class FinnLayout {
   static const double minWindowHeight = 480;
 
   static bool isDocked(double width) => width >= dockBreakpoint;
+
+  /// Bottom padding that optically centres a one-line InstrumentSans field in
+  /// a pill. The font carries more space above its letters than below, and
+  /// how much shows depends on the text stack: measured on the Linux window
+  /// (FreeType) the line box sat ~4.5px low; on Android (1080x2400 emulator)
+  /// it already sits ~3.5dp higher and needs almost no lift.
+  static double get fieldTextLift =>
+      defaultTargetPlatform == TargetPlatform.linux ? 9 : 2;
 
   /// The width left for the chat once a docked sidebar has taken its share.
   static double bodyWidth(double width) =>

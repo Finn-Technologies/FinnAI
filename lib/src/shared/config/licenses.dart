@@ -112,6 +112,49 @@ class _SpeechLicenseEntry extends LicenseEntry {
   }
 }
 
+/// v86 is an asset (JavaScript and WebAssembly), not a Dart package, so
+/// showLicensePage() would not list it; the Linux image it boots is
+/// downloaded, not shipped, and is named here with its licences.
+class _ContainerLicenseEntry extends LicenseEntry {
+  const _ContainerLicenseEntry();
+
+  @override
+  Iterable<String> get packages => const ['v86'];
+
+  @override
+  Iterable<LicenseParagraph> get paragraphs sync* {
+    yield const LicenseParagraph(
+      'FinnAI Code Linux container\n\n'
+      'v86, the PC emulator: BSD 2-Clause License. '
+      'https://github.com/copy/v86\n\nCopyright (c) 2012, The v86 '
+      'contributors All rights reserved.\n\nRedistribution and use in '
+      'source and binary forms, with or without modification, are '
+      'permitted provided that the following conditions are met:\n\n1. '
+      'Redistributions of source code must retain the above copyright '
+      'notice, this list of conditions and the following disclaimer. 2. '
+      'Redistributions in binary form must reproduce the above copyright '
+      'notice, this list of conditions and the following disclaimer in '
+      'the documentation and/or other materials provided with the '
+      'distribution.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS '
+      'AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, '
+      'INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF '
+      'MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE '
+      'DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS '
+      'BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, '
+      'EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED '
+      'TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, '
+      'DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON '
+      'ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR'
+      ' TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT '
+      'OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF'
+      ' SUCH DAMAGE.\n\n'
+      'Downloaded on request from the v86 project, not part of this app: the '
+      'Linux kernel and BusyBox (GPL-2.0) and SeaBIOS (LGPL-3.0).',
+      0,
+    );
+  }
+}
+
 /// Registers third-party AI model licenses and open-source notices.
 void registerModelLicenses() {
   LicenseRegistry.addLicense(() async* {
@@ -123,5 +166,6 @@ void registerModelLicenses() {
     // sherpa-onnx and ONNX Runtime are native libraries inside the
     // sherpa_onnx Android packages, also invisible to showLicensePage().
     yield const _SpeechLicenseEntry();
+    yield const _ContainerLicenseEntry();
   });
 }

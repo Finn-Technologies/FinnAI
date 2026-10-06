@@ -79,9 +79,14 @@ class FinnPageHeader extends StatelessWidget {
     required this.metrics,
     required this.scrollOffset,
     this.actions = const [],
+    this.largeTitle = false,
   });
 
   static const double barHeight = 50;
+
+  /// Height of the large title a [FinnPage] puts at the top of its content,
+  /// gap included. The compact title in the bar takes over as it scrolls out.
+  static const double largeTitleExtent = 52;
 
   final String title;
   final VoidCallback onBack;
@@ -90,6 +95,10 @@ class FinnPageHeader extends StatelessWidget {
 
   /// Up to two trailing circle controls (see [FinnCircleButton]).
   final List<Widget> actions;
+
+  /// The page shows its title large at the top of the content; the bar's
+  /// compact title only fades in once that one has scrolled under the bar.
+  final bool largeTitle;
 
   @override
   Widget build(BuildContext context) {
@@ -135,12 +144,26 @@ class FinnPageHeader extends StatelessWidget {
               ),
               const SizedBox(width: 17),
               Expanded(
-                child: Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
+                child: largeTitle
+                    ? ValueListenableBuilder<double>(
+                        valueListenable: scrollOffset,
+                        builder: (context, offset, child) {
+                          final progress = ((offset - largeTitleExtent * .45) /
+                                  (largeTitleExtent * .45))
+                              .clamp(0.0, 1.0);
+                          // Not built at rest, so the page has one title.
+                          if (progress == 0) return const SizedBox.shrink();
+                          return Opacity(
+                            opacity: Curves.easeOut.transform(progress),
+                            child: Transform.translate(
+                              offset: Offset(0, 8 * (1 - progress)),
+                              child: child,
+                            ),
+                          );
+                        },
+                        child: _CompactTitle(title),
+                      )
+                    : _CompactTitle(title),
               ),
               for (var i = 0; i < actions.length; i++) ...[
                 if (i > 0) const SizedBox(width: 10),
@@ -152,4 +175,18 @@ class FinnPageHeader extends StatelessWidget {
       ],
     );
   }
+}
+
+class _CompactTitle extends StatelessWidget {
+  const _CompactTitle(this.title);
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) => Text(
+        title,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(context).textTheme.titleMedium,
+      );
 }

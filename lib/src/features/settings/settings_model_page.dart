@@ -127,7 +127,7 @@ class _SettingsModelPageState extends State<SettingsModelPage> {
           FinnReveal(
             index: 3,
             child: FinnTile(
-              icon: FluxIcons.refresh,
+              icon: FluxIcons.check,
               title: l10n.modelUpdates,
               subtitle: l10n.modelUpToDate,
             ),
@@ -136,7 +136,7 @@ class _SettingsModelPageState extends State<SettingsModelPage> {
             FinnReveal(
               index: 4,
               child: FinnTile(
-                icon: FluxIcons.close,
+                icon: FluxIcons.delete,
                 title: l10n.modelRemove,
                 subtitle: l10n.modelRemoveSub(size),
                 destructive: true,

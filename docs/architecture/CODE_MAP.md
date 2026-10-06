@@ -139,6 +139,11 @@ A second app inside the app: its own sessions, settings and providers, in the sa
 | What an action does (file write, command) | `lib/src/features/code/agent/action_runner.dart` |
 | What a command may not do | `lib/src/features/code/sandbox/command_policy.dart` |
 | Running a command (timeout, size cap, environment) | `lib/src/features/code/sandbox/shell_sandbox.dart` |
+| The Linux container: pinned image, download and verification | `lib/src/features/code/container/container_image.dart`, `container/container_installer.dart` |
+| The container's machine: loopback host, WebView, guest scripts and output framing | `lib/src/features/code/container/container_host.dart`, `container/container_view.dart`, `container/container_protocol.dart`, `assets/code_container/runtime.html` |
+| Copying the project into the container and back (ustar, modes) | `lib/src/features/code/container/workspace_sync.dart` |
+| Container vs device shell, and the container settings page | `lib/src/features/code/agent/action_runner.dart` (`CommandEnvironment`), `lib/src/features/code/container/container_shell.dart`, `settings/code_container_page.dart` |
+| Files attached from the composer | `lib/src/features/code/agent/code_agent.dart` (`send`), `sandbox/workspace.dart` (`importFile`) |
 | The project folder and its path rules | `lib/src/features/code/sandbox/workspace.dart` |
 | The providers (names, URLs, key and billing pages) | `lib/src/features/code/providers/code_provider.dart` |
 | Live model lists and how each provider's list is read | `lib/src/features/code/providers/code_model.dart` |

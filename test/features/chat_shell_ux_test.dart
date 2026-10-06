@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:finn_ai/src/shared/layout/finn_layout.dart';
 import 'package:finn_ai/src/features/actions/chat_device_actions.dart';
 import 'package:finn_ai/src/features/actions/device_action.dart';
 import 'package:finn_ai/src/features/chat/chat_generation_controller.dart';
@@ -106,10 +107,11 @@ void main() {
       await _pumpComposer(tester, voiceEnabled: true);
 
       final pill = find.byKey(const ValueKey('chat-composer-motion'));
-      // The field box sits 4.5dp above the pill's middle on purpose: the typeface
+      // The field box sits above the pill's middle on purpose: the typeface
       // has more room above its letters than below, so the box has to be lifted
-      // for the *letters* to look centred (calibrated on the real window).
-      const lift = 4.5;
+      // for the *letters* to look centred. How far depends on the platform's
+      // text stack (calibrated on the Linux window and an Android emulator).
+      final lift = FinnLayout.fieldTextLift / 2;
       expect(
         tester.getCenter(find.text('Ask anything')).dy,
         closeTo(tester.getCenter(pill).dy - lift, 1.0),

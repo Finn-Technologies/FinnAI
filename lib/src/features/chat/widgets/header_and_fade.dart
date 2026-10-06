@@ -59,6 +59,8 @@ class _HomeHeader extends StatelessWidget {
                 ),
               ),
             ),
+            // A title that just fits must not touch the button.
+            if (onNewChat != null) const SizedBox(width: 12),
           ] else
             const Spacer(),
           if (onNewChat != null)

@@ -6005,7 +6005,7 @@ abstract class AppLocalizations {
   /// Placeholder of the FinnAI Code message field
   ///
   /// In en, this message translates to:
-  /// **'Describe what to build or fix'**
+  /// **'Describe a task'**
   String get codeComposerHint;
 
   /// New coding session button
@@ -7081,6 +7081,186 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Get started'**
   String get onboardingGetStarted;
+
+  /// FinnAI Code Linux container
+  ///
+  /// In en, this message translates to:
+  /// **'Linux container'**
+  String get codeSettingsContainer;
+
+  /// FinnAI Code Linux container
+  ///
+  /// In en, this message translates to:
+  /// **'Commands run in Linux'**
+  String get codeSettingsContainerSubReady;
+
+  /// FinnAI Code Linux container
+  ///
+  /// In en, this message translates to:
+  /// **'Not set up'**
+  String get codeSettingsContainerSubMissing;
+
+  /// FinnAI Code Linux container
+  ///
+  /// In en, this message translates to:
+  /// **'Linux container'**
+  String get codeContainerTitle;
+
+  /// FinnAI Code Linux container
+  ///
+  /// In en, this message translates to:
+  /// **'Commands run in a small Linux computer that FinnAI emulates on this device. It works the same on every phone and computer, and it can’t see or change anything outside the project. It has the busybox tools (sh, sed, awk, vi, tar…) but no python, git, compiler or network.'**
+  String get codeContainerIntro;
+
+  /// FinnAI Code Linux container
+  ///
+  /// In en, this message translates to:
+  /// **'Downloaded and verified'**
+  String get codeContainerStatusReady;
+
+  /// FinnAI Code Linux container
+  ///
+  /// In en, this message translates to:
+  /// **'Running'**
+  String get codeContainerStatusRunning;
+
+  /// FinnAI Code Linux container
+  ///
+  /// In en, this message translates to:
+  /// **'Starting…'**
+  String get codeContainerStatusStarting;
+
+  /// FinnAI Code Linux container
+  ///
+  /// In en, this message translates to:
+  /// **'Not downloaded ({size})'**
+  String codeContainerStatusMissing(String size);
+
+  /// FinnAI Code Linux container
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading… {percent}%'**
+  String codeContainerStatusDownloading(String percent);
+
+  /// FinnAI Code Linux container
+  ///
+  /// In en, this message translates to:
+  /// **'The download failed. Check your connection and try again.'**
+  String get codeContainerErrorNetwork;
+
+  /// FinnAI Code Linux container
+  ///
+  /// In en, this message translates to:
+  /// **'The download didn’t match its checksum, so it was discarded. Try again.'**
+  String get codeContainerErrorVerification;
+
+  /// FinnAI Code Linux container
+  ///
+  /// In en, this message translates to:
+  /// **'There isn’t enough room to save it.'**
+  String get codeContainerErrorStorage;
+
+  /// FinnAI Code Linux container
+  ///
+  /// In en, this message translates to:
+  /// **'This device can’t run the container, so commands use its own shell.'**
+  String get codeContainerUnsupported;
+
+  /// FinnAI Code Linux container
+  ///
+  /// In en, this message translates to:
+  /// **'Download ({size})'**
+  String codeContainerDownload(String size);
+
+  /// FinnAI Code Linux container
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel download'**
+  String get codeContainerCancel;
+
+  /// FinnAI Code Linux container
+  ///
+  /// In en, this message translates to:
+  /// **'Run commands in the container'**
+  String get codeContainerUse;
+
+  /// FinnAI Code Linux container
+  ///
+  /// In en, this message translates to:
+  /// **'Off runs them in this device’s own shell instead.'**
+  String get codeContainerUseSub;
+
+  /// FinnAI Code Linux container
+  ///
+  /// In en, this message translates to:
+  /// **'Restart container'**
+  String get codeContainerRestart;
+
+  /// FinnAI Code Linux container
+  ///
+  /// In en, this message translates to:
+  /// **'Project files are kept; they live on this device.'**
+  String get codeContainerRestartSub;
+
+  /// FinnAI Code Linux container
+  ///
+  /// In en, this message translates to:
+  /// **'Remove container'**
+  String get codeContainerRemove;
+
+  /// FinnAI Code Linux container
+  ///
+  /// In en, this message translates to:
+  /// **'Remove the Linux container?'**
+  String get codeContainerRemoveTitle;
+
+  /// FinnAI Code Linux container
+  ///
+  /// In en, this message translates to:
+  /// **'Your project files stay. Commands will run in this device’s shell until you download it again.'**
+  String get codeContainerRemoveBody;
+
+  /// FinnAI Code Linux container
+  ///
+  /// In en, this message translates to:
+  /// **'The emulator is v86 (BSD licence). The Linux kernel, busybox and SeaBIOS are downloaded from the v86 project under their GPL and LGPL licences.'**
+  String get codeContainerLicence;
+
+  /// FinnAI Code Linux container
+  ///
+  /// In en, this message translates to:
+  /// **'Runs in this session’s project folder, inside the Linux container. The first command starts it.'**
+  String get codeTerminalIntroContainer;
+
+  /// FinnAI Code Linux container
+  ///
+  /// In en, this message translates to:
+  /// **'Set up the Linux container'**
+  String get codeTerminalSetUpContainer;
+
+  /// FinnAI Code Linux container
+  ///
+  /// In en, this message translates to:
+  /// **'Commands run on this device for now. The container isolates them and works the same everywhere.'**
+  String get codeTerminalSetUpContainerSub;
+
+  /// FinnAI Code attachments
+  ///
+  /// In en, this message translates to:
+  /// **'Add files'**
+  String get codeAttachFiles;
+
+  /// FinnAI Code attachments
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {name}'**
+  String codeAttachmentRemove(String name);
+
+  /// FinnAI Code attachments
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t add {names}'**
+  String codeAttachFailed(String names);
 }
 
 class _AppLocalizationsDelegate

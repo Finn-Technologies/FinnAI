@@ -3357,7 +3357,7 @@ class AppLocalizationsEs extends AppLocalizations {
       'Tu proyecto vive en una carpeta privada de este dispositivo.';
 
   @override
-  String get codeComposerHint => 'Describe qué construir o arreglar';
+  String get codeComposerHint => 'Describe una tarea';
 
   @override
   String get codeNewSession => 'Nueva sesión';
@@ -4000,4 +4000,116 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get onboardingGetStarted => 'Empezar';
+
+  @override
+  String get codeSettingsContainer => 'Contenedor Linux';
+
+  @override
+  String get codeSettingsContainerSubReady =>
+      'Los comandos se ejecutan en Linux';
+
+  @override
+  String get codeSettingsContainerSubMissing => 'Sin configurar';
+
+  @override
+  String get codeContainerTitle => 'Contenedor Linux';
+
+  @override
+  String get codeContainerIntro =>
+      'Los comandos se ejecutan en un pequeño ordenador Linux que FinnAI emula en este dispositivo. Funciona igual en cualquier teléfono u ordenador y no puede ver ni cambiar nada fuera del proyecto. Tiene las herramientas de busybox (sh, sed, awk, vi, tar…), pero no python, git, compilador ni red.';
+
+  @override
+  String get codeContainerStatusReady => 'Descargado y verificado';
+
+  @override
+  String get codeContainerStatusRunning => 'En marcha';
+
+  @override
+  String get codeContainerStatusStarting => 'Iniciando…';
+
+  @override
+  String codeContainerStatusMissing(String size) {
+    return 'No descargado ($size)';
+  }
+
+  @override
+  String codeContainerStatusDownloading(String percent) {
+    return 'Descargando… $percent %';
+  }
+
+  @override
+  String get codeContainerErrorNetwork =>
+      'La descarga ha fallado. Comprueba la conexión y vuelve a intentarlo.';
+
+  @override
+  String get codeContainerErrorVerification =>
+      'La descarga no coincidía con su suma de verificación y se descartó. Vuelve a intentarlo.';
+
+  @override
+  String get codeContainerErrorStorage =>
+      'No hay espacio suficiente para guardarlo.';
+
+  @override
+  String get codeContainerUnsupported =>
+      'Este dispositivo no puede ejecutar el contenedor, así que los comandos usan su propio shell.';
+
+  @override
+  String codeContainerDownload(String size) {
+    return 'Descargar ($size)';
+  }
+
+  @override
+  String get codeContainerCancel => 'Cancelar descarga';
+
+  @override
+  String get codeContainerUse => 'Ejecutar comandos en el contenedor';
+
+  @override
+  String get codeContainerUseSub =>
+      'Desactivado, se ejecutan en el shell de este dispositivo.';
+
+  @override
+  String get codeContainerRestart => 'Reiniciar contenedor';
+
+  @override
+  String get codeContainerRestartSub =>
+      'Los archivos del proyecto se conservan; están en este dispositivo.';
+
+  @override
+  String get codeContainerRemove => 'Quitar contenedor';
+
+  @override
+  String get codeContainerRemoveTitle => '¿Quitar el contenedor Linux?';
+
+  @override
+  String get codeContainerRemoveBody =>
+      'Tus archivos de proyecto se conservan. Los comandos se ejecutarán en el shell de este dispositivo hasta que vuelvas a descargarlo.';
+
+  @override
+  String get codeContainerLicence =>
+      'El emulador es v86 (licencia BSD). El kernel Linux, busybox y SeaBIOS se descargan del proyecto v86 bajo sus licencias GPL y LGPL.';
+
+  @override
+  String get codeTerminalIntroContainer =>
+      'Se ejecuta en la carpeta del proyecto de esta sesión, dentro del contenedor Linux. El primer comando lo inicia.';
+
+  @override
+  String get codeTerminalSetUpContainer => 'Configurar el contenedor Linux';
+
+  @override
+  String get codeTerminalSetUpContainerSub =>
+      'Por ahora los comandos se ejecutan en este dispositivo. El contenedor los aísla y funciona igual en todas partes.';
+
+  @override
+  String get codeAttachFiles => 'Añadir archivos';
+
+  @override
+  String codeAttachmentRemove(String name) {
+    return 'Quitar $name';
+  }
+
+  @override
+  String codeAttachFailed(String names) {
+    return 'No se pudo añadir $names';
+  }
 }

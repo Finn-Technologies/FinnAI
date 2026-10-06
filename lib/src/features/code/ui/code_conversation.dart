@@ -9,6 +9,7 @@ import 'package:finn_ai/src/features/code/ui/code_action_card.dart';
 import 'package:finn_ai/src/features/code/ui/code_icons.dart';
 import 'package:finn_ai/src/features/code/ui/code_text.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
+import 'package:finn_ai/src/shared/widgets/flux_motion.dart';
 import 'package:finn_ai/src/shared/widgets/finn_edge_fade.dart';
 import 'package:finn_ai/src/shared/widgets/finn_overlays.dart';
 import 'package:finn_ai/src/shared/widgets/finn_ui.dart';
@@ -85,7 +86,10 @@ class CodeConversation extends StatelessWidget {
             return Padding(
               key: ValueKey('code-message-${message.id}'),
               padding: const EdgeInsets.only(bottom: 14),
-              child: FinnReveal(
+              child: FluxEntrance(
+                alignment: message.isUser
+                    ? Alignment.bottomRight
+                    : Alignment.bottomLeft,
                 child: message.isUser
                     ? Align(
                         alignment: Alignment.centerRight,

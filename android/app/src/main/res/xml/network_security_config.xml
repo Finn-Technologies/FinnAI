@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Cleartext is allowed for the loopback address only: FinnAI Code's Linux
+  container is served to its WebView by the app itself on 127.0.0.1
+  (ContainerHost). Everything else stays HTTPS-only, the platform default.
+-->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">127.0.0.1</domain>
+    </domain-config>
+</network-security-config>

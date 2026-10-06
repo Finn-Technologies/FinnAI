@@ -1,5 +1,7 @@
 import 'package:finn_ai/src/features/code/agent/action_runner.dart';
 import 'package:finn_ai/src/features/code/agent/code_agent.dart';
+import 'package:finn_ai/src/features/code/container/container_installer.dart';
+import 'package:finn_ai/src/features/code/container/container_shell.dart';
 import 'package:finn_ai/src/features/code/providers/code_gateway.dart';
 import 'package:finn_ai/src/features/code/providers/code_model.dart';
 import 'package:finn_ai/src/features/code/providers/gateways.dart';
@@ -18,13 +20,23 @@ class CodeServices {
     CodeSettingsStore? settings,
     CodeActionRunner? runner,
     CodeGatewayFactory? gatewayFactory,
+    ContainerShell? container,
   })  : sessions = sessions ?? CodeSessionStore.instance,
         providers = providers ?? CodeProviderStore.instance,
-        settings = settings ?? CodeSettingsStore.instance {
+        settings = settings ?? CodeSettingsStore.instance,
+        container = container ??
+            (runner == null
+                ? ContainerShell(installer: ContainerInstaller.instance)
+                // Tests that bring a runner never touch storage or a WebView.
+                : ContainerShell(
+                    installer: ContainerInstaller(artifacts: const []),
+                    platformSupported: false,
+                  )) {
     this.runner = runner ??
         WorkspaceActionRunner(
           sessions: this.sessions,
           settings: this.settings,
+          container: this.container,
         );
     agent = CodeAgent(
       sessions: this.sessions,
@@ -39,6 +51,9 @@ class CodeServices {
   final CodeSessionStore sessions;
   final CodeProviderStore providers;
   final CodeSettingsStore settings;
+
+  /// The Linux container commands run in, and its installer.
+  final ContainerShell container;
   late final CodeActionRunner runner;
   late final CodeAgent agent;
 
@@ -46,6 +61,7 @@ class CodeServices {
         sessions.initialize(),
         providers.initialize(),
         settings.initialize(),
+        container.installer.refresh(),
       ]);
 
   /// The gateway for whichever model is selected right now.
@@ -79,7 +95,9 @@ class CodeServices {
   /// not be removed.
   Future<List<String>> deleteAll() async {
     await agent.stop();
+    await container.stop();
     return [
+      ...await container.installer.deleteStorage(),
       ...await providers.deleteStorage(),
       ...await settings.deleteStorage(),
       ...await sessions.deleteStorage(),

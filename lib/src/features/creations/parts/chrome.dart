@@ -14,24 +14,35 @@ class _Filters extends StatelessWidget {
         // Widgets are a phone's home-screen feature.
         if (!(isDesktop && kind == CreationKind.widget)) kind,
     ];
+    // The row scrolls, and in longer locales it runs past the page margin.
+    // The last 28dp fade out rather than cut a label in half, so the edge
+    // reads as "more this way" in either theme.
     return SizedBox(
       height: 48,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: values.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 10),
-        itemBuilder: (context, index) {
-          final value = values[index];
-          final label = value == null
-              ? L10n.of(context).creationsAll
-              : _filterLabel(context, value);
-          return FluxChip(
-            label: label,
-            semanticLabel: L10n.of(context).creationsFilterSemantic(label),
-            selected: selected == value,
-            onTap: () => onSelected(value),
-          );
-        },
+      child: ShaderMask(
+        blendMode: BlendMode.dstIn,
+        shaderCallback: (bounds) => LinearGradient(
+          colors: const [Colors.black, Colors.black, Colors.transparent],
+          stops: [0, 1 - 28 / bounds.width.clamp(28, double.infinity), 1],
+        ).createShader(bounds),
+        child: ListView.separated(
+          padding: const EdgeInsets.only(right: 28),
+          scrollDirection: Axis.horizontal,
+          itemCount: values.length,
+          separatorBuilder: (_, __) => const SizedBox(width: 10),
+          itemBuilder: (context, index) {
+            final value = values[index];
+            final label = value == null
+                ? L10n.of(context).creationsAll
+                : _filterLabel(context, value);
+            return FluxChip(
+              label: label,
+              semanticLabel: L10n.of(context).creationsFilterSemantic(label),
+              selected: selected == value,
+              onTap: () => onSelected(value),
+            );
+          },
+        ),
       ),
     );
   }

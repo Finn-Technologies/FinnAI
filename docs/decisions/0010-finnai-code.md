@@ -8,6 +8,8 @@
 
 ## The sandbox is a workspace shell, not a virtual machine
 
+> **Superseded where a WebView exists:** commands now run in an emulated Linux container (ADR 0011). What follows still describes the fallback, used until the container is downloaded, when it is switched off, and on OpenHarmony and Linux desktop.
+
 An app on Android cannot start a VM, and a real Linux userland (proot over Alpine) needs a bundled GPL binary plus a downloaded root filesystem, would not run on iOS or OpenHarmony, and Play Store policy forbids executing downloaded code from app storage. So each session gets a **project folder** and a **shell** confined to it:
 
 - The shell is the phone's own (`/system/bin/sh`, toybox: `ls cat grep sed awk find sort tar gzip bc …`), run as the app's unprivileged user, with `HOME` and the working directory set to the project folder, an empty environment, a time limit (20 s default), and a 32 KB cap on what comes back (`ShellSandbox`).

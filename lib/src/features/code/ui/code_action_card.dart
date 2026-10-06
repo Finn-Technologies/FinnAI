@@ -89,45 +89,76 @@ class _CodeActionCardState extends State<CodeActionCard> {
                     style: theme.bodyMedium,
                   ),
                 ),
-                if (status != null) ...[const SizedBox(width: 8), status],
+                const SizedBox(width: 8),
+                // The pill changes in place: the old state shrinks away as
+                // the new one grows in, so "Running…" visibly becomes "Done".
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 260),
+                  switchInCurve: Curves.easeOutBack,
+                  switchOutCurve: Curves.easeInCubic,
+                  transitionBuilder: (child, animation) => FadeTransition(
+                    opacity: animation,
+                    child: ScaleTransition(
+                      scale:
+                          Tween<double>(begin: .85, end: 1).animate(animation),
+                      alignment: Alignment.centerRight,
+                      child: child,
+                    ),
+                  ),
+                  child: status ?? const SizedBox.shrink(),
+                ),
               ],
             ),
-            if (body.trim().isNotEmpty) ...[
-              const SizedBox(height: 10),
-              _CodeBox(
-                text: body,
-                prompt: action.isShell,
-                expanded: _expanded,
-                onToggle: () => setState(() => _expanded = !_expanded),
-              ),
-            ],
-            if (detail != null) ...[const SizedBox(height: 10), detail],
-            if (widget.awaitingApproval) ...[
-              const SizedBox(height: 12),
-              Row(
+            // Output arriving and the approval row leaving resize the card
+            // smoothly instead of making the transcript jump.
+            AnimatedSize(
+              duration: MediaQuery.disableAnimationsOf(context)
+                  ? Duration.zero
+                  : const Duration(milliseconds: 320),
+              curve: const Cubic(.2, .9, .25, 1),
+              alignment: Alignment.topCenter,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Expanded(
-                    child: FinnButton(
-                      label: l10n.codeActionSkip,
-                      onTap: widget.onSkip,
-                      secondary: true,
-                      compact: true,
+                  if (body.trim().isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    _CodeBox(
+                      text: body,
+                      prompt: action.isShell,
+                      expanded: _expanded,
+                      onToggle: () => setState(() => _expanded = !_expanded),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: FinnButton(
-                      label: action.isShell
-                          ? l10n.codeActionRun
-                          : l10n.codeActionAllow,
-                      onTap: widget.onApprove,
-                      icon: action.isShell ? CodeIcons.play : null,
-                      compact: true,
+                  ],
+                  if (detail != null) ...[const SizedBox(height: 10), detail],
+                  if (widget.awaitingApproval) ...[
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: FinnButton(
+                            label: l10n.codeActionSkip,
+                            onTap: widget.onSkip,
+                            secondary: true,
+                            compact: true,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: FinnButton(
+                            label: action.isShell
+                                ? l10n.codeActionRun
+                                : l10n.codeActionAllow,
+                            onTap: widget.onApprove,
+                            icon: action.isShell ? CodeIcons.play : null,
+                            compact: true,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
+                  ],
                 ],
               ),
-            ],
+            ),
           ],
         ),
       ),
@@ -142,9 +173,12 @@ class _CodeActionCardState extends State<CodeActionCard> {
       CodeActionStatus.running => (
           l10n.codeActionRunning,
           FluxColors.mutedOf(context),
-          const SizedBox.square(
+          SizedBox.square(
             dimension: 12,
-            child: CircularProgressIndicator(strokeWidth: 1.6),
+            child: CircularProgressIndicator(
+              strokeWidth: 1.6,
+              color: FluxColors.mutedOf(context),
+            ),
           ),
         ),
       CodeActionStatus.done => (
@@ -297,19 +331,26 @@ class _CodeBox extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text.rich(
-              TextSpan(
-                children: [
-                  if (prompt)
+            if (prompt)
+              Text.rich(
+                TextSpan(
+                  children: [
                     TextSpan(
                       text: r'$ ',
                       style: style.copyWith(color: FluxColors.mutedOf(context)),
                     ),
-                  TextSpan(text: shown),
-                ],
+                    TextSpan(text: shown),
+                  ],
+                ),
+                style: style,
+              )
+            else
+              // Output keeps its columns (`ls -l`, tables): long lines scroll
+              // sideways instead of wrapping into the next row.
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Text(shown, style: style, softWrap: false),
               ),
-              style: style,
-            ),
             if (clipped)
               Padding(
                 padding: const EdgeInsets.only(top: 6),

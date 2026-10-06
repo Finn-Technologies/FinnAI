@@ -332,6 +332,16 @@ class _CreationsPageState extends State<CreationsPage> {
                 constraints.maxHeight,
                 constraints.maxWidth,
               );
+              final pageTitle = _mode == _Mode.builder && _pendingKind != null
+                  ? switch (_pendingKind!) {
+                      CreationKind.widget =>
+                        L10n.of(context).creationsBuilderTitleWidget,
+                      CreationKind.app =>
+                        L10n.of(context).creationsBuilderTitleApp,
+                      CreationKind.presentation =>
+                        L10n.of(context).creationsBuilderTitleDeck,
+                    }
+                  : L10n.of(context).creationsTitle;
               return Stack(
                 children: [
                   Positioned(
@@ -346,6 +356,12 @@ class _CreationsPageState extends State<CreationsPage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              // Above the scroll, not in it: it stays put, so
+                              // the bar never needs a second, compact title.
+                              FinnLargeTitle(
+                                title: pageTitle,
+                                scrollOffset: const RestingHeaderOffset(),
+                              ),
                               // The gallery leads with its filters, matching
                               // the reference's tighter hierarchy; the sentence
                               // only appears where it has something to explain.
@@ -454,19 +470,11 @@ class _CreationsPageState extends State<CreationsPage> {
                   ),
                   Positioned.fill(
                     child: FinnPageHeader(
-                      title: _mode == _Mode.builder && _pendingKind != null
-                          ? switch (_pendingKind!) {
-                              CreationKind.widget =>
-                                L10n.of(context).creationsBuilderTitleWidget,
-                              CreationKind.app =>
-                                L10n.of(context).creationsBuilderTitleApp,
-                              CreationKind.presentation =>
-                                L10n.of(context).creationsBuilderTitleDeck,
-                            }
-                          : L10n.of(context).creationsTitle,
+                      title: '',
                       onBack: _close,
                       metrics: metrics,
                       scrollOffset: _headerOffset,
+                      largeTitle: true,
                     ),
                   ),
                 ],
@@ -535,7 +543,18 @@ class _CreationsPageState extends State<CreationsPage> {
     }
     final visible = _controller.visible;
     if (visible.isEmpty) {
-      return _EmptyState(filtered: _controller.filter != null);
+      // Centred when there is room, scrollable when there is not (a short
+      // window, landscape, a large text size).
+      return LayoutBuilder(
+        builder: (context, box) => SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: box.maxHeight),
+            child: Center(
+              child: _EmptyState(filtered: _controller.filter != null),
+            ),
+          ),
+        ),
+      );
     }
     return _Gallery(
       creations: visible,

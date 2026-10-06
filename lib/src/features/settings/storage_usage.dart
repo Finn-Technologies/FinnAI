@@ -88,10 +88,10 @@ class StorageUsage {
   /// `120MB`, `1.49GB`, `4MB`: the short form the design uses.
   static String label(int bytes) {
     if (bytes >= 1024 * 1024 * 1024) {
-      return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)}GB';
+      return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB';
     }
-    if (bytes >= 1024 * 1024) return '${(bytes / (1024 * 1024)).round()}MB';
-    if (bytes >= 1024) return '${(bytes / 1024).round()}KB';
-    return '${bytes}B';
+    if (bytes >= 1024 * 1024) return '${(bytes / (1024 * 1024)).round()} MB';
+    if (bytes >= 1024) return '${(bytes / 1024).round()} KB';
+    return '$bytes B';
   }
 }

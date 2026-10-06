@@ -46,15 +46,24 @@ class FakeGateway implements CodeModelGateway {
   Future<void> cancel() async => cancels++;
 }
 
-class FakeRunner implements CodeActionRunner {
-  FakeRunner({this.canRun = true, this.results = const []});
+class FakeRunner extends CodeActionRunner {
+  FakeRunner({
+    this.canRun = true,
+    this.inContainer = false,
+    this.results = const [],
+  });
 
   final bool canRun;
+  final bool inContainer;
   final List<CodeAction> results;
   final List<CodeAction> ran = [];
 
   @override
-  bool get canRunCommands => canRun;
+  CommandEnvironment get environment => !canRun
+      ? CommandEnvironment.none
+      : (inContainer
+          ? CommandEnvironment.container
+          : CommandEnvironment.device);
 
   @override
   Future<CodeAction> run(String sessionId, CodeAction action) async {

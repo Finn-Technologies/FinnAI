@@ -3366,7 +3366,7 @@ class AppLocalizationsFr extends AppLocalizations {
       'Ton projet vit dans un dossier privé sur cet appareil.';
 
   @override
-  String get codeComposerHint => 'Décris ce qu’il faut créer ou réparer';
+  String get codeComposerHint => 'Décrivez une tâche';
 
   @override
   String get codeNewSession => 'Nouvelle session';
@@ -4011,4 +4011,116 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get onboardingGetStarted => 'Commencer';
+
+  @override
+  String get codeSettingsContainer => 'Conteneur Linux';
+
+  @override
+  String get codeSettingsContainerSubReady =>
+      'Les commandes s’exécutent sous Linux';
+
+  @override
+  String get codeSettingsContainerSubMissing => 'Non configuré';
+
+  @override
+  String get codeContainerTitle => 'Conteneur Linux';
+
+  @override
+  String get codeContainerIntro =>
+      'Les commandes s’exécutent dans un petit ordinateur Linux que FinnAI émule sur cet appareil. Il fonctionne de la même façon sur tous les téléphones et ordinateurs, et ne peut rien voir ni modifier en dehors du projet. Il dispose des outils busybox (sh, sed, awk, vi, tar…), mais pas de python, git, compilateur ni réseau.';
+
+  @override
+  String get codeContainerStatusReady => 'Téléchargé et vérifié';
+
+  @override
+  String get codeContainerStatusRunning => 'En cours d’exécution';
+
+  @override
+  String get codeContainerStatusStarting => 'Démarrage…';
+
+  @override
+  String codeContainerStatusMissing(String size) {
+    return 'Non téléchargé ($size)';
+  }
+
+  @override
+  String codeContainerStatusDownloading(String percent) {
+    return 'Téléchargement… $percent %';
+  }
+
+  @override
+  String get codeContainerErrorNetwork =>
+      'Le téléchargement a échoué. Vérifiez la connexion et réessayez.';
+
+  @override
+  String get codeContainerErrorVerification =>
+      'Le téléchargement ne correspondait pas à sa somme de contrôle et a été supprimé. Réessayez.';
+
+  @override
+  String get codeContainerErrorStorage =>
+      'Il n’y a pas assez d’espace pour l’enregistrer.';
+
+  @override
+  String get codeContainerUnsupported =>
+      'Cet appareil ne peut pas exécuter le conteneur ; les commandes utilisent donc son propre shell.';
+
+  @override
+  String codeContainerDownload(String size) {
+    return 'Télécharger ($size)';
+  }
+
+  @override
+  String get codeContainerCancel => 'Annuler le téléchargement';
+
+  @override
+  String get codeContainerUse => 'Exécuter les commandes dans le conteneur';
+
+  @override
+  String get codeContainerUseSub =>
+      'Désactivé, elles s’exécutent dans le shell de cet appareil.';
+
+  @override
+  String get codeContainerRestart => 'Redémarrer le conteneur';
+
+  @override
+  String get codeContainerRestartSub =>
+      'Les fichiers du projet sont conservés ; ils sont sur cet appareil.';
+
+  @override
+  String get codeContainerRemove => 'Supprimer le conteneur';
+
+  @override
+  String get codeContainerRemoveTitle => 'Supprimer le conteneur Linux ?';
+
+  @override
+  String get codeContainerRemoveBody =>
+      'Vos fichiers de projet sont conservés. Les commandes s’exécuteront dans le shell de cet appareil jusqu’à un nouveau téléchargement.';
+
+  @override
+  String get codeContainerLicence =>
+      'L’émulateur est v86 (licence BSD). Le noyau Linux, busybox et SeaBIOS sont téléchargés depuis le projet v86 sous leurs licences GPL et LGPL.';
+
+  @override
+  String get codeTerminalIntroContainer =>
+      'S’exécute dans le dossier de projet de cette session, dans le conteneur Linux. La première commande le démarre.';
+
+  @override
+  String get codeTerminalSetUpContainer => 'Configurer le conteneur Linux';
+
+  @override
+  String get codeTerminalSetUpContainerSub =>
+      'Pour l’instant, les commandes s’exécutent sur cet appareil. Le conteneur les isole et fonctionne partout de la même façon.';
+
+  @override
+  String get codeAttachFiles => 'Ajouter des fichiers';
+
+  @override
+  String codeAttachmentRemove(String name) {
+    return 'Retirer $name';
+  }
+
+  @override
+  String codeAttachFailed(String names) {
+    return 'Impossible d’ajouter $names';
+  }
 }

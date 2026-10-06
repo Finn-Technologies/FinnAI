@@ -6,6 +6,7 @@ import 'package:finn_ai/src/features/actions/device_action.dart';
 import 'package:finn_ai/src/features/actions/device_action_descriptions.dart';
 import 'package:finn_ai/src/features/actions/device_actions_controller.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
+import 'package:finn_ai/src/shared/widgets/finn_page.dart';
 import 'package:finn_ai/src/shared/widgets/ambient_background.dart';
 import 'package:finn_ai/src/shared/widgets/finn_page_header.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
@@ -115,6 +116,10 @@ class _DeviceActionsPageState extends State<DeviceActionsPage> {
                         40,
                       ),
                       children: [
+                        FinnLargeTitle(
+                          title: L10n.of(context).deviceActionsTitle,
+                          scrollOffset: _scrollOffset,
+                        ),
                         Center(
                           child: ConstrainedBox(
                             constraints: const BoxConstraints(maxWidth: 680),
@@ -197,6 +202,7 @@ class _DeviceActionsPageState extends State<DeviceActionsPage> {
                     onBack: widget.onBack,
                     metrics: metrics,
                     scrollOffset: _scrollOffset,
+                    largeTitle: true,
                   ),
                 ),
               ],
