@@ -9,6 +9,7 @@ import 'package:finn_ai/src/features/you/you_labels.dart';
 import 'package:finn_ai/src/features/you/you_memory_store.dart';
 import 'package:finn_ai/src/features/you/you_privacy_page.dart';
 import 'package:finn_ai/src/features/you/you_review_page.dart';
+import 'package:finn_ai/src/shared/widgets/finn_create_button.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 import 'package:finn_ai/src/shared/widgets/finn_overlays.dart';
 import 'package:finn_ai/src/shared/widgets/finn_page.dart';
@@ -46,11 +47,6 @@ class _YouPageState extends State<YouPage> {
       builder: (context, _) {
         final empty = _store.keptCount == 0 && _store.pending.isEmpty;
         final actions = [
-          FinnCircleButton.icon(
-            icon: FluxIcons.add,
-            label: l10n.youTellFinn,
-            onTap: () => _push(const YouAddPage()),
-          ),
           FinnCircleButton.icon(
             icon: FluxIcons.lock,
             label: l10n.youPrivacyTitle,
@@ -120,6 +116,10 @@ class _YouPageState extends State<YouPage> {
           title: l10n.hubYouTitle,
           onBack: widget.onBack,
           actions: actions,
+          footer: FinnCreateButton(
+            label: l10n.youTellFinn,
+            onTap: () => _push(const YouAddPage()),
+          ),
           children: [
             FinnReveal(
               child: _Hero(

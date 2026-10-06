@@ -11,6 +11,7 @@ import 'package:finn_ai/src/features/flows/flow_runner.dart';
 import 'package:finn_ai/src/features/flows/flow_scheduler.dart';
 import 'package:finn_ai/src/features/flows/flows_actions.dart';
 import 'package:finn_ai/src/features/flows/flows_store.dart';
+import 'package:finn_ai/src/shared/widgets/finn_create_button.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 import 'package:finn_ai/src/shared/widgets/finn_overlays.dart';
 import 'package:finn_ai/src/shared/widgets/finn_page.dart';
@@ -124,16 +125,14 @@ class _FlowsPageState extends State<FlowsPage> {
               },
             )
             .toList();
-        final plus = FinnCircleButton.icon(
-          key: const Key('add-flow-button'),
-          icon: FluxIcons.add,
-          label: l10n.flowsNewTitle,
-          onTap: () => unawaited(_newFlow()),
-        );
         return FinnPage(
           title: l10n.flowsTitle,
           onBack: widget.onBack,
-          actions: [plus],
+          footer: FinnCreateButton(
+            key: const Key('add-flow-button'),
+            label: l10n.flowsNewTitle,
+            onTap: () => unawaited(_newFlow()),
+          ),
           children: [
             if (automations.isEmpty)
               FinnReveal(child: _Empty(onCreate: _newFlow))

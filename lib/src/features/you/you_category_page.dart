@@ -7,10 +7,10 @@ import 'package:finn_ai/src/features/you/you_add_page.dart';
 import 'package:finn_ai/src/features/you/you_labels.dart';
 import 'package:finn_ai/src/features/you/you_memory_sheet.dart';
 import 'package:finn_ai/src/features/you/you_memory_store.dart';
+import 'package:finn_ai/src/shared/widgets/finn_create_button.dart';
 import 'package:finn_ai/src/shared/widgets/finn_page.dart';
 import 'package:finn_ai/src/shared/widgets/finn_page_route.dart';
 import 'package:finn_ai/src/shared/widgets/finn_ui.dart';
-import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
 
 /// Everything FinnAI remembers in one group; tap one to see where it came from.
 class YouCategoryPage extends StatelessWidget {
@@ -28,15 +28,12 @@ class YouCategoryPage extends StatelessWidget {
         final items = store.inCategory(category);
         return FinnPage(
           title: youCategoryLabel(l10n, category),
-          actions: [
-            FinnCircleButton.icon(
-              icon: FluxIcons.add,
-              label: l10n.youTellFinn,
-              onTap: () => Navigator.of(context).push(
-                FinnPageRoute<void>(child: YouAddPage(category: category)),
-              ),
+          footer: FinnCreateButton(
+            label: l10n.youTellFinn,
+            onTap: () => Navigator.of(context).push(
+              FinnPageRoute<void>(child: YouAddPage(category: category)),
             ),
-          ],
+          ),
           children: [
             FinnCaption(
               items.isEmpty

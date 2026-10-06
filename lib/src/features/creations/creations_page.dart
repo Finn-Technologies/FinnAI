@@ -27,6 +27,7 @@ import 'package:finn_ai/src/features/creations/spec/mini_app_spec.dart';
 import 'package:finn_ai/src/features/creations/spec/widget_spec.dart';
 import 'package:finn_ai/src/features/creations/templates/creation_template.dart';
 import 'package:finn_ai/src/features/creations/templates/template_catalog.dart';
+import 'package:finn_ai/src/shared/widgets/finn_create_button.dart';
 import 'package:finn_ai/src/shared/slots/slots.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 import 'package:finn_ai/src/shared/widgets/ambient_background.dart';
@@ -442,11 +443,9 @@ class _CreationsPageState extends State<CreationsPage> {
                                 : MediaQuery.paddingOf(context).bottom + 20,
                           ),
                           child: _mode == _Mode.gallery
-                              ? Center(
-                                  heightFactor: 1,
-                                  child: _NewCreationButton(
-                                    onTap: () => unawaited(_pickKind()),
-                                  ),
+                              ? FinnCreateButton(
+                                  label: L10n.of(context).creationsNewCreation,
+                                  onTap: () => unawaited(_pickKind()),
                                 )
                               : _Composer(
                                   hint: _turns.isNotEmpty &&

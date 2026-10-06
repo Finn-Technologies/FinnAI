@@ -181,38 +181,6 @@ class _QuietLoader extends StatelessWidget {
       );
 }
 
-/// The centred 50dp plus that starts a new creation.
-class _NewCreationButton extends StatelessWidget {
-  const _NewCreationButton({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => Semantics(
-        button: true,
-        label: L10n.of(context).creationsNewCreation,
-        excludeSemantics: true,
-        child: Material(
-          color: FluxColors.controlOf(context),
-          shape: const CircleBorder(),
-          child: InkWell(
-            onTap: onTap,
-            customBorder: const CircleBorder(),
-            child: SizedBox.square(
-              dimension: 50,
-              child: Center(
-                child: FluxIcon(
-                  icon: FluxIcons.add,
-                  size: 24,
-                  color: FluxColors.inkOf(context),
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-}
-
 /// A fan of frosted pastel pills: the design's "nothing yet" artwork.
 class _FanArt extends StatelessWidget {
   const _FanArt();
