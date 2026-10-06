@@ -82,14 +82,12 @@ class ShellSandbox {
   final ProcessLauncher _launcher;
   final String _shellPath;
 
-  /// Whether this platform lets an app start a shell at all. iOS does not, so
-  /// FinnAI Code there still reads and writes files but cannot run commands.
+  /// Whether this platform lets an app start a shell at all. iOS and
+  /// HarmonyOS do not (on HarmonyOS 6.1 starting `/bin/sh` from the app is
+  /// "Permission denied", checked on the API 24 emulator), so FinnAI Code
+  /// there runs commands only in the emulated container, or not at all.
   static bool get supported =>
-      !kIsWeb &&
-      (Platform.isAndroid ||
-          Platform.isLinux ||
-          Platform.isMacOS ||
-          Platform.operatingSystem == 'ohos');
+      !kIsWeb && (Platform.isAndroid || Platform.isLinux || Platform.isMacOS);
 
   static String get defaultShellPath =>
       Platform.isAndroid ? '/system/bin/sh' : '/bin/sh';

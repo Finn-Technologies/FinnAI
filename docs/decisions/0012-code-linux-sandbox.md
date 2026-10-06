@@ -32,6 +32,6 @@ Run a real **Alpine Linux aarch64** userland on the phone's own CPU under **proo
 ## Consequences
 
 - **Google Play policy risk.** Play's Device and Network Abuse policy forbids an app from downloading executable code from outside Play; Alpine's binaries (and everything `apk`/`pip`/`npm` installs) are such code. ADR 0010 rejected proot partly for this reason. Termux-style apps are distributed outside Play or under specific review. Before a Play release, decide: ship the sandbox only in non-Play builds (F-Droid, direct APK), gate it behind a build flag, or get the policy question answered. The v86 path (WebAssembly in a WebView) does not have this problem.
-- Android arm64 only. OpenHarmony and anything without the binaries fall back to the v86 container (ADR 0011), then to the device shell.
+- Android arm64 only. On HarmonyOS 6.1 (API 24 emulator) an app cannot start any process (`/bin/sh` from the app: Permission denied), so neither proot nor the device shell can run there; HarmonyOS keeps the v86 container (ADR 0011, WebAssembly in ArkWeb, no network), and without it Code writes files only.
 - First command after setup: ~0.2 s (was a 20–60 s boot). `apk add python3 git`: ~10 s on the Mi 11 Lite.
 - Licences: proot GPL-2.0 (source pinned in the build script; `THIRD_PARTY_NOTICES.md`), talloc LGPL-3.0 (static, source pinned), Alpine packages under their own licences, downloaded by the user's action.

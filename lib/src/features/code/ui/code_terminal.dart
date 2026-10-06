@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -269,7 +270,12 @@ class _CodeTerminalViewState extends State<CodeTerminalView> {
                     autocorrect: false,
                     enableSuggestions: false,
                     textCapitalization: TextCapitalization.none,
-                    keyboardType: TextInputType.visiblePassword,
+                    // Android keyboards drop autocorrect for this type;
+                    // HarmonyOS treats it as a password and blacks out
+                    // screen capture, so there it stays plain text.
+                    keyboardType: Platform.isAndroid
+                        ? TextInputType.visiblePassword
+                        : TextInputType.text,
                     textInputAction: TextInputAction.go,
                     inputFormatters: [LengthLimitingTextInputFormatter(2000)],
                     onSubmitted: (_) => _run(),
