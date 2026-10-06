@@ -222,7 +222,17 @@ class CodeAgent extends ChangeNotifier {
         }
         if (raw == null) return; // _stream recorded the error.
 
-        final parsed = AgentProtocol.parse(raw);
+        var parsed = AgentProtocol.parse(raw);
+        if (gateway.budget.examples) {
+          final messages =
+              sessions.byId(sessionId)?.messages ?? const <CodeMessage>[];
+          final request = messages.reversed
+                  .where((message) => message.isUser)
+                  .firstOrNull
+                  ?.text ??
+              '';
+          parsed = AgentProtocol.repair(parsed, request: request);
+        }
         // A reply whose action cannot be used (cut off, or a file block with
         // no name) is not an answer: the model is told what was wrong and
         // tries again. Twice in a row ends the request.
@@ -324,6 +334,7 @@ class CodeAgent extends ChangeNotifier {
       system: AgentProtocol.systemPrompt(
         shell: runner.canRunCommands,
         container: runner.environment == CommandEnvironment.container,
+        edits: !small,
       ),
       turns: turns,
       conversationId: 'code-$sessionId',

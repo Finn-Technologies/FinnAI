@@ -562,4 +562,31 @@ void main() {
       expect(AgentProtocol.hintFor(action), contains('seq 1 5'));
     });
   });
+
+  group('repair', () {
+    const request = 'Create a shell script count.sh that prints 1 to 5.';
+
+    test('a script written as a command becomes the named file', () {
+      final reply = AgentProtocol.repair(
+        AgentProtocol.parse('```sh\n#!/bin/sh\nseq 1 5\n```'),
+        request: request,
+      );
+      expect(reply.action!.isShell, isFalse);
+      expect(reply.action!.path, 'count.sh');
+      expect(reply.action!.content, '#!/bin/sh\nseq 1 5\n');
+    });
+
+    test('a bare command line is run; a sentence is not', () {
+      final run = AgentProtocol.repair(
+        AgentProtocol.parse('`sh count.sh`'),
+        request: request,
+      );
+      expect(run.action!.command, 'sh count.sh');
+      final prose = AgentProtocol.repair(
+        AgentProtocol.parse('Done. count.sh prints the numbers 1 to 5.'),
+        request: request,
+      );
+      expect(prose.action, isNull);
+    });
+  });
 }

@@ -2,7 +2,14 @@ import 'package:flutter/foundation.dart';
 
 import 'package:finn_ai/src/features/code/sandbox/command_policy.dart';
 
-enum CodeActionKind { shell, writeFile }
+enum CodeActionKind {
+  shell,
+  writeFile,
+
+  /// Search/replace blocks applied to an existing file (cloud models only:
+  /// `docs/decisions/0010-finnai-code.md`).
+  editFile,
+}
 
 /// Where an action is in its life.
 enum CodeActionStatus {
@@ -37,6 +44,8 @@ class CodeAction {
     this.timedOut = false,
     this.deniedReason,
     this.deniedDetail = '',
+    this.previous,
+    this.after = '',
   });
 
   const CodeAction.shell(String command)
@@ -44,6 +53,10 @@ class CodeAction {
 
   const CodeAction.write(String path, String content)
       : this(kind: CodeActionKind.writeFile, path: path, content: content);
+
+  /// [blocks] is the raw `<<<<<<< SEARCH … >>>>>>> REPLACE` text.
+  const CodeAction.edit(String path, String blocks)
+      : this(kind: CodeActionKind.editFile, path: path, content: blocks);
 
   final CodeActionKind kind;
   final CodeActionStatus status;
@@ -63,7 +76,18 @@ class CodeAction {
   final PolicyReason? deniedReason;
   final String deniedDetail;
 
+  /// For a finished write or edit: the file before it, or null when the file
+  /// did not exist. Drawn as the left side of the diff.
+  final String? previous;
+
+  /// For a finished edit: the file after it (a write's is [content]).
+  final String after;
+
   bool get isShell => kind == CodeActionKind.shell;
+  bool get isEdit => kind == CodeActionKind.editFile;
+
+  /// The file as this action left it, for the diff.
+  String get newText => isEdit ? after : content;
 
   /// Waiting on the user, or on the shell.
   bool get open =>
@@ -71,7 +95,8 @@ class CodeAction {
 
   /// Same action, ignoring what happened to it. The loop uses this to notice
   /// a model repeating itself.
-  String get signature => isShell ? 'sh:$command' : 'file:$path:$content';
+  String get signature =>
+      isShell ? 'sh:$command' : '${kind.name}:$path:$content';
 
   /// Longest output and file text kept on disk. The workspace holds the real
   /// files; this is only what the transcript shows.
@@ -86,6 +111,8 @@ class CodeAction {
     bool? timedOut,
     PolicyReason? deniedReason,
     String? deniedDetail,
+    String? previous,
+    String? after,
   }) =>
       CodeAction(
         kind: kind,
@@ -99,6 +126,8 @@ class CodeAction {
         timedOut: timedOut ?? this.timedOut,
         deniedReason: deniedReason ?? this.deniedReason,
         deniedDetail: deniedDetail ?? this.deniedDetail,
+        previous: previous ?? this.previous,
+        after: after ?? this.after,
       );
 
   Map<String, Object?> toJson() => {
@@ -113,6 +142,8 @@ class CodeAction {
         if (timedOut) 'timedOut': true,
         if (deniedReason != null) 'denied': deniedReason!.name,
         if (deniedDetail.isNotEmpty) 'deniedDetail': deniedDetail,
+        if (previous != null) 'previous': _clip(previous!, storedContentChars),
+        if (after.isNotEmpty) 'after': _clip(after, storedContentChars),
       };
 
   static CodeAction? fromJson(Object? json) {
@@ -144,6 +175,8 @@ class CodeAction {
           .where((value) => value.name == json['denied'])
           .firstOrNull,
       deniedDetail: json['deniedDetail'] as String? ?? '',
+      previous: json['previous'] as String?,
+      after: json['after'] as String? ?? '',
     );
   }
 

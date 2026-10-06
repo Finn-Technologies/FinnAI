@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import 'package:finn_ai/src/features/code/agent/edit_blocks.dart';
 import 'package:finn_ai/src/features/code/providers/code_gateway.dart';
 import 'package:finn_ai/src/features/code/sandbox/command_policy.dart';
 import 'package:finn_ai/src/features/code/sessions/code_session.dart';
@@ -61,13 +62,21 @@ abstract final class AgentProtocol {
     'console'
   };
   static const Set<String> _fileTags = {'file', 'write', 'create', 'save'};
+  static const Set<String> _editTags = {'edit', 'patch'};
 
   /// The instructions the model is given. Short on purpose: on the on-device
   /// model every token here is a token less for the project.
   ///
   /// [container] says commands run in the Linux container (busybox, scripts
   /// can be made executable) rather than in the device's toybox shell.
-  static String systemPrompt({required bool shell, bool container = false}) {
+  ///
+  /// [edits] offers search/replace edits: to a cloud model, which knows the
+  /// format, and not to the on-device one, whose prompt stays short.
+  static String systemPrompt({
+    required bool shell,
+    bool container = false,
+    bool edits = false,
+  }) {
     final buffer = StringBuffer()
       ..writeln('You are FinnAI Code, a coding agent in a project folder on '
           "the user's phone. You act by writing ONE action per reply, then "
@@ -85,12 +94,29 @@ abstract final class AgentProtocol {
       ..writeln('```file hello.sh')
       ..writeln('echo hello')
       ..writeln('```')
-      ..writeln()
+      ..writeln();
+    if (edits) {
+      buffer
+        ..writeln('Change part of an existing file:')
+        ..writeln('```edit hello.sh')
+        ..writeln('<<<<<<< SEARCH')
+        ..writeln('echo hello')
+        ..writeln('=======')
+        ..writeln('echo hello world')
+        ..writeln('>>>>>>> REPLACE')
+        ..writeln('```')
+        ..writeln();
+    }
+    buffer
       ..writeln('Rules:')
       ..writeln('- Write at most one action per reply, and nothing after it.')
       ..writeln('- Paths are relative to the project folder. Never use / or ..')
-      ..writeln('- To create or change a file, ALWAYS use the file action. '
-          'Never just print its contents, and never use echo or heredocs.')
+      ..writeln(edits
+          ? '- To create a file use the file action; to change part of one, '
+              'the edit action (SEARCH must match the file exactly). Never '
+              'just print a file, and never use echo or heredocs.'
+          : '- To create or change a file, ALWAYS use the file action. '
+              'Never just print its contents, and never use echo or heredocs.')
       ..writeln('- Look before you change things: ls, then cat.')
       ..writeln('- If a file contains three backticks, fence it with four.')
       ..writeln('- Never invent the result of an action. Wait for it.')
@@ -288,6 +314,39 @@ abstract final class AgentProtocol {
     );
   }
 
+  /// Recovers the two format slips the on-device model makes most, measured
+  /// on a Mi 11 Lite with "create count.sh … then run it":
+  ///
+  /// - a script written as a command (a `sh` block opening with `#!`): it is
+  ///   the file's content, so it becomes a write to the file [request] names;
+  /// - a command written as a bare line of prose (`seq 1 5`): it is run.
+  ///
+  /// Only for the small model; a cloud model that writes prose means prose.
+  static ParsedReply repair(ParsedReply reply, {required String request}) {
+    final action = reply.action;
+    if (action != null) {
+      if (!action.isShell || !action.command.startsWith('#!')) return reply;
+      final target = fileToCreate(request);
+      if (target == null) return reply;
+      return ParsedReply(
+        prose: reply.prose,
+        action: CodeAction.write(target, '${action.command}\n'),
+        ignoredActions: reply.ignoredActions,
+      );
+    }
+    if (reply.cutOff || reply.malformed) return reply;
+    final line = reply.prose.trim().replaceAll(RegExp(r'^`+|`+$'), '').trim();
+    if (line.isEmpty || line.contains('\n') || line.length > 120) return reply;
+    if (!_bareCommand.hasMatch(line)) return reply;
+    return ParsedReply(prose: '', action: CodeAction.shell(line));
+  }
+
+  static final RegExp _bareCommand = RegExp(
+    r'^(ls|cat|sh|bash|seq|echo|printf|python3?|node|npm|npx|pip3?|mkdir|'
+    r'touch|grep|find|head|tail|wc|chmod|cp|mv|rm|git|apk|apt|apt-get|make|'
+    r'gcc|cc|go|cargo|sed|awk|sort|diff|\./[\w.-]+)( [^\n]*)?$',
+  );
+
   /// True when [info] names an action, whether or not the block is usable.
   static bool _isActionTag(String info) {
     if (info.isEmpty) return false;
@@ -296,7 +355,9 @@ abstract final class AgentProtocol {
         .first
         .toLowerCase()
         .replaceAll(RegExp(r':$'), '');
-    return _shellTags.contains(tag) || _fileTags.contains(tag);
+    return _shellTags.contains(tag) ||
+        _fileTags.contains(tag) ||
+        _editTags.contains(tag);
   }
 
   /// True once the reply holds a complete action. The loop stops reading the
@@ -326,7 +387,7 @@ abstract final class AgentProtocol {
           .trim();
       return command.isEmpty ? null : CodeAction.shell(command);
     }
-    if (_fileTags.contains(tag)) {
+    if (_fileTags.contains(tag) || _editTags.contains(tag)) {
       var path = parts.skip(1).join(' ').trim();
       // `file: hello.py`, `file path=hello.py`, `file "hello.py"`.
       path = path
@@ -337,6 +398,12 @@ abstract final class AgentProtocol {
         path = info.substring(info.indexOf(':') + 1).trim();
       }
       if (path.isEmpty) return null;
+      if (_editTags.contains(tag)) {
+        final blocks = body.join('\n');
+        return EditBlocks.parse(blocks) == null
+            ? null
+            : CodeAction.edit(path, blocks);
+      }
       return CodeAction.write(path, body.join('\n'));
     }
     return null;
@@ -361,9 +428,21 @@ abstract final class AgentProtocol {
         break;
     }
     if (!action.isShell) {
-      return action.status == CodeActionStatus.done
-          ? 'Wrote ${action.path} (${action.content.length} characters).'
-          : 'Could not write ${action.path}: ${action.output}';
+      if (action.status != CodeActionStatus.done) {
+        return 'Could not ${action.isEdit ? 'edit' : 'write'} ${action.path}: '
+            '${action.output}';
+      }
+      final verb = action.isEdit ? 'Edited' : 'Wrote';
+      final text = action.newText;
+      final unchanged = action.previous == text;
+      final buffer = StringBuffer(unchanged
+          // A small model rewrites the same file again and again; saying so
+          // is what breaks the loop.
+          ? '${action.path} already had exactly this content. Nothing changed.'
+          : '$verb ${action.path} (${text.length} characters).');
+      final run = runCommandFor(action.path);
+      if (run != null) buffer.write(' To run it: $run');
+      return buffer.toString();
     }
     final output = action.output.trim();
     final buffer = StringBuffer();
@@ -379,6 +458,14 @@ abstract final class AgentProtocol {
     if (hint != null) buffer.write('\nHint: $hint');
     return buffer.toString();
   }
+
+  /// How to run [path], when it is a script.
+  static String? runCommandFor(String path) => switch (path.split('.').last) {
+        'sh' => 'sh $path',
+        'py' => 'python3 $path',
+        'js' || 'mjs' => 'node $path',
+        _ => null,
+      };
 
   /// One line on how to get past a failure a small model keeps repeating.
   /// Only for failures with an unambiguous cause, read from the output.
@@ -458,6 +545,7 @@ abstract final class AgentProtocol {
   /// it already wrote.
   static String actionText(CodeAction action, {required bool compact}) {
     if (action.isShell) return '```sh\n${action.command}\n```';
+    if (action.isEdit) return '```edit ${action.path}\n${action.content}\n```';
     var content = action.content;
     if (compact && content.length > 240) {
       final lines = '\n'.allMatches(content).length + 1;

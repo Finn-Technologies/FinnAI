@@ -73,7 +73,10 @@ void main() {
       await agentFor(gateway).send('hi');
 
       final request = gateway.requests.single;
-      expect(request.system, AgentProtocol.systemPrompt(shell: true));
+      expect(
+        request.system,
+        AgentProtocol.systemPrompt(shell: true, edits: true),
+      );
       expect(request.turns.single, const CodeTurn.user('hi'));
       expect(request.conversationId, 'code-${sessions.active!.id}');
     });

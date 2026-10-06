@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:finn_ai/src/features/code/agent/edit_blocks.dart';
 import 'package:finn_ai/src/features/code/container/container_shell.dart';
 import 'package:finn_ai/src/features/code/sandbox/command_policy.dart';
 import 'package:finn_ai/src/features/code/sandbox/shell_sandbox.dart';
@@ -77,12 +80,39 @@ class WorkspaceActionRunner extends CodeActionRunner {
   Future<CodeAction> _writeFile(
       CodeWorkspace workspace, CodeAction action) async {
     try {
-      final path = await workspace.writeFile(action.path, action.content);
+      final previous = await _current(workspace, action.path);
+      final String next;
+      if (action.isEdit) {
+        final pairs = EditBlocks.parse(action.content);
+        if (pairs == null) {
+          return action.copyWith(
+            status: CodeActionStatus.failed,
+            output: 'No complete SEARCH/REPLACE block.',
+          );
+        }
+        if (previous == null) {
+          return action.copyWith(
+            status: CodeActionStatus.failed,
+            output: 'No such file. Create it with a file action.',
+          );
+        }
+        next = EditBlocks.apply(previous, pairs);
+      } else {
+        next = action.content;
+      }
+      final path = await workspace.writeFile(action.path, next);
       return CodeAction(
         kind: action.kind,
         status: CodeActionStatus.done,
         path: path,
         content: action.content,
+        previous: previous,
+        after: action.isEdit ? next : '',
+      );
+    } on EditMismatch catch (error) {
+      return action.copyWith(
+        status: CodeActionStatus.failed,
+        output: error.toString(),
       );
     } on WorkspaceEscape {
       return action.copyWith(
@@ -100,6 +130,17 @@ class WorkspaceActionRunner extends CodeActionRunner {
         status: CodeActionStatus.failed,
         output: error is Exception ? error.toString() : 'Could not write.',
       );
+    }
+  }
+
+  /// The file's text before the action, or null when it does not exist.
+  static Future<String?> _current(CodeWorkspace workspace, String path) async {
+    try {
+      final file = workspace.fileFor(path);
+      if (!await file.exists()) return null;
+      return await workspace.readFile(path);
+    } on FileSystemException {
+      return null;
     }
   }
 
