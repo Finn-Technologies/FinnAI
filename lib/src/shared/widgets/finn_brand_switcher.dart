@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import 'package:finn_ai/l10n/l10n_helper.dart';
 import 'package:finn_ai/src/shared/config/app_mode.dart';
@@ -250,7 +249,7 @@ class _FinnBrandSwitcherState extends State<FinnBrandSwitcher>
                         duration: FluxMotion.revealDuration,
                         curve: FluxMotion.revealCurve,
                         child: FluxIcon(
-                          icon: PhosphorIconsFill.caretDown,
+                          icon: FluxIcons.chevronDown,
                           size: 20,
                           color: FluxColors.mutedOf(context),
                         ),

@@ -150,6 +150,46 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('"+" opens the design\'s sheet: create cards, then add to chat',
+      (tester) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 2.75;
+    addTearDown(tester.view.reset);
+    debugSetFinnPlatformOverride(FinnPlatform.android);
+    addTearDown(() => debugSetFinnPlatformOverride(null));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: FluxTheme.light,
+        home: const HomeShell(initializeServices: false),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(find.byKey(const ValueKey('plus-sheet')), findsNothing);
+
+    await tester.tap(find.bySemanticsLabel('Add attachment'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(find.byKey(const ValueKey('plus-sheet')), findsOneWidget);
+    for (final title in [
+      'Widget',
+      'Mini app',
+      'Presentation',
+      'Flow',
+      'Photo',
+      'Camera',
+    ]) {
+      expect(find.byKey(ValueKey('plus-$title')), findsOneWidget,
+          reason: title);
+    }
+    expect(tester.takeException(), isNull);
+
+    // A tap outside puts it away.
+    await tester.tapAt(const Offset(200, 120));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byKey(const ValueKey('plus-sheet')), findsNothing);
+  });
+
   testWidgets('the composer offers voice first, then send', (tester) async {
     // Voice mode is a phone feature; the Linux test host would hide the mic.
     debugSetFinnPlatformOverride(FinnPlatform.android);

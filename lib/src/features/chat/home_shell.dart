@@ -9,7 +9,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:finn_ai/src/features/chat/chat_options.dart';
 import 'package:finn_ai/src/features/conversations/conversation_store.dart';
 import 'package:finn_ai/src/features/conversations/pinned_chats_store.dart';
@@ -91,6 +90,7 @@ part 'widgets/bubbles.dart';
 part 'widgets/replies.dart';
 part 'widgets/sources.dart';
 part 'widgets/dialogs.dart';
+part 'widgets/plus_sheet.dart';
 part 'widgets/composer.dart';
 part 'widgets/composer_attachment.dart';
 part 'widgets/sidebar.dart';
@@ -486,37 +486,6 @@ class _HomeShellState extends State<HomeShell>
                                 showChatOptions(context, activeConversation),
                       ),
                     ),
-                    if (_attachmentMenuOpen) ...[
-                      Positioned.fill(
-                        child: GestureDetector(
-                          behavior: HitTestBehavior.translucent,
-                          onTap: _closeAttachmentMenu,
-                          child: const SizedBox.expand(),
-                        ),
-                      ),
-                      ValueListenableBuilder<bool>(
-                        valueListenable: _chatScrolledAway,
-                        builder: (context, scrolledAway, _) =>
-                            AnimatedPositioned(
-                          left: contentLeft,
-                          bottom: safeBottom + composerLift + 63,
-                          duration: MediaQuery.disableAnimationsOf(context)
-                              ? Duration.zero
-                              : const Duration(milliseconds: 220),
-                          curve: Curves.easeOutCubic,
-                          child: _FadeRise(
-                            rise: 8,
-                            child: _IMessageAttachmentMenu(
-                              onSelectCamera: _pickFromCamera,
-                              onSelectPhoto: _pickFromGallery,
-                              onSelectFile: _pickFromFileSystem,
-                              onCreate: _startCreate,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-
                     ValueListenableBuilder<bool>(
                       valueListenable: _chatScrolledAway,
                       builder: (context, scrolledAway, _) => AnimatedPositioned(
@@ -556,6 +525,18 @@ class _HomeShellState extends State<HomeShell>
                           onVoiceTap: _tapVoice,
                           voice: _voice,
                         ),
+                      ),
+                    ),
+                    Positioned.fill(
+                      child: _PlusSheet(
+                        open: _attachmentMenuOpen,
+                        onClose: _closeAttachmentMenu,
+                        onSelectCamera: _pickFromCamera,
+                        onSelectPhoto: _pickFromGallery,
+                        onSelectFile: _pickFromFileSystem,
+                        onCreate: _startCreate,
+                        bottomInset: safeBottom,
+                        maxWidth: math.max(560, contentWidth + 50),
                       ),
                     ),
                   ],

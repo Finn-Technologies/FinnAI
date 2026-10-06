@@ -18,8 +18,8 @@ abstract final class CodeIcons {
   static const code = PhosphorIconsFill.code;
   static const container = PhosphorIconsFill.package;
   static const warning = PhosphorIconsFill.warning;
-  static const chevronDown = PhosphorIconsFill.caretDown;
-  static const back = PhosphorIconsFill.caretLeft;
+  static const chevronDown = PhosphorIconsBold.caretDown;
+  static const back = PhosphorIconsBold.caretLeft;
   static const fileNew = PhosphorIconsFill.filePlus;
   static const fileEdit = PhosphorIconsFill.notePencil;
   static const copy = PhosphorIconsFill.copySimple;

@@ -25,8 +25,8 @@ abstract final class FlowIcons {
   static const chat = PhosphorIconsFill.chatCircle;
   static const phone = PhosphorIconsFill.deviceMobile;
   static const bolt = PhosphorIconsFill.lightning;
-  static const arrowDown = PhosphorIconsFill.caretDown;
-  static const arrowUp = PhosphorIconsFill.caretUp;
+  static const arrowDown = PhosphorIconsBold.caretDown;
+  static const arrowUp = PhosphorIconsBold.caretUp;
   static const trash = PhosphorIconsFill.trash;
   static const play = PhosphorIconsFill.playCircle;
   static const flowchart = PhosphorIconsFill.flowArrow;

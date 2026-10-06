@@ -196,7 +196,9 @@ A second app inside the app: its own sessions, settings and providers, in the sa
 | Colors, radii, text theme, system UI overlays | `lib/src/shared/theme/flux_theme.dart` |
 | Space reserved below bottom-anchored UI (composer, nav bar height) | `lib/src/shared/theme/flux_theme.dart` (`FluxBottomInset.bottomOf`) |
 | Buttons, pills, glass surfaces | `lib/src/shared/widgets/flux_controls.dart` |
-| The icon set (`FluxIcons`, Phosphor fill) and `FluxIcon` | `lib/src/shared/widgets/flux_icons.dart` |
+| The icon set (`FluxIcons`, Phosphor fill; bold for bare strokes), `FluxIcon`, and the design-asset → icon map | `lib/src/shared/widgets/flux_icons.dart` |
+| Paths of the design's exported SVGs | `lib/src/shared/widgets/figma_assets.dart` |
+| The chat's "+" sheet (create cards, add to chat) | `lib/src/features/chat/widgets/plus_sheet.dart` |
 | Flat raised surfaces (fill + 1px hairline, never a shadow), the pill text field, filter chips, the progressive backdrop blur | `lib/src/shared/widgets/flux_surfaces.dart` (`FluxSurfaces`, `FluxPillField`, `FluxChip`, `FluxProgressiveBlur`, `FluxGlass`) |
 | Page header used by every sub-page | `lib/src/shared/widgets/finn_page_header.dart` |
 | Design primitives (circle button, row tile, switch, reveal animation) | `lib/src/shared/widgets/finn_ui.dart` |

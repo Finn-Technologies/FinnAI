@@ -48,9 +48,9 @@ IconData _iconFor(FinnCreation creation) =>
         : _kindIcon(creation.kind);
 
 IconData _kindIcon(CreationKind kind) => switch (kind) {
-      CreationKind.app => FluxIcons.canvas,
-      CreationKind.widget => FluxIcons.chip,
-      CreationKind.presentation => FluxIcons.flows,
+      CreationKind.app => FluxIcons.miniApp,
+      CreationKind.widget => FluxIcons.widget,
+      CreationKind.presentation => FluxIcons.presentation,
     };
 
 String? _emojiFor(FinnCreation creation) {
