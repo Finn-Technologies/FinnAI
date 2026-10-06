@@ -125,21 +125,23 @@ class CodeStatusLine extends StatelessWidget {
                   },
                 ),
                 // Idle says nothing: the grey dot already does.
-                if (phase != CodeAgentPhase.idle) separator,
-                Flexible(
-                  child: AnimatedSwitcher(
-                    duration: CodeStyle.motion(context, CodeStyle.fast),
-                    child: Text(
-                      phase == CodeAgentPhase.idle ? '' : state,
-                      key: ValueKey(phase),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: style.copyWith(
-                        color: phase == CodeAgentPhase.idle ? muted : dot,
+                if (phase != CodeAgentPhase.idle) ...[
+                  separator,
+                  Flexible(
+                    child: AnimatedSwitcher(
+                      duration: CodeStyle.motion(context, CodeStyle.fast),
+                      child: Text(
+                        state,
+                        key: ValueKey(phase),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: style.copyWith(
+                          color: phase == CodeAgentPhase.idle ? muted : dot,
+                        ),
                       ),
                     ),
                   ),
-                ),
+                ],
               ],
             ),
           ),

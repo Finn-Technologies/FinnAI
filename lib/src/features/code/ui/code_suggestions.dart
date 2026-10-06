@@ -89,7 +89,7 @@ class CodeSuggestionList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final rows = items.take(6).toList();
+    final rows = items.take(7).toList();
     return Container(
       key: const ValueKey('code-suggestions'),
       decoration: FluxSurfaces.flatCard(context),

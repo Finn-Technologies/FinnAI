@@ -30,5 +30,5 @@ abstract final class CodeIcons {
   static const failed = PhosphorIconsFill.xCircle;
   static const blocked = PhosphorIconsFill.prohibit;
   static const retry = PhosphorIconsFill.arrowCounterClockwise;
-  static const clear = PhosphorIconsFill.broom;
+  static const clear = PhosphorIconsFill.eraser;
 }
