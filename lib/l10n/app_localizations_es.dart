@@ -4112,4 +4112,106 @@ class AppLocalizationsEs extends AppLocalizations {
   String codeAttachFailed(String names) {
     return 'No se pudo añadir $names';
   }
+
+  @override
+  String get codeVerbRun => 'Ejecutar';
+
+  @override
+  String get codeVerbWrite => 'Escribir';
+
+  @override
+  String get codeVerbEdit => 'Editar';
+
+  @override
+  String get codeNewFile => 'archivo nuevo';
+
+  @override
+  String codeShowMoreLines(String count) {
+    return 'Mostrar $count líneas más';
+  }
+
+  @override
+  String get codeShowLess => 'Mostrar menos';
+
+  @override
+  String codeUnchangedLines(String count) {
+    return '$count líneas sin cambios';
+  }
+
+  @override
+  String get codeApproveRun => '¿Ejecutar este comando?';
+
+  @override
+  String get codeApproveWrite => '¿Escribir este archivo?';
+
+  @override
+  String get codeApproveEdit => '¿Aplicar este cambio?';
+
+  @override
+  String get codeReject => 'Rechazar';
+
+  @override
+  String get codeApply => 'Aplicar';
+
+  @override
+  String codeExitCode(String code) {
+    return 'salida $code';
+  }
+
+  @override
+  String get codeCopy => 'Copiar';
+
+  @override
+  String get codeStatusIdle => 'listo';
+
+  @override
+  String get codeStatusThinking => 'pensando';
+
+  @override
+  String get codeStatusRunning => 'ejecutando';
+
+  @override
+  String get codeStatusWaiting => 'esperando tu respuesta';
+
+  @override
+  String get codeEnvLinux => 'Linux';
+
+  @override
+  String get codeEnvDevice => 'shell';
+
+  @override
+  String get codeEnvNone => 'solo archivos';
+
+  @override
+  String get codeSlashNewDesc => 'Iniciar una sesión nueva';
+
+  @override
+  String get codeSlashFilesDesc => 'Ver los archivos del proyecto';
+
+  @override
+  String get codeSlashTerminalDesc => 'Abrir el terminal';
+
+  @override
+  String get codeSlashModelDesc => 'Elegir el modelo';
+
+  @override
+  String get codeSlashModeDesc => 'Cambiar lo que puede hacer el agente';
+
+  @override
+  String get codeSlashRetryDesc => 'Continuar o reintentar la última petición';
+
+  @override
+  String get codeSlashSettingsDesc => 'Abrir los ajustes de Code';
+
+  @override
+  String get codeMentionNoFiles => 'Aún no hay archivos';
+
+  @override
+  String get codeTerminalExpand => 'Abrir en pantalla completa';
+
+  @override
+  String get codeTerminalShow => 'Mostrar terminal';
+
+  @override
+  String get codeTerminalHide => 'Ocultar terminal';
 }

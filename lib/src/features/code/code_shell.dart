@@ -18,6 +18,14 @@ import 'package:finn_ai/src/features/code/ui/code_models_page.dart';
 import 'package:finn_ai/src/features/code/ui/code_session_options.dart';
 import 'package:finn_ai/src/features/code/ui/code_sidebar.dart';
 import 'package:finn_ai/src/features/code/ui/code_terminal_page.dart';
+import 'package:finn_ai/src/features/code/ui/code_terminal_panel.dart';
+import 'package:finn_ai/src/features/code/ui/code_icons.dart';
+import 'package:finn_ai/src/features/code/ui/code_status_line.dart';
+import 'package:finn_ai/src/features/code/ui/code_style.dart';
+import 'package:finn_ai/src/features/code/ui/code_suggestions.dart';
+import 'package:finn_ai/src/features/code/agent/code_agent.dart';
+import 'package:finn_ai/src/features/code/settings/code_agent_page.dart';
+import 'package:finn_ai/src/inference/model_catalog.dart';
 import 'package:finn_ai/src/platform/platform_target.dart';
 import 'package:finn_ai/src/shared/layout/finn_layout.dart';
 import 'package:finn_ai/src/shared/widgets/desktop_shortcuts.dart';
@@ -51,7 +59,6 @@ class _CodeShellState extends State<CodeShell>
   final _composer = TextEditingController();
   final _focusNode = FocusNode();
   final _scrollController = ScrollController();
-  final _scrolledAway = ValueNotifier<bool>(false);
   late final FinnSidebarMotion _sidebar = FinnSidebarMotion(
     vsync: this,
     onChanged: () {
@@ -59,14 +66,9 @@ class _CodeShellState extends State<CodeShell>
     },
   );
 
-  /// How far from the newest message the transcript must scroll before the
-  /// composer shrinks.
-  static const _awayThreshold = 140.0;
-
   @override
   void initState() {
     super.initState();
-    _scrollController.addListener(_onScroll);
     if (widget.initializeServices) {
       unawaited(_services.initialize().then((_) => _warmContainer()));
     }
@@ -91,7 +93,6 @@ class _CodeShellState extends State<CodeShell>
 
   @override
   void dispose() {
-    _scrollController.removeListener(_onScroll);
     _services.agent.removeListener(_focusComposerOnDesktop);
     // Leaving FinnAI Code ends a request in progress: a command waiting for a
     // tap would otherwise wait for a screen that is gone, and a running model
@@ -101,7 +102,6 @@ class _CodeShellState extends State<CodeShell>
     // for it.
     unawaited(_services.container.stop());
     _scrollController.dispose();
-    _scrolledAway.dispose();
     _composer.dispose();
     _focusNode.dispose();
     _sidebar.dispose();
@@ -118,11 +118,6 @@ class _CodeShellState extends State<CodeShell>
     unawaited(container.host.start().catchError((Object _) {
       // A failed warm-up is retried by the first command, which reports it.
     }));
-  }
-
-  void _onScroll() {
-    if (!_scrollController.hasClients) return;
-    _scrolledAway.value = _scrollController.offset > _awayThreshold;
   }
 
   /// Files picked for the next message; copied into the project folder when
@@ -238,12 +233,96 @@ class _CodeShellState extends State<CodeShell>
     return _services.providers.modelFor(ref)?.name ?? ref.modelId;
   }
 
+  bool _terminalOpen = false;
+
+  void _setTerminal(bool open) {
+    if (open == _terminalOpen) return;
+    HapticFeedback.selectionClick();
+    if (open) _focusNode.unfocus();
+    setState(() => _terminalOpen = open);
+  }
+
+  Future<void> _expandTerminal() async {
+    setState(() => _terminalOpen = false);
+    await _push(CodeTerminalPage(
+      services: _services,
+      onBack: () => Navigator.of(context).pop(),
+    ));
+  }
+
+  List<CodeSlashCommand> _commands(BuildContext context) {
+    final l10n = L10n.of(context);
+    return [
+      CodeSlashCommand(
+        name: 'new',
+        description: l10n.codeSlashNewDesc,
+        icon: FluxIcons.add,
+        run: _newSession,
+      ),
+      CodeSlashCommand(
+        name: 'files',
+        description: l10n.codeSlashFilesDesc,
+        icon: CodeIcons.folder,
+        run: () => _openFiles(fromSidebar: false),
+      ),
+      CodeSlashCommand(
+        name: 'terminal',
+        description: l10n.codeSlashTerminalDesc,
+        icon: CodeIcons.terminal,
+        run: () => _setTerminal(true),
+      ),
+      CodeSlashCommand(
+        name: 'model',
+        description: l10n.codeSlashModelDesc,
+        icon: FluxIcons.chip,
+        run: _openModels,
+      ),
+      CodeSlashCommand(
+        name: 'mode',
+        description: l10n.codeSlashModeDesc,
+        icon: CodeIcons.shield,
+        run: () => _push(CodeAgentPage(services: _services)),
+      ),
+      CodeSlashCommand(
+        name: 'retry',
+        description: l10n.codeSlashRetryDesc,
+        icon: CodeIcons.retry,
+        run: () => unawaited(_services.agent.resume()),
+      ),
+      CodeSlashCommand(
+        name: 'settings',
+        description: l10n.codeSlashSettingsDesc,
+        icon: FluxIcons.settings,
+        run: () => _push(CodeSettingsPage(
+          services: _services,
+          onBack: () => Navigator.of(context).pop(),
+        )),
+      ),
+    ];
+  }
+
+  Future<List<String>> _projectFiles() async {
+    final session = _services.sessions.active;
+    if (session == null) return const [];
+    try {
+      return await (await _services.sessions.workspaceOf(session.id))
+          .allFiles(limit: 300);
+    } catch (_) {
+      return const [];
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: !_sidebar.open,
+      canPop: !_sidebar.open && !_terminalOpen,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop && _sidebar.open) _sidebar.set(context, false);
+        if (didPop) return;
+        if (_terminalOpen) {
+          _setTerminal(false);
+        } else if (_sidebar.open) {
+          _sidebar.set(context, false);
+        }
       },
       child: DesktopShortcuts(
         onNew: _newSession,
@@ -253,17 +332,20 @@ class _CodeShellState extends State<CodeShell>
           resizeToAvoidBottomInset: true,
           body: LayoutBuilder(
             builder: (context, constraints) {
-              final sy = FinnLayout.scaleY(
-                  constraints.maxHeight, constraints.maxWidth);
+              final safeTop = MediaQuery.paddingOf(context).top;
               final safeBottom = FluxBottomInset.bottomOf(context);
-              const composerLift = 10.0;
-              final gutter = constraints.maxWidth < 380 ? 20.0 : 25.0;
+              final gutter = constraints.maxWidth < 380 ? 12.0 : 16.0;
               final docked = FinnLayout.isDocked(constraints.maxWidth);
               final bodyWidth = FinnLayout.bodyWidth(constraints.maxWidth);
-              final contentWidth = math.min(760.0, bodyWidth - gutter * 2);
+              final contentWidth = math.min(820.0, bodyWidth - gutter * 2);
               final contentLeft = (bodyWidth - contentWidth) / 2;
               final sidebarWidth =
                   FinnLayout.sidebarWidth(constraints.maxWidth);
+              final headerTop = safeTop + 8;
+              final panelHeight = math.min(
+                constraints.maxHeight * .48,
+                460.0 + safeBottom,
+              );
 
               final home = RepaintBoundary(
                 child: ColoredBox(
@@ -278,26 +360,27 @@ class _CodeShellState extends State<CodeShell>
                     builder: (context, _) {
                       final session = _services.sessions.active;
                       final empty = session == null || session.messages.isEmpty;
+                      final agent = _services.agent;
+                      final status = CodeStatusLine(
+                        // The chip icon already says "on this device"; the
+                        // line names the model itself.
+                        modelLabel: _services.providers.active.isLocal
+                            ? finnModels.single.name
+                            : _modelLabel(context),
+                        modelIsLocal: _services.providers.active.isLocal,
+                        environment: _services.runner.environment,
+                        permission: _services.settings.settings.permissionMode,
+                        phase: agent.runningSessionId == null ||
+                                agent.runningSessionId == session?.id
+                            ? agent.phase
+                            : CodeAgentPhase.idle,
+                        onModel: _openModels,
+                        onPermission: (mode) => _services.settings
+                            .update((s) => s.copyWith(permissionMode: mode)),
+                        onTerminal: () => _setTerminal(!_terminalOpen),
+                      );
                       return Stack(
                         children: [
-                          if (empty)
-                            Positioned(
-                              left: 0,
-                              right: 0,
-                              bottom: 0,
-                              height: constraints.maxHeight * 400 / 912,
-                              child: IgnorePointer(
-                                child: DecoratedBox(
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      begin: Alignment.topCenter,
-                                      end: Alignment.bottomCenter,
-                                      colors: FluxColors.ambientWashOf(context),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
                           Positioned(
                             left: contentLeft,
                             width: contentWidth,
@@ -305,18 +388,17 @@ class _CodeShellState extends State<CodeShell>
                             bottom: 0,
                             child: CodeConversation(
                               session: session,
-                              agent: _services.agent,
-                              topInset: 125 * sy,
-                              // The chips sit above the composer, so the newest
-                              // message clears both.
-                              bottomInset: safeBottom + composerLift + 65 + 46,
+                              agent: agent,
+                              topInset: headerTop + CodeStyle.control + 14,
+                              // The field and the status line under it.
+                              bottomInset: safeBottom + 10 + 44 + 30,
                               scrollController: _scrollController,
                             ),
                           ),
                           Positioned(
                             left: contentLeft,
                             width: contentWidth,
-                            top: 70 * sy,
+                            top: headerTop,
                             child: _Header(
                               showMenuSlot: !docked,
                               title: empty ? null : session.title,
@@ -326,35 +408,43 @@ class _CodeShellState extends State<CodeShell>
                                   : () => _sessionOptions(session),
                             ),
                           ),
-                          ValueListenableBuilder<bool>(
-                            valueListenable: _scrolledAway,
-                            builder: (context, away, _) => Positioned(
-                              left: contentLeft,
-                              bottom: safeBottom + composerLift + 3,
-                              child: CodeComposer(
-                                controller: _composer,
-                                focusNode: _focusNode,
-                                busy: _services.agent.busy,
-                                onSend: _send,
-                                onStop: _services.agent.stop,
-                                modelLabel: _modelLabel(context),
-                                modelIsLocal:
-                                    _services.providers.active.isLocal,
-                                permission:
-                                    _services.settings.settings.permissionMode,
-                                onModel: _openModels,
-                                onPermission: (mode) => _services.settings
-                                    .update((s) =>
-                                        s.copyWith(permissionMode: mode)),
-                                width: contentWidth,
-                                compact: away,
-                                attachments: [
-                                  for (final file in _attachments)
-                                    file.uri.pathSegments.last,
-                                ],
-                                onAttach: _attach,
-                                onRemoveAttachment: (i) =>
-                                    setState(() => _attachments.removeAt(i)),
+                          Positioned(
+                            left: contentLeft,
+                            width: contentWidth,
+                            bottom: safeBottom + 4,
+                            child: CodeComposer(
+                              controller: _composer,
+                              focusNode: _focusNode,
+                              busy: agent.busy,
+                              onSend: _send,
+                              onStop: agent.stop,
+                              status: status,
+                              commands: _commands(context),
+                              files: _projectFiles,
+                              width: contentWidth,
+                              attachments: [
+                                for (final file in _attachments)
+                                  file.uri.pathSegments.last,
+                              ],
+                              onAttach: _attach,
+                              onRemoveAttachment: (i) =>
+                                  setState(() => _attachments.removeAt(i)),
+                            ),
+                          ),
+                          Positioned(
+                            left: docked ? contentLeft : 0,
+                            right: docked
+                                ? bodyWidth - contentLeft - contentWidth
+                                : 0,
+                            bottom: 0,
+                            child: CodeTerminalSlot(
+                              open: _terminalOpen,
+                              height: panelHeight,
+                              panel: CodeTerminalPanel(
+                                services: _services,
+                                bottomInset: safeBottom,
+                                onClose: () => _setTerminal(false),
+                                onExpand: _expandTerminal,
                               ),
                             ),
                           ),
@@ -397,7 +487,8 @@ class _CodeShellState extends State<CodeShell>
                   progress: _sidebar.controller.value,
                   sidebarOpen: _sidebar.open,
                   toggleLeft: contentLeft,
-                  toggleTop: 70 * sy,
+                  toggleTop: headerTop,
+                  toggleDimension: CodeStyle.control + 4,
                   onToggle: () => _sidebar.set(context, !_sidebar.open),
                   onDragStart: _sidebar.dragStart,
                   onDragUpdate: (d) => _sidebar.dragUpdate(d, sidebarWidth),
@@ -412,8 +503,9 @@ class _CodeShellState extends State<CodeShell>
   }
 }
 
-/// The top row: the control slot, the session's name, and a new-session
-/// button once there is a session on screen.
+/// The top row: the toggle's slot, the session's name, and a new-session
+/// button once there is a session on screen. 40dp, a step down from the
+/// chat app's 50.
 class _Header extends StatelessWidget {
   const _Header({
     this.title,
@@ -428,17 +520,18 @@ class _Header extends StatelessWidget {
   final VoidCallback? onNewSession;
   final VoidCallback? onTitleTap;
 
+  static const double _size = CodeStyle.control + 4;
+
   @override
   Widget build(BuildContext context) {
     final title = this.title;
     return SizedBox(
-      height: 50,
+      height: _size,
       child: Row(
         children: [
-          if (showMenuSlot)
-            const SizedBox(width: FinnSidebarToggleButton.dimension),
+          if (showMenuSlot) const SizedBox(width: _size),
           if (title != null && title.isNotEmpty) ...[
-            if (showMenuSlot) const SizedBox(width: 20),
+            if (showMenuSlot) const SizedBox(width: 12),
             Expanded(
               child: Semantics(
                 button: onTitleTap != null,
@@ -451,17 +544,16 @@ class _Header extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontFamily: 'InstrumentSans',
-                      fontSize: 18,
+                      fontFamily: CodeStyle.sans,
+                      fontSize: 15,
                       height: 1.2,
-                      fontWeight: FontWeight.w400,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),
               ),
             ),
-            // A title that just fits must not touch the button.
-            if (onNewSession != null) const SizedBox(width: 12),
+            if (onNewSession != null) const SizedBox(width: 10),
           ] else
             const Spacer(),
           if (onNewSession != null)
@@ -476,15 +568,15 @@ class _Header extends StatelessWidget {
                   shape: const CircleBorder(),
                   child: SizedBox.square(
                     key: const ValueKey('code-new-session-button'),
-                    dimension: 50,
+                    dimension: _size,
                     child: InkWell(
                       onTap: onNewSession,
                       customBorder: const CircleBorder(),
-                      child: const Center(
-                        child: FigmaSvg(
-                          asset: FigmaAssets.appNewChat,
-                          width: 25,
-                          height: 25,
+                      child: Center(
+                        child: FluxIcon(
+                          icon: FluxIcons.edit,
+                          size: 18,
+                          color: FluxColors.inkOf(context),
                         ),
                       ),
                     ),

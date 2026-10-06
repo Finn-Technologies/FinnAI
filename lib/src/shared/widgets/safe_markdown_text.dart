@@ -55,19 +55,19 @@ class SafeMarkdownText extends StatefulWidget {
     super.key,
     required this.text,
     this.showImages = true,
+    this.codeFontFamily = 'monospace',
   });
 
   final String text;
   final bool showImages;
+  final String codeFontFamily; // FinnAI Code passes its bundled monospace.
 
-  /// Number of full Markdown parses performed, across all instances. A
-  /// streaming reply used to re-parse the whole answer on every build; the
-  /// tests assert how many parses a stream actually costs.
+  /// Full Markdown parses across all instances; tests assert what a stream
+  /// costs (a reply used to re-parse whole on every build).
   @visibleForTesting
   static int debugParseCount = 0;
 
-  /// How long the screen is allowed to trail a streaming answer. Exposed so a
-  /// test can wait exactly the window rather than guessing at it.
+  /// How long the screen may trail a streaming answer (exposed for tests).
   @visibleForTesting
   static const Duration reparseDelay = Duration(milliseconds: 48);
 
@@ -207,9 +207,8 @@ class SafeMarkdownTextState extends State<SafeMarkdownText> {
     _pendingReparse = null;
   }
 
-  /// Queues the trailing parse that ends a deferral. The flag is the important
-  /// half: it makes the parse that follows unconditional, so this cannot
-  /// re-defer and lose the final tokens.
+  /// Queues the trailing parse that ends a deferral. The flag makes the next
+  /// parse unconditional, so it cannot re-defer and lose the final tokens.
   void _scheduleReparse() {
     _pendingReparse ??= Timer(SafeMarkdownText.reparseDelay, () {
       _pendingReparse = null;
@@ -505,7 +504,7 @@ class SafeMarkdownTextState extends State<SafeMarkdownText> {
             child: Text(
               code,
               style: TextStyle(
-                fontFamily: 'monospace',
+                fontFamily: widget.codeFontFamily,
                 fontSize: 13,
                 height: 1.42,
                 color: FluxColors.inkOf(context),
@@ -654,7 +653,7 @@ class SafeMarkdownTextState extends State<SafeMarkdownText> {
           TextSpan(
             text: token.substring(1, token.length - 1),
             style: TextStyle(
-              fontFamily: 'monospace',
+              fontFamily: widget.codeFontFamily,
               fontSize: (base.fontSize ?? 14) * 0.92,
               backgroundColor: base.color?.withValues(alpha: .08),
             ),

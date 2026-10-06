@@ -38,6 +38,8 @@ const Map<String, String> _identicalAllowlist = {
   'appBrandFinnAICode': 'product name',
   'codeTerminalTitle': 'technology term (de/es/fr)',
   'codeModelsOnDeviceTitle': 'product name',
+  'codeEnvLinux': 'product name',
+  'codeEnvDevice': 'technology term',
   'codeSettingsAgent': 'loanword (de/fr)',
   'codeAgentTitle': 'loanword (de/fr)',
   'codeActionOutput': 'loanword (it)',

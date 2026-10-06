@@ -7261,6 +7261,198 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn’t add {names}'**
   String codeAttachFailed(String names);
+
+  /// Tool row verb for a command
+  ///
+  /// In en, this message translates to:
+  /// **'Run'**
+  String get codeVerbRun;
+
+  /// Tool row verb for a file write
+  ///
+  /// In en, this message translates to:
+  /// **'Write'**
+  String get codeVerbWrite;
+
+  /// Tool row verb for a file edit
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get codeVerbEdit;
+
+  /// Marks a write that created a file
+  ///
+  /// In en, this message translates to:
+  /// **'new file'**
+  String get codeNewFile;
+
+  /// Expands clipped code or output
+  ///
+  /// In en, this message translates to:
+  /// **'Show {count} more lines'**
+  String codeShowMoreLines(String count);
+
+  /// Collapses code or output
+  ///
+  /// In en, this message translates to:
+  /// **'Show less'**
+  String get codeShowLess;
+
+  /// A folded run in a diff
+  ///
+  /// In en, this message translates to:
+  /// **'{count} unchanged lines'**
+  String codeUnchangedLines(String count);
+
+  /// Inline approval prompt for a command
+  ///
+  /// In en, this message translates to:
+  /// **'Run this command?'**
+  String get codeApproveRun;
+
+  /// Inline approval prompt for a write
+  ///
+  /// In en, this message translates to:
+  /// **'Write this file?'**
+  String get codeApproveWrite;
+
+  /// Inline approval prompt for an edit
+  ///
+  /// In en, this message translates to:
+  /// **'Apply this edit?'**
+  String get codeApproveEdit;
+
+  /// Rejects a proposed action
+  ///
+  /// In en, this message translates to:
+  /// **'Reject'**
+  String get codeReject;
+
+  /// Approves a proposed write or edit
+  ///
+  /// In en, this message translates to:
+  /// **'Apply'**
+  String get codeApply;
+
+  /// A command's non-zero exit code, in a tool row
+  ///
+  /// In en, this message translates to:
+  /// **'exit {code}'**
+  String codeExitCode(String code);
+
+  /// Copies code or output
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get codeCopy;
+
+  /// Status line: nothing running
+  ///
+  /// In en, this message translates to:
+  /// **'idle'**
+  String get codeStatusIdle;
+
+  /// Status line: waiting on the model
+  ///
+  /// In en, this message translates to:
+  /// **'thinking'**
+  String get codeStatusThinking;
+
+  /// Status line: a command runs
+  ///
+  /// In en, this message translates to:
+  /// **'running'**
+  String get codeStatusRunning;
+
+  /// Status line: an action needs approval
+  ///
+  /// In en, this message translates to:
+  /// **'waiting for you'**
+  String get codeStatusWaiting;
+
+  /// Status line: commands run in the Linux sandbox
+  ///
+  /// In en, this message translates to:
+  /// **'Linux'**
+  String get codeEnvLinux;
+
+  /// Status line: commands run in the device shell
+  ///
+  /// In en, this message translates to:
+  /// **'shell'**
+  String get codeEnvDevice;
+
+  /// Status line: no commands can run
+  ///
+  /// In en, this message translates to:
+  /// **'files only'**
+  String get codeEnvNone;
+
+  /// Slash command /new
+  ///
+  /// In en, this message translates to:
+  /// **'Start a new session'**
+  String get codeSlashNewDesc;
+
+  /// Slash command /files
+  ///
+  /// In en, this message translates to:
+  /// **'Browse the project files'**
+  String get codeSlashFilesDesc;
+
+  /// Slash command /terminal
+  ///
+  /// In en, this message translates to:
+  /// **'Open the terminal'**
+  String get codeSlashTerminalDesc;
+
+  /// Slash command /model
+  ///
+  /// In en, this message translates to:
+  /// **'Choose the model'**
+  String get codeSlashModelDesc;
+
+  /// Slash command /mode
+  ///
+  /// In en, this message translates to:
+  /// **'Change what the agent may do'**
+  String get codeSlashModeDesc;
+
+  /// Slash command /retry
+  ///
+  /// In en, this message translates to:
+  /// **'Continue or retry the last request'**
+  String get codeSlashRetryDesc;
+
+  /// Slash command /settings
+  ///
+  /// In en, this message translates to:
+  /// **'Open Code settings'**
+  String get codeSlashSettingsDesc;
+
+  /// File mention list is empty
+  ///
+  /// In en, this message translates to:
+  /// **'No files yet'**
+  String get codeMentionNoFiles;
+
+  /// Opens the terminal panel as a page
+  ///
+  /// In en, this message translates to:
+  /// **'Open full screen'**
+  String get codeTerminalExpand;
+
+  /// Opens the terminal panel
+  ///
+  /// In en, this message translates to:
+  /// **'Show terminal'**
+  String get codeTerminalShow;
+
+  /// Closes the terminal panel
+  ///
+  /// In en, this message translates to:
+  /// **'Hide terminal'**
+  String get codeTerminalHide;
 }
 
 class _AppLocalizationsDelegate

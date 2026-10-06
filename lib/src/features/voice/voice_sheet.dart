@@ -171,7 +171,7 @@ class _VoiceSheetState extends State<VoiceSheet> {
                                 customBorder: const CircleBorder(),
                                 child: Center(
                                   child: FluxIcon(
-                                    icon: PhosphorIconsFill.x,
+                                    icon: FluxIcons.close,
                                     size: 24,
                                     color: FluxColors.mutedOf(context),
                                   ),

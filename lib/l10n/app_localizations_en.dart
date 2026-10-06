@@ -4072,4 +4072,106 @@ class AppLocalizationsEn extends AppLocalizations {
   String codeAttachFailed(String names) {
     return 'Couldn’t add $names';
   }
+
+  @override
+  String get codeVerbRun => 'Run';
+
+  @override
+  String get codeVerbWrite => 'Write';
+
+  @override
+  String get codeVerbEdit => 'Edit';
+
+  @override
+  String get codeNewFile => 'new file';
+
+  @override
+  String codeShowMoreLines(String count) {
+    return 'Show $count more lines';
+  }
+
+  @override
+  String get codeShowLess => 'Show less';
+
+  @override
+  String codeUnchangedLines(String count) {
+    return '$count unchanged lines';
+  }
+
+  @override
+  String get codeApproveRun => 'Run this command?';
+
+  @override
+  String get codeApproveWrite => 'Write this file?';
+
+  @override
+  String get codeApproveEdit => 'Apply this edit?';
+
+  @override
+  String get codeReject => 'Reject';
+
+  @override
+  String get codeApply => 'Apply';
+
+  @override
+  String codeExitCode(String code) {
+    return 'exit $code';
+  }
+
+  @override
+  String get codeCopy => 'Copy';
+
+  @override
+  String get codeStatusIdle => 'idle';
+
+  @override
+  String get codeStatusThinking => 'thinking';
+
+  @override
+  String get codeStatusRunning => 'running';
+
+  @override
+  String get codeStatusWaiting => 'waiting for you';
+
+  @override
+  String get codeEnvLinux => 'Linux';
+
+  @override
+  String get codeEnvDevice => 'shell';
+
+  @override
+  String get codeEnvNone => 'files only';
+
+  @override
+  String get codeSlashNewDesc => 'Start a new session';
+
+  @override
+  String get codeSlashFilesDesc => 'Browse the project files';
+
+  @override
+  String get codeSlashTerminalDesc => 'Open the terminal';
+
+  @override
+  String get codeSlashModelDesc => 'Choose the model';
+
+  @override
+  String get codeSlashModeDesc => 'Change what the agent may do';
+
+  @override
+  String get codeSlashRetryDesc => 'Continue or retry the last request';
+
+  @override
+  String get codeSlashSettingsDesc => 'Open Code settings';
+
+  @override
+  String get codeMentionNoFiles => 'No files yet';
+
+  @override
+  String get codeTerminalExpand => 'Open full screen';
+
+  @override
+  String get codeTerminalShow => 'Show terminal';
+
+  @override
+  String get codeTerminalHide => 'Hide terminal';
 }

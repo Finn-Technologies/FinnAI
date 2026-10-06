@@ -393,13 +393,26 @@ void main() {
     test('the same action three times running is a loop', () async {
       await settings.update(
           (s) => s.copyWith(permissionMode: CodePermissionMode.autoRun));
-      final gateway = FakeGateway(['```sh\nls\n```']);
+      final gateway = FakeGateway(['```file a.txt\nx\n```']);
       final runner = FakeRunner();
 
       await agentFor(gateway, runner).send('go');
 
       expect(runner.ran.length, CodeAgent.repeatLimit);
       expect(messages().last.errorCode, CodeErrorCode.repeating);
+    });
+
+    test('a command that worked, run again with the same result, ends quietly',
+        () async {
+      await settings.update(
+          (s) => s.copyWith(permissionMode: CodePermissionMode.autoRun));
+      final gateway = FakeGateway(['```sh\nls\n```']);
+      final runner = FakeRunner();
+
+      await agentFor(gateway, runner).send('go');
+
+      expect(runner.ran.length, 2);
+      expect(messages().last.errorCode, isNull);
     });
 
     test('different actions are not a loop', () async {

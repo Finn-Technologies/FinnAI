@@ -79,10 +79,12 @@ Future<void> _loadAppFont() async {
   // The app's icons are Phosphor's fill set, a font in its package.
   final phosphor = _packagePath('phosphor_flutter');
   if (phosphor != null) {
-    await _loadFont(
-      'packages/phosphor_flutter/PhosphorFill',
-      '$phosphor/lib/fonts/Phosphor-Fill.ttf',
-    );
+    for (final weight in ['Fill', 'Bold']) {
+      await _loadFont(
+        'packages/phosphor_flutter/Phosphor$weight',
+        '$phosphor/lib/fonts/Phosphor-$weight.ttf',
+      );
+    }
   }
   // Material's icon font is not registered in the test engine either, so a
   // dropdown arrow would capture as a box. Best-effort: the path depends on

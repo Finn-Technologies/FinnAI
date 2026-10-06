@@ -8,6 +8,7 @@ import 'package:finn_ai/src/features/code/providers/gateways.dart';
 import 'package:finn_ai/src/features/code/providers/provider_store.dart';
 import 'package:finn_ai/src/features/code/sessions/code_session_store.dart';
 import 'package:finn_ai/src/features/code/settings/code_settings_store.dart';
+import 'package:finn_ai/src/features/code/ui/code_terminal.dart';
 
 /// Everything FinnAI Code is made of, in one place the screens share.
 ///
@@ -56,6 +57,11 @@ class CodeServices {
   final ContainerShell container;
   late final CodeActionRunner runner;
   late final CodeAgent agent;
+
+  /// The user's own terminal and its scrollback, shared by the panel and the
+  /// page.
+  late final CodeTerminalLog terminal =
+      CodeTerminalLog(sessions: sessions, runner: runner);
 
   Future<void> initialize() => Future.wait([
         sessions.initialize(),

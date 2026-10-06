@@ -13,4 +13,4 @@ size lib/src/features/chat/home_shell.dart 571
 size lib/src/features/conversations/conversation_store.dart 1592
 size lib/src/features/onboarding/onboarding_flow.dart 1532
 size lib/src/shared/widgets/flux_controls.dart 757
-size lib/src/shared/widgets/safe_markdown_text.dart 673
+size lib/src/shared/widgets/safe_markdown_text.dart 672

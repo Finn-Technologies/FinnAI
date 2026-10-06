@@ -20,4 +20,15 @@ abstract final class CodeIcons {
   static const warning = PhosphorIconsFill.warning;
   static const chevronDown = PhosphorIconsFill.caretDown;
   static const back = PhosphorIconsFill.caretLeft;
+  static const fileNew = PhosphorIconsFill.filePlus;
+  static const fileEdit = PhosphorIconsFill.notePencil;
+  static const copy = PhosphorIconsFill.copySimple;
+  static const prompt = PhosphorIconsFill.terminal;
+  static const expand = PhosphorIconsFill.cornersOut;
+  static const mention = PhosphorIconsFill.at;
+  static const command = PhosphorIconsFill.command;
+  static const failed = PhosphorIconsFill.xCircle;
+  static const blocked = PhosphorIconsFill.prohibit;
+  static const retry = PhosphorIconsFill.arrowCounterClockwise;
+  static const clear = PhosphorIconsFill.broom;
 }

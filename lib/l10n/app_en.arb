@@ -5453,5 +5453,148 @@
         "type": "String"
       }
     }
+  },
+  "codeVerbRun": "Run",
+  "@codeVerbRun": {
+    "description": "Tool row verb for a command"
+  },
+  "codeVerbWrite": "Write",
+  "@codeVerbWrite": {
+    "description": "Tool row verb for a file write"
+  },
+  "codeVerbEdit": "Edit",
+  "@codeVerbEdit": {
+    "description": "Tool row verb for a file edit"
+  },
+  "codeNewFile": "new file",
+  "@codeNewFile": {
+    "description": "Marks a write that created a file"
+  },
+  "codeShowMoreLines": "Show {count} more lines",
+  "@codeShowMoreLines": {
+    "description": "Expands clipped code or output",
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "codeShowLess": "Show less",
+  "@codeShowLess": {
+    "description": "Collapses code or output"
+  },
+  "codeUnchangedLines": "{count} unchanged lines",
+  "@codeUnchangedLines": {
+    "description": "A folded run in a diff",
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "codeApproveRun": "Run this command?",
+  "@codeApproveRun": {
+    "description": "Inline approval prompt for a command"
+  },
+  "codeApproveWrite": "Write this file?",
+  "@codeApproveWrite": {
+    "description": "Inline approval prompt for a write"
+  },
+  "codeApproveEdit": "Apply this edit?",
+  "@codeApproveEdit": {
+    "description": "Inline approval prompt for an edit"
+  },
+  "codeReject": "Reject",
+  "@codeReject": {
+    "description": "Rejects a proposed action"
+  },
+  "codeApply": "Apply",
+  "@codeApply": {
+    "description": "Approves a proposed write or edit"
+  },
+  "codeExitCode": "exit {code}",
+  "@codeExitCode": {
+    "description": "A command's non-zero exit code, in a tool row",
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "codeCopy": "Copy",
+  "@codeCopy": {
+    "description": "Copies code or output"
+  },
+  "codeStatusIdle": "idle",
+  "@codeStatusIdle": {
+    "description": "Status line: nothing running"
+  },
+  "codeStatusThinking": "thinking",
+  "@codeStatusThinking": {
+    "description": "Status line: waiting on the model"
+  },
+  "codeStatusRunning": "running",
+  "@codeStatusRunning": {
+    "description": "Status line: a command runs"
+  },
+  "codeStatusWaiting": "waiting for you",
+  "@codeStatusWaiting": {
+    "description": "Status line: an action needs approval"
+  },
+  "codeEnvLinux": "Linux",
+  "@codeEnvLinux": {
+    "description": "Status line: commands run in the Linux sandbox"
+  },
+  "codeEnvDevice": "shell",
+  "@codeEnvDevice": {
+    "description": "Status line: commands run in the device shell"
+  },
+  "codeEnvNone": "files only",
+  "@codeEnvNone": {
+    "description": "Status line: no commands can run"
+  },
+  "codeSlashNewDesc": "Start a new session",
+  "@codeSlashNewDesc": {
+    "description": "Slash command /new"
+  },
+  "codeSlashFilesDesc": "Browse the project files",
+  "@codeSlashFilesDesc": {
+    "description": "Slash command /files"
+  },
+  "codeSlashTerminalDesc": "Open the terminal",
+  "@codeSlashTerminalDesc": {
+    "description": "Slash command /terminal"
+  },
+  "codeSlashModelDesc": "Choose the model",
+  "@codeSlashModelDesc": {
+    "description": "Slash command /model"
+  },
+  "codeSlashModeDesc": "Change what the agent may do",
+  "@codeSlashModeDesc": {
+    "description": "Slash command /mode"
+  },
+  "codeSlashRetryDesc": "Continue or retry the last request",
+  "@codeSlashRetryDesc": {
+    "description": "Slash command /retry"
+  },
+  "codeSlashSettingsDesc": "Open Code settings",
+  "@codeSlashSettingsDesc": {
+    "description": "Slash command /settings"
+  },
+  "codeMentionNoFiles": "No files yet",
+  "@codeMentionNoFiles": {
+    "description": "File mention list is empty"
+  },
+  "codeTerminalExpand": "Open full screen",
+  "@codeTerminalExpand": {
+    "description": "Opens the terminal panel as a page"
+  },
+  "codeTerminalShow": "Show terminal",
+  "@codeTerminalShow": {
+    "description": "Opens the terminal panel"
+  },
+  "codeTerminalHide": "Hide terminal",
+  "@codeTerminalHide": {
+    "description": "Closes the terminal panel"
   }
 }

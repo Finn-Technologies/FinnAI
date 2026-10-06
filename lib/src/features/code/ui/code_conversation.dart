@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -5,20 +6,19 @@ import 'package:flutter/material.dart';
 import 'package:finn_ai/l10n/l10n_helper.dart';
 import 'package:finn_ai/src/features/code/agent/code_agent.dart';
 import 'package:finn_ai/src/features/code/sessions/code_session.dart';
-import 'package:finn_ai/src/features/code/ui/code_action_card.dart';
+import 'package:finn_ai/src/features/code/ui/code_blocks.dart';
 import 'package:finn_ai/src/features/code/ui/code_icons.dart';
+import 'package:finn_ai/src/features/code/ui/code_style.dart';
 import 'package:finn_ai/src/features/code/ui/code_text.dart';
+import 'package:finn_ai/src/features/code/ui/code_tool_row.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
-import 'package:finn_ai/src/shared/widgets/flux_motion.dart';
 import 'package:finn_ai/src/shared/widgets/finn_edge_fade.dart';
-import 'package:finn_ai/src/shared/widgets/finn_overlays.dart';
 import 'package:finn_ai/src/shared/widgets/finn_ui.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
-import 'package:finn_ai/src/shared/widgets/flux_surfaces.dart';
 import 'package:finn_ai/src/shared/widgets/safe_markdown_text.dart';
 
-/// The transcript of a coding session: what was asked, what the model said,
-/// each thing it did, and why it stopped when it did.
+/// The transcript of a coding session, read as a log: each request, what the
+/// model said, one line per thing it did, and why it stopped.
 class CodeConversation extends StatelessWidget {
   const CodeConversation({
     super.key,
@@ -51,7 +51,6 @@ class CodeConversation extends StatelessWidget {
           message,
     ];
     final last = messages.lastOrNull;
-    final lastId = last?.id;
     final thinking = working &&
         agent.phase == CodeAgentPhase.thinking &&
         last != null &&
@@ -66,7 +65,7 @@ class CodeConversation extends StatelessWidget {
           key: const ValueKey('code-scroll-view'),
           controller: scrollController,
           reverse: true,
-          padding: EdgeInsets.fromLTRB(0, topInset, 0, bottomInset + 20),
+          padding: EdgeInsets.fromLTRB(0, topInset, 0, bottomInset + 12),
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           physics: const FluxBouncingScrollPhysics(
             parent: AlwaysScrollableScrollPhysics(),
@@ -77,29 +76,25 @@ class CodeConversation extends StatelessWidget {
             if (index == 0) {
               return thinking
                   ? const Padding(
-                      padding: EdgeInsets.only(bottom: 14),
+                      padding: EdgeInsets.only(top: 4),
                       child: CodeThinking(),
                     )
                   : const SizedBox.shrink();
             }
-            final message = visible[visible.length - index];
+            final position = visible.length - index;
+            final message = visible[position];
+            final previous = position > 0 ? visible[position - 1] : null;
             return Padding(
               key: ValueKey('code-message-${message.id}'),
-              padding: const EdgeInsets.only(bottom: 14),
-              child: FluxEntrance(
-                alignment: message.isUser
-                    ? Alignment.bottomRight
-                    : Alignment.bottomLeft,
+              padding: EdgeInsets.only(top: _gapBefore(message, previous)),
+              child: _Appear(
                 child: message.isUser
-                    ? Align(
-                        alignment: Alignment.centerRight,
-                        child: _UserBubble(text: message.text),
-                      )
+                    ? _UserPrompt(text: message.text)
                     : _AssistantMessage(
                         message: message,
                         awaiting: agent.pendingMessageId == message.id,
-                        isLast: message.id == lastId,
-                        resumable: resumable && message.id == lastId,
+                        isLast: message.id == last?.id,
+                        resumable: resumable && message.id == last.id,
                         onApprove: () => agent.approve(message.id),
                         onSkip: () => agent.skip(message.id),
                         onResume: agent.resume,
@@ -129,6 +124,70 @@ class CodeConversation extends StatelessWidget {
       ],
     );
   }
+
+  /// Tool rows of one request sit tight together, like lines of a log; a new
+  /// request gets air above it.
+  static double _gapBefore(CodeMessage message, CodeMessage? previous) {
+    if (previous == null) return 0;
+    if (message.isUser) return 18;
+    if (previous.isUser) return 10;
+    final toolAfterTool = message.text.trim().isEmpty &&
+        message.action != null &&
+        previous.action != null;
+    return toolAfterTool ? 0 : 6;
+  }
+}
+
+/// A short fade and lift as an item joins the log; quick enough that a fast
+/// run of tool rows never queues behind its own animation.
+class _Appear extends StatefulWidget {
+  const _Appear({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_Appear> createState() => _AppearState();
+}
+
+class _AppearState extends State<_Appear> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: CodeStyle.base,
+  );
+  late final Animation<double> _curve =
+      CurvedAnimation(parent: _controller, curve: CodeStyle.curve);
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (MediaQuery.disableAnimationsOf(context)) {
+        _controller.value = 1;
+      } else {
+        _controller.forward();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => FadeTransition(
+        opacity: _curve,
+        child: AnimatedBuilder(
+          animation: _curve,
+          builder: (context, child) => Transform.translate(
+            offset: Offset(0, 6 * (1 - _curve.value)),
+            child: child,
+          ),
+          child: widget.child,
+        ),
+      );
 }
 
 class _EmptySlate extends StatelessWidget {
@@ -144,23 +203,29 @@ class _EmptySlate extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              FluxIcon(
+                icon: CodeIcons.prompt,
+                size: 28,
+                color: FluxColors.mutedOf(context),
+              ),
+              const SizedBox(height: 12),
               Text(
                 l10n.codeGreeting,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                  fontFamily: 'InstrumentSans',
-                  fontSize: 24,
+                  fontFamily: CodeStyle.sans,
+                  fontSize: 20,
                   height: 1.2,
-                  fontWeight: FontWeight.w400,
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 6),
               Text(
                 l10n.codeGreetingCaption,
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: FluxColors.mutedOf(context),
-                    ),
+                style: CodeStyle.label(
+                  context,
+                  color: FluxColors.mutedOf(context),
+                ),
               ),
             ],
           ),
@@ -170,33 +235,39 @@ class _EmptySlate extends StatelessWidget {
   }
 }
 
-class _UserBubble extends StatelessWidget {
-  const _UserBubble({required this.text});
+/// What the user asked: full width, a quiet fill, a prompt mark.
+class _UserPrompt extends StatelessWidget {
+  const _UserPrompt({required this.text});
 
   final String text;
 
   @override
   Widget build(BuildContext context) => Container(
-        constraints: BoxConstraints(
-          maxWidth: math.min(MediaQuery.sizeOf(context).width * .82, 620),
+        key: const ValueKey('code-user-prompt'),
+        padding: const EdgeInsets.fromLTRB(10, 8, 12, 8),
+        decoration: BoxDecoration(
+          color: FluxColors.controlOf(context),
+          borderRadius: BorderRadius.circular(CodeStyle.radius),
+          border: Border.all(color: FluxColors.lineOf(context), width: .5),
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-        // The same fill + hairline a chat bubble uses. Without the hairline the
-        // user's own message had no edge in dark mode.
-        decoration: FluxSurfaces.flat(
-          context,
-          radius: FluxRadius.pill,
-          color: FluxColors.bubbleUserOf(context),
-        ),
-        child: SelectableText(
-          text,
-          style: TextStyle(
-            fontFamily: 'InstrumentSans',
-            fontSize: 16,
-            height: 1.25,
-            fontWeight: FontWeight.w400,
-            color: FluxColors.inkOf(context),
-          ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 1),
+              child: Text(
+                '›',
+                style: CodeStyle.code(
+                  context,
+                  color: FluxColors.mutedOf(context),
+                ).copyWith(fontSize: 14, height: 1.25),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: SelectableText(text, style: CodeStyle.prose(context)),
+            ),
+          ],
         ),
       );
 }
@@ -225,14 +296,31 @@ class _AssistantMessage extends StatelessWidget {
     final l10n = L10n.of(context);
     final action = message.action;
     final byline = message.modelLabel;
+    final hasText = message.text.trim().isNotEmpty;
+    final media = MediaQuery.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (message.text.trim().isNotEmpty)
-          SelectionArea(child: SafeMarkdownText(text: message.text)),
+        if (hasText)
+          // The chat renderer at Code's density: 14sp prose, the user's own
+          // text-size setting still applied on top.
+          MediaQuery(
+            data: media.copyWith(
+              textScaler: TextScaler.linear(
+                media.textScaler.scale(CodeStyle.proseSize) / 16,
+              ),
+            ),
+            child: SelectionArea(
+              child: SafeMarkdownText(
+                text: message.text,
+                codeFontFamily: CodeStyle.mono,
+              ),
+            ),
+          ),
         if (action != null) ...[
-          if (message.text.trim().isNotEmpty) const SizedBox(height: 10),
-          CodeActionCard(
+          if (hasText) const SizedBox(height: 4),
+          CodeToolRow(
+            key: ValueKey('code-tool-${message.id}'),
             action: action,
             awaitingApproval: awaiting,
             onApprove: onApprove,
@@ -240,9 +328,8 @@ class _AssistantMessage extends StatelessWidget {
           ),
         ],
         if (message.failed && (isLast || !_recovered(message))) ...[
-          if (message.text.trim().isNotEmpty || action != null)
-            const SizedBox(height: 10),
-          _ErrorNotice(
+          if (hasText || action != null) const SizedBox(height: 4),
+          _ErrorRow(
             text: CodeText.error(l10n, message.errorCode!, message.errorDetail),
             detail: message.errorCode!.startsWith(CodeErrorCode.providerPrefix)
                 ? message.errorDetail
@@ -255,21 +342,12 @@ class _AssistantMessage extends StatelessWidget {
             onAction: resumable ? onResume : null,
           ),
         ],
-        // Say which model wrote it when it was not the one on the phone: the
+        // Which model wrote it, when it was not the one on the phone: the
         // reply came from a provider's servers.
-        if (byline != null &&
-            byline != 'FinnAI' &&
-            message.text.trim().isNotEmpty &&
-            action == null)
+        if (byline != null && byline != 'FinnAI' && hasText && action == null)
           Padding(
-            padding: const EdgeInsets.only(top: 6),
-            child: Text(
-              byline,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: FluxColors.mutedOf(context),
-                    fontSize: 12,
-                  ),
-            ),
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(byline, style: CodeStyle.meta(context)),
           ),
       ],
     );
@@ -282,8 +360,8 @@ bool _recovered(CodeMessage message) =>
     message.errorCode == CodeErrorCode.cutOff ||
     message.errorCode == CodeErrorCode.malformed;
 
-class _ErrorNotice extends StatelessWidget {
-  const _ErrorNotice({
+class _ErrorRow extends StatelessWidget {
+  const _ErrorRow({
     required this.text,
     required this.detail,
     this.actionLabel,
@@ -297,68 +375,48 @@ class _ErrorNotice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context).textTheme;
-    return Container(
+    final red = FluxColors.destructiveOf(context);
+    return Row(
       key: const ValueKey('code-error-notice'),
-      padding: const EdgeInsets.all(14),
-      // Flat with a hairline, like the card above it.
-      decoration: FluxSurfaces.flatCard(context),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        SizedBox(
+          width: 22,
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: FluxIcon(icon: FluxIcons.error, size: 14, color: red),
+          ),
+        ),
+        Expanded(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Padding(
-                padding: const EdgeInsets.only(top: 1),
-                child: FluxIcon(
-                  icon: FluxIcons.error,
-                  size: 20,
-                  color: FluxColors.destructiveOf(context),
+              Text(text, style: CodeStyle.label(context)),
+              if (detail.isNotEmpty)
+                Text(
+                  detail,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: CodeStyle.meta(context),
                 ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(child: Text(text, style: theme.bodyMedium)),
             ],
           ),
-          if (detail.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            Padding(
-              padding: const EdgeInsets.only(left: 30),
-              child: Text(
-                detail,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-                style: theme.bodySmall?.copyWith(
-                  color: FluxColors.mutedOf(context),
-                  fontSize: 12,
-                ),
-              ),
-            ),
-          ],
-          if (actionLabel != null) ...[
-            const SizedBox(height: 12),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: SizedBox(
-                width: 150,
-                child: FinnButton(
-                  label: actionLabel!,
-                  onTap: onAction,
-                  compact: true,
-                  secondary: true,
-                  icon: CodeIcons.play,
-                ),
-              ),
-            ),
-          ],
+        ),
+        if (actionLabel != null) ...[
+          const SizedBox(width: 8),
+          CodeSmallButton(
+            label: actionLabel!,
+            onTap: onAction,
+            icon: CodeIcons.retry,
+          ),
         ],
-      ),
+      ],
     );
   }
 }
 
-/// Three dots that breathe while the model writes.
+/// "● Thinking… 4s": a breathing dot and how long the model has been at it,
+/// so a slow on-device step reads as work, not a hang.
 class CodeThinking extends StatefulWidget {
   const CodeThinking({super.key});
 
@@ -368,58 +426,78 @@ class CodeThinking extends StatefulWidget {
 
 class _CodeThinkingState extends State<CodeThinking>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
+  late final AnimationController _pulse = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 1100),
+    duration: const Duration(milliseconds: 1000),
   );
+  final Stopwatch _clock = Stopwatch()..start();
+  Timer? _tick;
+
+  @override
+  void initState() {
+    super.initState();
+    _tick = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (MediaQuery.disableAnimationsOf(context)) {
-      _controller.stop();
-    } else if (!_controller.isAnimating) {
-      _controller.repeat();
+      _pulse.stop();
+    } else if (!_pulse.isAnimating) {
+      _pulse.repeat(reverse: true);
     }
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _tick?.cancel();
+    _pulse.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final color = FluxColors.inkOf(context);
+    final l10n = L10n.of(context);
+    final seconds = _clock.elapsed.inSeconds;
     return Semantics(
-      label: L10n.of(context).codeThinking,
+      label: l10n.codeThinking,
       liveRegion: true,
-      child: Row(
+      child: SizedBox(
         key: const ValueKey('code-thinking'),
-        children: [
-          for (var i = 0; i < 3; i++)
-            Padding(
-              padding: const EdgeInsets.only(right: 6),
-              child: AnimatedBuilder(
-                animation: _controller,
-                builder: (context, _) {
-                  // Each dot peaks a third of a cycle after the last.
-                  final phase = (_controller.value - i / 3) % 1.0;
-                  final pulse = .5 - .5 * math.cos(phase * 2 * math.pi);
-                  return Opacity(
-                    opacity: .25 + .6 * pulse,
-                    child: Container(
-                      width: 8,
-                      height: 8,
-                      decoration:
-                          BoxDecoration(color: color, shape: BoxShape.circle),
+        height: CodeStyle.rowHeight,
+        child: Row(
+          children: [
+            SizedBox(
+              width: 22,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: FadeTransition(
+                  opacity: Tween<double>(begin: .3, end: 1).animate(_pulse),
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: FluxColors.inkOf(context),
+                      shape: BoxShape.circle,
                     ),
-                  );
-                },
+                  ),
+                ),
               ),
             ),
-        ],
+            Text(
+              l10n.codeThinking,
+              style:
+                  CodeStyle.label(context, color: FluxColors.mutedOf(context)),
+            ),
+            if (seconds > 0) ...[
+              const SizedBox(width: 6),
+              Text('${math.max(1, seconds)}s', style: CodeStyle.meta(context)),
+            ],
+          ],
+        ),
       ),
     );
   }

@@ -196,6 +196,7 @@ class CodeAgent extends ChangeNotifier {
       final gateway = _gateway = await gatewayFactory();
       final limit = settings.settings.maxSteps ?? gateway.budget.maxSteps;
       final recent = <String>[];
+      CodeAction? lastResult;
       var cutOffs = 0;
       var acted = false;
 
@@ -281,6 +282,11 @@ class CodeAgent extends ChangeNotifier {
         final handled = await _handle(sessionId, messageId, action, epoch);
         if (epoch != _epoch || handled == null) return;
         acted = true;
+        // The model ran what it just ran, and it worked the same way again:
+        // the work is done and it is only failing to say so. End quietly,
+        // rather than run it a third time and report a loop.
+        if (_sameSuccessAsBefore(handled, lastResult)) return;
+        lastResult = handled;
         if (repeating) {
           _appendError(sessionId, CodeErrorCode.repeating);
           return;
@@ -472,6 +478,14 @@ class CodeAgent extends ChangeNotifier {
     _setAction(sessionId, messageId, finished);
     return finished;
   }
+
+  static bool _sameSuccessAsBefore(CodeAction now, CodeAction? before) =>
+      before != null &&
+      now.isShell &&
+      now.status == CodeActionStatus.done &&
+      before.status == CodeActionStatus.done &&
+      now.signature == before.signature &&
+      now.output == before.output;
 
   bool _needsApproval(CodeAction action) {
     switch (settings.settings.permissionMode) {

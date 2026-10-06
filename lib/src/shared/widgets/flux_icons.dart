@@ -8,11 +8,14 @@ import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 /// filled glyphs. A selected or toggled state is shown with colour or a
 /// backing, never by swapping an outline for a fill.
 abstract final class FluxIcons {
-  static const add = PhosphorIconsFill.plus;
-  static const close = PhosphorIconsFill.x;
+  // Bare strokes (plus, close, menu) take the bold weight: their fill glyphs
+  // sit inside a filled square, which reads as a different icon. Bold is the
+  // same solid weight as the fill set, with no box.
+  static const add = PhosphorIconsBold.plus;
+  static const close = PhosphorIconsBold.x;
   static const arrowUp01 = PhosphorIconsFill.caretUp;
   static const arrowUp02 = PhosphorIconsFill.arrowUp;
-  static const menu = PhosphorIconsFill.list;
+  static const menu = PhosphorIconsBold.list;
   static const copy = PhosphorIconsFill.copy;
   static const exchange = PhosphorIconsFill.arrowsLeftRight;
   static const internet = PhosphorIconsFill.globe;

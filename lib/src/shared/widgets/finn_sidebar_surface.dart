@@ -31,7 +31,11 @@ class FinnSidebarSurface extends StatelessWidget {
     required this.onDragUpdate,
     required this.onDragEnd,
     this.docked = false,
+    this.toggleDimension = FinnSidebarToggleButton.dimension,
   });
+
+  /// Size of the toggle: the app's 50dp, or FinnAI Code's compact 40dp.
+  final double toggleDimension;
 
   /// True when the window is wide enough to keep the panel beside the home
   /// screen. There is then nothing to slide, scrim or toggle: the panel is
@@ -174,6 +178,7 @@ class FinnSidebarSurface extends StatelessWidget {
             left: toggleLeft + sidebarWidth * motion,
             top: toggleTop,
             child: FinnSidebarToggleButton(
+              size: toggleDimension,
               progress: motion,
               onToggle: onToggle,
               openTooltip: L10n.of(context).chatOpenMenuTooltip,
@@ -294,10 +299,14 @@ class FinnSidebarToggleButton extends StatelessWidget {
     required this.onToggle,
     required this.openTooltip,
     required this.closeTooltip,
+    this.size = dimension,
   });
 
-  /// Size of the circular control.
+  /// Default size of the circular control.
   static const double dimension = 50;
+
+  /// This control's size; the glyph scales with it.
+  final double size;
 
   /// Glyph edge length, matching the design's icon at both ends.
   static const double _glyph = 25;
@@ -326,13 +335,13 @@ class FinnSidebarToggleButton extends StatelessWidget {
             shape: const CircleBorder(),
             child: SizedBox.square(
               key: const ValueKey('home-menu-button'),
-              dimension: dimension,
+              dimension: size,
               child: InkWell(
                 onTap: onToggle,
                 customBorder: const CircleBorder(),
                 child: Center(
                   child: SizedBox.square(
-                    dimension: _glyph,
+                    dimension: _glyph * size / dimension,
                     child: CustomPaint(
                       painter: _SidebarGlyphPainter(
                         progress: progress,

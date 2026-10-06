@@ -19,7 +19,7 @@ import 'package:finn_ai/src/features/code/settings/code_provider_page.dart';
 import 'package:finn_ai/src/features/code/settings/code_providers_page.dart';
 import 'package:finn_ai/src/features/code/settings/code_settings_page.dart';
 import 'package:finn_ai/src/features/code/settings/code_settings_store.dart';
-import 'package:finn_ai/src/features/code/ui/code_action_card.dart';
+import 'package:finn_ai/src/features/code/ui/code_tool_row.dart';
 import 'package:finn_ai/src/features/code/ui/code_models_page.dart';
 import 'package:finn_ai/src/shared/config/app_mode.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
@@ -419,7 +419,7 @@ void main() {
 
       expect(find.text('What shall we build?'), findsOneWidget);
       expect(find.byKey(const ValueKey('code-composer-field')), findsOneWidget);
-      expect(find.text('FinnAI · on device'), findsOneWidget);
+      expect(find.text('LFM2.5-VL 1.6B'), findsOneWidget);
       expect(find.text('Auto-edit'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
@@ -438,10 +438,10 @@ void main() {
           tester.getRect(find.byKey(const ValueKey('code-model-chip')));
       final send =
           tester.getRect(find.byKey(const ValueKey('code-send-button')));
-      // The pill is about 50dp, and the chips sit just above it.
-      expect(send.height, 50);
-      expect(field.height, lessThan(30));
-      expect(send.top - chip.bottom, lessThan(24));
+      // A slim 44dp field, and the status line (model, mode) just under it.
+      expect(send.height, 44);
+      expect(field.height, lessThan(26));
+      expect(chip.top - send.bottom, lessThan(12));
     });
 
     group('dark mode matches FinnAI', () {
@@ -502,26 +502,52 @@ void main() {
         expectFlatWithHairline(pill);
       });
 
-      testWidgets('an action card is flat with a hairline', (tester) async {
+      testWidgets(
+          'a waiting action asks inline, small diffs open, big stay shut',
+          (tester) async {
         await useTallPhone(tester);
+        var approved = false;
+        final big = List.generate(40, (i) => 'line $i').join('\n');
         await tester.pumpWidget(
           MaterialApp(
             theme: FluxTheme.dark,
             home: Scaffold(
-              body: CodeActionCard(
-                action: CodeAction.shell('ls -la').copyWith(
-                  status: CodeActionStatus.done,
-                  output: 'Listed.',
-                ),
+              body: ListView(
+                children: [
+                  CodeToolRow(
+                    action: const CodeAction.shell('ls -la'),
+                    awaitingApproval: true,
+                    onApprove: () => approved = true,
+                    onSkip: () {},
+                  ),
+                  CodeToolRow(
+                    key: const ValueKey('small'),
+                    action: const CodeAction.write('a.sh', 'echo hi\n')
+                        .copyWith(status: CodeActionStatus.done),
+                  ),
+                  CodeToolRow(
+                    key: const ValueKey('big'),
+                    action: CodeAction.write('b.txt', big)
+                        .copyWith(status: CodeActionStatus.done),
+                  ),
+                ],
               ),
             ),
           ),
         );
         await settle(tester);
 
-        final card = find.byKey(const ValueKey('code-action-card'));
-        expect(card, findsOneWidget);
-        expectFlatWithHairline(decorationsOf(tester, card));
+        expect(find.byKey(const ValueKey('code-approval-bar')), findsOneWidget);
+        await tester.tap(find.byKey(const ValueKey('code-approval-approve')));
+        expect(approved, isTrue);
+        // The small write shows its line; the 40-line one only its counts.
+        expect(find.text('echo hi'), findsOneWidget);
+        expect(find.text('+1'), findsOneWidget);
+        expect(find.text('+40'), findsOneWidget);
+        expect(find.text('line 0'), findsNothing);
+        await tester.tap(find.byKey(const ValueKey('big')));
+        await settle(tester);
+        expect(find.text('line 0'), findsOneWidget);
       });
 
       testWidgets('the send glyph matches the chat composer', (tester) async {
@@ -576,18 +602,17 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('code-send-button')));
       await settleIo(tester);
 
-      expect(find.byKey(const ValueKey('code-action-card')), findsOneWidget);
-      expect(find.text('Run command'), findsOneWidget);
-      expect(find.text('Skip'), findsOneWidget);
+      expect(find.byKey(const ValueKey('code-tool-row')), findsOneWidget);
+      expect(find.text('Run this command?'), findsOneWidget);
+      expect(find.text('Reject'), findsOneWidget);
       expect(runner.ran, isEmpty);
 
-      await tester.tap(find.text('Run'));
+      await tester.tap(find.byKey(const ValueKey('code-approval-approve')));
       await settleIo(tester);
 
       expect(runner.ran.single.command, 'ls');
-      expect(find.text('Done'), findsOneWidget);
       expect(find.textContaining('Listed.'), findsWidgets);
-      expect(find.text('Skip'), findsNothing);
+      expect(find.text('Reject'), findsNothing);
     });
 
     testWidgets('the menu opens the sidebar with its three destinations',
