@@ -1,0 +1,394 @@
+[
+ {
+  "id": "f1",
+  "cat": "fact",
+  "ok": true,
+  "secs": 1.5,
+  "tps": "21.26",
+  "out": "Canberra."
+ },
+ {
+  "id": "f2",
+  "cat": "fact",
+  "ok": true,
+  "secs": 1.7,
+  "tps": "21.22",
+  "out": "The chemical symbol for gold is Au."
+ },
+ {
+  "id": "f3",
+  "cat": "fact",
+  "ok": true,
+  "secs": 2.0,
+  "tps": "21.53",
+  "out": "Pride and Prejudice was written by Jane Austen."
+ },
+ {
+  "id": "f4",
+  "cat": "fact",
+  "ok": true,
+  "secs": 2.0,
+  "tps": "21.54",
+  "out": "At sea level, water boils at 212 degrees Fahrenheit."
+ },
+ {
+  "id": "f5",
+  "cat": "fact",
+  "ok": false,
+  "secs": 2.6,
+  "tps": "21.57",
+  "out": "As of 2023, Jupiter has the most moons in our solar system, with a total of 79 confirmed moons."
+ },
+ {
+  "id": "f6",
+  "cat": "fact",
+  "ok": true,
+  "secs": 5.9,
+  "tps": "21.54",
+  "out": "The first human landed on the Moon on July 20, 1969. This historic event took place during the Apollo 11 mission, which was a collaborative effort between NASA and the United States Department of Defense. Astronauts Neil Armstrong and Buzz Aldrin became the first humans to set foot on the lunar surf"
+ },
+ {
+  "id": "m1",
+  "cat": "math",
+  "ok": true,
+  "secs": 1.5,
+  "tps": "21.38",
+  "out": "391"
+ },
+ {
+  "id": "m2",
+  "cat": "math",
+  "ok": true,
+  "secs": 5.7,
+  "tps": "21.49",
+  "out": "The shirt is 25% off, so the discount is 25/100 * $40 = $10.\nThe discounted price is $40 - $10 = $30.\nThen, 10% sales tax is added to the discounted price, so the tax is 10/100 * $30 = $3.\nThe final price is $30 + $3 = $33.\n#### 33\nThe answer is: 33"
+ },
+ {
+  "id": "m3",
+  "cat": "math",
+  "ok": true,
+  "secs": 4.3,
+  "tps": "21.56",
+  "out": "If 3 pencils cost $1.20, then 1 pencil costs $1.20/3 = $0.40.\nTherefore, 7 pencils cost 7 * $0.40 = $2.80.\n#### 2.80\nThe answer is: 2.80"
+ },
+ {
+  "id": "m4",
+  "cat": "math",
+  "ok": true,
+  "secs": 5.6,
+  "tps": "21.56",
+  "out": "To find the distance traveled by the train, we can use the formula:\n\nDistance = Speed \u00d7 Time\n\nGiven that the train travels at 60 km/h for 2.5 hours, we can plug these values into the formula:\n\nDistance = 60 km/h \u00d7 2.5 h\n\nNow, we can multiply the speed by the time:\n\nDistance = 150 km\n\nSo, the train t"
+ },
+ {
+  "id": "m5",
+  "cat": "math",
+  "ok": true,
+  "secs": 4.1,
+  "tps": "21.54",
+  "out": "To find 15% of 80, you can multiply 80 by 0.15 (since 15% is the same as 0.15 in decimal form).\n\n80 * 0.15 = 12\n\nSo, 15% of 80 is 12."
+ },
+ {
+  "id": "m6",
+  "cat": "math",
+  "ok": true,
+  "secs": 5.0,
+  "tps": "21.53",
+  "out": "The area of a rectangle is found by multiplying its width by its length. In this case, the width is 7 cm and the length is 12 cm. So, the area is:\n\nArea = Width \u00d7 Length\nArea = 7 cm \u00d7 12 cm\nArea = 84 cm\u00b2\n\nThe area of the rectangle is 84 square centimeters."
+ },
+ {
+  "id": "r1",
+  "cat": "reason",
+  "ok": true,
+  "secs": 4.8,
+  "tps": "21.54",
+  "out": "Bob is the shortest.\n\nHere's the reasoning:\n\n1. We know that Tom is taller than Ann.\n2. We also know that Ann is taller than Bob.\n3. Since Ann is taller than Bob, and Tom is taller than Ann, it follows that Tom is taller than Bob.\n4. Therefore, Bob is the shortest among the three."
+ },
+ {
+  "id": "r2",
+  "cat": "reason",
+  "ok": false,
+  "secs": 1.6,
+  "tps": "21.29",
+  "out": "No."
+ },
+ {
+  "id": "r3",
+  "cat": "reason",
+  "ok": false,
+  "secs": 8.1,
+  "tps": "21.52",
+  "out": "To determine the day of the week 10 days from Wednesday, we can use modular arithmetic. There are 7 days in a week, so we can represent each day of the week as a number from 0 (Monday) to 6 (Sunday).\n\nWednesday corresponds to the number 2.\n\nNow, we add 10 days to 2:\n\n2 + 10 = 12\n\nSince 12 is greater"
+ },
+ {
+  "id": "r4",
+  "cat": "reason",
+  "ok": true,
+  "secs": 3.0,
+  "tps": "21.56",
+  "out": "You start with 3 apples. After eating one, you have 2 apples left. Then you buy 4 more apples, bringing your total to 6 apples."
+ },
+ {
+  "id": "r5",
+  "cat": "reason",
+  "ok": true,
+  "secs": 4.4,
+  "tps": "21.48",
+  "out": "A kilogram of feathers and a kilogram of steel weigh the same. Both have a mass of one kilogram, regardless of their composition. The difference lies in their density and volume: feathers are much less dense than steel, so a kilogram of feathers occupies much more space than a kilogram of steel."
+ },
+ {
+  "id": "r6",
+  "cat": "reason",
+  "ok": true,
+  "secs": 8.4,
+  "tps": "21.45",
+  "out": "Let's use algebra to solve this problem. Let x be the cost of the ball. Since the bat costs $1.00 more than the ball, the cost of the bat is x + $1.00.\n\nThe total cost of the bat and the ball is $1.10. So we can write the equation:\n\nx + (x + $1.00) = $1.10\n\nCombine like terms:\n\n2x + $1.00 = $1.10\n\nS"
+ },
+ {
+  "id": "i1",
+  "cat": "instr",
+  "ok": true,
+  "secs": 1.8,
+  "tps": "21.49",
+  "out": "Apple  \nBanana  \nOrange"
+ },
+ {
+  "id": "i2",
+  "cat": "instr",
+  "ok": true,
+  "secs": 1.5,
+  "tps": "21.50",
+  "out": "YES"
+ },
+ {
+  "id": "i3",
+  "cat": "instr",
+  "ok": true,
+  "secs": 1.9,
+  "tps": "21.58",
+  "out": "\"Good morning\" in French is \"Bonjour.\""
+ },
+ {
+  "id": "i4",
+  "cat": "instr",
+  "ok": true,
+  "secs": 2.5,
+  "tps": "21.57",
+  "out": "```json\n{\n  \"name\": \"Ada\",\n  \"age\": 36\n}\n```"
+ },
+ {
+  "id": "c1",
+  "cat": "code",
+  "ok": true,
+  "secs": 9.2,
+  "tps": "21.47",
+  "out": "Here is a Python function that checks if a number is prime:\n\n```python\ndef is_prime(n):\n    if n <= 1:\n        return False\n    for i in range(2, int(n**0.5) + 1):\n        if n % i == 0:\n            return False\n    return True\n```\n\nThis function first checks if the number is less than or equal to 1"
+ },
+ {
+  "id": "c2",
+  "cat": "code",
+  "ok": true,
+  "secs": 2.3,
+  "tps": "21.58",
+  "out": "function reverseString(str) {\n  return str.split('').reverse().join('');\n}"
+ },
+ {
+  "id": "c3",
+  "cat": "code",
+  "ok": true,
+  "secs": 2.1,
+  "tps": "21.56",
+  "out": "SELECT name \nFROM users \nWHERE age > 30;"
+ },
+ {
+  "id": "a1",
+  "cat": "agent",
+  "ok": false,
+  "secs": 4.4,
+  "tps": "21.11",
+  "out": "```sh\n#!/bin/bash\nfor i in {1..5}\ndo\n    echo $i\ndone\n```"
+ },
+ {
+  "id": "a2",
+  "cat": "agent",
+  "ok": false,
+  "secs": 4.9,
+  "tps": "21.15",
+  "out": "```python\ndef square(n):\n    return n * n\n\nfor i in range(1, 6):\n    print(f\"The square of {i} is {square(i)}\")\n```"
+ },
+ {
+  "id": "a3",
+  "cat": "agent",
+  "ok": true,
+  "secs": 3.3,
+  "tps": "21.19",
+  "out": "```sh\nls\n```"
+ },
+ {
+  "id": "l1",
+  "cat": "lang",
+  "ok": true,
+  "secs": 1.7,
+  "tps": "21.60",
+  "out": "Die Hauptstadt von Frankreich ist Paris."
+ },
+ {
+  "id": "l2",
+  "cat": "lang",
+  "ok": true,
+  "secs": 1.7,
+  "tps": "21.58",
+  "out": "Una semana tiene 7 d\u00edas."
+ },
+ {
+  "id": "v1",
+  "cat": "vision",
+  "ok": true,
+  "secs": 5.3,
+  "tps": "",
+  "out": "42"
+ },
+ {
+  "id": "v2",
+  "cat": "vision",
+  "ok": true,
+  "secs": 16.1,
+  "tps": "",
+  "out": "The image contains two distinct shapes: a red circle on the left and a blue square on the right. The red circle is perfectly round with no corners or edges, while the blue square has four equal sides and four right angles. The red circle is larger than the blue square, and both shapes are filled wit"
+ },
+ {
+  "id": "v3",
+  "cat": "vision",
+  "ok": true,
+  "secs": 12.1,
+  "tps": "",
+  "out": "B"
+ },
+ {
+  "id": "v4",
+  "cat": "vision",
+  "ok": true,
+  "secs": 9.5,
+  "tps": "",
+  "out": "The total on this receipt is $23.50."
+ },
+ {
+  "id": "h1",
+  "cat": "hard",
+  "ok": true,
+  "secs": 9.4,
+  "tps": "21.48",
+  "out": "To find the angle between the hour and minute hands of a clock, we can use the following formula:\n\nAngle = |(Hour * 30) + (Minute * 0.5)| degrees\n\nwhere H is the hour (in hours) and M is the minute (in minutes).\n\nIn this case, the hour hand is at 3:15, so H = 3 and M = 15.\n\nAngle = |(3 * 30) + (15 *"
+ },
+ {
+  "id": "h2",
+  "cat": "hard",
+  "ok": true,
+  "secs": 4.8,
+  "tps": "21.56",
+  "out": "The prime numbers less than 20 are 2, 3, 5, 7, 11, 13, 17, and 19.\nThe sum of these prime numbers is $2+3+5+7+11+13+17+19=\\boxed{77}$.\nThe answer is: 77"
+ },
+ {
+  "id": "h3",
+  "cat": "hard",
+  "ok": false,
+  "secs": 2.6,
+  "tps": "21.52",
+  "out": "If all but 9 run away, then 17 - 9 = 8 sheep are left."
+ },
+ {
+  "id": "h4",
+  "cat": "hard",
+  "ok": true,
+  "secs": 2.4,
+  "tps": "21.59",
+  "out": "The letter 'r' appears 3 times in the word 'strawberry'."
+ },
+ {
+  "id": "h5",
+  "cat": "hard",
+  "ok": true,
+  "secs": 2.9,
+  "tps": "21.51",
+  "out": "The numbers sorted in ascending order are: 3, 7, 19, 21, 42, 88."
+ },
+ {
+  "id": "h6",
+  "cat": "hard",
+  "ok": true,
+  "secs": 3.7,
+  "tps": "21.57",
+  "out": "If 5 machines make 5 widgets in 5 minutes, then each machine makes 1 widget in 5 minutes. Therefore, 100 machines can make 100 widgets in 5 minutes."
+ },
+ {
+  "id": "h7",
+  "cat": "hard",
+  "ok": true,
+  "secs": 2.1,
+  "tps": "21.59",
+  "out": "2 to the power of 10 is 1024."
+ },
+ {
+  "id": "h8",
+  "cat": "hard",
+  "ok": true,
+  "secs": 2.1,
+  "tps": "21.53",
+  "out": "The name of the fifth daughter is Mary."
+ },
+ {
+  "id": "h9",
+  "cat": "hard",
+  "ok": true,
+  "secs": 3.2,
+  "tps": "21.62",
+  "out": "To convert a fraction to a decimal, you divide the numerator by the denominator. In this case, 3 divided by 8 is 0.375."
+ },
+ {
+  "id": "h10",
+  "cat": "hard",
+  "ok": false,
+  "secs": 5.1,
+  "tps": "21.49",
+  "out": "The sequence 2, 6, 12, 20, 30, ... is an arithmetic sequence with a common difference of 4. To find the next number in the sequence, we add 4 to the last number in the sequence:\n\n30 + 4 = 34\n\nSo, the next number in the sequence is 34."
+ },
+ {
+  "id": "h11",
+  "cat": "hard",
+  "ok": true,
+  "secs": 5.0,
+  "tps": "21.56",
+  "out": "To compare the two numbers, we can look at the digits after the decimal point. \n\nFor 9.11, the digit after the decimal point is 1.\nFor 9.9, the digit after the decimal point is 9.\n\nSince 9 is greater than 1, 9.9 is larger than 9.11."
+ },
+ {
+  "id": "h12",
+  "cat": "hard",
+  "ok": true,
+  "secs": 8.8,
+  "tps": "21.48",
+  "out": "The store sells notebooks at a rate of 3 for $5. To find out how much 12 notebooks cost, we can first determine the cost of one notebook and then multiply it by 12.\n\nCost of one notebook = (Cost of 3 notebooks) / 3\n                         = $5 / 3\n                         = $1.67 (rounded to two de"
+ },
+ {
+  "id": "h13",
+  "cat": "hard",
+  "ok": false,
+  "secs": 1.8,
+  "tps": "21.34",
+  "out": "2"
+ },
+ {
+  "id": "h14",
+  "cat": "hard",
+  "ok": true,
+  "secs": 2.8,
+  "tps": "21.60",
+  "out": "even_numbers = [num for num in range(1, 21) if num % 2 == 0]"
+ },
+ {
+  "id": "h15",
+  "cat": "hard",
+  "ok": true,
+  "secs": 2.6,
+  "tps": "21.58",
+  "out": "The derivative of x^3 + 2x is 3x^2 + 2."
+ }
+]

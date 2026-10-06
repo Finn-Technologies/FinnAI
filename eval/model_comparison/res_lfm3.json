@@ -1,0 +1,394 @@
+[
+ {
+  "id": "f1",
+  "cat": "fact",
+  "ok": true,
+  "secs": 5.2,
+  "tps": "9.49",
+  "out": "Canberra"
+ },
+ {
+  "id": "f2",
+  "cat": "fact",
+  "ok": true,
+  "secs": 4.2,
+  "tps": "9.41",
+  "out": "The chemical symbol for gold is **Au**."
+ },
+ {
+  "id": "f3",
+  "cat": "fact",
+  "ok": true,
+  "secs": 4.9,
+  "tps": "9.51",
+  "out": "Pride and Prejudice was written by **Jane Austen**."
+ },
+ {
+  "id": "f4",
+  "cat": "fact",
+  "ok": true,
+  "secs": 5.8,
+  "tps": "9.51",
+  "out": "At sea level, water boils at **212 degrees Fahrenheit** (which is equivalent to 100 degrees Celsius)."
+ },
+ {
+  "id": "f5",
+  "cat": "fact",
+  "ok": true,
+  "secs": 8.9,
+  "tps": "9.51",
+  "out": "As of 2023, **Saturn** has the most moons in our solar system, with **146 confirmed moons**. These include well-known ones like Titan, Enceladus, and Rhea, as well as many smaller, recently discovered moons."
+ },
+ {
+  "id": "f6",
+  "cat": "fact",
+  "ok": true,
+  "secs": 6.3,
+  "tps": "9.51",
+  "out": "The first human to set foot on the Moon was **Neil Armstrong**, who did so on **July\u202f20,\u202f1969**."
+ },
+ {
+  "id": "m1",
+  "cat": "math",
+  "ok": true,
+  "secs": 3.5,
+  "tps": "9.50",
+  "out": "391"
+ },
+ {
+  "id": "m2",
+  "cat": "math",
+  "ok": true,
+  "secs": 9.0,
+  "tps": "9.49",
+  "out": "The discounted price is $40\u202f\u00d7\u202f0.75\u202f=\u202f$30.  \nAdding 10\u202f% sales tax: $30\u202f\u00d7\u202f1.10\u202f=\u202f$33.  \n\n**Final price: $33.**"
+ },
+ {
+  "id": "m3",
+  "cat": "math",
+  "ok": false,
+  "secs": 4.3,
+  "tps": "9.56",
+  "out": "7 pencils cost $4.40."
+ },
+ {
+  "id": "m4",
+  "cat": "math",
+  "ok": true,
+  "secs": 10.2,
+  "tps": "9.48",
+  "out": "The train travels a distance of:\n\n\\[\n\\text{Distance} = \\text{Speed} \\times \\text{Time} = 60\\ \\text{km/h} \\times 2.5\\ \\text{h} = 150\\ \\text{km}\n\\]\n\nSo it covers **150 kilometers**."
+ },
+ {
+  "id": "m5",
+  "cat": "math",
+  "ok": true,
+  "secs": 9.7,
+  "tps": "8.44",
+  "out": "15% of 80 is calculated as follows:\n\n1. Convert the percentage to a decimal: 15% = 0.15.\n2. Multiply: 0.15 \u00d7 80 = 12.\n\n**Answer:** 12."
+ },
+ {
+  "id": "m6",
+  "cat": "math",
+  "ok": true,
+  "secs": 9.6,
+  "tps": "9.51",
+  "out": "The area of a rectangle is calculated by multiplying its width by its length.\n\n**Area = Width \u00d7 Length**\n**Area = 7 cm \u00d7 12 cm**\n**Area = 84 cm\u00b2**\n\nThe area of the rectangle is **84 square centimeters**."
+ },
+ {
+  "id": "r1",
+  "cat": "reason",
+  "ok": true,
+  "secs": 4.5,
+  "tps": "9.53",
+  "out": "Bob is the shortest."
+ },
+ {
+  "id": "r2",
+  "cat": "reason",
+  "ok": true,
+  "secs": 4.4,
+  "tps": "9.52",
+  "out": "Yes."
+ },
+ {
+  "id": "r3",
+  "cat": "reason",
+  "ok": false,
+  "secs": 8.9,
+  "tps": "9.51",
+  "out": "It will be **Wednesday**.\n\nHere is the breakdown:\n1.  Today is Wednesday.\n2.  10 days from now is 7 days into the next week.\n3.  7 days from Wednesday is Wednesday."
+ },
+ {
+  "id": "r4",
+  "cat": "reason",
+  "ok": true,
+  "secs": 9.8,
+  "tps": "9.52",
+  "out": "You have **4** apples.\n\nHere is the breakdown:\n1.  You started with 3 apples.\n2.  You ate 1, leaving you with 2.\n3.  You bought 4 more, so 2 + 4 = 6."
+ },
+ {
+  "id": "r5",
+  "cat": "reason",
+  "ok": true,
+  "secs": 8.8,
+  "tps": "9.53",
+  "out": "They weigh the same.\n\nSince both are defined as **one kilogram**, they have identical mass. The difference is in their volume and density: a kilogram of feathers takes up much more space than a kilogram of steel."
+ },
+ {
+  "id": "r6",
+  "cat": "reason",
+  "ok": true,
+  "secs": 16.3,
+  "tps": "9.48",
+  "out": "The ball costs **$0.05** (5 cents). \n\nHere's why: Let the ball cost \\( x \\) dollars. Then the bat costs \\( x + 1.00 \\) dollars. Together, they cost $1.10, so:\n\n\\[\nx + (x + 1.00) = 1.10\n\\]\n\n\\[\n2x + 1.00 = 1.10\n\\]\n\n\\[\n2x = 0.10 \\quad \\Rightarrow \\quad x = 0.05\n\\]\n\nThus, the ball costs 5 cents."
+ },
+ {
+  "id": "i1",
+  "cat": "instr",
+  "ok": true,
+  "secs": 4.7,
+  "tps": "9.52",
+  "out": "Apple\nBanana\nOrange"
+ },
+ {
+  "id": "i2",
+  "cat": "instr",
+  "ok": true,
+  "secs": 4.6,
+  "tps": "9.40",
+  "out": "YES"
+ },
+ {
+  "id": "i3",
+  "cat": "instr",
+  "ok": true,
+  "secs": 4.5,
+  "tps": "9.45",
+  "out": "Bonjour."
+ },
+ {
+  "id": "i4",
+  "cat": "instr",
+  "ok": true,
+  "secs": 5.6,
+  "tps": "9.51",
+  "out": "{\"name\": \"Ada\", \"age\": 36}"
+ },
+ {
+  "id": "c1",
+  "cat": "code",
+  "ok": true,
+  "secs": 41.6,
+  "tps": "8.32",
+  "out": "Here is a simple and efficient implementation of the `is_prime` function.\n\n```python\ndef is_prime(n):\n    \"\"\"\n    Returns True if n is a prime number, otherwise False.\n    \"\"\"\n    # Handle edge cases: 0, 1, and negative numbers are not prime\n    if n <= 1:\n        return False\n    \n    # 2 is the on"
+ },
+ {
+  "id": "c2",
+  "cat": "code",
+  "ok": true,
+  "secs": 6.6,
+  "tps": "9.05",
+  "out": "```javascript\nconst reverse = (s) => s.split('').reverse().join('');\n```"
+ },
+ {
+  "id": "c3",
+  "cat": "code",
+  "ok": true,
+  "secs": 6.4,
+  "tps": "8.92",
+  "out": "```sql\nSELECT name\nFROM users\nWHERE age > 30;\n```"
+ },
+ {
+  "id": "a1",
+  "cat": "agent",
+  "ok": false,
+  "secs": 10.5,
+  "tps": "9.31",
+  "out": "I'll create the file and add the script content."
+ },
+ {
+  "id": "a2",
+  "cat": "agent",
+  "ok": false,
+  "secs": 10.1,
+  "tps": "9.34",
+  "out": "file hello.py\npython3 hello.py"
+ },
+ {
+  "id": "a3",
+  "cat": "agent",
+  "ok": false,
+  "secs": 9.2,
+  "tps": "9.30",
+  "out": "ls"
+ },
+ {
+  "id": "l1",
+  "cat": "lang",
+  "ok": true,
+  "secs": 4.9,
+  "tps": "9.44",
+  "out": "Die Hauptstadt von Frankreich ist Paris."
+ },
+ {
+  "id": "l2",
+  "cat": "lang",
+  "ok": true,
+  "secs": 5.0,
+  "tps": "9.44",
+  "out": "Una semana tiene 7 d\u00edas."
+ },
+ {
+  "id": "v1",
+  "cat": "vision",
+  "ok": true,
+  "secs": 10.0,
+  "tps": "",
+  "out": "42"
+ },
+ {
+  "id": "v2",
+  "cat": "vision",
+  "ok": true,
+  "secs": 22.5,
+  "tps": "",
+  "out": "The image contains two shapes:\n\n1. A red circle on the left side.\n2. A blue square on the right side.\n\nBoth shapes are set against a white background."
+ },
+ {
+  "id": "v3",
+  "cat": "vision",
+  "ok": true,
+  "secs": 16.7,
+  "tps": "",
+  "out": "B"
+ },
+ {
+  "id": "v4",
+  "cat": "vision",
+  "ok": true,
+  "secs": 15.5,
+  "tps": "",
+  "out": "The total on this receipt is $23.50."
+ },
+ {
+  "id": "h1",
+  "cat": "hard",
+  "ok": true,
+  "secs": 15.9,
+  "tps": "9.41",
+  "out": "At 3:15 the minute hand is at 3 (15 minutes \u00d7 6\u00b0 per minute = 90\u00b0).  \nThe hour hand has moved 3 hours\u202f+\u202f15\u202fminutes = 195 minutes past 12, i.e. 195\u202f\u00d7\u202f0.5\u00b0 = 97.5\u00b0.  \n\nThe angle between them is the absolute difference:  \n\\(|97.5\u00b0 - 90\u00b0| = 7.5\u00b0\\).\n\nSo the hands are **7.5\u00b0 apart**."
+ },
+ {
+  "id": "h2",
+  "cat": "hard",
+  "ok": false,
+  "secs": 11.0,
+  "tps": "9.41",
+  "out": "The prime numbers less than 20 are:\n\n2, 3, 5, 7, 11, 13, 17, and 19.\n\nAdding them together:\n\n2 + 3 + 5 + 7 + 11 + 13 + 17 + 19 = **72**"
+ },
+ {
+  "id": "h3",
+  "cat": "hard",
+  "ok": true,
+  "secs": 7.1,
+  "tps": "9.44",
+  "out": "There are **9** sheep left.\n\nThe phrase \"All but 9 run away\" means that 9 sheep stayed behind."
+ },
+ {
+  "id": "h4",
+  "cat": "hard",
+  "ok": true,
+  "secs": 7.8,
+  "tps": "9.45",
+  "out": "The letter **r** appears **3** times in the word \"strawberry\".\n\nHere is the breakdown:\nst**r**awbe**rr**y"
+ },
+ {
+  "id": "h5",
+  "cat": "hard",
+  "ok": true,
+  "secs": 7.1,
+  "tps": "9.44",
+  "out": "Here are the numbers sorted in ascending order:\n\n3, 7, 19, 21, 42, 88"
+ },
+ {
+  "id": "h6",
+  "cat": "hard",
+  "ok": true,
+  "secs": 11.3,
+  "tps": "9.42",
+  "out": "It takes **5 minutes**.\n\nHere is why: The rate of production is fixed. Since 5 machines make 5 widgets in 5 minutes, each machine makes 1 widget in 5 minutes. Therefore, 100 machines will make 100 widgets in the same amount of time (5 minutes)."
+ },
+ {
+  "id": "h7",
+  "cat": "hard",
+  "ok": true,
+  "secs": 8.5,
+  "tps": "9.44",
+  "out": "2 to the power of 10 is **1,024**.\n\nThis is a very common number in computing, often referred to as \"2^10\" or \"a kilobyte\" (KB)."
+ },
+ {
+  "id": "h8",
+  "cat": "hard",
+  "ok": true,
+  "secs": 5.3,
+  "tps": "9.43",
+  "out": "The fifth daughter is **Mary**."
+ },
+ {
+  "id": "h9",
+  "cat": "hard",
+  "ok": true,
+  "secs": 5.0,
+  "tps": "9.44",
+  "out": "3/8 = 0.375"
+ },
+ {
+  "id": "h10",
+  "cat": "hard",
+  "ok": true,
+  "secs": 16.2,
+  "tps": "9.45",
+  "out": "The next number is **42**.\n\n**Reasoning:**\nThe sequence is formed by multiplying consecutive integers:\n*   $2 \\times 1 = 2$\n*   $6 \\times 2 = 12$\n*   $12 \\times 3 = 36$\n*   $20 \\times 4 = 80$\n*   $30 \\times 5 = 150$\n\nThe pattern is $n \\times (n+1)$. Following this rule, the next number is $42 \\times"
+ },
+ {
+  "id": "h11",
+  "cat": "hard",
+  "ok": true,
+  "secs": 7.0,
+  "tps": "9.45",
+  "out": "9.9 is larger. (9.9\u202f=\u202f9.90, which is greater than 9.11.)"
+ },
+ {
+  "id": "h12",
+  "cat": "hard",
+  "ok": true,
+  "secs": 10.7,
+  "tps": "9.43",
+  "out": "The price is $5 for 3 notebooks, so each notebook costs $5 \u00f7 3 = $1.67 (approximately). For 12 notebooks, the cost is 12 \u00d7 $1.67 = $20. So, 12 notebooks cost **$20**."
+ },
+ {
+  "id": "h13",
+  "cat": "hard",
+  "ok": false,
+  "secs": 4.7,
+  "tps": "9.43",
+  "out": "4"
+ },
+ {
+  "id": "h14",
+  "cat": "hard",
+  "ok": true,
+  "secs": 13.6,
+  "tps": "9.45",
+  "out": "Here\u2019s a concise list comprehension that yields the even numbers from\u202f1\u202fto\u202f20:\n\n```python\neven_numbers = [x for x in range(1, 21) if x % 2 == 0]\nprint(even_numbers)\n```\n\n**Output**\n\n```\n[2, 4, 6, 8, 10, 12, 14, 16, 18, 20]\n```"
+ },
+ {
+  "id": "h15",
+  "cat": "hard",
+  "ok": true,
+  "secs": 6.6,
+  "tps": "9.46",
+  "out": "The derivative of $x^3 + 2x$ is $3x^2 + 2$."
+ }
+]

@@ -1,0 +1,394 @@
+[
+ {
+  "id": "f1",
+  "cat": "fact",
+  "ok": true,
+  "secs": 5.6,
+  "tps": "13.09",
+  "out": "Canberra"
+ },
+ {
+  "id": "f2",
+  "cat": "fact",
+  "ok": true,
+  "secs": 6.1,
+  "tps": "13.15",
+  "out": "The chemical symbol for gold is **Au**."
+ },
+ {
+  "id": "f3",
+  "cat": "fact",
+  "ok": true,
+  "secs": 10.7,
+  "tps": "13.08",
+  "out": "\"Pride and Prejudice\" was written by **Jane Austen**. She was an English novelist and author of the early 19th century, best known for her satirical works that explore themes of social class, marriage, and personal virtue. *Pride and Prejudice* was first published in 1813."
+ },
+ {
+  "id": "f4",
+  "cat": "fact",
+  "ok": true,
+  "secs": 6.5,
+  "tps": "13.04",
+  "out": "At sea level, water boils at **212 degrees Fahrenheit**."
+ },
+ {
+  "id": "f5",
+  "cat": "fact",
+  "ok": true,
+  "secs": 15.3,
+  "tps": "12.93",
+  "out": "As of 2023, the planet with the most moons in our solar system is **Saturn**.\n\nSaturn has **83 known moons** as of 2023, making it the most-mooned planet in the solar system. This number includes both natural moons and those discovered since 2023, though some of the moons were discovered in the year"
+ },
+ {
+  "id": "f6",
+  "cat": "fact",
+  "ok": true,
+  "secs": 13.1,
+  "tps": "12.82",
+  "out": "The first human to land on the Moon was **Apollo 11**, which occurred in **1969**. Specifically, the landing took place on **July 16, 1969**. The astronauts, Neil Armstrong, Michael Collins, and Edwin \"Buzz\" Aldrin, landed on the Moon's surface. Armstrong became the first person to step onto the Moo"
+ },
+ {
+  "id": "m1",
+  "cat": "math",
+  "ok": true,
+  "secs": 6.3,
+  "tps": "12.94",
+  "out": "391"
+ },
+ {
+  "id": "m2",
+  "cat": "math",
+  "ok": true,
+  "secs": 18.0,
+  "tps": "12.88",
+  "out": "Let's break down the problem step by step:\n\n1. **Original price of the shirt**: $40\n\n2. **Apply a 25% discount**:\n   - 25% of $40 = 0.25 \u00d7 40 = $10\n   - Discounted price = $40 - $10 = **$30**\n\n3. **Add 10% sales tax** to the discounted price:\n   - 10% of $30 = 0.10 \u00d7 30 = $3\n   - Final price = $30 +"
+ },
+ {
+  "id": "m3",
+  "cat": "math",
+  "ok": true,
+  "secs": 16.0,
+  "tps": "12.79",
+  "out": "We are told that **3 pencils cost $1.20**. We need to find out how much **7 pencils** cost.\n\n### Step 1: Find the cost per pencil\n$$\n\\text{Cost per pencil} = \\frac{1.20}{3} = 0.40 \\text{ dollars}\n$$\n\n### Step 2: Multiply by 7\n$$\n7 \\times 0.40 = 2.80\n$$\n\n### Final Answer:\n$$\n\\boxed{2.80}\n$$\n\nSo, **7 "
+ },
+ {
+  "id": "m4",
+  "cat": "math",
+  "ok": true,
+  "secs": 12.1,
+  "tps": "12.85",
+  "out": "To find how far the train travels, use the formula:\n\n**Distance = Speed \u00d7 Time**\n\nGiven:\n- Speed = 60 km/h\n- Time = 2.5 hours\n\nNow calculate:\n\n**Distance = 60 km/h \u00d7 2.5 h = 150 km**\n\n\u2705 So, the train goes **150 kilometers**."
+ },
+ {
+  "id": "m5",
+  "cat": "math",
+  "ok": true,
+  "secs": 13.2,
+  "tps": "12.89",
+  "out": "To find 15% of 80, follow these steps:\n\n1. Convert the percentage to a decimal:\n   $$\n   15\\% = \\frac{15}{100} = 0.15\n   $$\n\n2. Multiply the decimal by 80:\n   $$\n   0.15 \\times 80 = 12\n   $$\n\n**Answer:** 12"
+ },
+ {
+  "id": "m6",
+  "cat": "math",
+  "ok": true,
+  "secs": 13.8,
+  "tps": "12.86",
+  "out": "To find the area of a rectangle, use the formula:\n\n$$\n\\text{Area} = \\text{width} \\times \\text{length}\n$$\n\nGiven:\n- Width = 7 cm\n- Length = 12 cm\n\n$$\n\\text{Area} = 7 \\times 12 = 84 \\text{ cm}^2\n$$\n\n**Answer:** $ \\boxed{84} \\text{cm}^2 $"
+ },
+ {
+  "id": "r1",
+  "cat": "reason",
+  "ok": true,
+  "secs": 13.3,
+  "tps": "12.85",
+  "out": "We are given the following statements:\n\n- Tom is taller than Ann.  \n- Ann is taller than Bob.\n\nLet's translate this into a chain of comparisons:\n\n1. Tom > Ann  \n2. Ann > Bob\n\nFrom this, we can chain the inequalities:\n\nTom > Ann > Bob\n\nSo, in order of height from tallest to shortest:\n\n**Tom > Ann > B"
+ },
+ {
+  "id": "r2",
+  "cat": "reason",
+  "ok": true,
+  "secs": 16.1,
+  "tps": "12.84",
+  "out": "Yes.\n\nExplanation:  \nWe are given two statements:\n\n1. All bloops are razzies.  \n2. All razzies are lazzies.\n\nFrom this, we can chain the logic:\n\n- All bloops are razzies \u2192 bloops \u2286 razzies  \n- All razzies are lazzies \u2192 razzies \u2286 lazzies\n\nCombining these, we get:  \nbloop \u2286 razzies \u2286 lazzies  \nTherefo"
+ },
+ {
+  "id": "r3",
+  "cat": "reason",
+  "ok": true,
+  "secs": 16.8,
+  "tps": "12.81",
+  "out": "If today is Wednesday, then:\n\n- 1 day from now = Thursday  \n- 2 days from now = Friday  \n- 3 days from now = Saturday  \n- 4 days from now = Sunday  \n- 5 days from now = Monday  \n- 6 days from now = Tuesday  \n- 7 days from now = Wednesday  \n\nSo, 10 days from now is:\n\n10 \u00f7 7 = 1 week and 3 days\n\nSince"
+ },
+ {
+  "id": "r4",
+  "cat": "reason",
+  "ok": true,
+  "secs": 12.6,
+  "tps": "12.85",
+  "out": "Let's go step by step:\n\n1. You start with **3 apples**.\n2. You **eat one**, so you now have:  \n   **3 - 1 = 2 apples**.\n3. Then you **buy 4 more**, so you now have:  \n   **2 + 4 = 6 apples**.\n\n### Final answer: **6 apples**. \u2705"
+ },
+ {
+  "id": "r5",
+  "cat": "reason",
+  "ok": true,
+  "secs": 30.7,
+  "tps": "12.50",
+  "out": "A kilogram of feathers weighs the same as a kilogram of steel.\n\n**Weight** is a measure of the force of gravity acting on an object, and it is measured in **newtons** (N). However, when we say \"a kilogram of\" something, we're referring to the **mass** of the object, not the weight.\n\nSo, **a kilogram"
+ },
+ {
+  "id": "r6",
+  "cat": "reason",
+  "ok": true,
+  "secs": 20.4,
+  "tps": "12.71",
+  "out": "Let's define the variables:\n\n- Let the cost of the **ball** be **$x**.\n- Then the **bat** costs **$x + $1.00** (since it's $1.00 more than the ball).\n\nThe total cost is $1.10:\n\n$$\nx + (x + 1.00) = 1.10\n$$\n\nSimplify:\n\n$$\n2x + 1.00 = 1.10\n$$\n\nSubtract 1.00 from both sides:\n\n$$\n2x = 0.10\n$$\n\nDivide by "
+ },
+ {
+  "id": "i1",
+  "cat": "instr",
+  "ok": true,
+  "secs": 6.5,
+  "tps": "12.92",
+  "out": "Apple  \nBanana  \nOrange"
+ },
+ {
+  "id": "i2",
+  "cat": "instr",
+  "ok": true,
+  "secs": 6.0,
+  "tps": "12.82",
+  "out": "YES"
+ },
+ {
+  "id": "i3",
+  "cat": "instr",
+  "ok": true,
+  "secs": 6.0,
+  "tps": "12.81",
+  "out": "Bonjour"
+ },
+ {
+  "id": "i4",
+  "cat": "instr",
+  "ok": true,
+  "secs": 7.4,
+  "tps": "12.89",
+  "out": "{\"name\": \"Ada\", \"age\": 36}"
+ },
+ {
+  "id": "c1",
+  "cat": "code",
+  "ok": true,
+  "secs": 29.7,
+  "tps": "12.67",
+  "out": "Here's a Python function `is_prime(n)` that returns `True` if `n` is a prime number:\n\n```python\ndef is_prime(n):\n    # Handle edge cases\n    if n < 2:\n        return False\n    if n == 2:\n        return True\n    if n % 2 == 0:\n        return False\n    \n    # Check odd divisors up to sqrt(n)\n    for i"
+ },
+ {
+  "id": "c2",
+  "cat": "code",
+  "ok": true,
+  "secs": 7.6,
+  "tps": "12.94",
+  "out": "```javascript\nfunction reverseString(s) { return s.split('').reverse().join(''); }\n```"
+ },
+ {
+  "id": "c3",
+  "cat": "code",
+  "ok": true,
+  "secs": 15.4,
+  "tps": "12.83",
+  "out": "Here's the SQL query to select the name of every user older than 30 from a table called `users`:\n\n```sql\nSELECT name\nFROM users\nWHERE age > 30;\n```\n\n**Note:** This query assumes:\n- The table has a column named `age` that stores the user's age\n- The table has a column named `name` that stores the use"
+ },
+ {
+  "id": "a1",
+  "cat": "agent",
+  "ok": false,
+  "secs": 11.9,
+  "tps": "12.24",
+  "out": "```sh\nls\ncat /workspace/count.sh\n```"
+ },
+ {
+  "id": "a2",
+  "cat": "agent",
+  "ok": false,
+  "secs": 13.4,
+  "tps": "12.17",
+  "out": "```sh\nls\n```\n```file hello.py\nfor i in {1..5}:\n    echo $((i * i))\n```"
+ },
+ {
+  "id": "a3",
+  "cat": "agent",
+  "ok": false,
+  "secs": 11.4,
+  "tps": "12.48",
+  "out": "ls\n```file hello.sh\necho hello\n```"
+ },
+ {
+  "id": "l1",
+  "cat": "lang",
+  "ok": true,
+  "secs": 6.4,
+  "tps": "12.95",
+  "out": "Die Hauptstadt von Frankreich ist Paris."
+ },
+ {
+  "id": "l2",
+  "cat": "lang",
+  "ok": true,
+  "secs": 6.5,
+  "tps": "12.95",
+  "out": "Una semana tiene 7 d\u00edas."
+ },
+ {
+  "id": "v1",
+  "cat": "vision",
+  "ok": true,
+  "secs": 11.1,
+  "tps": "",
+  "out": "42"
+ },
+ {
+  "id": "v2",
+  "cat": "vision",
+  "ok": true,
+  "secs": 21.5,
+  "tps": "",
+  "out": "The image contains two distinct geometric shapes, each with a specific color.\n\n- **Shape 1**: A red circle. It is positioned on the left side of the image.\n- **Shape 2**: A blue square. It is positioned on the right side of the image.\n\nThe two shapes are separate and do not overlap."
+ },
+ {
+  "id": "v3",
+  "cat": "vision",
+  "ok": true,
+  "secs": 17.7,
+  "tps": "",
+  "out": "B"
+ },
+ {
+  "id": "v4",
+  "cat": "vision",
+  "ok": true,
+  "secs": 17.1,
+  "tps": "",
+  "out": "Based on the receipt shown in the image, the total is $23.50."
+ },
+ {
+  "id": "h1",
+  "cat": "hard",
+  "ok": true,
+  "secs": 38.0,
+  "tps": "12.46",
+  "out": "We are given that the clock shows **3:15**, and we need to find the **angle between the hour hand and the minute hand** in degrees.\n\n---\n\n### Step 1: Understand the positions of the hands\n\n#### **Minute Hand:**\n- The minute hand moves 360 degrees in 60 minutes.\n- So, each minute is $ \\frac{360^\\circ"
+ },
+ {
+  "id": "h2",
+  "cat": "hard",
+  "ok": true,
+  "secs": 27.9,
+  "tps": "12.57",
+  "out": "To find the **sum of all prime numbers less than 20**, let's first list the prime numbers less than 20.\n\n### Step 1: List the prime numbers less than 20\nPrime numbers are numbers greater than 1 that have no divisors other than 1 and themselves.\n\nThe prime numbers less than 20 are:\n\n> 2, 3, 5, 7, 11,"
+ },
+ {
+  "id": "h3",
+  "cat": "hard",
+  "ok": true,
+  "secs": 16.9,
+  "tps": "12.77",
+  "out": "Let's break it down step by step:\n\n- The farmer has **17 sheep**.\n- **All but 9 run away** \u2014 this means **9 sheep are still on** the farm.\n- So, **17 - 9 = 8** sheep are left.\n\nWait \u2014 let's be careful with the wording.\n\n\"**All but 9 run away**\" means that **9 sheep did not run away**, so **9 are sti"
+ },
+ {
+  "id": "h4",
+  "cat": "hard",
+  "ok": true,
+  "secs": 23.5,
+  "tps": "12.68",
+  "out": "Let's break down the word **\"strawberry\"** step by step to count how many times the letter **r** appears.\n\n1. Write out the word: **s t r a w b e r r y**\n\n2. Now go through each letter one by one:\n\n- **s** \u2192 not r  \n- **t** \u2192 not r  \n- **r** \u2192 **yes**, this is an **r**  \n- **a** \u2192 not r  \n- **w** \u2192 "
+ },
+ {
+  "id": "h5",
+  "cat": "hard",
+  "ok": true,
+  "secs": 16.3,
+  "tps": "12.75",
+  "out": "Let's sort the numbers in ascending order:\n\nGiven numbers:  \n42, 7, 19, 3, 88, 21\n\nStep 1: List them out:  \n7, 3, 19, 21, 42, 88\n\nStep 2: Arrange them in ascending order (from smallest to largest):\n\n3, 7, 19, 21, 42, 88\n\n\u2705 Final sorted list:  \n**3, 7, 19, 21, 42, 88**"
+ },
+ {
+  "id": "h6",
+  "cat": "hard",
+  "ok": true,
+  "secs": 38.9,
+  "tps": "12.33",
+  "out": "Let's break this down step by step.\n\nWe are told:\n\n- **5 machines** make **5 widgets** in **5 minutes**.\n\nWe are to find:  \n**How many minutes do 100 machines need to make 100 widgets?**\n\n---\n\n### Step 1: Understand the rate\n\nFirst, calculate the **rate** at which the machines produce widgets.\n\n- 5 "
+ },
+ {
+  "id": "h7",
+  "cat": "hard",
+  "ok": true,
+  "secs": 15.3,
+  "tps": "9.30",
+  "out": "2 to the power of 10 is:\n\n**1024**\n\nThis is because:\n\n2\u00b9\u2070 = 2 \u00d7 2 \u00d7 2 \u00d7 2 \u00d7 2 \u00d7 2 \u00d7 2 \u00d7 2 \u00d7 2 \u00d7 2 = 1024\n\nSo, **2\u00b9\u2070 = 1024**."
+ },
+ {
+  "id": "h8",
+  "cat": "hard",
+  "ok": true,
+  "secs": 38.8,
+  "tps": "12.31",
+  "out": "The name of the fifth daughter is **Nanu**.\n\nWait \u2014 that doesn't make sense. Let's think carefully.\n\nMary's father has **five daughters**: Nana, Nene, Nini, and Nono. That's four. So the fifth daughter must be **named** something else.\n\nBut the names are all **\"N\"**-based: Nana, Nene, Nini, Nono \u2014 a"
+ },
+ {
+  "id": "h9",
+  "cat": "hard",
+  "ok": true,
+  "secs": 14.0,
+  "tps": "9.44",
+  "out": "To convert the fraction $ \\frac{3}{8} $ to a decimal, divide 3 by 8:\n\n$$\n\\frac{3}{8} = 0.375\n$$\n\nSo, $ \\frac{3}{8} $ as a decimal is **0.375**."
+ },
+ {
+  "id": "h10",
+  "cat": "hard",
+  "ok": false,
+  "secs": 38.9,
+  "tps": "12.31",
+  "out": "Let's analyze the sequence:\n\n**2, 6, 12, 20, 30, ...**\n\n### Step 1: Look at the differences between consecutive terms\n\n- 6 - 2 = 4  \n- 12 - 6 = 6  \n- 20 - 12 = 8  \n- 30 - 20 = 10  \n\nSo the **first differences** are:  \n**4, 6, 8, 10**\n\nThese increase by 2 each time \u2014 this is an arithmetic sequence.\n\n"
+ },
+ {
+  "id": "h11",
+  "cat": "hard",
+  "ok": true,
+  "secs": 27.1,
+  "tps": "10.80",
+  "out": "To compare the numbers **9.11** and **9.9**, let's look at them digit by digit:\n\n- **9.11** has a **1** in the **tenths** place and **1** in the **hundredths** place.\n- **9.9** has a **9** in the **tenths** place and **9** in the **hundredths** place.\n\nNow, compare the **tenths** place:\n- 9.11 \u2192 **1"
+ },
+ {
+  "id": "h12",
+  "cat": "hard",
+  "ok": true,
+  "secs": 20.0,
+  "tps": "10.35",
+  "out": "The store sells notebooks at **3 for $5**. This means that for every 3 notebooks, you pay $5.\n\nWe want to find the cost of **12 notebooks**.\n\n### Step 1: Find how many sets of 3 notebooks are in 12\n$$\n12 \\div 3 = 4\n$$\nSo, 12 notebooks is **4 sets** of 3 notebooks.\n\n### Step 2: Multiply the price per"
+ },
+ {
+  "id": "h13",
+  "cat": "hard",
+  "ok": true,
+  "secs": 39.0,
+  "tps": "12.30",
+  "out": "Let's carefully analyze the process step by step.\n\nWe start with a **square piece of paper**.\n\n### Step 1: Fold it in half twice\n- First fold: Fold the square in half (say, along a diagonal or a side). But since we're folding **in half twice**, we're folding it **in half twice**, which means we're f"
+ },
+ {
+  "id": "h14",
+  "cat": "hard",
+  "ok": false,
+  "secs": 16.2,
+  "tps": "10.10",
+  "out": "Here's a Python list comprehension that gives the even numbers from 1 to 20:\n\n```python\n[2, 4, 6, 8, 10, 12, 14, 16, 18, 20]\n```\n\nThe list comprehension uses the condition `i % 2 == 0` to check if a number is even, and includes the numbers from 1 to 20 (inclusive)."
+ },
+ {
+  "id": "h15",
+  "cat": "hard",
+  "ok": true,
+  "secs": 21.7,
+  "tps": "11.26",
+  "out": "To find the derivative of the function:\n\n$$\nf(x) = x^3 + 2x\n$$\n\nwe apply the **sum rule** and the **power rule** for differentiation.\n\n### Step 1: Differentiate each term\n\n- The derivative of $ x^3 $ is:\n  $$\n  \\frac{d}{dx}(x^3) = 3x^2\n  $$\n\n- The derivative of $ 2x $ is:\n  $$\n  \\frac{d}{dx}(2x) = 2"
+ }
+]

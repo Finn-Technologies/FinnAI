@@ -1,0 +1,122 @@
+[
+ {
+  "id": "h1",
+  "cat": "hard",
+  "ok": true,
+  "secs": 9.2,
+  "tps": "21.46",
+  "out": "To find the angle between the hour and minute hands of a clock, we can use the following formula:\n\nAngle = |(Hour * 30) + (Minute * 0.5)| degrees\n\nwhere H is the hour (in hours) and M is the minute (in minutes).\n\nIn this case, the hour hand is at 3:15, so H = 3 and M = 15.\n\nAngle = |(3 * 30) + (15 *"
+ },
+ {
+  "id": "h2",
+  "cat": "hard",
+  "ok": true,
+  "secs": 4.6,
+  "tps": "21.53",
+  "out": "The prime numbers less than 20 are 2, 3, 5, 7, 11, 13, 17, and 19.\nThe sum of these prime numbers is $2+3+5+7+11+13+17+19=\\boxed{77}$.\nThe answer is: 77"
+ },
+ {
+  "id": "h3",
+  "cat": "hard",
+  "ok": false,
+  "secs": 2.4,
+  "tps": "21.41",
+  "out": "If all but 9 run away, then 17 - 9 = 8 sheep are left."
+ },
+ {
+  "id": "h4",
+  "cat": "hard",
+  "ok": true,
+  "secs": 2.2,
+  "tps": "21.53",
+  "out": "The letter 'r' appears 3 times in the word 'strawberry'."
+ },
+ {
+  "id": "h5",
+  "cat": "hard",
+  "ok": true,
+  "secs": 2.6,
+  "tps": "21.51",
+  "out": "The numbers sorted in ascending order are: 3, 7, 19, 21, 42, 88."
+ },
+ {
+  "id": "h6",
+  "cat": "hard",
+  "ok": true,
+  "secs": 3.5,
+  "tps": "21.55",
+  "out": "If 5 machines make 5 widgets in 5 minutes, then each machine makes 1 widget in 5 minutes. Therefore, 100 machines can make 100 widgets in 5 minutes."
+ },
+ {
+  "id": "h7",
+  "cat": "hard",
+  "ok": true,
+  "secs": 1.9,
+  "tps": "21.52",
+  "out": "2 to the power of 10 is 1024."
+ },
+ {
+  "id": "h8",
+  "cat": "hard",
+  "ok": true,
+  "secs": 1.9,
+  "tps": "21.57",
+  "out": "The name of the fifth daughter is Mary."
+ },
+ {
+  "id": "h9",
+  "cat": "hard",
+  "ok": true,
+  "secs": 3.0,
+  "tps": "21.58",
+  "out": "To convert a fraction to a decimal, you divide the numerator by the denominator. In this case, 3 divided by 8 is 0.375."
+ },
+ {
+  "id": "h10",
+  "cat": "hard",
+  "ok": false,
+  "secs": 4.8,
+  "tps": "21.53",
+  "out": "The sequence 2, 6, 12, 20, 30, ... is an arithmetic sequence with a common difference of 4. To find the next number in the sequence, we add 4 to the last number in the sequence:\n\n30 + 4 = 34\n\nSo, the next number in the sequence is 34."
+ },
+ {
+  "id": "h11",
+  "cat": "hard",
+  "ok": true,
+  "secs": 4.8,
+  "tps": "21.59",
+  "out": "To compare the two numbers, we can look at the digits after the decimal point. \n\nFor 9.11, the digit after the decimal point is 1.\nFor 9.9, the digit after the decimal point is 9.\n\nSince 9 is greater than 1, 9.9 is larger than 9.11."
+ },
+ {
+  "id": "h12",
+  "cat": "hard",
+  "ok": true,
+  "secs": 8.6,
+  "tps": "21.51",
+  "out": "The store sells notebooks at a rate of 3 for $5. To find out how much 12 notebooks cost, we can first determine the cost of one notebook and then multiply it by 12.\n\nCost of one notebook = (Cost of 3 notebooks) / 3\n                         = $5 / 3\n                         = $1.67 (rounded to two de"
+ },
+ {
+  "id": "h13",
+  "cat": "hard",
+  "ok": false,
+  "secs": 1.5,
+  "tps": "21.36",
+  "out": "2"
+ },
+ {
+  "id": "h14",
+  "cat": "hard",
+  "ok": true,
+  "secs": 2.6,
+  "tps": "21.59",
+  "out": "even_numbers = [num for num in range(1, 21) if num % 2 == 0]"
+ },
+ {
+  "id": "h15",
+  "cat": "hard",
+  "ok": true,
+  "secs": 2.3,
+  "tps": "21.60",
+  "out": "The derivative of x^3 + 2x is 3x^2 + 2."
+ }
+]

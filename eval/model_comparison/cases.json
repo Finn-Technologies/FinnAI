@@ -1,0 +1,690 @@
+[
+ {
+  "id": "f1",
+  "cat": "fact",
+  "prompt": "What is the capital of Australia? Answer in one word.",
+  "any": [
+   "canberra"
+  ],
+  "all": [],
+  "none": [],
+  "sys": null,
+  "image": null,
+  "lines": null
+ },
+ {
+  "id": "f2",
+  "cat": "fact",
+  "prompt": "What is the chemical symbol for gold?",
+  "any": [
+   "au"
+  ],
+  "all": [],
+  "none": [],
+  "sys": null,
+  "image": null,
+  "lines": null
+ },
+ {
+  "id": "f3",
+  "cat": "fact",
+  "prompt": "Who wrote Pride and Prejudice?",
+  "any": [
+   "austen"
+  ],
+  "all": [],
+  "none": [],
+  "sys": null,
+  "image": null,
+  "lines": null
+ },
+ {
+  "id": "f4",
+  "cat": "fact",
+  "prompt": "At sea level, water boils at how many degrees Fahrenheit?",
+  "any": [
+   "212"
+  ],
+  "all": [],
+  "none": [],
+  "sys": null,
+  "image": null,
+  "lines": null
+ },
+ {
+  "id": "f5",
+  "cat": "fact",
+  "prompt": "Which planet in our solar system has the most moons as of 2023?",
+  "any": [
+   "saturn"
+  ],
+  "all": [],
+  "none": [],
+  "sys": null,
+  "image": null,
+  "lines": null
+ },
+ {
+  "id": "f6",
+  "cat": "fact",
+  "prompt": "In which year did the first human land on the Moon?",
+  "any": [
+   "1969"
+  ],
+  "all": [],
+  "none": [],
+  "sys": null,
+  "image": null,
+  "lines": null
+ },
+ {
+  "id": "m1",
+  "cat": "math",
+  "prompt": "What is 17 multiplied by 23? Give just the number.",
+  "any": [
+   "391"
+  ],
+  "all": [],
+  "none": [],
+  "sys": null,
+  "image": null,
+  "lines": null
+ },
+ {
+  "id": "m2",
+  "cat": "math",
+  "prompt": "A shirt costs $40. It is 25% off, and then 10% sales tax is added to the discounted price. What is the final price?",
+  "any": [
+   "33"
+  ],
+  "all": [],
+  "none": [],
+  "sys": null,
+  "image": null,
+  "lines": null
+ },
+ {
+  "id": "m3",
+  "cat": "math",
+  "prompt": "If 3 pencils cost $1.20, how much do 7 pencils cost?",
+  "any": [
+   "2.80",
+   "2.8"
+  ],
+  "all": [],
+  "none": [],
+  "sys": null,
+  "image": null,
+  "lines": null
+ },
+ {
+  "id": "m4",
+  "cat": "math",
+  "prompt": "A train travels at 60 km/h for 2.5 hours. How far does it go?",
+  "any": [
+   "150"
+  ],
+  "all": [],
+  "none": [],
+  "sys": null,
+  "image": null,
+  "lines": null
+ },
+ {
+  "id": "m5",
+  "cat": "math",
+  "prompt": "What is 15% of 80?",
+  "any": [
+   "12"
+  ],
+  "all": [],
+  "none": [],
+  "sys": null,
+  "image": null,
+  "lines": null
+ },
+ {
+  "id": "m6",
+  "cat": "math",
+  "prompt": "A rectangle is 7 cm wide and 12 cm long. What is its area?",
+  "any": [
+   "84"
+  ],
+  "all": [],
+  "none": [],
+  "sys": null,
+  "image": null,
+  "lines": null
+ },
+ {
+  "id": "r1",
+  "cat": "reason",
+  "prompt": "Tom is taller than Ann. Ann is taller than Bob. Who is the shortest?",
+  "any": [
+   "bob"
+  ],
+  "all": [],
+  "none": [],
+  "sys": null,
+  "image": null,
+  "lines": null
+ },
+ {
+  "id": "r2",
+  "cat": "reason",
+  "prompt": "All bloops are razzies and all razzies are lazzies. Are all bloops definitely lazzies? Answer yes or no.",
+  "any": [
+   "yes"
+  ],
+  "all": [],
+  "none": [],
+  "sys": null,
+  "image": null,
+  "lines": null
+ },
+ {
+  "id": "r3",
+  "cat": "reason",
+  "prompt": "If today is Wednesday, what day of the week will it be 10 days from now?",
+  "any": [
+   "saturday"
+  ],
+  "all": [],
+  "none": [],
+  "sys": null,
+  "image": null,
+  "lines": null
+ },
+ {
+  "id": "r4",
+  "cat": "reason",
+  "prompt": "I have 3 apples. I eat one, then buy 4 more. How many apples do I have?",
+  "any": [
+   "6",
+   "six"
+  ],
+  "all": [],
+  "none": [],
+  "sys": null,
+  "image": null,
+  "lines": null
+ },
+ {
+  "id": "r5",
+  "cat": "reason",
+  "prompt": "Which weighs more: a kilogram of feathers or a kilogram of steel?",
+  "any": [
+   "same",
+   "equal",
+   "neither",
+   "both weigh"
+  ],
+  "all": [],
+  "none": [],
+  "sys": null,
+  "image": null,
+  "lines": null
+ },
+ {
+  "id": "r6",
+  "cat": "reason",
+  "prompt": "A bat and a ball cost $1.10 in total. The bat costs $1.00 more than the ball. How much does the ball cost?",
+  "any": [
+   "0.05",
+   "5 cents",
+   "five cents"
+  ],
+  "all": [],
+  "none": [
+   "$0.10 ",
+   "is 10 cents"
+  ],
+  "sys": null,
+  "image": null,
+  "lines": null
+ },
+ {
+  "id": "i1",
+  "cat": "instr",
+  "prompt": "List exactly three fruits, one per line, with nothing else.",
+  "any": [],
+  "all": [],
+  "none": [],
+  "sys": null,
+  "image": null,
+  "lines": 3
+ },
+ {
+  "id": "i2",
+  "cat": "instr",
+  "prompt": "Reply with only the word YES and nothing else.",
+  "any": [
+   "yes"
+  ],
+  "all": [],
+  "none": [],
+  "sys": null,
+  "image": null,
+  "lines": 1
+ },
+ {
+  "id": "i3",
+  "cat": "instr",
+  "prompt": "Translate 'good morning' into French.",
+  "any": [
+   "bonjour"
+  ],
+  "all": [],
+  "none": [],
+  "sys": null,
+  "image": null,
+  "lines": null
+ },
+ {
+  "id": "i4",
+  "cat": "instr",
+  "prompt": "Give me a JSON object with keys \"name\" set to \"Ada\" and \"age\" set to 36. Output only the JSON.",
+  "any": [],
+  "all": [
+   "\"name\"",
+   "\"ada\"",
+   "36"
+  ],
+  "none": [],
+  "sys": null,
+  "image": null,
+  "lines": null
+ },
+ {
+  "id": "c1",
+  "cat": "code",
+  "prompt": "Write a Python function is_prime(n) that returns True if n is prime.",
+  "any": [],
+  "all": [
+   "def is_prime",
+   "return"
+  ],
+  "none": [],
+  "sys": null,
+  "image": null,
+  "lines": null
+ },
+ {
+  "id": "c2",
+  "cat": "code",
+  "prompt": "In JavaScript, write a one-line function that reverses a string.",
+  "any": [],
+  "all": [
+   "reverse",
+   "join"
+  ],
+  "none": [],
+  "sys": null,
+  "image": null,
+  "lines": null
+ },
+ {
+  "id": "c3",
+  "cat": "code",
+  "prompt": "Write an SQL query that selects the name of every user older than 30 from a table called users.",
+  "any": [],
+  "all": [
+   "select",
+   "name",
+   "users",
+   "> 30"
+  ],
+  "none": [],
+  "sys": null,
+  "image": null,
+  "lines": null
+ },
+ {
+  "id": "a1",
+  "cat": "agent",
+  "prompt": "Create a shell script count.sh that prints the numbers 1 to 5.",
+  "any": [],
+  "all": [
+   "```file count.sh"
+  ],
+  "none": [],
+  "sys": "You are FinnAI Code, a coding agent in a project folder on the user's phone. You act by writing ONE action per reply, then you stop and wait. The result comes back in the next message.\n\nRun a shell command:\n```sh\nls\n```\nCreate or replace a whole file:\n```file hello.sh\necho hello\n```\n\nRules:\n- Write at most one action per reply, and nothing after it.\n- Paths are relative to the project folder. Never use / or ..\n- To create or change a file, ALWAYS use the file action. Never just print its contents, and never use echo or heredocs.\n- Look before you change things: ls, then cat.\n- Never invent the result of an action. Wait for it.\n- When the task is done, reply in plain text with a short summary and no action.\n- Commands run in Alpine Linux (sh) in /workspace, with internet. Install what you need first: apk add python3 py3-pip nodejs npm git build-base. pip install and npm install work.",
+  "image": null,
+  "lines": null
+ },
+ {
+  "id": "a2",
+  "cat": "agent",
+  "prompt": "Create hello.py that prints the squares of 1 to 5.",
+  "any": [],
+  "all": [
+   "```file hello.py",
+   "print"
+  ],
+  "none": [
+   "{1..5}",
+   "echo $"
+  ],
+  "sys": "You are FinnAI Code, a coding agent in a project folder on the user's phone. You act by writing ONE action per reply, then you stop and wait. The result comes back in the next message.\n\nRun a shell command:\n```sh\nls\n```\nCreate or replace a whole file:\n```file hello.sh\necho hello\n```\n\nRules:\n- Write at most one action per reply, and nothing after it.\n- Paths are relative to the project folder. Never use / or ..\n- To create or change a file, ALWAYS use the file action. Never just print its contents, and never use echo or heredocs.\n- Look before you change things: ls, then cat.\n- Never invent the result of an action. Wait for it.\n- When the task is done, reply in plain text with a short summary and no action.\n- Commands run in Alpine Linux (sh) in /workspace, with internet. Install what you need first: apk add python3 py3-pip nodejs npm git build-base. pip install and npm install work.",
+  "image": null,
+  "lines": null
+ },
+ {
+  "id": "a3",
+  "cat": "agent",
+  "prompt": "List the files in the project.",
+  "any": [],
+  "all": [
+   "```sh",
+   "ls"
+  ],
+  "none": [],
+  "sys": "You are FinnAI Code, a coding agent in a project folder on the user's phone. You act by writing ONE action per reply, then you stop and wait. The result comes back in the next message.\n\nRun a shell command:\n```sh\nls\n```\nCreate or replace a whole file:\n```file hello.sh\necho hello\n```\n\nRules:\n- Write at most one action per reply, and nothing after it.\n- Paths are relative to the project folder. Never use / or ..\n- To create or change a file, ALWAYS use the file action. Never just print its contents, and never use echo or heredocs.\n- Look before you change things: ls, then cat.\n- Never invent the result of an action. Wait for it.\n- When the task is done, reply in plain text with a short summary and no action.\n- Commands run in Alpine Linux (sh) in /workspace, with internet. Install what you need first: apk add python3 py3-pip nodejs npm git build-base. pip install and npm install work.",
+  "image": null,
+  "lines": null
+ },
+ {
+  "id": "l1",
+  "cat": "lang",
+  "prompt": "Was ist die Hauptstadt von Frankreich? Antworte auf Deutsch.",
+  "any": [
+   "paris"
+  ],
+  "all": [],
+  "none": [],
+  "sys": null,
+  "image": null,
+  "lines": null
+ },
+ {
+  "id": "l2",
+  "cat": "lang",
+  "prompt": "\u00bfCu\u00e1ntos d\u00edas tiene una semana? Responde en espa\u00f1ol.",
+  "any": [
+   "siete",
+   "7"
+  ],
+  "all": [],
+  "none": [],
+  "sys": null,
+  "image": null,
+  "lines": null
+ },
+ {
+  "id": "v1",
+  "cat": "vision",
+  "prompt": "What number is shown in this image? Answer with just the number.",
+  "any": [
+   "42"
+  ],
+  "all": [],
+  "none": [],
+  "sys": null,
+  "image": "number42.png",
+  "lines": null
+ },
+ {
+  "id": "v2",
+  "cat": "vision",
+  "prompt": "Describe the shapes in this image and their colours.",
+  "any": [
+   "circle"
+  ],
+  "all": [
+   "red",
+   "blue"
+  ],
+  "none": [],
+  "sys": null,
+  "image": "shapes.png",
+  "lines": null
+ },
+ {
+  "id": "v3",
+  "cat": "vision",
+  "prompt": "Which bar in this chart is the tallest? Answer with its letter.",
+  "any": [
+   "b"
+  ],
+  "all": [],
+  "none": [],
+  "sys": null,
+  "image": "chart.png",
+  "lines": null
+ },
+ {
+  "id": "v4",
+  "cat": "vision",
+  "prompt": "What is the total on this receipt?",
+  "any": [
+   "23.50",
+   "23.5"
+  ],
+  "all": [],
+  "none": [],
+  "sys": null,
+  "image": "receipt.png",
+  "lines": null
+ },
+ {
+  "id": "h1",
+  "cat": "hard",
+  "prompt": "A clock shows 3:15. What is the angle in degrees between the hour hand and the minute hand?",
+  "any": [
+   "7.5"
+  ],
+  "all": [],
+  "none": [],
+  "sys": null,
+  "image": null,
+  "lines": null
+ },
+ {
+  "id": "h2",
+  "cat": "hard",
+  "prompt": "What is the sum of all prime numbers less than 20?",
+  "any": [
+   "77"
+  ],
+  "all": [],
+  "none": [],
+  "sys": null,
+  "image": null,
+  "lines": null
+ },
+ {
+  "id": "h3",
+  "cat": "hard",
+  "prompt": "A farmer has 17 sheep. All but 9 run away. How many sheep are left?",
+  "any": [
+   "9 sheep",
+   "is 9",
+   "are 9",
+   "9."
+  ],
+  "all": [],
+  "none": [
+   "8 sheep"
+  ],
+  "sys": null,
+  "image": null,
+  "lines": null
+ },
+ {
+  "id": "h4",
+  "cat": "hard",
+  "prompt": "How many times does the letter r appear in the word 'strawberry'?",
+  "any": [
+   "3",
+   "three"
+  ],
+  "all": [],
+  "none": [],
+  "sys": null,
+  "image": null,
+  "lines": null
+ },
+ {
+  "id": "h5",
+  "cat": "hard",
+  "prompt": "Sort these numbers in ascending order: 42, 7, 19, 3, 88, 21",
+  "any": [
+   "3, 7, 19, 21, 42, 88"
+  ],
+  "all": [],
+  "none": [],
+  "sys": null,
+  "image": null,
+  "lines": null
+ },
+ {
+  "id": "h6",
+  "cat": "hard",
+  "prompt": "If 5 machines make 5 widgets in 5 minutes, how many minutes do 100 machines need to make 100 widgets?",
+  "any": [
+   "5 minutes",
+   "five minutes",
+   "is 5",
+   "take 5"
+  ],
+  "all": [],
+  "none": [
+   "100 minutes"
+  ],
+  "sys": null,
+  "image": null,
+  "lines": null
+ },
+ {
+  "id": "h7",
+  "cat": "hard",
+  "prompt": "What is 2 to the power of 10?",
+  "any": [
+   "1024",
+   "1,024"
+  ],
+  "all": [],
+  "none": [],
+  "sys": null,
+  "image": null,
+  "lines": null
+ },
+ {
+  "id": "h8",
+  "cat": "hard",
+  "prompt": "Mary's father has five daughters: Nana, Nene, Nini and Nono. What is the name of the fifth daughter?",
+  "any": [
+   "mary"
+  ],
+  "all": [],
+  "none": [],
+  "sys": null,
+  "image": null,
+  "lines": null
+ },
+ {
+  "id": "h9",
+  "cat": "hard",
+  "prompt": "Convert 3/8 to a decimal.",
+  "any": [
+   "0.375",
+   ".375"
+  ],
+  "all": [],
+  "none": [],
+  "sys": null,
+  "image": null,
+  "lines": null
+ },
+ {
+  "id": "h10",
+  "cat": "hard",
+  "prompt": "What is the next number in the sequence 2, 6, 12, 20, 30, ...?",
+  "any": [
+   "42"
+  ],
+  "all": [],
+  "none": [],
+  "sys": null,
+  "image": null,
+  "lines": null
+ },
+ {
+  "id": "h11",
+  "cat": "hard",
+  "prompt": "Which number is larger: 9.11 or 9.9?",
+  "any": [
+   "9.9 is larger",
+   "9.9 is greater",
+   "9.9 is bigger",
+   "is 9.9",
+   "**9.9**"
+  ],
+  "all": [],
+  "none": [
+   "9.11 is larger",
+   "9.11 is greater",
+   "9.11 is bigger"
+  ],
+  "sys": null,
+  "image": null,
+  "lines": null
+ },
+ {
+  "id": "h12",
+  "cat": "hard",
+  "prompt": "A store sells notebooks at 3 for $5. How much do 12 notebooks cost?",
+  "any": [
+   "20"
+  ],
+  "all": [],
+  "none": [],
+  "sys": null,
+  "image": null,
+  "lines": null
+ },
+ {
+  "id": "h13",
+  "cat": "hard",
+  "prompt": "If you fold a square piece of paper in half twice and cut off one corner, how many holes appear when you unfold it? Answer with a number.",
+  "any": [
+   "1",
+   "one"
+  ],
+  "all": [],
+  "none": [],
+  "sys": null,
+  "image": null,
+  "lines": null
+ },
+ {
+  "id": "h14",
+  "cat": "hard",
+  "prompt": "Write a Python list comprehension that gives the even numbers from 1 to 20.",
+  "any": [],
+  "all": [
+   "range",
+   "% 2 == 0"
+  ],
+  "none": [],
+  "sys": null,
+  "image": null,
+  "lines": null
+ },
+ {
+  "id": "h15",
+  "cat": "hard",
+  "prompt": "What is the derivative of x^3 + 2x?",
+  "any": [
+   "3x^2 + 2",
+   "3x\u00b2 + 2",
+   "3x^2+2",
+   "3*x**2 + 2"
+  ],
+  "all": [],
+  "none": [],
+  "sys": null,
+  "image": null,
+  "lines": null
+ }
+]

@@ -1,0 +1,362 @@
+[
+ {
+  "id": "f1",
+  "cat": "fact",
+  "ok": true,
+  "secs": 5.7,
+  "tps": "10.54",
+  "out": "Canberra"
+ },
+ {
+  "id": "f2",
+  "cat": "fact",
+  "ok": true,
+  "secs": 10.4,
+  "tps": "10.65",
+  "out": "The chemical symbol for gold is **Au**.\n\nIt is derived from the Latin word *aurum*, which means \"shining\" or \"bright.\" Gold is an element in Group 11 of the periodic table and has an atomic number of 79."
+ },
+ {
+  "id": "f3",
+  "cat": "fact",
+  "ok": true,
+  "secs": 13.4,
+  "tps": "10.49",
+  "out": "**Jane Austen** wrote *Pride and Prejudice*.\n\nPublished in 1813, it is considered one of the most famous and influential novels in the English language. Austen, an English novelist, social critic, and essayist, is best known for her romantic comedy and social satire. The novel follows the story of E"
+ },
+ {
+  "id": "f4",
+  "cat": "fact",
+  "ok": true,
+  "secs": 12.1,
+  "tps": "10.44",
+  "out": "At sea level, water boils at **212 degrees Fahrenheit**.\n\nThis temperature is the standard boiling point of water on the Fahrenheit scale. It is also equivalent to 100 degrees Celsius (32\u00b0F + 180\u00b0F = 212\u00b0F) and 373.15 Kelvin."
+ },
+ {
+  "id": "f5",
+  "cat": "fact",
+  "ok": true,
+  "secs": 27.6,
+  "tps": "10.40",
+  "out": "As of 2023, **Saturn** holds the record for having the most moons in our solar system.\n\nIn 2023, NASA's Cassini mission officially confirmed the existence of **146** moons orbiting Saturn. This number is significantly higher than the previous record of 136 moons held by Jupiter, which had surpassed "
+ },
+ {
+  "id": "f6",
+  "cat": "fact",
+  "ok": true,
+  "secs": 15.2,
+  "tps": "10.45",
+  "out": "The first human to land on the Moon was **Neil Armstrong**.\n\nHe became the first person to walk on the lunar surface on **July 20, 1969**, during the Apollo 11 mission. Armstrong famously said, \"That's one step for [the] Eagle, one step for [the] man.\"\n\nThe mission was led by Commander **Michael Col"
+ },
+ {
+  "id": "m1",
+  "cat": "math",
+  "ok": true,
+  "secs": 6.4,
+  "tps": "10.40",
+  "out": "391"
+ },
+ {
+  "id": "m2",
+  "cat": "math",
+  "ok": true,
+  "secs": 29.0,
+  "tps": "10.39",
+  "out": "To find the final price, we need to calculate the discounted price first, and then apply the sales tax to that result.\n\n**Step 1: Calculate the discounted price.**\nThe original price is $\\$40$. The discount is $25\\%$.\nTo find the discount amount:\n$$ \\text{Discount} = 40 \\times 0.25 = \\$10 $$\n\nNow, s"
+ },
+ {
+  "id": "m3",
+  "cat": "math",
+  "ok": true,
+  "secs": 21.6,
+  "tps": "10.42",
+  "out": "To find the cost of 7 pencils, we first need to determine the price of a single pencil.\n\n1.  **Calculate the cost per pencil:**\n    If 3 pencils cost $\\$1.20$, we divide the total cost by the number of pencils:\n    $$ \\text{Cost per pencil} = \\frac{\\$1.20}{3} = \\$0.40 $$\n\n2.  **Calculate the cost fo"
+ },
+ {
+  "id": "m4",
+  "cat": "math",
+  "ok": true,
+  "secs": 28.5,
+  "tps": "10.37",
+  "out": "To find the distance traveled, we can use the basic formula relating distance, speed, and time:\n\n$$ \\text{Distance} = \\text{Speed} \\times \\text{Time} $$\n\n**Step 1: Identify the given values.**\n*   **Speed:** $60 \\text{ km/h}$\n*   **Time:** $2.5 \\text{ hours}$\n\n**Step 2: Perform the calculation.**\n$$"
+ },
+ {
+  "id": "m5",
+  "cat": "math",
+  "ok": true,
+  "secs": 27.5,
+  "tps": "8.33",
+  "out": "To find 15% of 80, you can follow these steps:\n\n1.  **Convert the percentage to a decimal**: Divide 15 by 100.\n    $$15 \\div 100 = 0.15$$\n\n2.  **Multiply the decimal by the number**:\n    $$0.15 \\times 80 = 12$$\n\nAlternatively, you can calculate it using fractions:\n$$15\\% \\text{ of } 80 = \\frac{15}{1"
+ },
+ {
+  "id": "m6",
+  "cat": "math",
+  "ok": true,
+  "secs": 21.6,
+  "tps": "9.08",
+  "out": "To find the area of the rectangle, we use the standard formula for the area of a rectangle:\n\n$$ \\text{Area} = \\text{width} \\times \\text{length} $$\n\nGiven the dimensions:\n*   Width = $7 \\text{ cm}$\n*   Length = $12 \\text{ cm}$\n\nNow, perform the multiplication:\n$$ 7 \\times 12 = 84 $$\n\nThe unit of area"
+ },
+ {
+  "id": "r1",
+  "cat": "reason",
+  "ok": true,
+  "secs": 17.9,
+  "tps": "8.81",
+  "out": "To determine who is the shortest, let's break down the comparisons based on the information provided:\n\n1.  **Tom is taller than Ann**: This means $Tom > Ann$.\n2.  **Ann is taller than Bob**: This means $Ann > Bob$.\n\nCombining these two statements, we get the full chain of height:\n$$Tom > Ann > Bob$$"
+ },
+ {
+  "id": "r2",
+  "cat": "reason",
+  "ok": true,
+  "secs": 6.5,
+  "tps": "10.20",
+  "out": "Yes"
+ },
+ {
+  "id": "r3",
+  "cat": "reason",
+  "ok": true,
+  "secs": 29.2,
+  "tps": "10.39",
+  "out": "To determine the day of the week 10 days from now, we can simply count forward by days, as there are no leap years or other factors affecting the weekly cycle in this short timeframe.\n\n1.  **Start**: Wednesday\n2.  **Day 1**: Thursday\n3.  **Day 2**: Friday\n4.  **Day 3**: Saturday\n5.  **Day 4**: Sunda"
+ },
+ {
+  "id": "r4",
+  "cat": "reason",
+  "ok": true,
+  "secs": 17.6,
+  "tps": "7.74",
+  "out": "You have **3** apples.\n\nHere is the step-by-step breakdown:\n1.  You start with **3** apples.\n2.  You eat one, so you have $3 - 1 = 2$ apples left.\n3.  You buy 4 more, so you have $2 + 4 = 6$ apples.\n\nSo, you end up with **6** apples."
+ },
+ {
+  "id": "r5",
+  "cat": "reason",
+  "ok": true,
+  "secs": 25.0,
+  "tps": "10.40",
+  "out": "Both the kilogram of feathers and the kilogram of steel weigh exactly the same.\n\nBy definition, a **kilogram** is a unit of mass. When you purchase or measure 1 kilogram of either material, you are measuring the same amount of matter. The difference lies in their **density**:\n\n*   **Steel** is much "
+ },
+ {
+  "id": "r6",
+  "cat": "reason",
+  "ok": false,
+  "secs": 48.6,
+  "tps": "9.54",
+  "out": "This is a classic lateral thinking puzzle. Let's break it down logically:\n\n1.  **Analyze the total cost**: The problem states that the bat and the ball cost **$1.10** in total.\n2.  **Analyze the individual costs**: The problem states that the bat costs **$1.00** more than the ball.\n3.  **Identify th"
+ },
+ {
+  "id": "i1",
+  "cat": "instr",
+  "ok": true,
+  "secs": 9.7,
+  "tps": "6.57",
+  "out": "Apple\nBanana\nOrange"
+ },
+ {
+  "id": "i2",
+  "cat": "instr",
+  "ok": true,
+  "secs": 13.7,
+  "tps": "10.22",
+  "out": "YES"
+ },
+ {
+  "id": "i3",
+  "cat": "instr",
+  "ok": true,
+  "secs": 6.0,
+  "tps": "10.31",
+  "out": "Bonjour"
+ },
+ {
+  "id": "i4",
+  "cat": "instr",
+  "ok": true,
+  "secs": 7.7,
+  "tps": "10.43",
+  "out": "{\"name\": \"Ada\", \"age\": 36}"
+ },
+ {
+  "id": "c1",
+  "cat": "code",
+  "ok": true,
+  "secs": 28.9,
+  "tps": "10.49",
+  "out": "```python\ndef is_prime(n: int) -> bool:\n    \"\"\"\n    Return True if n is a prime number, False otherwise.\n\n    A prime number is a natural number greater than 1 that has no positive divisors other than 1 and itself.\n    \"\"\"\n    if n < 2:\n        return False\n\n    # 2 is the only even prime number\n   "
+ },
+ {
+  "id": "c2",
+  "cat": "code",
+  "ok": true,
+  "secs": 7.4,
+  "tps": "10.43",
+  "out": "```javascript\nreturn [...str].reverse().join('');\n```"
+ },
+ {
+  "id": "c3",
+  "cat": "code",
+  "ok": true,
+  "secs": 11.3,
+  "tps": "10.41",
+  "out": "```sql\nSELECT name\nFROM users\nWHERE age > 30;\n```\n\nThis query selects the `name` column from the `users` table, filtering only those rows where the `age` value is strictly greater than 30."
+ },
+ {
+  "id": "a1",
+  "cat": "agent",
+  "ok": false,
+  "secs": 15.4,
+  "tps": "10.34",
+  "out": "cat > count.sh << 'EOF'\n#!/bin/sh\nfor i in {1..5}; do\n    echo $i\ndone\nEOF\nls -l count.sh\ncat count.sh\necho \"Done.\""
+ },
+ {
+  "id": "a2",
+  "cat": "agent",
+  "ok": false,
+  "secs": 14.6,
+  "tps": "10.33",
+  "out": "file hello.py\nprint(1**2)\nprint(2**2)\nprint(3**2)\nprint(4**2)\nprint(5**2)"
+ },
+ {
+  "id": "a3",
+  "cat": "agent",
+  "ok": false,
+  "secs": 11.0,
+  "tps": "10.36",
+  "out": "ls\nls"
+ },
+ {
+  "id": "l1",
+  "cat": "lang",
+  "ok": true,
+  "secs": 6.8,
+  "tps": "10.44",
+  "out": "Die Hauptstadt von Frankreich ist **Paris**."
+ },
+ {
+  "id": "l2",
+  "cat": "lang",
+  "ok": true,
+  "secs": 6.8,
+  "tps": "10.42",
+  "out": "Una semana tiene **7 d\u00edas**."
+ },
+ {
+  "id": "h1",
+  "cat": "hard",
+  "ok": true,
+  "secs": 44.7,
+  "tps": "10.44",
+  "out": "To find the angle between the hour and minute hands of a clock at 3:15, we can follow these steps:\n\n### Step 1: Determine the position of the Minute Hand\nThe minute hand moves around the clock face in a full circle (360 degrees) every 60 minutes.\n*   At 15 minutes, the minute hand is at the $15/60$ "
+ },
+ {
+  "id": "h2",
+  "cat": "hard",
+  "ok": false,
+  "secs": 49.8,
+  "tps": "9.21",
+  "out": "To find the sum of all prime numbers less than 20, we first list the prime numbers in that range.\n\n**Step 1: Identify prime numbers less than 20.**\nA prime number is a natural number greater than 1 that has no positive divisors other than 1 and itself.\nThe numbers less than 20 are: 1, 2, 3, 4, 5, 6,"
+ },
+ {
+  "id": "h3",
+  "cat": "hard",
+  "ok": false,
+  "secs": 22.1,
+  "tps": "8.39",
+  "out": "To solve this problem, we need to determine how many sheep remain by subtracting the number of sheep that ran away from the total number of sheep.\n\n1.  **Identify the total number of sheep**: The farmer starts with **17** sheep.\n2.  **Identify the number of sheep that ran away**: The problem states "
+ },
+ {
+  "id": "h4",
+  "cat": "hard",
+  "ok": true,
+  "secs": 19.0,
+  "tps": "8.56",
+  "out": "Let's break down the word **strawberry** to count the letter 'r':\n\n1.  s\n2.  t\n3.  **r** (1)\n4.  a\n5.  w\n6.  **r** (2)\n7.  b\n8.  **r** (3)\n9.  e\n10. **r** (4)\n\nThe letter 'r' appears **4** times in the word \"strawberry\"."
+ },
+ {
+  "id": "h5",
+  "cat": "hard",
+  "ok": true,
+  "secs": 32.8,
+  "tps": "10.35",
+  "out": "To sort the numbers $42, 7, 19, 3, 88, 21$ in ascending order (from smallest to largest), we can compare them step by step:\n\n1.  **Identify the smallest number**: Comparing the values, **3** is the smallest.\n2.  **Identify the next smallest**: The remaining numbers are $42, 7, 19, 88, 21$. The small"
+ },
+ {
+  "id": "h6",
+  "cat": "hard",
+  "ok": true,
+  "secs": 55.4,
+  "tps": "8.55",
+  "out": "To solve this problem, we can break it down into logical steps by analyzing the relationship between the number of machines, the number of widgets, and the time required.\n\n### Step 1: Determine the rate of production per machine\nFirst, let's find out how many widgets a single machine produces in a s"
+ },
+ {
+  "id": "h7",
+  "cat": "hard",
+  "ok": true,
+  "secs": 58.3,
+  "tps": "9.55",
+  "out": "To find the value of $2$ to the power of $10$ (written as $2^{10}$), we can calculate it step-by-step:\n\n1.  **Understand the notation**: $2^{10}$ means multiplying $2$ by itself 10 times.\n2.  **Calculate the powers**:\n    *   $2^1 = 2$\n    *   $2^2 = 4$\n    *   $2^3 = 8$\n    *   $2^4 = 16$\n    *   $"
+ },
+ {
+  "id": "h8",
+  "cat": "hard",
+  "ok": false,
+  "secs": 26.7,
+  "tps": "8.18",
+  "out": "The fifth daughter is **Nene**.\n\nHere is the breakdown of the names:\n1.  **Nana**\n2.  **Nene**\n3.  **Nini**\n4.  **Nono**\n\nThe pattern is simply the addition of the letter \"e\" to each name. Therefore, the fifth daughter is **Nene**."
+ },
+ {
+  "id": "h9",
+  "cat": "hard",
+  "ok": true,
+  "secs": 31.8,
+  "tps": "10.38",
+  "out": "To convert the fraction **3/8** to a decimal, you can perform the division of the numerator by the denominator:\n\n$$3 \\div 8$$\n\nHere is the step-by-step calculation:\n\n1.  Divide 3 by 8. Since 3 is smaller than 8, the result will be less than 1.\n2.  Add a decimal point and a zero to 3 to make it 3.0.\n"
+ },
+ {
+  "id": "h10",
+  "cat": "hard",
+  "ok": true,
+  "secs": 55.9,
+  "tps": "8.37",
+  "out": "To find the next number in the sequence $2, 6, 12, 20, 30, \\dots$, let's analyze the pattern by looking at the differences between consecutive terms:\n\n1.  **First term**: $2$\n2.  **Second term**: $6$\n    *   Difference: $6 - 2 = 4$\n3.  **Third term**: $12$\n    *   Difference: $12 - 6 = 6$\n4.  **Four"
+ },
+ {
+  "id": "h11",
+  "cat": "hard",
+  "ok": true,
+  "secs": 31.2,
+  "tps": "9.74",
+  "out": "To compare **9.11** and **9.9**, we can look at the place value of each digit:\n\n1.  **Whole Numbers**: Both numbers have **9** in the ones place. They are equal so far.\n2.  **Tenths Place**:\n    *   **9.11** has a **1** in the tenths place.\n    *   **9.9** has a **9** in the tenths place.\n\nSince 9 i"
+ },
+ {
+  "id": "h12",
+  "cat": "hard",
+  "ok": true,
+  "secs": 25.1,
+  "tps": "10.39",
+  "out": "To find the cost of 12 notebooks, we can break the problem down into two steps:\n\n1.  **Find the price of a single notebook:**\n    The store sells notebooks in groups of 3 for $5.\n    $$ \\text{Price per notebook} = \\frac{\\$5}{3} \\approx \\$1.67 $$\n\n2.  **Calculate the total cost for 12 notebooks:**\n  "
+ },
+ {
+  "id": "h13",
+  "cat": "hard",
+  "ok": false,
+  "secs": 8.5,
+  "tps": "6.98",
+  "out": "2"
+ },
+ {
+  "id": "h14",
+  "cat": "hard",
+  "ok": false,
+  "secs": 21.8,
+  "tps": "10.46",
+  "out": "```python\n[even for even in range(1, 21)]\n```\n\nThis works because `range(1, 21)` generates numbers from 1 to 20, and the `even` variable in the list comprehension automatically filters for only those numbers divisible by 2."
+ },
+ {
+  "id": "h15",
+  "cat": "hard",
+  "ok": true,
+  "secs": 41.1,
+  "tps": "10.35",
+  "out": "To find the derivative of the function $f(x) = x^3 + 2x$, we will apply the **Sum Rule** and the **Power Rule** of differentiation.\n\n### Step-by-Step Derivation\n\n1.  **Identify the terms**: The function consists of two terms: $x^3$ and $2x$.\n2.  **Apply the Sum Rule**: The derivative of a sum is the"
+ }
+]
