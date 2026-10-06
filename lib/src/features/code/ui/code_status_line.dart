@@ -89,13 +89,17 @@ class CodeStatusLine extends StatelessWidget {
                     onTap: onModel,
                   ),
                 ),
-                separator,
-                Text(
-                  environmentLabel,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: style,
-                ),
+                // While the agent works its state needs the room more than
+                // the environment does.
+                if (phase == CodeAgentPhase.idle) ...[
+                  separator,
+                  Text(
+                    environmentLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: style,
+                  ),
+                ],
                 separator,
                 Builder(
                   builder: (anchorContext) {

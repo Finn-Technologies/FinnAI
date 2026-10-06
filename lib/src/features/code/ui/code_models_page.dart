@@ -190,7 +190,9 @@ class _CodeModelsPageState extends State<CodeModelsPage> {
         if (matches.length > CodeModelsPage.shownPerProvider) {
           sections.add(
             FinnCaption(
-              l10n.codeProviderModelsCount('${matches.length}'),
+              matches.length == 1
+                  ? l10n.codeProviderModelsOne
+                  : l10n.codeProviderModelsCount('${matches.length}'),
             ),
           );
         }

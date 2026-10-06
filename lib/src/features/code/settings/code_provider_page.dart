@@ -371,7 +371,9 @@ class _CodeProviderPageState extends State<CodeProviderPage> {
         icon: FluxIcons.chip,
         title: loading
             ? l10n.codeModelsLoading
-            : l10n.codeProviderModelsCount('$count'),
+            : (count == 1
+                ? l10n.codeProviderModelsOne
+                : l10n.codeProviderModelsCount('$count')),
         subtitle: count > 0
             ? l10n.codeProviderModelsLive(name)
             : (error == null

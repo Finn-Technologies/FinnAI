@@ -4268,4 +4268,7 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get codeSettingsLinuxSubReady =>
       'Alpine Linux · los comandos se ejecutan aquí';
+
+  @override
+  String get codeProviderModelsOne => '1 modelo disponible';
 }

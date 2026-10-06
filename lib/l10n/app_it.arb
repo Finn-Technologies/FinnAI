@@ -2369,5 +2369,6 @@
   "codeLinuxUnsupported": "Questo dispositivo non può eseguire Linux, quindi i comandi usano la sua shell.",
   "codeLinuxLicence": "Alpine Linux e i suoi pacchetti hanno licenze proprie. proot (GPL-2.0) li esegue; il sorgente è su github.com/termux/proot.",
   "codeTerminalIntroLinux": "Alpine Linux, nella cartella del progetto di questa sessione (/workspace).",
-  "codeSettingsLinuxSubReady": "Alpine Linux · i comandi girano qui"
+  "codeSettingsLinuxSubReady": "Alpine Linux · i comandi girano qui",
+  "codeProviderModelsOne": "1 modello disponibile"
 }

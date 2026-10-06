@@ -5667,5 +5667,9 @@
   "codeSettingsLinuxSubReady": "Alpine Linux · commands run here",
   "@codeSettingsLinuxSubReady": {
     "description": "Settings row subtitle"
+  },
+  "codeProviderModelsOne": "1 model available",
+  "@codeProviderModelsOne": {
+    "description": "Exactly one model in a provider's list"
   }
 }

@@ -7537,6 +7537,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Alpine Linux · commands run here'**
   String get codeSettingsLinuxSubReady;
+
+  /// Exactly one model in a provider's list
+  ///
+  /// In en, this message translates to:
+  /// **'1 model available'**
+  String get codeProviderModelsOne;
 }
 
 class _AppLocalizationsDelegate
