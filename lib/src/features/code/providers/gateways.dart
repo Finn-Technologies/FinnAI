@@ -45,6 +45,10 @@ class LocalCodeGateway implements CodeModelGateway {
       ),
       samplerProfile: PromptIntentPolicy.sampler(PromptIntent.coding),
       maxOutputTokens: request.maxTokens,
+      // Code's own system prompt, verbatim: not the chat persona, the date
+      // or the private-context wrapper (the 1.6B model echoed the date as its
+      // summary).
+      agentPrompt: true,
     );
   }
 

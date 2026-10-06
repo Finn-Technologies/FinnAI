@@ -12,6 +12,7 @@ extension FinnAcceleratorReplies on FinnAccelerator {
     TtftTrace? trace,
     IntentSamplerProfile? samplerProfile,
     int? maxOutputTokens,
+    bool agentPrompt = false,
   }) async* {
     if (_replyInFlight) {
       throw StateError('Finn is already generating a response.');
@@ -30,6 +31,7 @@ extension FinnAcceleratorReplies on FinnAccelerator {
         trace: trace,
         samplerProfile: samplerProfile,
         maxOutputTokens: maxOutputTokens,
+        agentPrompt: agentPrompt,
       );
     } finally {
       _replyInFlight = false;
@@ -49,6 +51,7 @@ extension FinnAcceleratorReplies on FinnAccelerator {
     TtftTrace? trace,
     IntentSamplerProfile? samplerProfile,
     int? maxOutputTokens,
+    bool agentPrompt = false,
   }) async* {
     if (_replyInFlight) {
       final turn = replyGate.waitTurn();
@@ -71,6 +74,7 @@ extension FinnAcceleratorReplies on FinnAccelerator {
       trace: trace,
       samplerProfile: samplerProfile,
       maxOutputTokens: maxOutputTokens,
+      agentPrompt: agentPrompt,
     );
   }
 
@@ -136,6 +140,7 @@ extension FinnAcceleratorReplies on FinnAccelerator {
     TtftTrace? trace,
     IntentSamplerProfile? samplerProfile,
     int? maxOutputTokens,
+    bool agentPrompt = false,
   }) async* {
     final analysis =
         promptAnalysis ?? const PromptIntentClassifier().classify(prompt);
@@ -151,6 +156,24 @@ extension FinnAcceleratorReplies on FinnAccelerator {
     }
     final model = selected;
     _lastGeneratingModel = model;
+    if (agentPrompt) {
+      // The agent reads its own protocol out of the raw reply (and strips
+      // reasoning tags itself); the chat filters would eat a JSON file that
+      // happens to look like a tool call.
+      yield* _generateForModel(
+        model,
+        prompt,
+        conversationId: conversationId,
+        history: history,
+        systemContext: systemContext,
+        analysis: analysis,
+        trace: trace,
+        samplerProfile: samplerProfile,
+        maxOutputTokens: maxOutputTokens,
+        agentPrompt: true,
+      );
+      return;
+    }
     yield* _cleanModelStream(
       _generateForModel(
         model,

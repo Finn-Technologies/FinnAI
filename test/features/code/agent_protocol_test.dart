@@ -482,4 +482,84 @@ void main() {
       expect(turns.length, lessThan(5));
     });
   });
+
+  group('on-device replay', () {
+    const budget = CodeBudget.onDevice;
+    final first = [
+      user('Make a.txt', 'u1'),
+      assistant('a1',
+          action: const CodeAction.write('a.txt', 'hi').copyWith(
+            status: CodeActionStatus.done,
+          )),
+    ];
+    final second = [
+      ...first,
+      assistant('a2',
+          action: const CodeAction.shell('cat a.txt').copyWith(
+            status: CodeActionStatus.done,
+            output: 'hi',
+            exitCode: 0,
+          )),
+    ];
+
+    test('every user turn carries its reminder', () {
+      final turns = AgentProtocol.turnsFor(first, budget: budget, remind: true);
+      for (final turn in turns.where((t) => t.role == 'user')) {
+        expect(
+          turn.content.endsWith(AgentProtocol.resultReminder) ||
+              turn.content.endsWith(AgentProtocol.taskReminder(shell: true)),
+          isTrue,
+          reason: turn.content,
+        );
+      }
+    });
+
+    test('the next step only appends: earlier turns are unchanged', () {
+      final before =
+          AgentProtocol.turnsFor(first, budget: budget, remind: true);
+      final after =
+          AgentProtocol.turnsFor(second, budget: budget, remind: true);
+      expect(after.take(before.length), before);
+    });
+  });
+
+  group('small-model aids', () {
+    test('a request naming one file to create names the first action', () {
+      expect(
+        AgentProtocol.fileToCreate(
+            'Create a shell script count.sh that prints 1 to 5, then run it.'),
+        'count.sh',
+      );
+      expect(AgentProtocol.fileToCreate('What does count.sh do?'), isNull);
+      expect(AgentProtocol.fileToCreate('Create a.py and b.py'), isNull);
+      final turn = AgentProtocol.reminded(
+        const CodeTurn.user('Create notes.md with a title'),
+        afterReply: false,
+        shell: true,
+      );
+      expect(turn.content, contains('Start by creating notes.md'));
+    });
+
+    test('running a script that does not exist says how to recover', () {
+      final action = const CodeAction.shell('count.sh').copyWith(
+        status: CodeActionStatus.failed,
+        exitCode: 127,
+        output: '/system/bin/sh: count.sh: inaccessible or not found',
+      );
+      expect(
+        AgentProtocol.observation(action, maxChars: 700),
+        contains('Run it with: sh count.sh'),
+      );
+    });
+
+    test('a brace range that busybox echoed back says to use seq', () {
+      final action =
+          const CodeAction.shell(r'for i in {1..5}; do echo $i; done').copyWith(
+        status: CodeActionStatus.done,
+        exitCode: 0,
+        output: '{1..5}',
+      );
+      expect(AgentProtocol.hintFor(action), contains('seq 1 5'));
+    });
+  });
 }

@@ -298,27 +298,23 @@ class CodeAgent extends ChangeNotifier {
     int epoch,
   ) async {
     final session = sessions.byId(sessionId)!;
+    final small = gateway.budget.examples;
     final turns = AgentProtocol.turnsFor(
       [
         for (final message in session.messages)
           if (message.id != messageId) message,
       ],
       budget: gateway.budget,
+      remind: small,
+      shell: runner.canRunCommands,
     );
     // The model answers the last message, which must be the user's.
     if (turns.isEmpty || turns.last.role != 'user') {
       turns.add(const CodeTurn.user('Continue.'));
     }
-    if (gateway.budget.examples) {
-      // A small model gets a worked example first and a format reminder on
-      // the last message: see [AgentProtocol.taskReminder].
-      final afterReply =
-          turns.length >= 2 && turns[turns.length - 2].role == 'assistant';
-      turns[turns.length - 1] = AgentProtocol.reminded(
-        turns.last,
-        afterReply: afterReply,
-        shell: runner.canRunCommands,
-      );
+    if (small) {
+      // A small model gets a worked example first: see
+      // [AgentProtocol.exampleTurns].
       turns.insertAll(
         0,
         AgentProtocol.exampleTurns(shell: runner.canRunCommands),
@@ -331,7 +327,7 @@ class CodeAgent extends ChangeNotifier {
       ),
       turns: turns,
       conversationId: 'code-$sessionId',
-      maxTokens: gateway.isLocal ? 768 : 4096,
+      maxTokens: gateway.isLocal ? 1024 : 4096,
     );
 
     final buffer = StringBuffer();

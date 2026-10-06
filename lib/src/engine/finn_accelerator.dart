@@ -7,6 +7,7 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:finn_ai/src/engine/backends/llama_shim.dart';
+import 'package:finn_ai/src/engine/prompt/agent_prompt.dart';
 import 'package:finn_ai/src/engine/prompt/bare_tool_call_filter.dart';
 import 'package:finn_ai/src/engine/prompt/prompt_formatter.dart';
 import 'package:finn_ai/src/engine/prompt/tool_tag_filter.dart';
@@ -102,6 +103,10 @@ class _ConversationSession {
   bool basePrefixReady;
   String? lastTaskInstruction;
   int lastUsed;
+
+  /// For an agent session ([AgentPrompt]): what the KV cache holds, so the
+  /// next step can be appended instead of re-reading the conversation.
+  String? agentHistoryKey;
 }
 
 class _GenerationCancelled implements Exception {

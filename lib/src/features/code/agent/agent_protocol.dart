@@ -133,12 +133,38 @@ abstract final class AgentProtocol {
     CodeTurn turn, {
     required bool afterReply,
     required bool shell,
-  }) =>
-      CodeTurn(
-        turn.role,
-        '${turn.content}\n\n'
-        '${afterReply ? resultReminder : taskReminder(shell: shell)}',
-      );
+  }) {
+    final reminder = afterReply ? resultReminder : taskReminder(shell: shell);
+    final first = afterReply ? null : fileToCreate(turn.content);
+    return CodeTurn(
+      turn.role,
+      first == null
+          ? '${turn.content}\n\n$reminder'
+          // A small model asked to "create x.sh and run it" runs the loop
+          // inline, or runs x.sh before it exists. Naming the first action
+          // is the cheapest fix that worked on the device.
+          : '${turn.content}\n\nStart by creating $first with ```file '
+              '$first. $reminder',
+    );
+  }
+
+  /// The file a request asks to be created, when it names exactly one:
+  /// "Create a shell script count.sh that…" → `count.sh`.
+  static String? fileToCreate(String request) {
+    final asks = RegExp(
+      r'\b(create|write|make|add|build|generate|new)\b',
+      caseSensitive: false,
+    ).hasMatch(request);
+    if (!asks) return null;
+    final names = {
+      for (final match in RegExp(
+        r'(?<![\w/.-])([\w-]+(?:/[\w-]+)*\.(?:sh|py|js|mjs|ts|txt|md|json|html|'
+        r'css|c|h|cpp|rs|go|java|kt|rb|php|lua|yaml|yml|toml|csv|xml|sql))\b',
+      ).allMatches(request))
+        match.group(1)!,
+    };
+    return names.length == 1 ? names.single : null;
+  }
 
   /// [raw] without the model's reasoning markers.
   ///
@@ -349,7 +375,45 @@ abstract final class AgentProtocol {
     buffer.write(':\n');
     buffer.write(output.isEmpty ? '(no output)' : clip(output, maxChars));
     if (action.truncated) buffer.write('\n(output was cut short)');
+    final hint = hintFor(action);
+    if (hint != null) buffer.write('\nHint: $hint');
     return buffer.toString();
+  }
+
+  /// One line on how to get past a failure a small model keeps repeating.
+  /// Only for failures with an unambiguous cause, read from the output.
+  static String? hintFor(CodeAction action) {
+    if (!action.isShell) return null;
+    final output = action.output;
+    final command = action.command.trim();
+    // busybox ash prints the range back instead of expanding it, and exits 0.
+    if (RegExp(r'\{\d+\.\.\d+\}').hasMatch(command) &&
+        RegExp(r'\{\d+\.\.\d+\}').hasMatch(output)) {
+      return 'This shell has no {1..5} ranges. Use: seq 1 5';
+    }
+    if (action.status != CodeActionStatus.failed) return null;
+    final first = command.split(RegExp(r'\s+')).first;
+    final script = RegExp(r'^(\./)?[\w./-]+\.(sh|py|js)$').hasMatch(first);
+    final missing = RegExp(
+      r'No such file|not found|inaccessible|cannot open|does not exist',
+      caseSensitive: false,
+    ).hasMatch(output);
+    if (script && missing) {
+      final name = first.replaceFirst('./', '');
+      final runner = switch (name.split('.').last) {
+        'py' => 'python3',
+        'js' => 'node',
+        _ => 'sh',
+      };
+      return 'If $name does not exist yet, create it with ```file $name. '
+          'Run it with: $runner $name';
+    }
+    if (script &&
+        RegExp(r'[Pp]ermission denied').hasMatch(output) &&
+        !first.contains('/')) {
+      return 'Run it with: sh ${first.replaceFirst('./', '')}';
+    }
+    return null;
   }
 
   static String _denial(CodeAction action) => switch (action.deniedReason) {
@@ -410,9 +474,49 @@ abstract final class AgentProtocol {
   /// Newest last. Older turns are dropped first when [budget] is exceeded, and
   /// the result of the newest action is always kept: it is what the model has
   /// to answer.
+  ///
+  /// With [remind] (the on-device model) every user turn carries its format
+  /// reminder and older file writes are only shortened when the history no
+  /// longer fits. Both keep the replay append-only from one step to the next,
+  /// which is what lets the engine continue its cached session instead of
+  /// reading the whole conversation again each step.
   static List<CodeTurn> turnsFor(
     List<CodeMessage> messages, {
     required CodeBudget budget,
+    bool remind = false,
+    bool shell = true,
+  }) {
+    if (!remind) {
+      return _fit(
+          _turns(messages, budget, compactOld: true), budget.historyChars);
+    }
+    var turns = _turns(messages, budget, compactOld: false);
+    if (_length(turns) > budget.historyChars) {
+      turns = _turns(messages, budget, compactOld: true);
+    }
+    turns = _fit(turns, budget.historyChars);
+    if (turns.isEmpty || turns.last.role != 'user') {
+      turns = [...turns, const CodeTurn.user('Continue.')];
+    }
+    return [
+      for (var i = 0; i < turns.length; i++)
+        turns[i].role == 'user'
+            ? reminded(
+                turns[i],
+                afterReply: i > 0 && turns[i - 1].role == 'assistant',
+                shell: shell,
+              )
+            : turns[i],
+    ];
+  }
+
+  static int _length(List<CodeTurn> turns) =>
+      turns.fold(0, (sum, turn) => sum + turn.content.length + 16);
+
+  static List<CodeTurn> _turns(
+    List<CodeMessage> messages,
+    CodeBudget budget, {
+    required bool compactOld,
   }) {
     final turns = <CodeTurn>[];
     final lastActionIndex = messages.lastIndexWhere((m) => m.action != null);
@@ -426,7 +530,7 @@ abstract final class AgentProtocol {
       final text = [
         if (message.text.trim().isNotEmpty) message.text.trim(),
         if (action != null)
-          actionText(action, compact: index != lastActionIndex),
+          actionText(action, compact: compactOld && index != lastActionIndex),
       ].join('\n\n');
       final retried = message.errorCode == CodeErrorCode.cutOff ||
           message.errorCode == CodeErrorCode.malformed;
@@ -441,7 +545,7 @@ abstract final class AgentProtocol {
         turns.add(const CodeTurn.user(malformedNotice));
       }
     }
-    return _fit(turns, budget.historyChars);
+    return turns;
   }
 
   /// Drops the oldest turns until the rest fit, keeping the newest turn and

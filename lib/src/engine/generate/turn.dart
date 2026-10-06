@@ -14,9 +14,15 @@ extension FinnAcceleratorTurn on FinnAccelerator {
     TtftTrace? trace,
     IntentSamplerProfile? samplerProfile,
     int? maxOutputTokens,
+    bool agentPrompt = false,
   }) {
     late StreamController<String> output;
     var nativeFinished = false;
+    // An agent stops reading as soon as its action is complete, which cancels
+    // the stream. The KV cache then holds the prompt and the reply so far, so
+    // the session is kept as primed: the next step appends to it instead of
+    // reading the whole conversation again (5 s a step on a Mi 11 Lite).
+    void Function()? keepAgentSession;
     output = StreamController<String>(
       onListen: () async {
         _activeOutput = output;
@@ -72,7 +78,10 @@ extension FinnAcceleratorTurn on FinnAccelerator {
             // block that lives in the KV cache for the session's whole life, so
             // an intent switch has to start a fresh session rather than append
             // a conflicting instruction over the resident one.
-            taskInstruction: PromptIntentPolicy.taskInstruction(promptAnalysis),
+            taskInstruction: agentPrompt
+                ? ''
+                : PromptIntentPolicy.taskInstruction(promptAnalysis),
+            agent: agentPrompt,
           );
           trace
             ?..conversationSessionCacheHit = prepared.cacheHit
@@ -223,24 +232,33 @@ extension FinnAcceleratorTurn on FinnAccelerator {
           // needs an empty reasoning block to avoid hidden-chain generation
           // while keeping everyday replies fast.
           const primeEmptyThinking = true;
-          var renderedPrompt = _renderPrompt(
-            entry,
-            prompt,
-            history,
-            systemContext: systemContext,
-            groundedContext: groundedContext,
-            analysis: promptAnalysis,
-            includeTaskInstruction: includeTaskInstruction,
-            primeEmptyThinking: primeEmptyThinking,
-            includeMediaMarker: useMediaMarker,
-            mediaCount: useMediaMarker ? effectiveMediaList.length : 0,
-            attachedDocContext: attachedDocContext,
-          );
+          String renderAgent() => entry.primed
+              ? AgentPrompt.continuation(prompt)
+              : AgentPrompt.render(
+                  system: systemContext,
+                  history: history,
+                  prompt: prompt,
+                );
+          var renderedPrompt = agentPrompt
+              ? renderAgent()
+              : _renderPrompt(
+                  entry,
+                  prompt,
+                  history,
+                  systemContext: systemContext,
+                  groundedContext: groundedContext,
+                  analysis: promptAnalysis,
+                  includeTaskInstruction: includeTaskInstruction,
+                  primeEmptyThinking: primeEmptyThinking,
+                  includeMediaMarker: useMediaMarker,
+                  mediaCount: useMediaMarker ? effectiveMediaList.length : 0,
+                  attachedDocContext: attachedDocContext,
+                );
           // The token-breakdown re-renders the prompt a second time purely
           // for diagnostics. Skip it (and the full-prompt log) in release
           // builds: it is duplicate prefill-side work on every generation,
           // and the full prompt must never reach production logs.
-          if (!kReleaseMode) {
+          if (!kReleaseMode && !agentPrompt) {
             final promptBreakdown = promptTokenBreakdownForTest(
               prompt: prompt,
               history: history,
@@ -334,10 +352,14 @@ extension FinnAcceleratorTurn on FinnAccelerator {
                 media: (hasAttachedImage && runtime.engine.multimodalLoaded)
                     ? effectiveMediaList
                     : const <LlamaMedia>[],
-                shiftPolicy:
-                    runtime.engine.canShift && effectiveMediaList.isEmpty
-                        ? ContextShiftPolicy.auto
-                        : ContextShiftPolicy.off,
+                // An agent budgets its own history; shifting would drop its
+                // system prompt (nKeep cannot know its length) and leave the
+                // model without the protocol.
+                shiftPolicy: !agentPrompt &&
+                        runtime.engine.canShift &&
+                        effectiveMediaList.isEmpty
+                    ? ContextShiftPolicy.auto
+                    : ContextShiftPolicy.off,
                 shift: ContextShift(
                   nKeep: entry.basePrefixReady ? 321 : 0,
                 ),
@@ -391,20 +413,23 @@ extension FinnAcceleratorTurn on FinnAccelerator {
                           entry.primed = false;
                           entry.basePrefixReady = false;
                           emittedTokens = 0;
-                          final again = _renderPrompt(
-                            entry,
-                            prompt,
-                            history,
-                            systemContext: systemContext,
-                            groundedContext: groundedContext,
-                            analysis: promptAnalysis,
-                            includeTaskInstruction: true,
-                            primeEmptyThinking: primeEmptyThinking,
-                            includeMediaMarker: useMediaMarker,
-                            mediaCount:
-                                useMediaMarker ? effectiveMediaList.length : 0,
-                            attachedDocContext: attachedDocContext,
-                          );
+                          final again = agentPrompt
+                              ? renderAgent()
+                              : _renderPrompt(
+                                  entry,
+                                  prompt,
+                                  history,
+                                  systemContext: systemContext,
+                                  groundedContext: groundedContext,
+                                  analysis: promptAnalysis,
+                                  includeTaskInstruction: true,
+                                  primeEmptyThinking: primeEmptyThinking,
+                                  includeMediaMarker: useMediaMarker,
+                                  mediaCount: useMediaMarker
+                                      ? effectiveMediaList.length
+                                      : 0,
+                                  attachedDocContext: attachedDocContext,
+                                );
                           if (generationEpoch != _generationEpoch) return;
                           _generation =
                               attempt(again, addSpecial: true, id: attemptId);
@@ -476,6 +501,9 @@ extension FinnAcceleratorTurn on FinnAccelerator {
                   entry.primed = true;
                   entry.lastTaskInstruction = taskInstruction;
                   entry.messageCount = history.length + 2;
+                  if (agentPrompt) {
+                    entry.agentHistoryKey = AgentPrompt.key(history, prompt);
+                  }
                   entry.lastUsed = ++runtime.useSequence;
                   _setStatus(
                     InferencePhase.idle,
@@ -487,6 +515,22 @@ extension FinnAcceleratorTurn on FinnAccelerator {
                 cancelOnError: true,
               );
 
+          if (agentPrompt) {
+            keepAgentSession = () {
+              // Only once the prompt is in the cache: a stop during prefill
+              // leaves it half read, and the next step starts afresh.
+              if (firstTokenAt == null) {
+                entry.primed = false;
+                entry.agentHistoryKey = null;
+                entry.messageCount = -1;
+                return;
+              }
+              entry.primed = true;
+              entry.messageCount = history.length + 2;
+              entry.agentHistoryKey = AgentPrompt.key(history, prompt);
+              entry.lastUsed = ++runtime.useSequence;
+            };
+          }
           _generation = attempt(
             renderedPrompt,
             addSpecial: !entry.primed && !entry.basePrefixReady,
@@ -521,6 +565,7 @@ extension FinnAcceleratorTurn on FinnAccelerator {
       onCancel: () async {
         _generationEpoch++;
         if (!nativeFinished) _markCancelled();
+        keepAgentSession?.call();
         await _generation?.cancel();
         _generation = null;
         if (identical(_activeOutput, output)) _activeOutput = null;

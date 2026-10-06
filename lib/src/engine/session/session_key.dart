@@ -19,6 +19,7 @@ String sessionConfigurationHash({
   required String stableHash,
   required String systemContext,
   String taskInstruction = '',
+  String mode = 'chat',
 }) {
   final contextHash =
       sha256.convert(utf8.encode(systemContext.trim())).toString();
@@ -26,7 +27,7 @@ String sessionConfigurationHash({
       sha256.convert(utf8.encode(taskInstruction.trim())).toString();
   return sha256
       .convert(
-        utf8.encode('$stableHash|$contextHash|task=$taskHash|mode=chat'),
+        utf8.encode('$stableHash|$contextHash|task=$taskHash|mode=$mode'),
       )
       .toString();
 }

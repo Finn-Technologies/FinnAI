@@ -20,6 +20,7 @@ extension FinnAcceleratorSessions on FinnAccelerator {
     List<LocalChatTurn> history,
     String systemContext, {
     String taskInstruction = '',
+    bool agent = false,
   }) =>
       runtime.sessionSetupGate.run(
         () => _prepareSessionUnlocked(
@@ -28,6 +29,7 @@ extension FinnAcceleratorSessions on FinnAccelerator {
           history,
           systemContext,
           taskInstruction: taskInstruction,
+          agent: agent,
         ),
       );
 
@@ -37,16 +39,24 @@ extension FinnAcceleratorSessions on FinnAccelerator {
     List<LocalChatTurn> history,
     String systemContext, {
     String taskInstruction = '',
+    bool agent = false,
   }) async {
     final configuration = sessionConfigurationHash(
       stableHash: _prefixCacheKey(runtime).stableHash,
       systemContext: systemContext,
       taskInstruction: taskInstruction,
+      mode: agent ? 'agent' : 'chat',
     );
     final existing = runtime.sessions[conversationId];
     final historyMatches = existing != null &&
         existing.messageCount == history.length &&
-        existing.promptConfigurationHash == configuration;
+        existing.promptConfigurationHash == configuration &&
+        // An agent rewrites its history between steps (it trims and compacts
+        // it), so a matching count is not enough: the turns must be the ones
+        // the session holds.
+        (!agent ||
+            (existing.primed &&
+                AgentPrompt.continues(existing.agentHistoryKey, history)));
     if (historyMatches) {
       existing.lastUsed = ++runtime.useSequence;
       return (
@@ -84,11 +94,15 @@ extension FinnAcceleratorSessions on FinnAccelerator {
       seqId: sequenceId,
       lookaheadWindow: _plan?.lookaheadWindow ?? 4,
     );
-    final prefix = await _restoreOrPrepareBasePrefix(
-      runtime,
-      session,
-      _prefixCacheKey(runtime),
-    );
+    // An agent session starts from its own system prompt, not the chat
+    // persona's cached prefix.
+    final prefix = agent
+        ? const PrefixStateReport(cacheHit: false, tokens: 0, fileBytes: 0)
+        : await _restoreOrPrepareBasePrefix(
+            runtime,
+            session,
+            _prefixCacheKey(runtime),
+          );
     final entry = _ConversationSession(
       session: session,
       sequenceId: sequenceId,
@@ -96,8 +110,9 @@ extension FinnAcceleratorSessions on FinnAccelerator {
       promptConfigurationHash: configuration,
       messageCount: history.length,
       lastUsed: ++runtime.useSequence,
-      basePrefixReady:
-          _prefixCacheEnabled && !FinnAccelerator.debugDisablePrefixCache,
+      basePrefixReady: !agent &&
+          _prefixCacheEnabled &&
+          !FinnAccelerator.debugDisablePrefixCache,
     );
     runtime.sessions[conversationId] = entry;
     return (entry: entry, cacheHit: false, prefix: prefix);
