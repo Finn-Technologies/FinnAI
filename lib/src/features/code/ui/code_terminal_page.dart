@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:finn_ai/l10n/l10n_helper.dart';
 import 'package:finn_ai/src/features/code/agent/action_runner.dart';
 import 'package:finn_ai/src/features/code/code_services.dart';
-import 'package:finn_ai/src/features/code/settings/code_container_page.dart';
+import 'package:finn_ai/src/features/code/settings/code_linux_page.dart';
+import 'package:finn_ai/src/features/code/ui/code_text.dart';
 import 'package:finn_ai/src/features/code/ui/code_icons.dart';
 import 'package:finn_ai/src/features/code/ui/code_style.dart';
 import 'package:finn_ai/src/features/code/ui/code_terminal.dart';
@@ -150,11 +151,14 @@ class CodeTerminalIntro extends StatelessWidget {
     final l10n = L10n.of(context);
     final environment = services.runner.environment;
     final container = services.container;
-    final offerContainer = container.platformSupported &&
-        !container.installer.installed &&
-        services.settings.settings.useContainer;
+    final linux = services.linux;
+    final offerContainer = services.settings.settings.useContainer &&
+        (linux.platformSupported
+            ? !linux.installer.installed
+            : container.platformSupported && !container.installer.installed);
     final text = switch (environment) {
       CommandEnvironment.none => l10n.codeTerminalUnsupported,
+      CommandEnvironment.linux => l10n.codeTerminalIntroLinux,
       CommandEnvironment.container => l10n.codeTerminalIntroContainer,
       CommandEnvironment.device => l10n.codeTerminalIntro,
     };
@@ -172,11 +176,14 @@ class CodeTerminalIntro extends StatelessWidget {
                 visualDensity: VisualDensity.compact,
               ),
               onPressed: () => Navigator.of(context).push(FinnPageRoute<void>(
-                child: CodeContainerPage(services: services),
+                child: codeLinuxPageFor(services),
               )),
               icon: FluxIcon(icon: CodeIcons.container, size: 14),
               label: Text(
-                l10n.codeTerminalSetUpContainer,
+                linux.platformSupported
+                    ? l10n.codeLinuxSetUp(
+                        CodeText.bytes(linux.installer.totalBytes))
+                    : l10n.codeTerminalSetUpContainer,
                 style: CodeStyle.label(context),
               ),
             ),

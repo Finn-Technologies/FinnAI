@@ -16,12 +16,22 @@ class CodeOutputBlock extends StatefulWidget {
     required this.output,
     this.truncated = false,
     this.maxLines = 12,
+    this.exitCode,
+    this.timedOut = false,
+    this.tail = false,
   });
 
   final String command;
   final String output;
   final bool truncated;
   final int maxLines;
+
+  /// Shown after the output when the command failed.
+  final int? exitCode;
+  final bool timedOut;
+
+  /// Live output: show the newest [maxLines], not the first.
+  final bool tail;
 
   @override
   State<CodeOutputBlock> createState() => _CodeOutputBlockState();
@@ -38,8 +48,11 @@ class _CodeOutputBlockState extends State<CodeOutputBlock> {
     final lines =
         widget.output.isEmpty ? <String>[] : widget.output.split('\n');
     final clipped = !_all && lines.length > widget.maxLines;
-    final shown =
-        clipped ? lines.take(widget.maxLines).join('\n') : widget.output;
+    final shown = !clipped
+        ? widget.output
+        : (widget.tail
+            ? lines.skip(lines.length - widget.maxLines).join('\n')
+            : lines.take(widget.maxLines).join('\n'));
 
     return GestureDetector(
       onLongPress: () => copyWithNotice(
@@ -81,16 +94,26 @@ class _CodeOutputBlockState extends State<CodeOutputBlock> {
                           ),
                         ),
                       ),
-                    ] else if (widget.output.isEmpty)
+                    ] else if (widget.output.isEmpty && !widget.tail)
                       Text(l10n.codeActionNoOutput,
                           style: CodeStyle.meta(context)),
                     if (widget.truncated)
                       Text(l10n.codeActionOutputCut,
                           style: CodeStyle.meta(context)),
+                    if (widget.timedOut || widget.exitCode != null)
+                      Text(
+                        widget.timedOut
+                            ? l10n.codeActionTimedOut
+                            : l10n.codeExitCode('${widget.exitCode}'),
+                        style: CodeStyle.meta(
+                          context,
+                          color: FluxColors.destructiveOf(context),
+                        ),
+                      ),
                   ],
                 ),
               ),
-              if (lines.length > widget.maxLines)
+              if (lines.length > widget.maxLines && !widget.tail)
                 CodeMoreRow(
                   label: _all
                       ? l10n.codeShowLess

@@ -163,6 +163,8 @@ A second app inside the app: its own sessions, settings and providers, in the sa
 | One collapsible row per agent action, inline approval | `lib/src/features/code/ui/code_tool_row.dart` |
 | Inline diffs (line diff, view) | `lib/src/features/code/ui/line_diff.dart`, `lib/src/features/code/ui/code_diff_view.dart` |
 | Input bar, `/` commands, `@` mentions, status line | `lib/src/features/code/ui/code_composer.dart`, `lib/src/features/code/ui/code_suggestions.dart`, `lib/src/features/code/ui/code_status_line.dart` |
+| The Linux sandbox: proot + Alpine (ADR 0012), its installer and settings page | `lib/src/features/code/linux/linux_sandbox.dart`, `lib/src/features/code/linux/linux_installer.dart`, `lib/src/features/code/settings/code_linux_page.dart` |
+| Building the proot binaries | `tool/build_proot_android.sh` |
 | The terminal: shared log, panel, page | `lib/src/features/code/ui/code_terminal.dart`, `lib/src/features/code/ui/code_terminal_panel.dart`, `lib/src/features/code/ui/code_terminal_page.dart` |
 | What "delete all data" removes for Code | `lib/src/features/code/code_services.dart` (`deleteAll`), `lib/src/app/app_state_store.dart` |
 

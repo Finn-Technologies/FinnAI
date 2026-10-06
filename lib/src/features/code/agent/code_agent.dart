@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:finn_ai/src/features/code/agent/action_runner.dart';
 import 'package:finn_ai/src/features/code/agent/agent_protocol.dart';
 import 'package:finn_ai/src/features/code/agent/code_mentions.dart';
+import 'package:finn_ai/src/features/code/agent/live_output.dart';
 import 'package:finn_ai/src/features/code/agent/small_model_aids.dart';
 import 'package:finn_ai/src/features/code/providers/code_gateway.dart';
 import 'package:finn_ai/src/features/code/providers/provider_errors.dart';
@@ -356,6 +357,7 @@ class CodeAgent extends ChangeNotifier {
       system: AgentProtocol.systemPrompt(
         shell: runner.canRunCommands,
         container: runner.environment == CommandEnvironment.container,
+        linux: runner.environment == CommandEnvironment.linux,
         edits: !small,
       ),
       turns: turns,
@@ -482,7 +484,15 @@ class CodeAgent extends ChangeNotifier {
     _setPhase(CodeAgentPhase.running);
     _setAction(sessionId, messageId,
         action.copyWith(status: CodeActionStatus.running));
-    final finished = await runner.run(sessionId, action);
+    // A command's output is shown as it arrives: an install can take a
+    // minute.
+    final live = LiveOutput((text) {
+      final current = _message(sessionId, messageId)?.action;
+      if (current == null || current.status != CodeActionStatus.running) return;
+      _setAction(sessionId, messageId, current.copyWith(output: text));
+    });
+    final finished = await runner.run(sessionId, action, onOutput: live.add);
+    live.close();
     if (epoch != _epoch) {
       _setAction(sessionId, messageId, finished);
       return null;

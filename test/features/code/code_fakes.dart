@@ -66,8 +66,13 @@ class FakeRunner extends CodeActionRunner {
           : CommandEnvironment.device);
 
   @override
-  Future<CodeAction> run(String sessionId, CodeAction action) async {
+  Future<CodeAction> run(
+    String sessionId,
+    CodeAction action, {
+    void Function(String chunk)? onOutput,
+  }) async {
     ran.add(action);
+    if (action.isShell) onOutput?.call('ok');
     if (ran.length <= results.length) return results[ran.length - 1];
     return action.copyWith(
       status: CodeActionStatus.done,

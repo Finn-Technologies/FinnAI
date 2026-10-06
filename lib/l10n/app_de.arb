@@ -2355,5 +2355,19 @@
   "codeMentionNoFiles": "Noch keine Dateien",
   "codeTerminalExpand": "Im Vollbild öffnen",
   "codeTerminalShow": "Terminal zeigen",
-  "codeTerminalHide": "Terminal ausblenden"
+  "codeTerminalHide": "Terminal ausblenden",
+  "codeLinuxTitle": "Linux",
+  "codeLinuxIntro": "Für FinnAI Code läuft ein echtes Alpine Linux auf diesem Telefon. Installiere, was ein Projekt braucht (apk oder apt-get, pip, npm), klone Repositorys und baue. Es sieht nur seine eigenen Dateien und den Projektordner dieser Sitzung unter /workspace, sonst nichts auf dem Gerät. Für Installationen und git nutzt es das Internet.",
+  "codeLinuxStatusMissing": "Nicht eingerichtet · {size} Download",
+  "codeLinuxStatusPreparing": "Wird eingerichtet…",
+  "codeLinuxStatusReady": "Alpine Linux {version} · bereit",
+  "codeLinuxSetUp": "Linux einrichten ({size})",
+  "codeLinuxUse": "Befehle in Linux ausführen",
+  "codeLinuxRemove": "Linux entfernen",
+  "codeLinuxRemoveTitle": "Linux entfernen?",
+  "codeLinuxRemoveBody": "Alles darin Installierte wird gelöscht. Deine Projektordner bleiben.",
+  "codeLinuxUnsupported": "Dieses Gerät kann Linux nicht ausführen, daher nutzen Befehle seine eigene Shell.",
+  "codeLinuxLicence": "Alpine Linux und seine Pakete stehen unter eigenen Lizenzen. proot (GPL-2.0) führt sie aus; der Quellcode liegt unter github.com/termux/proot.",
+  "codeTerminalIntroLinux": "Alpine Linux, im Projektordner dieser Sitzung (/workspace).",
+  "codeSettingsLinuxSubReady": "Alpine Linux · Befehle laufen hier"
 }

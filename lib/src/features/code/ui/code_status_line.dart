@@ -57,7 +57,9 @@ class CodeStatusLine extends StatelessWidget {
         ),
     };
     final environmentLabel = switch (environment) {
-      CommandEnvironment.container => l10n.codeEnvLinux,
+      CommandEnvironment.linux ||
+      CommandEnvironment.container =>
+        l10n.codeEnvLinux,
       CommandEnvironment.device => l10n.codeEnvDevice,
       CommandEnvironment.none => l10n.codeEnvNone,
     };

@@ -40,6 +40,7 @@ const Map<String, String> _identicalAllowlist = {
   'codeModelsOnDeviceTitle': 'product name',
   'codeEnvLinux': 'product name',
   'codeEnvDevice': 'technology term',
+  'codeLinuxTitle': 'product name',
   'codeSettingsAgent': 'loanword (de/fr)',
   'codeAgentTitle': 'loanword (de/fr)',
   'codeActionOutput': 'loanword (it)',

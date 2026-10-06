@@ -79,9 +79,12 @@ class _CodeWorkspacePageState extends State<CodeWorkspacePage> {
       title: l10n.codeWorkspaceTitle,
       children: [
         FinnCaption(
-          widget.services.runner.environment == CommandEnvironment.container
-              ? l10n.codeContainerIntro
-              : l10n.codeSandboxNote,
+          widget.services.runner.environment == CommandEnvironment.linux
+              ? l10n.codeLinuxIntro
+              : widget.services.runner.environment ==
+                      CommandEnvironment.container
+                  ? l10n.codeContainerIntro
+                  : l10n.codeSandboxNote,
         ),
         if (bytes != null)
           FinnTile(

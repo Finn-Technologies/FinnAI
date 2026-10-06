@@ -202,3 +202,9 @@ Used by voice mode; the model files are downloaded on first use.
 ## 7. Typography & Fonts
 - **Instrument Sans**: SIL Open Font License, Version 1.1.
 - **JetBrains Mono** (FinnAI Code: code, commands, output): SIL Open Font License, Version 1.1. Copyright 2020 The JetBrains Mono Project Authors. Licence text: `assets/fonts/JetBrainsMono-OFL.txt`.
+
+## FinnAI Code: Linux sandbox (Android)
+
+- **proot** (https://github.com/termux/proot, commit a179d3e8a4e045aaa1fb8cc3284f23509d96d353): GNU General Public License, version 2. Shipped as `libproot.so` and `libproot-loader.so`, built by `tool/build_proot_android.sh` from that exact commit; the corresponding source is available at that address and on request.
+- **talloc 2.4.2** (https://www.samba.org/ftp/talloc/): GNU Lesser General Public License, version 3, linked statically into proot. Source: the pinned archive in the build script.
+- **Alpine Linux minirootfs 3.24.2** (https://alpinelinux.org): downloaded on the user's request, not shipped in the app; busybox (GPL-2.0), musl (MIT) and the other packages under their own licences. Packages the user installs come from Alpine's repositories under theirs.

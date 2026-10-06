@@ -95,7 +95,11 @@ class _CodeToolRowState extends State<CodeToolRow> {
                 ? null
                 : () => setState(() => _userExpanded = !expanded),
           ),
-          if (!expanded && action.isShell && _finished)
+          // Closed, a command shows the last line it printed — live while it
+          // runs, so a long install visibly moves.
+          if (!expanded &&
+              action.isShell &&
+              (_finished || action.status == CodeActionStatus.running))
             _OutputPeek(output: action.output),
           AnimatedSize(
             duration: CodeStyle.motion(context),

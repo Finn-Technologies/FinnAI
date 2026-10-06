@@ -5,10 +5,12 @@ import 'package:flutter/services.dart';
 
 import 'package:finn_ai/l10n/l10n_helper.dart';
 import 'package:finn_ai/src/features/code/agent/action_runner.dart';
+import 'package:finn_ai/src/features/code/agent/live_output.dart';
 import 'package:finn_ai/src/features/code/sessions/code_session.dart';
 import 'package:finn_ai/src/features/code/sessions/code_session_store.dart';
 import 'package:finn_ai/src/features/code/ui/code_blocks.dart';
 import 'package:finn_ai/src/features/code/ui/code_style.dart';
+import 'package:finn_ai/src/features/code/ui/code_text.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
 
@@ -45,7 +47,20 @@ class CodeTerminalLog extends ChangeNotifier {
       status: CodeActionStatus.running,
     ));
     notifyListeners();
-    final result = await runner.run(session.id, CodeAction.shell(text));
+    final live = LiveOutput(
+      (text) {
+        if (!_running) return;
+        _entries[_entries.length - 1] = _entries.last.copyWith(output: text);
+        notifyListeners();
+      },
+      interval: const Duration(milliseconds: 100),
+    );
+    final result = await runner.run(
+      session.id,
+      CodeAction.shell(text),
+      onOutput: live.add,
+    );
+    live.close();
     _entries[_entries.length - 1] = result;
     _running = false;
     notifyListeners();
@@ -185,25 +200,38 @@ class _CodeTerminalViewState extends State<CodeTerminalView> {
                 key: ValueKey('terminal-entry-$index'),
                 padding: const EdgeInsets.only(bottom: 6),
                 child: entry.status == CodeActionStatus.running
-                    ? Row(
+                    ? Stack(
                         children: [
-                          Expanded(
-                            child: Text(r'$ ' + entry.command, style: style),
+                          CodeOutputBlock(
+                            command: entry.command,
+                            output: entry.output.trimRight(),
+                            maxLines: 40,
+                            tail: true,
                           ),
-                          SizedBox.square(
-                            dimension: 10,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 1.5,
-                              color: muted,
+                          Positioned(
+                            top: 9,
+                            right: 10,
+                            child: SizedBox.square(
+                              dimension: 10,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 1.5,
+                                color: muted,
+                              ),
                             ),
                           ),
                         ],
                       )
                     : CodeOutputBlock(
                         command: entry.command,
-                        output: entry.output.trimRight(),
+                        output: entry.status == CodeActionStatus.denied
+                            ? CodeText.denied(l10n, entry)
+                            : entry.output.trimRight(),
                         truncated: entry.truncated,
                         maxLines: 40,
+                        exitCode: entry.status == CodeActionStatus.failed
+                            ? entry.exitCode
+                            : null,
+                        timedOut: entry.timedOut,
                       ),
               );
             },

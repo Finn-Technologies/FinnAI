@@ -346,10 +346,13 @@ class _CodeShellState extends State<CodeShell>
               final sidebarWidth =
                   FinnLayout.sidebarWidth(constraints.maxWidth);
               final headerTop = safeTop + 8;
-              final panelHeight = math.min(
-                constraints.maxHeight * .48,
-                460.0 + safeBottom,
-              );
+              // With the keyboard up the body has already shrunk: the panel
+              // then takes everything under the header, so the scrollback is
+              // not squeezed to a few lines.
+              final keyboard = MediaQuery.viewInsetsOf(context).bottom > 0;
+              final panelHeight = keyboard
+                  ? constraints.maxHeight - headerTop - CodeStyle.control - 12
+                  : math.min(constraints.maxHeight * .48, 460.0 + safeBottom);
 
               final home = RepaintBoundary(
                 child: ColoredBox(

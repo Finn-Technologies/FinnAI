@@ -6,7 +6,7 @@ import 'package:finn_ai/src/features/code/providers/code_provider.dart';
 import 'package:finn_ai/src/features/code/settings/code_about_page.dart';
 import 'package:finn_ai/src/features/code/agent/action_runner.dart';
 import 'package:finn_ai/src/features/code/settings/code_agent_page.dart';
-import 'package:finn_ai/src/features/code/settings/code_container_page.dart';
+import 'package:finn_ai/src/features/code/settings/code_linux_page.dart';
 import 'package:finn_ai/src/features/code/settings/code_data_page.dart';
 import 'package:finn_ai/src/features/code/settings/code_providers_page.dart';
 import 'package:finn_ai/src/features/code/settings/code_workspace_page.dart';
@@ -89,13 +89,16 @@ class CodeSettingsPage extends StatelessWidget {
               child: FinnTile(
                 key: const ValueKey('code-settings-container'),
                 icon: CodeIcons.container,
-                title: l10n.codeSettingsContainer,
-                subtitle:
-                    services.runner.environment == CommandEnvironment.container
-                        ? l10n.codeSettingsContainerSubReady
-                        : l10n.codeSettingsContainerSubMissing,
-                onTap: () =>
-                    _push(context, CodeContainerPage(services: services)),
+                title: services.linux.platformSupported
+                    ? l10n.codeLinuxTitle
+                    : l10n.codeSettingsContainer,
+                subtitle: switch (services.runner.environment) {
+                  CommandEnvironment.linux => l10n.codeSettingsLinuxSubReady,
+                  CommandEnvironment.container =>
+                    l10n.codeSettingsContainerSubReady,
+                  _ => l10n.codeSettingsContainerSubMissing,
+                },
+                onTap: () => _push(context, codeLinuxPageFor(services)),
               ),
             ),
             FinnReveal(

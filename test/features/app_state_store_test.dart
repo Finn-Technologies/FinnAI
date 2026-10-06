@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:finn_ai/src/features/code/linux/linux_installer.dart';
+import 'package:finn_ai/src/features/code/linux/linux_sandbox.dart';
 import 'package:finn_ai/src/app/app_state_store.dart';
 import 'package:finn_ai/src/features/code/container/container_installer.dart';
 import 'package:finn_ai/src/features/code/container/container_shell.dart';
@@ -134,7 +136,15 @@ void main() {
           installer: ContainerInstaller(directoryProvider: () async => tempDir),
           platformSupported: false,
         ),
+        linux: LinuxSandbox(
+          installer: LinuxInstaller(directoryProvider: () async => tempDir),
+          locate: () async => null,
+        ),
       );
+      // The Linux sandbox's filesystem, with what was installed in it, goes.
+      final installed = File('${tempDir.path}/code/linux/rootfs/usr/bin/git');
+      await installed.parent.create(recursive: true);
+      await installed.writeAsBytes([1]);
       // A downloaded Linux container image goes too.
       final image = File('${tempDir.path}/code/container/bzimage.bin');
       await image.parent.create(recursive: true);
@@ -162,6 +172,7 @@ void main() {
       expect(result.deletedItems, contains('FinnAI Code'));
       expect(Directory('${tempDir.path}/code').existsSync(), isFalse);
       expect(image.existsSync(), isFalse);
+      expect(installed.existsSync(), isFalse);
       expect(secrets.values, isEmpty);
       expect(sessions.sessions, isEmpty);
       expect(providers.hasKey(CodeProvider.openRouter), isFalse);

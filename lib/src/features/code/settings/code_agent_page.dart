@@ -117,9 +117,11 @@ class CodeAgentPage extends StatelessWidget {
               ),
             ),
             FinnCaption(
-              services.runner.environment == CommandEnvironment.container
-                  ? l10n.codeContainerIntro
-                  : l10n.codeSandboxNote,
+              services.runner.environment == CommandEnvironment.linux
+                  ? l10n.codeLinuxIntro
+                  : services.runner.environment == CommandEnvironment.container
+                      ? l10n.codeContainerIntro
+                      : l10n.codeSandboxNote,
             ),
           ],
         );

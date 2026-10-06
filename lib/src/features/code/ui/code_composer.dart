@@ -90,6 +90,21 @@ class _CodeComposerState extends State<CodeComposer> {
   }
 
   void _changed() {
+    // The phone keyboard's return key types a newline instead of sending: on
+    // a `/command` it means "run it".
+    final typed = widget.controller.text;
+    if (RegExp(r'^/[\w-]+\n$').hasMatch(typed)) {
+      final name = typed.substring(1, typed.length - 1).toLowerCase();
+      final match =
+          widget.commands.where((c) => c.name.startsWith(name)).firstOrNull;
+      if (match != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          widget.controller.clear();
+          match.run();
+        });
+        return;
+      }
+    }
     final hasText = widget.controller.text.trim().isNotEmpty;
     var query = CodeCompletionQuery.of(widget.controller.value);
     if (query?.kind == CodeCompletionKind.file && widget.files == null) {

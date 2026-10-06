@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:finn_ai/src/features/code/agent/edit_blocks.dart';
 import 'package:finn_ai/src/features/code/container/container_shell.dart';
+import 'package:finn_ai/src/features/code/linux/linux_sandbox.dart';
 import 'package:finn_ai/src/features/code/sandbox/command_policy.dart';
 import 'package:finn_ai/src/features/code/sandbox/shell_sandbox.dart';
 import 'package:finn_ai/src/features/code/sandbox/workspace.dart';
@@ -11,6 +12,10 @@ import 'package:finn_ai/src/features/code/settings/code_settings_store.dart';
 
 /// Where a command runs.
 enum CommandEnvironment {
+  /// The native Linux sandbox: Alpine under proot, on the device's own CPU,
+  /// with the network (ADR 0012).
+  linux,
+
   /// The Linux container: an emulated PC with busybox, isolated from the
   /// device (`docs/decisions/0011-code-linux-container.md`).
   container,
@@ -33,8 +38,13 @@ abstract class CodeActionRunner {
   bool get canRunCommands => environment != CommandEnvironment.none;
 
   /// Runs [action] in [sessionId]'s project folder and returns it with its
-  /// status, output and exit code filled in. Never throws.
-  Future<CodeAction> run(String sessionId, CodeAction action);
+  /// status, output and exit code filled in. Never throws. [onOutput] gets a
+  /// command's output as it arrives, where the environment can stream it.
+  Future<CodeAction> run(
+    String sessionId,
+    CodeAction action, {
+    void Function(String chunk)? onOutput,
+  });
 }
 
 /// The real runner: files through [CodeWorkspace]; commands in the Linux
@@ -46,6 +56,7 @@ class WorkspaceActionRunner extends CodeActionRunner {
     required this.sessions,
     required this.settings,
     this.container,
+    this.linux,
     this.shellSupported,
   });
 
@@ -53,11 +64,19 @@ class WorkspaceActionRunner extends CodeActionRunner {
   final CodeSettingsStore settings;
   final ContainerShell? container;
 
+  /// The proot + Alpine sandbox (ADR 0012), preferred over [container]
+  /// wherever it runs.
+  final LinuxSandbox? linux;
+
   /// Overrides [ShellSandbox.supported], for tests.
   final bool? shellSupported;
 
   @override
   CommandEnvironment get environment {
+    final linux = this.linux;
+    if (linux != null && linux.ready && settings.settings.useContainer) {
+      return CommandEnvironment.linux;
+    }
     final container = this.container;
     if (container != null &&
         container.ready &&
@@ -70,11 +89,32 @@ class WorkspaceActionRunner extends CodeActionRunner {
   }
 
   @override
-  Future<CodeAction> run(String sessionId, CodeAction action) async {
+  Future<CodeAction> run(
+    String sessionId,
+    CodeAction action, {
+    void Function(String chunk)? onOutput,
+  }) async {
     final workspace = await sessions.workspaceOf(sessionId);
     return action.isShell
-        ? _runShell(workspace, action)
+        ? _runShell(workspace, action, onOutput)
         : _writeFile(workspace, action);
+  }
+
+  /// Installs and builds outlast any sensible limit for `ls`: a package
+  /// manager, a clone or a build gets ten minutes in Linux.
+  static final RegExp _longRunning = RegExp(
+    r'\b(apk|apt|apt-get|pip3?|npm|npx|yarn|pnpm|git\s+clone|make|cargo|go\s+(build|get|mod)|gcc|g\+\+|cc|cmake)\b',
+  );
+
+  static Duration timeoutFor(String command, int seconds,
+      {required bool linux}) {
+    final base = Duration(seconds: seconds);
+    if (linux && _longRunning.hasMatch(command)) {
+      return base > const Duration(minutes: 10)
+          ? base
+          : const Duration(minutes: 10);
+    }
+    return base;
   }
 
   Future<CodeAction> _writeFile(
@@ -145,9 +185,16 @@ class WorkspaceActionRunner extends CodeActionRunner {
   }
 
   Future<CodeAction> _runShell(
-      CodeWorkspace workspace, CodeAction action) async {
+    CodeWorkspace workspace,
+    CodeAction action,
+    void Function(String chunk)? onOutput,
+  ) async {
     final current = settings.settings;
-    final timeout = Duration(seconds: current.commandTimeoutSeconds);
+    final timeout = timeoutFor(
+      action.command,
+      current.commandTimeoutSeconds,
+      linux: environment == CommandEnvironment.linux,
+    );
     final ShellResult result;
     switch (environment) {
       case CommandEnvironment.none:
@@ -156,9 +203,18 @@ class WorkspaceActionRunner extends CodeActionRunner {
           output: 'Commands cannot run on this device.',
           exitCode: 127,
         );
+      case CommandEnvironment.linux:
+        // Linux is the boundary here: no command policy. The sandbox sees
+        // its own filesystem and the project folder, nothing else.
+        result = await linux!.run(
+          workspace,
+          action.command,
+          timeout: timeout,
+          onOutput: onOutput,
+        );
       case CommandEnvironment.container:
-        // The machine is the boundary here: no policy, nothing on the device
-        // to protect from it beyond the folder it is handed.
+        // The emulated machine is the boundary: no policy, nothing on the
+        // device to protect from it beyond the folder it is handed.
         result =
             await container!.run(workspace, action.command, timeout: timeout);
       case CommandEnvironment.device:

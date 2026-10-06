@@ -76,6 +76,7 @@ abstract final class AgentProtocol {
   static String systemPrompt({
     required bool shell,
     bool container = false,
+    bool linux = false,
     bool edits = false,
   }) {
     final buffer = StringBuffer()
@@ -123,7 +124,11 @@ abstract final class AgentProtocol {
       ..writeln('- Never invent the result of an action. Wait for it.')
       ..writeln('- When the task is done, reply in plain text with a short '
           'summary and no action. Answer in the language the user wrote in.');
-    if (shell && container) {
+    if (shell && linux) {
+      buffer.writeln('- Commands run in Alpine Linux (sh) in /workspace, with '
+          'internet. Install what you need first: apk add python3 py3-pip '
+          'nodejs npm git build-base. pip install and npm install work.');
+    } else if (shell && container) {
       buffer.writeln('- Commands run in a small Linux machine (busybox ash): '
           'ls cat head tail wc grep sed awk find sort uniq cut tr diff tar '
           'gzip vi chmod. Shell scripts run (chmod +x, then ./x.sh). There is '

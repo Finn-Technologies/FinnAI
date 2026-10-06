@@ -4174,4 +4174,57 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get codeTerminalHide => 'Hide terminal';
+
+  @override
+  String get codeLinuxTitle => 'Linux';
+
+  @override
+  String get codeLinuxIntro =>
+      'A real Alpine Linux runs on this phone for FinnAI Code. Install what a project needs (apk or apt-get, pip, npm), clone repositories and build. It sees its own files and this session’s project folder at /workspace, nothing else on the device. It uses the internet for installs and git.';
+
+  @override
+  String codeLinuxStatusMissing(String size) {
+    return 'Not set up · $size download';
+  }
+
+  @override
+  String get codeLinuxStatusPreparing => 'Setting up…';
+
+  @override
+  String codeLinuxStatusReady(String version) {
+    return 'Alpine Linux $version · ready';
+  }
+
+  @override
+  String codeLinuxSetUp(String size) {
+    return 'Set up Linux ($size)';
+  }
+
+  @override
+  String get codeLinuxUse => 'Run commands in Linux';
+
+  @override
+  String get codeLinuxRemove => 'Remove Linux';
+
+  @override
+  String get codeLinuxRemoveTitle => 'Remove Linux?';
+
+  @override
+  String get codeLinuxRemoveBody =>
+      'Everything installed in it is deleted. Your project folders stay.';
+
+  @override
+  String get codeLinuxUnsupported =>
+      'This device can’t run Linux, so commands use its own shell.';
+
+  @override
+  String get codeLinuxLicence =>
+      'Alpine Linux and its packages come under their own licences. proot (GPL-2.0) runs them; its source is at github.com/termux/proot.';
+
+  @override
+  String get codeTerminalIntroLinux =>
+      'Alpine Linux, in this session’s project folder (/workspace).';
+
+  @override
+  String get codeSettingsLinuxSubReady => 'Alpine Linux · commands run here';
 }

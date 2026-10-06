@@ -5596,5 +5596,76 @@
   "codeTerminalHide": "Hide terminal",
   "@codeTerminalHide": {
     "description": "Closes the terminal panel"
+  },
+  "codeLinuxTitle": "Linux",
+  "@codeLinuxTitle": {
+    "description": "Title of the Linux sandbox page"
+  },
+  "codeLinuxIntro": "A real Alpine Linux runs on this phone for FinnAI Code. Install what a project needs (apk or apt-get, pip, npm), clone repositories and build. It sees its own files and this session’s project folder at /workspace, nothing else on the device. It uses the internet for installs and git.",
+  "@codeLinuxIntro": {
+    "description": "Intro of the Linux sandbox page"
+  },
+  "codeLinuxStatusMissing": "Not set up · {size} download",
+  "@codeLinuxStatusMissing": {
+    "description": "Linux sandbox not installed",
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "codeLinuxStatusPreparing": "Setting up…",
+  "@codeLinuxStatusPreparing": {
+    "description": "Linux sandbox is being unpacked"
+  },
+  "codeLinuxStatusReady": "Alpine Linux {version} · ready",
+  "@codeLinuxStatusReady": {
+    "description": "Linux sandbox installed",
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "codeLinuxSetUp": "Set up Linux ({size})",
+  "@codeLinuxSetUp": {
+    "description": "Downloads and sets up the sandbox",
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "codeLinuxUse": "Run commands in Linux",
+  "@codeLinuxUse": {
+    "description": "Switch: commands use the sandbox"
+  },
+  "codeLinuxRemove": "Remove Linux",
+  "@codeLinuxRemove": {
+    "description": "Deletes the sandbox"
+  },
+  "codeLinuxRemoveTitle": "Remove Linux?",
+  "@codeLinuxRemoveTitle": {
+    "description": "Confirm title"
+  },
+  "codeLinuxRemoveBody": "Everything installed in it is deleted. Your project folders stay.",
+  "@codeLinuxRemoveBody": {
+    "description": "Confirm body"
+  },
+  "codeLinuxUnsupported": "This device can’t run Linux, so commands use its own shell.",
+  "@codeLinuxUnsupported": {
+    "description": "Sandbox unsupported"
+  },
+  "codeLinuxLicence": "Alpine Linux and its packages come under their own licences. proot (GPL-2.0) runs them; its source is at github.com/termux/proot.",
+  "@codeLinuxLicence": {
+    "description": "Licence note"
+  },
+  "codeTerminalIntroLinux": "Alpine Linux, in this session’s project folder (/workspace).",
+  "@codeTerminalIntroLinux": {
+    "description": "Terminal intro in the Linux sandbox"
+  },
+  "codeSettingsLinuxSubReady": "Alpine Linux · commands run here",
+  "@codeSettingsLinuxSubReady": {
+    "description": "Settings row subtitle"
   }
 }

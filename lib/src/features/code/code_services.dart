@@ -2,6 +2,8 @@ import 'package:finn_ai/src/features/code/agent/action_runner.dart';
 import 'package:finn_ai/src/features/code/agent/code_agent.dart';
 import 'package:finn_ai/src/features/code/container/container_installer.dart';
 import 'package:finn_ai/src/features/code/container/container_shell.dart';
+import 'package:finn_ai/src/features/code/linux/linux_installer.dart';
+import 'package:finn_ai/src/features/code/linux/linux_sandbox.dart';
 import 'package:finn_ai/src/features/code/providers/code_gateway.dart';
 import 'package:finn_ai/src/features/code/providers/code_model.dart';
 import 'package:finn_ai/src/features/code/providers/gateways.dart';
@@ -22,6 +24,7 @@ class CodeServices {
     CodeActionRunner? runner,
     CodeGatewayFactory? gatewayFactory,
     ContainerShell? container,
+    LinuxSandbox? linux,
   })  : sessions = sessions ?? CodeSessionStore.instance,
         providers = providers ?? CodeProviderStore.instance,
         settings = settings ?? CodeSettingsStore.instance,
@@ -32,12 +35,20 @@ class CodeServices {
                 : ContainerShell(
                     installer: ContainerInstaller(artifacts: const []),
                     platformSupported: false,
+                  )),
+        linux = linux ??
+            (runner == null
+                ? LinuxSandbox(installer: LinuxInstaller.instance)
+                : LinuxSandbox(
+                    installer: LinuxInstaller(),
+                    locate: () async => null,
                   )) {
     this.runner = runner ??
         WorkspaceActionRunner(
           sessions: this.sessions,
           settings: this.settings,
           container: this.container,
+          linux: this.linux,
         );
     agent = CodeAgent(
       sessions: this.sessions,
@@ -53,8 +64,12 @@ class CodeServices {
   final CodeProviderStore providers;
   final CodeSettingsStore settings;
 
-  /// The Linux container commands run in, and its installer.
+  /// The emulated Linux container (v86), for platforms where [linux] cannot
+  /// run, and its installer.
   final ContainerShell container;
+
+  /// The native Linux sandbox (proot + Alpine), preferred wherever it runs.
+  final LinuxSandbox linux;
   late final CodeActionRunner runner;
   late final CodeAgent agent;
 
@@ -68,6 +83,7 @@ class CodeServices {
         providers.initialize(),
         settings.initialize(),
         container.installer.refresh(),
+        linux.prepare(),
       ]);
 
   /// The gateway for whichever model is selected right now.
@@ -103,6 +119,7 @@ class CodeServices {
     await agent.stop();
     await container.stop();
     return [
+      ...await linux.installer.deleteStorage(),
       ...await container.installer.deleteStorage(),
       ...await providers.deleteStorage(),
       ...await settings.deleteStorage(),

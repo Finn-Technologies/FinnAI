@@ -4217,4 +4217,57 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get codeTerminalHide => 'Nascondi terminale';
+
+  @override
+  String get codeLinuxTitle => 'Linux';
+
+  @override
+  String get codeLinuxIntro =>
+      'Per FinnAI Code su questo telefono gira un vero Alpine Linux. Installa ciò che serve al progetto (apk o apt-get, pip, npm), clona repository e compila. Vede solo i propri file e la cartella del progetto di questa sessione in /workspace, nient’altro del dispositivo. Usa internet per installazioni e git.';
+
+  @override
+  String codeLinuxStatusMissing(String size) {
+    return 'Non configurato · download di $size';
+  }
+
+  @override
+  String get codeLinuxStatusPreparing => 'Configurazione…';
+
+  @override
+  String codeLinuxStatusReady(String version) {
+    return 'Alpine Linux $version · pronto';
+  }
+
+  @override
+  String codeLinuxSetUp(String size) {
+    return 'Configura Linux ($size)';
+  }
+
+  @override
+  String get codeLinuxUse => 'Esegui i comandi in Linux';
+
+  @override
+  String get codeLinuxRemove => 'Rimuovi Linux';
+
+  @override
+  String get codeLinuxRemoveTitle => 'Rimuovere Linux?';
+
+  @override
+  String get codeLinuxRemoveBody =>
+      'Tutto ciò che vi è installato viene eliminato. Le cartelle dei progetti restano.';
+
+  @override
+  String get codeLinuxUnsupported =>
+      'Questo dispositivo non può eseguire Linux, quindi i comandi usano la sua shell.';
+
+  @override
+  String get codeLinuxLicence =>
+      'Alpine Linux e i suoi pacchetti hanno licenze proprie. proot (GPL-2.0) li esegue; il sorgente è su github.com/termux/proot.';
+
+  @override
+  String get codeTerminalIntroLinux =>
+      'Alpine Linux, nella cartella del progetto di questa sessione (/workspace).';
+
+  @override
+  String get codeSettingsLinuxSubReady => 'Alpine Linux · i comandi girano qui';
 }

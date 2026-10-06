@@ -7453,6 +7453,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Hide terminal'**
   String get codeTerminalHide;
+
+  /// Title of the Linux sandbox page
+  ///
+  /// In en, this message translates to:
+  /// **'Linux'**
+  String get codeLinuxTitle;
+
+  /// Intro of the Linux sandbox page
+  ///
+  /// In en, this message translates to:
+  /// **'A real Alpine Linux runs on this phone for FinnAI Code. Install what a project needs (apk or apt-get, pip, npm), clone repositories and build. It sees its own files and this session’s project folder at /workspace, nothing else on the device. It uses the internet for installs and git.'**
+  String get codeLinuxIntro;
+
+  /// Linux sandbox not installed
+  ///
+  /// In en, this message translates to:
+  /// **'Not set up · {size} download'**
+  String codeLinuxStatusMissing(String size);
+
+  /// Linux sandbox is being unpacked
+  ///
+  /// In en, this message translates to:
+  /// **'Setting up…'**
+  String get codeLinuxStatusPreparing;
+
+  /// Linux sandbox installed
+  ///
+  /// In en, this message translates to:
+  /// **'Alpine Linux {version} · ready'**
+  String codeLinuxStatusReady(String version);
+
+  /// Downloads and sets up the sandbox
+  ///
+  /// In en, this message translates to:
+  /// **'Set up Linux ({size})'**
+  String codeLinuxSetUp(String size);
+
+  /// Switch: commands use the sandbox
+  ///
+  /// In en, this message translates to:
+  /// **'Run commands in Linux'**
+  String get codeLinuxUse;
+
+  /// Deletes the sandbox
+  ///
+  /// In en, this message translates to:
+  /// **'Remove Linux'**
+  String get codeLinuxRemove;
+
+  /// Confirm title
+  ///
+  /// In en, this message translates to:
+  /// **'Remove Linux?'**
+  String get codeLinuxRemoveTitle;
+
+  /// Confirm body
+  ///
+  /// In en, this message translates to:
+  /// **'Everything installed in it is deleted. Your project folders stay.'**
+  String get codeLinuxRemoveBody;
+
+  /// Sandbox unsupported
+  ///
+  /// In en, this message translates to:
+  /// **'This device can’t run Linux, so commands use its own shell.'**
+  String get codeLinuxUnsupported;
+
+  /// Licence note
+  ///
+  /// In en, this message translates to:
+  /// **'Alpine Linux and its packages come under their own licences. proot (GPL-2.0) runs them; its source is at github.com/termux/proot.'**
+  String get codeLinuxLicence;
+
+  /// Terminal intro in the Linux sandbox
+  ///
+  /// In en, this message translates to:
+  /// **'Alpine Linux, in this session’s project folder (/workspace).'**
+  String get codeTerminalIntroLinux;
+
+  /// Settings row subtitle
+  ///
+  /// In en, this message translates to:
+  /// **'Alpine Linux · commands run here'**
+  String get codeSettingsLinuxSubReady;
 }
 
 class _AppLocalizationsDelegate
