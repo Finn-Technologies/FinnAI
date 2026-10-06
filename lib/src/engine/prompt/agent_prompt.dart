@@ -19,6 +19,7 @@ abstract final class AgentPrompt {
     required String system,
     required List<LocalChatTurn> history,
     required String prompt,
+    String start = '',
   }) {
     final buffer = StringBuffer()
       ..write('<|im_start|>system\n')
@@ -30,26 +31,30 @@ abstract final class AgentPrompt {
         ..write(turn.content)
         ..write('<|im_end|>\n');
     }
-    _writeUser(buffer, prompt);
+    _writeUser(buffer, prompt, start);
     return buffer.toString();
   }
 
   /// What a session that already holds the conversation is fed: its last
   /// reply is closed and the new message appended.
-  static String continuation(String prompt) {
+  static String continuation(String prompt, {String start = ''}) {
     final buffer = StringBuffer()..write('<|im_end|>\n');
-    _writeUser(buffer, prompt);
+    _writeUser(buffer, prompt, start);
     return buffer.toString();
   }
 
-  static void _writeUser(StringBuffer buffer, String prompt) {
+  /// [start] is written as the first words of the reply: the model carries
+  /// on from it. An agent uses it when the next step is already known, so a
+  /// small model fills in the details instead of choosing the format.
+  static void _writeUser(StringBuffer buffer, String prompt, String start) {
     buffer
       ..write('<|im_start|>user\n')
       ..write(prompt)
       ..write('<|im_end|>\n<|im_start|>assistant\n')
       // Same empty reasoning block the chat prompt primes, so the model
       // answers instead of thinking at length.
-      ..write('<think>\n\n</think>\n\n');
+      ..write('<think>\n\n</think>\n\n')
+      ..write(start);
   }
 
   /// Identifies what a session holds once it has been fed [history] and

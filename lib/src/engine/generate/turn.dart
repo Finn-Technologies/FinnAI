@@ -15,6 +15,7 @@ extension FinnAcceleratorTurn on FinnAccelerator {
     IntentSamplerProfile? samplerProfile,
     int? maxOutputTokens,
     bool agentPrompt = false,
+    String agentStart = '',
   }) {
     late StreamController<String> output;
     var nativeFinished = false;
@@ -233,11 +234,12 @@ extension FinnAcceleratorTurn on FinnAccelerator {
           // while keeping everyday replies fast.
           const primeEmptyThinking = true;
           String renderAgent() => entry.primed
-              ? AgentPrompt.continuation(prompt)
+              ? AgentPrompt.continuation(prompt, start: agentStart)
               : AgentPrompt.render(
                   system: systemContext,
                   history: history,
                   prompt: prompt,
+                  start: agentStart,
                 );
           var renderedPrompt = agentPrompt
               ? renderAgent()

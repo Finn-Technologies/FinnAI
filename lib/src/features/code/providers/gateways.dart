@@ -24,7 +24,12 @@ class LocalCodeGateway implements CodeModelGateway {
   CodeBudget get budget => CodeBudget.onDevice;
 
   @override
-  Stream<String> complete(CodeCompletion request) {
+  Stream<String> complete(CodeCompletion request) async* {
+    if (request.start.isNotEmpty) yield request.start;
+    yield* _generate(request);
+  }
+
+  Stream<String> _generate(CodeCompletion request) {
     final turns = request.turns;
     final history = [
       for (final turn in turns.take(turns.length - 1))
@@ -49,6 +54,7 @@ class LocalCodeGateway implements CodeModelGateway {
       // or the private-context wrapper (the 1.6B model echoed the date as its
       // summary).
       agentPrompt: true,
+      agentStart: request.start,
     );
   }
 

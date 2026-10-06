@@ -13,6 +13,7 @@ extension FinnAcceleratorReplies on FinnAccelerator {
     IntentSamplerProfile? samplerProfile,
     int? maxOutputTokens,
     bool agentPrompt = false,
+    String agentStart = '',
   }) async* {
     if (_replyInFlight) {
       throw StateError('Finn is already generating a response.');
@@ -32,6 +33,7 @@ extension FinnAcceleratorReplies on FinnAccelerator {
         samplerProfile: samplerProfile,
         maxOutputTokens: maxOutputTokens,
         agentPrompt: agentPrompt,
+        agentStart: agentStart,
       );
     } finally {
       _replyInFlight = false;
@@ -52,6 +54,7 @@ extension FinnAcceleratorReplies on FinnAccelerator {
     IntentSamplerProfile? samplerProfile,
     int? maxOutputTokens,
     bool agentPrompt = false,
+    String agentStart = '',
   }) async* {
     if (_replyInFlight) {
       final turn = replyGate.waitTurn();
@@ -75,6 +78,7 @@ extension FinnAcceleratorReplies on FinnAccelerator {
       samplerProfile: samplerProfile,
       maxOutputTokens: maxOutputTokens,
       agentPrompt: agentPrompt,
+      agentStart: agentStart,
     );
   }
 
@@ -141,6 +145,7 @@ extension FinnAcceleratorReplies on FinnAccelerator {
     IntentSamplerProfile? samplerProfile,
     int? maxOutputTokens,
     bool agentPrompt = false,
+    String agentStart = '',
   }) async* {
     final analysis =
         promptAnalysis ?? const PromptIntentClassifier().classify(prompt);
@@ -171,6 +176,7 @@ extension FinnAcceleratorReplies on FinnAccelerator {
         samplerProfile: samplerProfile,
         maxOutputTokens: maxOutputTokens,
         agentPrompt: true,
+        agentStart: agentStart,
       );
       return;
     }

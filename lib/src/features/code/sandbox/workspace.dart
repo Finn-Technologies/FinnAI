@@ -81,6 +81,15 @@ class CodeWorkspace {
     return parts.join('/');
   }
 
+  /// Whether [a] and [b] name the same file (`./a.sh` and `a.sh`).
+  static bool samePath(String a, String b) {
+    try {
+      return normalize(a) == normalize(b);
+    } on WorkspaceEscape {
+      return false;
+    }
+  }
+
   File fileFor(String path) => File('${root.path}/${normalize(path)}');
 
   /// True when [target], with symbolic links followed, is still under [root].

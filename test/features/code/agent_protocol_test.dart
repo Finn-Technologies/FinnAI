@@ -588,5 +588,63 @@ void main() {
       );
       expect(prose.action, isNull);
     });
+
+    test('a command in prose before an empty sh block is run', () {
+      final reply = AgentProtocol.repair(
+        AgentProtocol.parse('seq 1 5\n```sh\n```'),
+        request: request,
+      );
+      expect(reply.action!.command, 'seq 1 5');
+      expect(reply.malformed, isFalse);
+    });
+  });
+
+  group('forcedStart', () {
+    const request = 'Create a shell script count.sh that prints 1 to 5, '
+        'then run it.';
+    CodeAction done(CodeAction action) =>
+        action.copyWith(status: CodeActionStatus.done, exitCode: 0);
+
+    test('opens with the file to create, then with its run command', () {
+      expect(AgentProtocol.forcedStart([user(request)], shell: true),
+          '```file count.sh\n');
+      final written = [
+        user(request),
+        assistant('a1',
+            action: done(const CodeAction.write('count.sh', 'seq 1 5'))),
+      ];
+      expect(AgentProtocol.forcedStart(written, shell: true),
+          '```sh\nsh count.sh');
+      final ran = [
+        ...written,
+        assistant('a2', action: done(const CodeAction.shell('sh count.sh'))),
+      ];
+      expect(AgentProtocol.forcedStart(ran, shell: true), isNull);
+    });
+
+    test('a run whose output says what is wrong opens a rewrite', () {
+      final broken = [
+        user(request),
+        assistant('a1',
+            action: done(const CodeAction.write('count.sh', 'echo {1..5}'))),
+        assistant('a2',
+            action: done(const CodeAction.shell('sh count.sh'))
+                .copyWith(output: '{1..5}\n')),
+      ];
+      expect(
+          AgentProtocol.forcedStart(broken, shell: true), '```file count.sh\n');
+    });
+
+    test('leaves the model alone once something else happened', () {
+      expect(
+        AgentProtocol.forcedStart([
+          user(request),
+          assistant('a1', action: done(const CodeAction.shell('ls'))),
+        ], shell: true),
+        isNull,
+      );
+      expect(AgentProtocol.forcedStart([user('What is in here?')], shell: true),
+          isNull);
+    });
   });
 }

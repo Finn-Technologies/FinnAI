@@ -28,6 +28,7 @@ class CodeCompletion {
     required this.turns,
     required this.conversationId,
     this.maxTokens = 768,
+    this.start = '',
   });
 
   final String system;
@@ -38,6 +39,11 @@ class CodeCompletion {
   /// Stable per session, so the on-device engine can reuse its cached prefix.
   final String conversationId;
   final int maxTokens;
+
+  /// The first words of the reply, already decided (see
+  /// [AgentProtocol.forcedStart]). The model continues from them; the stream
+  /// begins with them. Honoured by the on-device gateway only.
+  final String start;
 }
 
 /// Something that can answer a [CodeCompletion]: the on-device model or a

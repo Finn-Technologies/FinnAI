@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:finn_ai/src/features/code/agent/edit_blocks.dart';
 import 'package:finn_ai/src/features/code/providers/code_gateway.dart';
 import 'package:finn_ai/src/features/code/sandbox/command_policy.dart';
+import 'package:finn_ai/src/features/code/sandbox/workspace.dart';
 import 'package:finn_ai/src/features/code/sessions/code_session.dart';
 
 /// What one model reply contains.
@@ -334,9 +335,17 @@ abstract final class AgentProtocol {
         ignoredActions: reply.ignoredActions,
       );
     }
-    if (reply.cutOff || reply.malformed) return reply;
-    final line = reply.prose.trim().replaceAll(RegExp(r'^`+|`+$'), '').trim();
-    if (line.isEmpty || line.contains('\n') || line.length > 120) return reply;
+    if (reply.cutOff) return reply;
+    // `seq 1 5` followed by an empty ```sh block: the command went in the
+    // prose and the block came out empty.
+    final lines = [
+      for (final line in reply.prose.trim().split('\n'))
+        if (!reply.malformed || !RegExp(r'^\s*`{3,}\w*\s*$').hasMatch(line))
+          line,
+    ];
+    if (reply.malformed && lines.length > 1) return reply;
+    final line = lines.last.replaceAll(RegExp(r'^`+|`+$'), '').trim();
+    if (line.isEmpty || lines.length > 1 || line.length > 120) return reply;
     if (!_bareCommand.hasMatch(line)) return reply;
     return ParsedReply(prose: '', action: CodeAction.shell(line));
   }
@@ -459,6 +468,57 @@ abstract final class AgentProtocol {
     return buffer.toString();
   }
 
+  /// The start of the next reply, when the next step is already clear from
+  /// the request and what has happened since — for the on-device model only.
+  ///
+  /// Asked to "create count.sh that prints 1 to 5, then run it", the 1.6B
+  /// model ran the loop inline, ran count.sh before writing it, or wrote it
+  /// three times; hints in the prompt did not change that. Opening its reply
+  /// with ```file count.sh (and later with the run command) leaves it only
+  /// the part it is good at: the file's content.
+  static String? forcedStart(List<CodeMessage> messages,
+      {required bool shell}) {
+    final requestIndex = messages.lastIndexWhere((m) => m.isUser);
+    if (requestIndex < 0) return null;
+    final target = fileToCreate(messages[requestIndex].text);
+    if (target == null) return null;
+    final actions = [
+      for (final message in messages.skip(requestIndex + 1))
+        if (message.action != null) message.action!,
+    ];
+    final written = actions.lastIndexWhere((a) =>
+        !a.isShell &&
+        a.status == CodeActionStatus.done &&
+        CodeWorkspace.samePath(a.path, target));
+    if (written < 0) {
+      // Only before anything else happened: once the model has been told why
+      // something failed, it decides again.
+      return actions.isEmpty ? '```file $target\n' : null;
+    }
+    final run = runCommandFor(target);
+    final wantsRun =
+        RegExp(r'\b(run|execute|test|start|try)\b', caseSensitive: false)
+            .hasMatch(messages[requestIndex].text);
+    final since = actions.skip(written + 1).toList();
+    if (shell && run != null && wantsRun && !since.any((a) => a.isShell)) {
+      return '```sh\n$run';
+    }
+    // The script ran and the result says what is wrong with it: the fix is a
+    // new version of the file. Twice at most, then the model decides.
+    final last = since.lastOrNull;
+    final rewrites = actions
+        .where((a) => !a.isShell && CodeWorkspace.samePath(a.path, target))
+        .length;
+    if (last != null &&
+        last.isShell &&
+        last.command.contains(target) &&
+        hintFor(last) != null &&
+        rewrites < 3) {
+      return '```file $target\n';
+    }
+    return null;
+  }
+
   /// How to run [path], when it is a script.
   static String? runCommandFor(String path) => switch (path.split('.').last) {
         'sh' => 'sh $path',
@@ -473,13 +533,19 @@ abstract final class AgentProtocol {
     if (!action.isShell) return null;
     final output = action.output;
     final command = action.command.trim();
-    // busybox ash prints the range back instead of expanding it, and exits 0.
-    if (RegExp(r'\{\d+\.\.\d+\}').hasMatch(command) &&
-        RegExp(r'\{\d+\.\.\d+\}').hasMatch(output)) {
-      return 'This shell has no {1..5} ranges. Use: seq 1 5';
+    // sh prints the range back instead of expanding it, and exits 0.
+    if (RegExp(r'^\{\d+\.\.\d+\}$', multiLine: true).hasMatch(output)) {
+      return r'This shell has no {1..5} ranges. Use $(seq 1 5) instead.';
     }
     if (action.status != CodeActionStatus.failed) return null;
-    final first = command.split(RegExp(r'\s+')).first;
+    // The line that failed is usually the last one that runs a script.
+    final first = command
+        .split('\n')
+        .map((line) => line.trim().split(RegExp(r'\s+')).first)
+        .lastWhere(
+          (word) => RegExp(r'^(\./)?[\w./-]+\.(sh|py|js)$').hasMatch(word),
+          orElse: () => command.split(RegExp(r'\s+')).first,
+        );
     final script = RegExp(r'^(\./)?[\w./-]+\.(sh|py|js)$').hasMatch(first);
     final missing = RegExp(
       r'No such file|not found|inaccessible|cannot open|does not exist',
@@ -496,8 +562,7 @@ abstract final class AgentProtocol {
           'Run it with: $runner $name';
     }
     if (script &&
-        RegExp(r'[Pp]ermission denied').hasMatch(output) &&
-        !first.contains('/')) {
+        RegExp(r'[Pp]ermission denied|can.t execute').hasMatch(output)) {
       return 'Run it with: sh ${first.replaceFirst('./', '')}';
     }
     return null;

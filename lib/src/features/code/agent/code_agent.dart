@@ -72,7 +72,7 @@ class CodeAgent extends ChangeNotifier {
   /// The message whose action waits for a tap.
   String? get pendingMessageId => _pendingMessageId;
 
-  /// Repeating the same action this many times in a row ends the request.
+  /// Repeating the same action this many times in one request ends it.
   static const int repeatLimit = 3;
 
   void _setPhase(CodeAgentPhase phase) {
@@ -268,9 +268,12 @@ class CodeAgent extends ChangeNotifier {
         }
 
         recent.add(action.signature);
-        if (recent.length > repeatLimit) recent.removeAt(0);
-        final repeating = recent.length == repeatLimit &&
-            recent.every((signature) => signature == recent.first);
+        // The same action a third time in one request is a loop, whether it
+        // comes back to back or alternates with another (chmod, sudo chmod,
+        // chmod…, seen on the device).
+        final repeating =
+            recent.where((signature) => signature == action.signature).length >=
+                repeatLimit;
 
         _finishMessage(sessionId, messageId,
             text: parsed.prose, action: action);
@@ -339,6 +342,16 @@ class CodeAgent extends ChangeNotifier {
       turns: turns,
       conversationId: 'code-$sessionId',
       maxTokens: gateway.isLocal ? 1024 : 4096,
+      start: small
+          ? AgentProtocol.forcedStart(
+                [
+                  for (final message in session.messages)
+                    if (message.id != messageId) message,
+                ],
+                shell: runner.canRunCommands,
+              ) ??
+              ''
+          : '',
     );
 
     final buffer = StringBuffer();
