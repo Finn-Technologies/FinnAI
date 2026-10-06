@@ -639,6 +639,38 @@ void main() {
       expect(SmallModelAids.finished(written), isFalse);
     });
 
+    test('a file to change is read, rewritten, then run', () {
+      const change = 'Change hello.py to print cubes, then run it.';
+      expect(SmallModelAids.fileToEdit(change), 'hello.py');
+      expect(SmallModelAids.forcedStart([user(change)], shell: true),
+          '```sh\ncat hello.py');
+      final read = [
+        user(change),
+        assistant('a1',
+            action: done(const CodeAction.shell('cat hello.py'))
+                .copyWith(output: 'print(1)')),
+      ];
+      expect(
+          SmallModelAids.forcedStart(read, shell: true), '```file hello.py\n');
+      final rewritten = [
+        ...read,
+        assistant('a2',
+            action: done(const CodeAction.write('hello.py', 'print(1)'))),
+      ];
+      expect(SmallModelAids.forcedStart(rewritten, shell: true),
+          '```sh\npython3 hello.py');
+      // Reading the file is not running it.
+      expect(SmallModelAids.finished(read), isFalse);
+      expect(
+        SmallModelAids.finished([
+          ...rewritten,
+          assistant('a3',
+              action: done(const CodeAction.shell('python3 hello.py'))),
+        ]),
+        isTrue,
+      );
+    });
+
     test('a missing tool opens its install, not a rewrite', () {
       const js = 'Create fib.js that prints 10 numbers, then run it.';
       final missing = [

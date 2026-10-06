@@ -10,12 +10,24 @@ import 'package:finn_ai/src/features/code/sessions/code_session.dart';
 abstract final class SmallModelAids {
   /// The file a request asks to be created, when it names exactly one:
   /// "Create a shell script count.sh that…" → `count.sh`.
-  static String? fileToCreate(String request) {
-    final asks = RegExp(
-      r'\b(create|write|make|add|build|generate|new)\b',
-      caseSensitive: false,
-    ).hasMatch(request);
-    if (!asks) return null;
+  static String? fileToCreate(String request) => _fileNamed(request, _create);
+
+  /// The file a request asks to be changed: "Change hello.py to print
+  /// cubes" → `hello.py`. Only when it asks for no new file.
+  static String? fileToEdit(String request) =>
+      fileToCreate(request) == null ? _fileNamed(request, _edit) : null;
+
+  static final RegExp _create = RegExp(
+    r'\b(create|write|make|add|build|generate|new)\b',
+    caseSensitive: false,
+  );
+  static final RegExp _edit = RegExp(
+    r'\b(change|edit|update|modify|fix|rewrite|refactor|improve|extend)\b',
+    caseSensitive: false,
+  );
+
+  static String? _fileNamed(String request, RegExp verbs) {
+    if (!verbs.hasMatch(request)) return null;
     final names = {
       for (final match in RegExp(
         r'(?<![\w/.-])([\w-]+(?:/[\w-]+)*\.(?:sh|py|js|mjs|ts|txt|md|json|html|'
@@ -121,8 +133,14 @@ abstract final class SmallModelAids {
       {required bool shell}) {
     final requestIndex = messages.lastIndexWhere((m) => m.isUser);
     if (requestIndex < 0) return null;
-    final target = fileToCreate(messages[requestIndex].text);
+    final request = messages[requestIndex];
+    final created = fileToCreate(request.text);
+    final target = created ?? fileToEdit(request.text);
     if (target == null) return null;
+    // A file to change is read before it is rewritten, unless the request
+    // brought its contents with an @mention.
+    final editing = created == null;
+    final header = editing ? '' : headerFor(target);
     final actions = [
       for (final message in messages.skip(requestIndex + 1))
         if (message.action != null) message.action!,
@@ -132,9 +150,27 @@ abstract final class SmallModelAids {
         a.status == CodeActionStatus.done &&
         CodeWorkspace.samePath(a.path, target));
     if (written < 0) {
+      if (editing) {
+        final read = actions.isNotEmpty &&
+            actions.last.isShell &&
+            actions.last.status == CodeActionStatus.done &&
+            actions.last.command.trim() == 'cat $target';
+        if (actions.isEmpty) {
+          return request.context.contains('Contents of $target')
+              ? '```file $target\n'
+              : '```sh\ncat $target';
+        }
+        if (read) return '```file $target\n';
+        // Nothing to change: the file is not there. Write it new.
+        final missing = actions.length == 1 &&
+            actions.single.isShell &&
+            actions.single.command.trim() == 'cat $target' &&
+            actions.single.status == CodeActionStatus.failed;
+        return missing ? '```file $target\n${headerFor(target)}' : null;
+      }
       // Only before anything else happened: once the model has been told why
       // something failed, it decides again.
-      return actions.isEmpty ? '```file $target\n${headerFor(target)}' : null;
+      return actions.isEmpty ? '```file $target\n$header' : null;
     }
     final run = runCommandFor(target);
     final wantsRun =
@@ -172,7 +208,7 @@ abstract final class SmallModelAids {
         last.command.contains(target) &&
         (last.status == CodeActionStatus.failed || hint != null) &&
         rewrites < 3) {
-      return '```file $target\n${headerFor(target)}';
+      return '```file $target\n$header';
     }
     return null;
   }
@@ -183,21 +219,30 @@ abstract final class SmallModelAids {
     final requestIndex = messages.lastIndexWhere((m) => m.isUser);
     if (requestIndex < 0) return false;
     final request = messages[requestIndex].text;
-    final target = fileToCreate(request);
-    if (target == null || runCommandFor(target) == null) return false;
+    final target = fileToCreate(request) ?? fileToEdit(request);
+    final run = target == null ? null : runCommandFor(target);
+    if (target == null || run == null) return false;
     if (!RegExp(r'\b(run|execute|test|start|try)\b', caseSensitive: false)
         .hasMatch(request)) {
       return false;
     }
-    final last = messages
+    final actions = messages
         .skip(requestIndex + 1)
         .map((m) => m.action)
         .whereType<CodeAction>()
-        .lastOrNull;
-    return last != null &&
+        .toList();
+    // The file was (re)written in this request, then run cleanly after.
+    final written = actions.lastIndexWhere((a) =>
+        !a.isShell &&
+        a.status == CodeActionStatus.done &&
+        CodeWorkspace.samePath(a.path, target));
+    final last = actions.lastOrNull;
+    return written >= 0 &&
+        last != null &&
+        actions.indexOf(last) > written &&
         last.isShell &&
         last.status == CodeActionStatus.done &&
-        last.command.contains(target) &&
+        last.command.trim() == run &&
         hintFor(last) == null;
   }
 

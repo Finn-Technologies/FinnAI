@@ -318,10 +318,9 @@ class _OutputPeek extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final lines = output.trimRight().split('\n');
-    final last = lines.lastWhere(
-      (line) => line.trim().isNotEmpty,
-      orElse: () => '',
-    );
+    final last = lines
+        .lastWhere((line) => line.trim().isNotEmpty, orElse: () => '')
+        .trim();
     if (last.isEmpty) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.only(left: 22, bottom: 2),
