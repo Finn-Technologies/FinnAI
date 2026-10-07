@@ -142,7 +142,9 @@ void main() {
         tester
             .getSize(find.byKey(const ValueKey('chat-composer-motion')))
             .height,
-        52,
+        // One line: the pill is the circles' 50dp (it was 52 before the
+        // shared FinnComposerFrame dropped the 1px rest padding).
+        50,
       );
     });
 

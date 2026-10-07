@@ -18,15 +18,9 @@ class _ErrorReply extends StatelessWidget {
         _Bubble(text: text),
         if (retry != null) ...[
           const SizedBox(height: 6),
-          TextButton.icon(
+          FinnRetryButton(
+            label: L10n.of(context).commonRetry,
             onPressed: retry,
-            icon: const FluxIcon(icon: FluxIcons.refresh, size: 16),
-            label: Text(L10n.of(context).commonRetry),
-            style: TextButton.styleFrom(
-              foregroundColor: FluxColors.inkOf(context),
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              minimumSize: const Size(0, 48),
-            ),
           ),
         ],
       ],
@@ -90,70 +84,4 @@ class _EditMessageDialogState extends State<_EditMessageDialog> {
           ),
         ],
       );
-}
-
-/// Swaps a single control when [swapKey] changes, replaying a short scale-pop.
-///
-/// A cross-fade would hold the outgoing control in the tree for the length of
-/// the transition — and, because a fully transparent child is dropped from the
-/// semantics tree, would briefly hide the incoming one from a screen reader.
-/// Animating one child keeps both the tree and the accessibility label honest:
-/// the previous control is gone the moment the state changes.
-class _ControlSwap extends StatefulWidget {
-  const _ControlSwap({required this.swapKey, required this.child});
-
-  /// Changing this replays the pop.
-  final Object swapKey;
-  final Widget child;
-
-  @override
-  State<_ControlSwap> createState() => _ControlSwapState();
-}
-
-class _ControlSwapState extends State<_ControlSwap>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: FluxMotion.modalDuration,
-    value: 1,
-  );
-  late final Animation<double> _pop = CurvedAnimation(
-    parent: _controller,
-    curve: Curves.easeOutBack,
-  );
-  late final Animation<double> _fade = CurvedAnimation(
-    parent: _controller,
-    curve: Curves.easeOutCubic,
-  );
-
-  @override
-  void didUpdateWidget(covariant _ControlSwap oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.swapKey == widget.swapKey) return;
-    if (MediaQuery.disableAnimationsOf(context)) {
-      _controller.value = 1;
-    } else {
-      _controller.forward(from: 0);
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // Never fully transparent: an opacity of zero is exactly what would drop
-    // the control's semantics while it animates in.
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) => Opacity(
-        opacity: .5 + .5 * _fade.value,
-        child: Transform.scale(scale: .82 + .18 * _pop.value, child: child),
-      ),
-      child: widget.child,
-    );
-  }
 }

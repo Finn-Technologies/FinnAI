@@ -203,7 +203,7 @@ class _ChatComposerState extends State<ChatComposer>
     final reducedMotion = MediaQuery.disableAnimationsOf(context);
     final hasDraft = _hasText || hasAttachment;
 
-    // One circular control of the composer row: 50dp, flat colour, glyph.
+    // One circular control of the composer row: the shared 50dp circle.
     Widget circle({
       required Key key,
       Key? surfaceKey,
@@ -213,31 +213,14 @@ class _ChatComposerState extends State<ChatComposer>
       String? label,
       bool dimmed = false,
     }) =>
-        Semantics(
-          button: true,
-          enabled: onTap != null,
-          label: label,
+        FinnCircleButton(
+          hitKey: key,
+          surfaceKey: surfaceKey,
+          color: color,
+          label: label ?? '',
           onTap: onTap,
-          excludeSemantics: true,
-          child: FluxPressScale(
-            enabled: onTap != null,
-            child: Material(
-              key: surfaceKey,
-              color: color,
-              shape: const CircleBorder(),
-              child: SizedBox.square(
-                key: key,
-                dimension: 50,
-                child: InkWell(
-                  onTap: onTap,
-                  customBorder: const CircleBorder(),
-                  child: Center(
-                    child: Opacity(opacity: dimmed ? .38 : 1, child: child),
-                  ),
-                ),
-              ),
-            ),
-          ),
+          dimmed: dimmed,
+          glyph: child,
         );
 
     // Left: attachments, turning into the design's cancel cross as voice
@@ -329,7 +312,7 @@ class _ChatComposerState extends State<ChatComposer>
                   color: FluxColors.actionInkOf(context),
                 ),
               );
-    final trailing = _ControlSwap(swapKey: chatMode, child: chatControl);
+    final trailing = FluxSwap(swapKey: chatMode, child: chatControl);
     // Right, in a live conversation: the light microphone.
     final voiceTrailing = circle(
       key: const ValueKey('voice-toggle-surface'),
@@ -365,81 +348,41 @@ class _ChatComposerState extends State<ChatComposer>
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Expanded(
-              // The pill reads as one big input, so the whole row
-              // focuses the field: a bare single-line TextField is
-              // only as tall as its text (measured on device: 20dp
-              // inside a 56dp pill), which left most of the visible
-              // field inert. The band carries the target and the
-              // field keeps its natural height, centred inside it.
-              child: Semantics(
+              // The pill reads as one big input, so the whole row focuses
+              // the field (FinnComposerText.band).
+              child: FinnComposerText.band(
+                key: const ValueKey('composer-field-band'),
                 label: l10n.chatMessageToFinnSemantic,
-                textField: true,
-                child: GestureDetector(
-                  key: const ValueKey('composer-field-band'),
-                  behavior: HitTestBehavior.opaque,
-                  // The band is a touch target, not a second control:
-                  // the field keeps its own semantics, so a screen
-                  // reader still reads exactly one text field here.
-                  excludeFromSemantics: true,
-                  onTap: () => widget.focusNode.requestFocus(),
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(minHeight: 48),
-                    child: Center(
-                      child: Padding(
-// Geist carries more space above its letters than below, so the
-// laid-out line box sat ~4.5px under where the letters look centred. Measured
-// on the real window (pixel rows of the letters against the pill); the
-// bottom padding lifts the centred field by half its value. The value is per
-// platform: see FinnLayout.fieldTextLift.
-                        padding:
-                            EdgeInsets.only(bottom: FinnLayout.fieldTextLift),
-                        child: EnterToSend(
-                          canSend: canSend,
-                          onSend: widget.onSend,
-                          child: TextField(
-                            controller: widget.controller,
-                            focusNode: widget.focusNode,
-                            inputFormatters: [
-                              LengthLimitingTextInputFormatter(4000),
-                            ],
-                            enabled: !widget.blocked,
-                            minLines: 1,
-                            maxLines: 5,
-                            textAlignVertical: TextAlignVertical.center,
-                            keyboardType: TextInputType.multiline,
-                            textInputAction: TextInputAction.send,
-                            onSubmitted: (_) =>
-                                canSend ? widget.onSend() : null,
-                            onTap: () => widget.onReturnToLatest?.call(),
-                            style: TextStyle(
-                              fontFamily: 'Geist',
-                              fontSize: 16,
-                              height: 1.25,
-                              fontWeight: FontWeight.w400,
-                              color: FluxColors.inkOf(context),
-                            ),
-                            cursorColor: FluxColors.inkOf(context),
-                            decoration: InputDecoration.collapsed(
-                              hintText: widget.hintText ??
-                                  (widget.preparing
-                                      ? l10n.chatFinnTyping
-                                      : l10n.chatAskAnythingHint),
-                              // One line, always. A wrapped hint stretches
-                              // the field — and with it the pill — on
-                              // narrow screens and in longer locales.
-                              hintMaxLines: 1,
-                              hintStyle: TextStyle(
-                                fontFamily: 'Geist',
-                                fontSize: 16,
-                                height: 1.25,
-                                fontWeight: FontWeight.w400,
-                                color: FluxColors.inkOf(context)
-                                    .withValues(alpha: .55),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
+                focusNode: widget.focusNode,
+                field: EnterToSend(
+                  canSend: canSend,
+                  onSend: widget.onSend,
+                  child: TextField(
+                    controller: widget.controller,
+                    focusNode: widget.focusNode,
+                    inputFormatters: [
+                      LengthLimitingTextInputFormatter(4000),
+                    ],
+                    enabled: !widget.blocked,
+                    minLines: 1,
+                    maxLines: 5,
+                    textAlignVertical: TextAlignVertical.center,
+                    keyboardType: TextInputType.multiline,
+                    textInputAction: TextInputAction.send,
+                    onSubmitted: (_) => canSend ? widget.onSend() : null,
+                    onTap: () => widget.onReturnToLatest?.call(),
+                    style: FinnComposerText.style(context),
+                    cursorColor: FluxColors.inkOf(context),
+                    decoration: InputDecoration.collapsed(
+                      hintText: widget.hintText ??
+                          (widget.preparing
+                              ? l10n.chatFinnTyping
+                              : l10n.chatAskAnythingHint),
+                      // One line, always. A wrapped hint stretches
+                      // the field — and with it the pill — on
+                      // narrow screens and in longer locales.
+                      hintMaxLines: 1,
+                      hintStyle: FinnComposerText.hintStyle(context),
                     ),
                   ),
                 ),
@@ -479,76 +422,15 @@ class _ChatComposerState extends State<ChatComposer>
             ),
           )
         : null;
-    Widget threeOrOne(double t) {
-      // Each value is the three-control layout at t = 0 and the fused panel
-      // at t = 1; the overshoot of the curve is allowed to carry through.
-      double lerp(double a, double b) => a + (b - a) * t;
-      final u = t.clamp(0.0, 1.0);
-      final side = lerp(70, 0);
-      final bar = lerp(0, 50);
-      final radius = hasAttachment ? FluxRadius.sheet : lerp(25, 28);
-      return Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: side.clamp(0, 70)),
-            child: Container(
-              key: const ValueKey('chat-composer-motion'),
-              decoration: BoxDecoration(
-                color: FluxColors.controlOf(context),
-                borderRadius: BorderRadius.circular(radius),
-                border: Border.all(color: FluxColors.lineOf(context), width: 1),
-              ),
-              constraints: BoxConstraints(
-                minHeight: 50 + bar.clamp(0, 60),
-                maxHeight: 220 + bar.clamp(0, 60),
-              ),
-              padding: EdgeInsets.fromLTRB(
-                lerp(17, 18),
-                lerp(1, 8),
-                lerp(4, 14),
-                1 + bar.clamp(0, 60),
-              ),
-              child: fieldColumn,
-            ),
-          ),
-          // "+" travels into the panel's bottom-left corner; its own fill is
-          // the panel's, so once inside it reads as a bare glyph.
-          Positioned(
-            left: lerp(0, 3),
-            bottom: lerp(0, 3),
-            child: Transform.scale(
-              scale: lerp(1, .9),
-              alignment: Alignment.bottomLeft,
-              child: leadingFor(0),
-            ),
-          ),
-          if (fusedMic != null && u > 0)
-            Positioned(
-              right: 52,
-              bottom: 5,
-              child: Opacity(
-                opacity:
-                    Curves.easeOut.transform(((u - .45) / .55).clamp(0, 1)),
-                child: Transform.translate(
-                  offset: Offset(12 * (1 - u), 0),
-                  child: fusedMic,
-                ),
-              ),
-            ),
-          // Send keeps its fill and settles into the bottom-right corner.
-          Positioned(
-            right: lerp(0, 6),
-            bottom: lerp(0, 6),
-            child: Transform.scale(
-              scale: lerp(1, .8),
-              alignment: Alignment.bottomRight,
-              child: trailing,
-            ),
-          ),
-        ],
-      );
-    }
+    Widget threeOrOne(double t) => FinnComposerFrame(
+          t: t,
+          frameKey: const ValueKey('chat-composer-motion'),
+          tall: hasAttachment,
+          field: fieldColumn,
+          leading: leadingFor(0),
+          extra: fusedMic,
+          trailing: trailing,
+        );
 
     // The control row condenses around its own centre while scrolled away: it
     // scales down uniformly to 85%, so the length shortens a bit while the

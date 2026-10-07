@@ -9,7 +9,9 @@ import 'package:finn_ai/src/features/code/ui/code_icons.dart';
 import 'package:finn_ai/src/features/code/ui/code_style.dart';
 import 'package:finn_ai/src/features/code/ui/code_terminal.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
+import 'package:finn_ai/src/shared/widgets/finn_page_header.dart';
 import 'package:finn_ai/src/shared/widgets/finn_page_route.dart';
+import 'package:finn_ai/src/shared/widgets/finn_ui.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
 
 /// The terminal as a page of its own, for long sessions. It shares its
@@ -23,33 +25,53 @@ class CodeTerminalPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = L10n.of(context);
-    final top = MediaQuery.paddingOf(context).top;
     final bottom = MediaQuery.paddingOf(context).bottom;
     return Scaffold(
       backgroundColor: FluxColors.tileOf(context),
       resizeToAvoidBottomInset: true,
-      body: Column(
-        children: [
-          SizedBox(height: top + 8),
-          CodeTerminalBar(
-            title: l10n.codeTerminalTitle,
-            leading: CodeBarButton(
-              key: const ValueKey('terminal-back'),
-              icon: CodeIcons.back,
-              label: l10n.commonBack,
-              onTap: onBack ?? () => Navigator.of(context).maybePop(),
-            ),
-            log: services.terminal,
-          ),
-          Expanded(
-            child: CodeTerminalView(
-              log: services.terminal,
-              autofocus: true,
-              header: CodeTerminalIntro(services: services),
-              padding: EdgeInsets.fromLTRB(14, 8, 14, 10 + bottom),
-            ),
-          ),
-        ],
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          // FinnAI's page header, as every other Code page has it.
+          final metrics = FinnPageHeaderMetrics.forHeight(
+            constraints.maxHeight,
+            constraints.maxWidth,
+          );
+          return Stack(
+            children: [
+              Positioned.fill(
+                top: metrics.contentTop - 10,
+                child: CodeTerminalView(
+                  log: services.terminal,
+                  autofocus: true,
+                  header: CodeTerminalIntro(services: services),
+                  padding: EdgeInsets.fromLTRB(25, 8, 25, 10 + bottom),
+                ),
+              ),
+              FinnPageHeader(
+                title: l10n.codeTerminalTitle,
+                onBack: onBack ?? () => Navigator.of(context).maybePop(),
+                metrics: metrics,
+                scrollOffset: const RestingHeaderOffset(),
+                actions: [
+                  ListenableBuilder(
+                    listenable: services.terminal,
+                    builder: (context, _) {
+                      final log = services.terminal;
+                      return FinnCircleButton.icon(
+                        key: const ValueKey('terminal-clear'),
+                        icon: CodeIcons.clear,
+                        label: l10n.codeTerminalClear,
+                        onTap: log.entries.isEmpty || log.running
+                            ? null
+                            : log.clear,
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -76,7 +98,7 @@ class CodeTerminalBar extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 10),
       child: SizedBox(
-        height: 40,
+        height: 48,
         child: Row(
           children: [
             if (leading != null) ...[leading!, const SizedBox(width: 4)],
@@ -106,7 +128,7 @@ class CodeTerminalBar extends StatelessWidget {
   }
 }
 
-/// A 36dp icon control for Code's compact bars.
+/// An icon control for the terminal panel's bar: a 48dp target.
 class CodeBarButton extends StatelessWidget {
   const CodeBarButton({
     super.key,
@@ -125,13 +147,13 @@ class CodeBarButton extends StatelessWidget {
         onPressed: onTap,
         visualDensity: VisualDensity.compact,
         constraints: const BoxConstraints.tightFor(
-          width: CodeStyle.control,
-          height: CodeStyle.control,
+          width: FluxMotion.minTapTarget,
+          height: FluxMotion.minTapTarget,
         ),
         padding: EdgeInsets.zero,
         icon: FluxIcon(
           icon: icon,
-          size: 17,
+          size: 20,
           color: onTap == null
               ? FluxColors.mutedOf(context).withValues(alpha: .5)
               : FluxColors.inkOf(context),

@@ -15,7 +15,22 @@ class FinnCircleButton extends StatelessWidget {
     required this.onTap,
     this.dark = false,
     this.dimmed = false,
+    this.color,
+    this.hitKey,
+    this.surfaceKey,
   });
+
+  /// The diameter: the composer's circles, the header's buttons and the
+  /// sidebar toggle in both apps.
+  static const double dimension = 50;
+
+  /// Overrides the fill (the stop control, a voice state).
+  final Color? color;
+
+  /// Keys for the tap target and the filled surface, for tests and for
+  /// anything that grows out of the button (the "+" sheet).
+  final Key? hitKey;
+  final Key? surfaceKey;
 
   /// A 24-25dp glyph; see [FinnCircleButton.icon] for the common case.
   final Widget glyph;
@@ -55,15 +70,18 @@ class FinnCircleButton extends StatelessWidget {
         child: FluxPressScale(
           enabled: onTap != null,
           child: Material(
-            color: dark
-                ? FluxColors.actionOf(context)
-                : FluxColors.controlOf(context),
+            key: surfaceKey,
+            color: color ??
+                (dark
+                    ? FluxColors.actionOf(context)
+                    : FluxColors.controlOf(context)),
             shape: const CircleBorder(),
-            child: InkWell(
-              onTap: onTap,
-              customBorder: const CircleBorder(),
-              child: SizedBox.square(
-                dimension: 50,
+            child: SizedBox.square(
+              key: hitKey,
+              dimension: dimension,
+              child: InkWell(
+                onTap: onTap,
+                customBorder: const CircleBorder(),
                 child: Center(
                   child: Opacity(
                     opacity: dimmed ? .38 : 1,

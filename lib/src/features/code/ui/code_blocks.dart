@@ -5,7 +5,6 @@ import 'package:finn_ai/l10n/l10n_helper.dart';
 import 'package:finn_ai/src/features/code/ui/code_diff_view.dart';
 import 'package:finn_ai/src/features/code/ui/code_style.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
-import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
 
 /// A command and what it printed, in one monospace well. Long output is
 /// clipped to [maxLines] with a "show more" row; long-press copies.
@@ -142,69 +141,4 @@ void copyWithNotice(BuildContext context, String text) {
         behavior: SnackBarBehavior.floating,
       ),
     );
-}
-
-/// A 30dp pill button for inline decisions.
-class CodeSmallButton extends StatelessWidget {
-  const CodeSmallButton({
-    super.key,
-    required this.label,
-    required this.onTap,
-    this.primary = false,
-    this.icon,
-  });
-
-  final String label;
-  final VoidCallback? onTap;
-  final bool primary;
-  final IconData? icon;
-
-  @override
-  Widget build(BuildContext context) {
-    final fill =
-        primary ? FluxColors.actionOf(context) : FluxColors.controlOf(context);
-    final ink =
-        primary ? FluxColors.canvasOf(context) : FluxColors.inkOf(context);
-    return Semantics(
-      button: true,
-      child: FluxPressScale(
-        child: Material(
-          color: fill,
-          shape: StadiumBorder(
-            side: primary
-                ? BorderSide.none
-                : BorderSide(color: FluxColors.lineOf(context)),
-          ),
-          child: InkWell(
-            onTap: onTap == null
-                ? null
-                : () {
-                    HapticFeedback.selectionClick();
-                    onTap!();
-                  },
-            customBorder: const StadiumBorder(),
-            child: ConstrainedBox(
-              // The pill is 30dp; the touch target stays 48dp wide enough
-              // through its padding and row spacing.
-              constraints: const BoxConstraints(minHeight: 32, minWidth: 64),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (icon != null) ...[
-                      FluxIcon(icon: icon!, size: 13, color: ink),
-                      const SizedBox(width: 5),
-                    ],
-                    Text(label, style: CodeStyle.label(context, color: ink)),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }

@@ -165,7 +165,7 @@ A second app inside the app: its own sessions, settings and providers, in the sa
 | Provider pages (key, allowance, models, test) | `lib/src/features/code/settings/code_provider_page.dart`, `settings/code_providers_page.dart` |
 | Model picker and the cloud disclosure | `lib/src/features/code/ui/code_models_page.dart` |
 | Error and refusal wording | `lib/src/features/code/ui/code_text.dart` |
-| Code's density and motion tokens (type sizes, rows, mono font, diff colours) | `lib/src/features/code/ui/code_style.dart` |
+| Code-only measures (mono font and sizes, tool rows, diff colours); shared surfaces use FinnAI's components | `lib/src/features/code/ui/code_style.dart` |
 | One collapsible row per agent action, inline approval | `lib/src/features/code/ui/code_tool_row.dart` |
 | Inline diffs (line diff, view) | `lib/src/features/code/ui/line_diff.dart`, `lib/src/features/code/ui/code_diff_view.dart` |
 | Input bar, `/` commands, `@` mentions, status line | `lib/src/features/code/ui/code_composer.dart`, `lib/src/features/code/ui/code_suggestions.dart`, `lib/src/features/code/ui/code_status_line.dart` |
@@ -202,18 +202,24 @@ A second app inside the app: its own sessions, settings and providers, in the sa
 | Colors, radii, text theme (Geist), snackbars, system UI overlays | `lib/src/shared/theme/flux_theme.dart` |
 | Motion tokens (durations, curves, the control→surface morph) | `lib/src/shared/theme/flux_motion_tokens.dart` (`FluxMotion`, re-exported by `flux_theme.dart`) |
 | Space reserved below bottom-anchored UI (composer, nav bar height) | `lib/src/shared/theme/flux_theme.dart` (`FluxBottomInset.bottomOf`) |
-| Buttons, pills, glass surfaces | `lib/src/shared/widgets/flux_controls.dart` |
+| Buttons, pills (primary and `secondary`), glass surfaces | `lib/src/shared/widgets/flux_controls.dart` |
 | The icon set (`FluxIcons`, Lucide at the 300 stroke weight), `FluxIcon`, and the design-asset → icon map | `lib/src/shared/widgets/flux_icons.dart` |
 | Paths of the design's exported SVGs | `lib/src/shared/widgets/figma_assets.dart` |
 | Shimmering placeholder rows while a list loads | `lib/src/shared/widgets/finn_skeleton.dart` |
 | The bottom-centre "+" that starts something new on list screens (Creations, Flows, You) | `lib/src/shared/widgets/finn_create_button.dart` |
 | The chat's "+" sheet (create cards, add to chat), grown out of the "+" button | `lib/src/features/chat/widgets/plus_sheet.dart` |
 | Floating glass sheets that grow out of the control that opened them (margins, corners, drag to dismiss) | `lib/src/shared/widgets/finn_morph_sheet.dart` (`FinnMorphSurface`, `FinnFloatingSheet`, `showFinnMorphSheet`, `globalRectOf`) |
-| A composer fusing into one panel while the keyboard is up (chat and Code) | `lib/src/shared/widgets/keyboard_fuse.dart` (`KeyboardFuse`), layouts in `chat/widgets/composer.dart` and `code/ui/code_composer.dart` |
+| A composer fusing into one panel while the keyboard is up (chat and Code) | `lib/src/shared/widgets/keyboard_fuse.dart` (`KeyboardFuse`) |
+| The composer row both apps share (50dp circles, the pill, the fused panel; the field's type and focus band) | `lib/src/shared/widgets/finn_composer_frame.dart` (`FinnComposerFrame`, `FinnComposerText`), used by `chat/widgets/composer.dart` and `code/ui/code_composer.dart` |
+| A shell's top row (toggle slot, title, new chat / new session) | `lib/src/shared/widgets/finn_shell_header.dart` (`FinnShellHeader`) |
+| The empty-shell greeting and its blur-wipe reveal (chat and Code) | `lib/src/shared/widgets/finn_greeting.dart` (`FinnGreeting`, `FinnWordReveal`) |
+| Message surfaces (the user's pill, the error card) and the Retry button (chat and Code) | `lib/src/shared/widgets/finn_bubble.dart` (`FinnBubbleBox`, `FinnRetryButton`) |
+| Shell measures (content width, gutters, header line, keyboard-stable scaling) | `lib/src/shared/layout/finn_layout.dart` (`contentMaxWidth`, `shellGutter`, `headerTop`, `shellScaleY`) |
 | The "thinking" orb and shimmering status text | `lib/src/shared/widgets/finn_thinking.dart` |
 | Flat raised surfaces (fill + 1px hairline, never a shadow), the pill text field, filter chips, the progressive backdrop blur | `lib/src/shared/widgets/flux_surfaces.dart` (`FluxSurfaces`, `FluxPillField`, `FluxChip`, `FluxProgressiveBlur`, `FluxGlass`) |
 | Page header used by every sub-page | `lib/src/shared/widgets/finn_page_header.dart` |
-| Design primitives (circle button, row tile, switch, reveal animation) | `lib/src/shared/widgets/finn_ui.dart` |
+| Design primitives (the 50dp circle button used by every header and composer, row tile, switch, reveal animation) | `lib/src/shared/widgets/finn_ui.dart` |
+| Scroll physics and the section label (re-exported by `flux_controls.dart`) | `lib/src/shared/widgets/flux_scroll.dart` |
 | A caption under a page title | `lib/src/shared/widgets/finn_page.dart` (`FinnCaption`) |
 | Dialogs, sheets, popup menus, primary buttons | `lib/src/shared/widgets/finn_overlays.dart` |
 | A standard secondary page (header, scrolling column, footer) | `lib/src/shared/widgets/finn_page.dart` |

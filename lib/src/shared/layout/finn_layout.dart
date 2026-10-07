@@ -63,6 +63,25 @@ abstract final class FinnLayout {
     return isDocked(width) ? math.min(scale, wideCap) : scale;
   }
 
+  /// The widest a transcript and its composer grow: FinnAI and FinnAI Code
+  /// read at the same measure.
+  static const double contentMaxWidth = 760;
+
+  /// The side margin of a shell (chat or Code) at a window [width].
+  static double shellGutter(double width) => width < 380 ? 20 : 25;
+
+  /// Where a shell's header row sits, in the phone design's units (scaled by
+  /// [scaleY]): the same line in FinnAI and FinnAI Code, so switching apps
+  /// does not move the menu button.
+  static const double headerTop = 70;
+
+  /// [scaleY] for a shell whose Scaffold resizes for the keyboard: scaled
+  /// from the height the shell has without the keyboard, so the header and
+  /// the first message stay where they are while the keyboard rises.
+  /// [keyboard] is the keyboard's height in logical pixels.
+  static double shellScaleY(double height, double width, double keyboard) =>
+      scaleY(height + keyboard, width);
+
   /// The sidebar's width at a window [width].
   static double sidebarWidth(double width) {
     if (isDocked(width)) return dockWidth;

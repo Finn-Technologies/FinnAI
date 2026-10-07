@@ -13,6 +13,7 @@ export 'package:finn_ai/src/shared/widgets/figma_assets.dart';
 export 'package:finn_ai/src/shared/widgets/flux_icons.dart';
 export 'package:finn_ai/src/shared/widgets/flux_motion.dart'
     show FluxPressScale;
+export 'package:finn_ai/src/shared/widgets/flux_scroll.dart';
 
 class FigmaSvg extends StatelessWidget {
   const FigmaSvg({
@@ -210,6 +211,7 @@ class FluxPillButton extends StatelessWidget {
     required this.onTap,
     this.icon,
     this.compact = false,
+    this.secondary = false,
   });
 
   final String label;
@@ -217,17 +219,28 @@ class FluxPillButton extends StatelessWidget {
   final IconData? icon;
   final bool compact;
 
+  /// The quiet choice beside a primary one (Cancel, Reject): the control
+  /// fill with ink, so the two are told apart by more than their words.
+  final bool secondary;
+
   @override
   Widget build(BuildContext context) {
     // Disabled must be quieter than enabled: ink at 25% was near-white on black.
     final bgColor = onTap == null
         ? FluxColors.mutedOf(context).withValues(alpha: .32)
-        : FluxColors.actionOf(context);
-    final fgColor = FluxColors.actionInkOf(context);
+        : secondary
+            ? FluxColors.controlOf(context)
+            : FluxColors.actionOf(context);
+    final fgColor =
+        secondary ? FluxColors.inkOf(context) : FluxColors.actionInkOf(context);
 
     final painted = Material(
       color: bgColor,
-      borderRadius: BorderRadius.circular(FluxRadius.pill),
+      shape: StadiumBorder(
+        side: secondary
+            ? BorderSide(color: FluxColors.lineOf(context))
+            : BorderSide.none,
+      ),
       child: SizedBox(
         height: compact ? 36 : 44,
         child: Padding(
@@ -661,61 +674,6 @@ class FluxDisclosureRow extends StatelessWidget {
                 ),
               ),
             ),
-    );
-  }
-}
-
-/// iOS-style bouncing with a much lighter touch. Overscroll drags meet about
-/// 40% more resistance, and the bounce-back spring is stiffer and more damped,
-/// so fast flings no longer throw headings or text far past the top and bottom
-/// edges before settling back into view.
-class FluxBouncingScrollPhysics extends BouncingScrollPhysics {
-  const FluxBouncingScrollPhysics({super.parent});
-
-  @override
-  FluxBouncingScrollPhysics applyTo(ScrollPhysics? ancestor) =>
-      FluxBouncingScrollPhysics(parent: buildParent(ancestor));
-
-  @override
-  double frictionFactor(double overscrollFraction) =>
-      math.pow(1 - overscrollFraction, 2) * 0.3;
-
-  @override
-  SpringDescription get spring => const SpringDescription(
-        mass: 0.5,
-        stiffness: 200,
-        // Damping ratio 1.8 against the stiffer 200 stiffness.
-        damping: 36,
-      );
-}
-
-/// The heading above a group of related rows. Every page that groups rows uses
-/// this one widget, so the same idea does not look like two different things
-/// depending on the screen.
-class FluxSectionLabel extends StatelessWidget {
-  const FluxSectionLabel(this.label, {super.key});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    // The label is rendered exactly as it was translated.
-    //
-    // This used to call `.toUpperCase()`, which broke three of the five shipped
-    // locales: German capitalises only nouns ("Über dich" became "ÜBER DICH",
-    // capitalising the accusative pronoun), and the transform cannot know a
-    // locale's casing rules from a plain Dart String. The English template
-    // already ships these section names in caps ("AI MODEL", "STORAGE & DATA"),
-    // so the design language is unchanged in English, and every other locale now
-    // shows correctly-cased text with the same weight and tracking.
-    return Padding(
-      padding: const EdgeInsets.only(left: 5, bottom: 4),
-      child: Text(
-        label,
-        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: FluxColors.secondaryInkOf(context),
-            ),
-      ),
     );
   }
 }

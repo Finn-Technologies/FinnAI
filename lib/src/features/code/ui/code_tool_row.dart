@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'package:finn_ai/l10n/l10n_helper.dart';
 import 'package:finn_ai/src/features/code/sessions/code_session.dart';
@@ -406,8 +407,8 @@ class _Body extends StatelessWidget {
   }
 }
 
-/// "Run this command?  [Reject] [Run]" — small, inline, under what it asks
-/// about.
+/// "Run this command?  [Reject] [Run]" — inline, under what it asks about,
+/// with the chat's confirm pills (48dp targets).
 class _ApprovalBar extends StatelessWidget {
   const _ApprovalBar({
     required this.question,
@@ -421,6 +422,11 @@ class _ApprovalBar extends StatelessWidget {
   final VoidCallback? onApprove;
   final VoidCallback? onSkip;
 
+  static void _decide(VoidCallback decision) {
+    HapticFeedback.selectionClick();
+    decision();
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = L10n.of(context);
@@ -430,17 +436,20 @@ class _ApprovalBar extends StatelessWidget {
         Expanded(
           child: Text(question, style: CodeStyle.label(context)),
         ),
-        CodeSmallButton(
+        const SizedBox(width: 8),
+        FluxPillButton(
           key: const ValueKey('code-approval-reject'),
           label: l10n.codeReject,
-          onTap: onSkip,
+          compact: true,
+          secondary: true,
+          onTap: onSkip == null ? null : () => _decide(onSkip!),
         ),
-        const SizedBox(width: 6),
-        CodeSmallButton(
+        const SizedBox(width: 8),
+        FluxPillButton(
           key: const ValueKey('code-approval-approve'),
           label: approveLabel,
-          onTap: onApprove,
-          primary: true,
+          compact: true,
+          onTap: onApprove == null ? null : () => _decide(onApprove!),
         ),
       ],
     );

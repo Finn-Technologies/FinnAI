@@ -438,9 +438,18 @@ void main() {
           tester.getRect(find.byKey(const ValueKey('code-model-chip')));
       final send =
           tester.getRect(find.byKey(const ValueKey('code-send-button')));
-      // A slim 44dp field, and the status line (model, mode) just under it.
-      expect(send.height, 44);
+      // The chat composer's 50dp row (the UI pass of 2026-10 replaced Code's
+      // own 44dp controls with FinnAI's), and the status line just under it.
+      expect(send.height, 50);
       expect(field.height, lessThan(26));
+      // The pill itself is one row, the chat's 50dp, not its 220dp maximum
+      // (it once filled it, because nothing above it shrink-wrapped).
+      expect(
+        tester
+            .getSize(find.byKey(const ValueKey('code-composer-motion')))
+            .height,
+        50,
+      );
       expect(chip.top - send.bottom, lessThan(12));
     });
 
@@ -551,16 +560,17 @@ void main() {
       });
 
       testWidgets('the send glyph matches the chat composer', (tester) async {
-        // FinnAI Code drew its arrow in actionInkOf — #414141 on the dark
-        // disc — where the shared button draws it in canvasOf, #101014. Same
-        // control, two different glyph colours in the same theme.
+        // Code and chat now draw send with the same FinnCircleButton, so the
+        // arrow takes the chat composer's actionInkOf on the action disc
+        // (this replaces the earlier canvasOf rule, from before the two
+        // composers were one component).
         await pumpDark(tester, CodeShell(services: services()));
 
         final send = find.byKey(const ValueKey('code-send-button'));
         final glyph = tester.widget<FluxIcon>(
           find.descendant(of: send, matching: find.byType(FluxIcon)),
         );
-        expect(glyph.color, FluxColors.canvasOf(tester.element(send)));
+        expect(glyph.color, FluxColors.actionInkOf(tester.element(send)));
       });
     });
 

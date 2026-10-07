@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 
-/// FinnAI Code's density: smaller type, tighter rows and quicker motion than
-/// the chat app, in the same colours and families. A coding session is read
-/// as a log, so as many lines as possible fit on a phone; the chat app's
-/// 16sp body and 50dp controls fit about a third as much.
+/// FinnAI Code's own measures, for what only Code has: monospace code and
+/// output, tool rows, diffs. Everything the two apps share (the composer, the
+/// header, messages, the greeting) uses FinnAI's components at FinnAI's
+/// sizes; tool rows stay tight so a run of actions reads as a log.
 abstract final class CodeStyle {
   /// Monospace for code, commands and output.
   static const String mono = 'JetBrainsMono';
@@ -20,7 +20,6 @@ abstract final class CodeStyle {
   // Rows and controls.
   static const double rowHeight = 30;
   static const double control = 36;
-  static const double inputHeight = 44;
   static const double gutter = 14;
   static const double gap = 8;
   static const double radius = 10;

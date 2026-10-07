@@ -25,13 +25,7 @@ class _Bubble extends StatelessWidget {
       childBuilder: (selecting) {
         // 16px on a 1.25 line box, the size and rhythm of the design's
         // messages in both bubbles.
-        final style = TextStyle(
-          fontFamily: 'Geist',
-          fontSize: 16,
-          height: 1.25,
-          fontWeight: FontWeight.w400,
-          color: user ? FluxColors.inkOf(context) : null,
-        );
+        final style = FinnBubbleBox.textStyle(context, user: user);
         final hasImage = imagePath != null && imagePath!.isNotEmpty;
         bool imageExists = false;
         try {
@@ -215,31 +209,9 @@ class _MessageBubbleState extends State<_MessageBubble> {
 
   void _openContextMenu() {
     if (_selecting) return;
-    final borderRadius = widget.user
-        ? BorderRadius.circular(FluxRadius.pill)
-        : BorderRadius.only(
-            topLeft: const Radius.circular(19),
-            topRight: const Radius.circular(19),
-            bottomLeft: const Radius.circular(19),
-            bottomRight: const Radius.circular(5),
-          );
-
-    final preview = Container(
-      constraints: BoxConstraints(
-        maxWidth: math.min(MediaQuery.sizeOf(context).width * .82, 620),
-      ),
-      padding: widget.user
-          ? const EdgeInsets.symmetric(horizontal: 20, vertical: 15)
-          : const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: widget.user
-            ? FluxColors.bubbleUserOf(context)
-            : FluxColors.cardOf(context),
-        borderRadius: borderRadius,
-        // Flat in both themes — no shadow. Fill plus this hairline is what
-        // separates the bubble on every panel; a blur reads as haze on dark.
-        border: Border.all(color: FluxColors.lineOf(context), width: 1),
-      ),
+    final borderRadius = FinnBubbleBox.radiusFor(user: widget.user);
+    final preview = FinnBubbleBox(
+      user: widget.user,
       child: widget.childBuilder(false),
     );
 
@@ -288,31 +260,9 @@ class _MessageBubbleState extends State<_MessageBubble> {
   Widget build(BuildContext context) {
     // A user message is a solid pill of its own; the assistant keeps the
     // softly-cornered surface so an error or notice still reads as a card.
-    final borderRadius = widget.user
-        ? BorderRadius.circular(FluxRadius.pill)
-        : BorderRadius.only(
-            topLeft: const Radius.circular(19),
-            topRight: const Radius.circular(19),
-            bottomLeft: const Radius.circular(19),
-            bottomRight: const Radius.circular(5),
-          );
-
-    final bubble = Container(
+    final bubble = FinnBubbleBox(
       key: _bubbleKey,
-      constraints: BoxConstraints(
-        maxWidth: math.min(MediaQuery.sizeOf(context).width * .82, 620),
-      ),
-      padding: widget.user
-          ? const EdgeInsets.symmetric(horizontal: 20, vertical: 15)
-          : const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: widget.user
-            ? FluxColors.bubbleUserOf(context)
-            : FluxColors.cardOf(context),
-        borderRadius: borderRadius,
-        // Flat in both themes — no shadow, same as the preview above.
-        border: Border.all(color: FluxColors.lineOf(context), width: 1),
-      ),
+      user: widget.user,
       child: widget.childBuilder(_selecting),
     );
 

@@ -215,6 +215,7 @@ class _CompleteReply extends StatelessWidget {
               FluxPillButton(
                 label: L10n.of(context).deviceActionsCancel,
                 compact: true,
+                secondary: true,
                 onTap: onDismissAction,
               ),
             ],

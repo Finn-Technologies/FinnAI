@@ -6,14 +6,13 @@ import 'package:flutter/material.dart';
 import 'package:finn_ai/l10n/l10n_helper.dart';
 import 'package:finn_ai/src/features/code/agent/code_agent.dart';
 import 'package:finn_ai/src/features/code/sessions/code_session.dart';
-import 'package:finn_ai/src/features/code/ui/code_blocks.dart';
-import 'package:finn_ai/src/features/code/ui/code_icons.dart';
 import 'package:finn_ai/src/features/code/ui/code_style.dart';
 import 'package:finn_ai/src/features/code/ui/code_text.dart';
 import 'package:finn_ai/src/features/code/ui/code_tool_row.dart';
-import 'package:finn_ai/src/shared/theme/flux_theme.dart';
+import 'package:finn_ai/src/shared/widgets/finn_bubble.dart';
 import 'package:finn_ai/src/shared/widgets/finn_edge_fade.dart';
-import 'package:finn_ai/src/shared/widgets/finn_ui.dart';
+import 'package:finn_ai/src/shared/widgets/finn_greeting.dart';
+import 'package:finn_ai/src/shared/widgets/finn_thinking.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
 import 'package:finn_ai/src/shared/widgets/safe_markdown_text.dart';
 
@@ -190,84 +189,37 @@ class _AppearState extends State<_Appear> with SingleTickerProviderStateMixin {
       );
 }
 
+/// The empty session: FinnAI's greeting, with where the project lives under
+/// it.
 class _EmptySlate extends StatelessWidget {
   const _EmptySlate();
 
   @override
   Widget build(BuildContext context) {
     final l10n = L10n.of(context);
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 25),
-        child: FinnReveal(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              FluxIcon(
-                icon: CodeIcons.prompt,
-                size: 28,
-                color: FluxColors.mutedOf(context),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                l10n.codeGreeting,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontFamily: CodeStyle.sans,
-                  fontSize: 20,
-                  height: 1.2,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                l10n.codeGreetingCaption,
-                textAlign: TextAlign.center,
-                style: CodeStyle.label(
-                  context,
-                  color: FluxColors.mutedOf(context),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+    return FinnGreeting(
+      text: l10n.codeGreeting,
+      caption: l10n.codeGreetingCaption,
     );
   }
 }
 
-/// What the user asked: full width, a quiet fill, a prompt mark.
+/// What the user asked: FinnAI's own message pill, on the right.
 class _UserPrompt extends StatelessWidget {
   const _UserPrompt({required this.text});
 
   final String text;
 
   @override
-  Widget build(BuildContext context) => Container(
-        key: const ValueKey('code-user-prompt'),
-        padding: const EdgeInsets.fromLTRB(10, 8, 12, 8),
-        decoration: BoxDecoration(
-          color: FluxColors.controlOf(context),
-          borderRadius: BorderRadius.circular(CodeStyle.radius),
-          border: Border.all(color: FluxColors.lineOf(context), width: .5),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 1),
-              child: Text(
-                '›',
-                style: CodeStyle.code(
-                  context,
-                  color: FluxColors.mutedOf(context),
-                ).copyWith(fontSize: 14, height: 1.25),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: SelectableText(text, style: CodeStyle.prose(context)),
-            ),
-          ],
+  Widget build(BuildContext context) => Align(
+        alignment: AlignmentDirectional.centerEnd,
+        child: FinnBubbleBox(
+          key: const ValueKey('code-user-prompt'),
+          user: true,
+          child: SelectableText(
+            text,
+            style: FinnBubbleBox.textStyle(context, user: true),
+          ),
         ),
       );
 }
@@ -297,24 +249,16 @@ class _AssistantMessage extends StatelessWidget {
     final action = message.action;
     final byline = message.modelLabel;
     final hasText = message.text.trim().isNotEmpty;
-    final media = MediaQuery.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (hasText)
-          // The chat renderer at Code's density: 14sp prose, the user's own
-          // text-size setting still applied on top.
-          MediaQuery(
-            data: media.copyWith(
-              textScaler: TextScaler.linear(
-                media.textScaler.scale(CodeStyle.proseSize) / 16,
-              ),
-            ),
-            child: SelectionArea(
-              child: SafeMarkdownText(
-                text: message.text,
-                codeFontFamily: CodeStyle.mono,
-              ),
+          // The chat's renderer at the chat's size: what the model says reads
+          // the same in both apps; code inside it is Code's monospace.
+          SelectionArea(
+            child: SafeMarkdownText(
+              text: message.text,
+              codeFontFamily: CodeStyle.mono,
             ),
           ),
         if (action != null) ...[
@@ -360,6 +304,9 @@ bool _recovered(CodeMessage message) =>
     message.errorCode == CodeErrorCode.cutOff ||
     message.errorCode == CodeErrorCode.malformed;
 
+/// Why a request stopped: FinnAI's error card (the assistant's bubble) with
+/// the provider's own words under it, and Retry or Continue below, as a
+/// failed chat reply shows it.
 class _ErrorRow extends StatelessWidget {
   const _ErrorRow({
     required this.text,
@@ -375,48 +322,42 @@ class _ErrorRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final red = FluxColors.destructiveOf(context);
-    return Row(
+    final onAction = this.onAction;
+    return Column(
       key: const ValueKey('code-error-notice'),
-      crossAxisAlignment: CrossAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(
-          width: 22,
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: FluxIcon(icon: FluxIcons.error, size: 14, color: red),
-          ),
-        ),
-        Expanded(
+        FinnBubbleBox(
+          user: false,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(text, style: CodeStyle.label(context)),
-              if (detail.isNotEmpty)
+              Text(text, style: FinnBubbleBox.textStyle(context)),
+              if (detail.isNotEmpty) ...[
+                const SizedBox(height: 4),
                 Text(
                   detail,
-                  maxLines: 2,
+                  maxLines: 3,
                   overflow: TextOverflow.ellipsis,
                   style: CodeStyle.meta(context),
                 ),
+              ],
             ],
           ),
         ),
-        if (actionLabel != null) ...[
-          const SizedBox(width: 8),
-          CodeSmallButton(
-            label: actionLabel!,
-            onTap: onAction,
-            icon: CodeIcons.retry,
-          ),
+        if (actionLabel != null && onAction != null) ...[
+          const SizedBox(height: 6),
+          FinnRetryButton(label: actionLabel!, onPressed: onAction),
         ],
       ],
     );
   }
 }
 
-/// "● Thinking… 4s": a breathing dot and how long the model has been at it,
-/// so a slow on-device step reads as work, not a hang.
+/// "Thinking… 4s": FinnAI's thinking orb and shimmering line, and how long
+/// the model has been at it, so a slow on-device step reads as work, not a
+/// hang. The pulse runs only while this row is on screen (it is removed the
+/// moment the step ends) and not at all under reduced motion.
 class CodeThinking extends StatefulWidget {
   const CodeThinking({super.key});
 
@@ -428,7 +369,7 @@ class _CodeThinkingState extends State<CodeThinking>
     with SingleTickerProviderStateMixin {
   late final AnimationController _pulse = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 1000),
+    duration: const Duration(milliseconds: 1700),
   );
   final Stopwatch _clock = Stopwatch()..start();
   Timer? _tick;
@@ -447,7 +388,7 @@ class _CodeThinkingState extends State<CodeThinking>
     if (MediaQuery.disableAnimationsOf(context)) {
       _pulse.stop();
     } else if (!_pulse.isAnimating) {
-      _pulse.repeat(reverse: true);
+      _pulse.repeat();
     }
   }
 
@@ -462,41 +403,38 @@ class _CodeThinkingState extends State<CodeThinking>
   Widget build(BuildContext context) {
     final l10n = L10n.of(context);
     final seconds = _clock.elapsed.inSeconds;
+    final style = Theme.of(context).textTheme.bodySmall?.copyWith(
+          fontSize: 14,
+          letterSpacing: -0.1,
+        );
     return Semantics(
       label: l10n.codeThinking,
       liveRegion: true,
       child: SizedBox(
         key: const ValueKey('code-thinking'),
-        height: CodeStyle.rowHeight,
-        child: Row(
-          children: [
-            SizedBox(
-              width: 22,
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: FadeTransition(
-                  opacity: Tween<double>(begin: .3, end: 1).animate(_pulse),
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: FluxColors.inkOf(context),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
+        height: CodeStyle.rowHeight + 6,
+        child: RepaintBoundary(
+          child: AnimatedBuilder(
+            animation: _pulse,
+            builder: (context, _) => Row(
+              children: [
+                FinnThinkingOrb(t: _pulse.value),
+                const SizedBox(width: 10),
+                FinnShimmerText(
+                  text: l10n.codeThinking,
+                  t: _pulse.value,
+                  style: style,
                 ),
-              ),
+                if (seconds > 0) ...[
+                  const SizedBox(width: 8),
+                  Text(
+                    '${math.max(1, seconds)}s',
+                    style: CodeStyle.meta(context),
+                  ),
+                ],
+              ],
             ),
-            Text(
-              l10n.codeThinking,
-              style:
-                  CodeStyle.label(context, color: FluxColors.mutedOf(context)),
-            ),
-            if (seconds > 0) ...[
-              const SizedBox(width: 6),
-              Text('${math.max(1, seconds)}s', style: CodeStyle.meta(context)),
-            ],
-          ],
+          ),
         ),
       ),
     );

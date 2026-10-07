@@ -66,8 +66,10 @@ class CodeStatusLine extends StatelessWidget {
     final style = CodeStyle.meta(context);
     final separator = Text(' · ', style: style);
 
+    // 48dp tall so every part of the line is a full touch target; the text
+    // stays the size of a caption.
     return SizedBox(
-      height: 26,
+      height: 48,
       child: Row(
         children: [
           AnimatedContainer(
@@ -159,11 +161,17 @@ class CodeStatusLine extends StatelessWidget {
               child: InkResponse(
                 key: const ValueKey('code-terminal-toggle'),
                 onTap: onTerminal,
-                radius: 18,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 6),
-                  child: FluxIcon(
-                      icon: CodeIcons.terminal, size: 15, color: muted),
+                radius: 24,
+                child: SizedBox(
+                  width: 48,
+                  height: 48,
+                  child: Center(
+                    child: FluxIcon(
+                      icon: CodeIcons.terminal,
+                      size: 18,
+                      color: muted,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -197,9 +205,9 @@ class _Segment extends StatelessWidget {
       excludeSemantics: true,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(6),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
+        borderRadius: BorderRadius.circular(FluxRadius.sm),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 48, minWidth: 48),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [

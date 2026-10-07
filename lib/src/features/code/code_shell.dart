@@ -21,7 +21,6 @@ import 'package:finn_ai/src/features/code/ui/code_terminal_page.dart';
 import 'package:finn_ai/src/features/code/ui/code_terminal_panel.dart';
 import 'package:finn_ai/src/features/code/ui/code_icons.dart';
 import 'package:finn_ai/src/features/code/ui/code_status_line.dart';
-import 'package:finn_ai/src/features/code/ui/code_style.dart';
 import 'package:finn_ai/src/features/code/ui/code_suggestions.dart';
 import 'package:finn_ai/src/features/code/agent/code_agent.dart';
 import 'package:finn_ai/src/features/code/settings/code_agent_page.dart';
@@ -31,7 +30,10 @@ import 'package:finn_ai/src/shared/layout/finn_layout.dart';
 import 'package:finn_ai/src/shared/widgets/desktop_shortcuts.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 import 'package:finn_ai/src/shared/widgets/finn_page_route.dart';
+import 'package:finn_ai/src/shared/widgets/finn_composer_frame.dart';
+import 'package:finn_ai/src/shared/widgets/finn_shell_header.dart';
 import 'package:finn_ai/src/shared/widgets/finn_sidebar_surface.dart';
+import 'package:finn_ai/src/shared/widgets/finn_ui.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
 
 /// FinnAI Code: a coding agent in FinnAI's design language.
@@ -336,24 +338,36 @@ class _CodeShellState extends State<CodeShell>
           resizeToAvoidBottomInset: true,
           body: LayoutBuilder(
             builder: (context, constraints) {
-              final safeTop = MediaQuery.paddingOf(context).top;
+              // The chat shell's measures, so switching apps moves nothing:
+              // gutters, content width, the header line, the composer's rest.
+              final view = View.of(context);
+              final sy = FinnLayout.shellScaleY(
+                constraints.maxHeight,
+                constraints.maxWidth,
+                view.viewInsets.bottom / view.devicePixelRatio,
+              );
               final safeBottom = FluxBottomInset.bottomOf(context);
-              final gutter = constraints.maxWidth < 380 ? 12.0 : 16.0;
+              final gutter = FinnLayout.shellGutter(constraints.maxWidth);
               final docked = FinnLayout.isDocked(constraints.maxWidth);
               final bodyWidth = FinnLayout.bodyWidth(constraints.maxWidth);
-              final contentWidth = math.min(820.0, bodyWidth - gutter * 2);
+              final contentWidth =
+                  math.min(FinnLayout.contentMaxWidth, bodyWidth - gutter * 2);
               final contentLeft = (bodyWidth - contentWidth) / 2;
               final sidebarWidth =
                   FinnLayout.sidebarWidth(constraints.maxWidth);
-              final headerTop = safeTop + 8;
+              final headerTop = FinnLayout.headerTop * sy;
               // The keyboard, from the physical view (the resized body hides
               // it). With it up the panel takes all under the header and the
               // composer sits close above it, fused on a phone (CodeComposer).
               final keyboard = View.of(context).viewInsets.bottom > 0;
-              final composerBottom = keyboard ? 4.0 : safeBottom + 4;
-              final fusedExtra = keyboard && !isDesktop ? 46.0 : 0.0;
+              final composerBottom = keyboard ? 4.0 : safeBottom;
+              final fusedExtra =
+                  keyboard && !isDesktop ? FinnComposerFrame.fusedBar : 0.0;
               final panelHeight = keyboard
-                  ? constraints.maxHeight - headerTop - CodeStyle.control - 12
+                  ? constraints.maxHeight -
+                      headerTop -
+                      FinnShellHeader.height -
+                      12
                   : math.min(constraints.maxHeight * .48, 460.0 + safeBottom);
 
               final home = RepaintBoundary(
@@ -398,9 +412,9 @@ class _CodeShellState extends State<CodeShell>
                             child: CodeConversation(
                               session: session,
                               agent: agent,
-                              topInset: headerTop + CodeStyle.control + 14,
-                              // A gap, the field (44) and the status line (30).
-                              bottomInset: composerBottom + 80 + fusedExtra,
+                              topInset: headerTop + FinnShellHeader.height + 20,
+                              // The field (50), a gap and the status line (48).
+                              bottomInset: composerBottom + 102 + fusedExtra,
                               scrollController: _scrollController,
                             ),
                           ),
@@ -497,7 +511,6 @@ class _CodeShellState extends State<CodeShell>
                   sidebarOpen: _sidebar.open,
                   toggleLeft: contentLeft,
                   toggleTop: headerTop,
-                  toggleDimension: CodeStyle.control + 4,
                   onToggle: () => _sidebar.set(context, !_sidebar.open),
                   onDragStart: _sidebar.dragStart,
                   onDragUpdate: (d) => _sidebar.dragUpdate(d, sidebarWidth),
@@ -512,9 +525,8 @@ class _CodeShellState extends State<CodeShell>
   }
 }
 
-/// The top row: the toggle's slot, the session's name, and a new-session
-/// button once there is a session on screen. 40dp, a step down from the
-/// chat app's 50.
+/// The top row: the shared [FinnShellHeader] with a new-session button, the
+/// same row as FinnAI's chat.
 class _Header extends StatelessWidget {
   const _Header({
     this.title,
@@ -523,78 +535,24 @@ class _Header extends StatelessWidget {
     this.showMenuSlot = true,
   });
 
-  /// False when the sidebar is docked: there is no toggle to leave room for.
   final bool showMenuSlot;
   final String? title;
   final VoidCallback? onNewSession;
   final VoidCallback? onTitleTap;
 
-  static const double _size = CodeStyle.control + 4;
-
   @override
-  Widget build(BuildContext context) {
-    final title = this.title;
-    return SizedBox(
-      height: _size,
-      child: Row(
-        children: [
-          if (showMenuSlot) const SizedBox(width: _size),
-          if (title != null && title.isNotEmpty) ...[
-            if (showMenuSlot) const SizedBox(width: 12),
-            Expanded(
-              child: Semantics(
-                button: onTitleTap != null,
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: onTitleTap,
-                  child: Text(
-                    title,
-                    key: const ValueKey('code-session-title'),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontFamily: CodeStyle.sans,
-                      fontSize: 15,
-                      height: 1.2,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
+  Widget build(BuildContext context) => FinnShellHeader(
+        showMenuSlot: showMenuSlot,
+        title: title,
+        titleKey: const ValueKey('code-session-title'),
+        onTitleTap: onTitleTap,
+        action: onNewSession == null
+            ? null
+            : FinnCircleButton.icon(
+                key: const ValueKey('code-new-session-button'),
+                icon: FluxIcons.edit,
+                label: L10n.of(context).codeNewSession,
+                onTap: onNewSession,
               ),
-            ),
-            if (onNewSession != null) const SizedBox(width: 10),
-          ] else
-            const Spacer(),
-          if (onNewSession != null)
-            Semantics(
-              button: true,
-              label: L10n.of(context).codeNewSession,
-              onTap: onNewSession,
-              excludeSemantics: true,
-              child: FluxPressScale(
-                child: Material(
-                  color: FluxColors.controlOf(context),
-                  shape: const CircleBorder(),
-                  child: SizedBox.square(
-                    key: const ValueKey('code-new-session-button'),
-                    dimension: _size,
-                    child: InkWell(
-                      onTap: onNewSession,
-                      customBorder: const CircleBorder(),
-                      child: Center(
-                        child: FluxIcon(
-                          icon: FluxIcons.edit,
-                          size: 18,
-                          color: FluxColors.inkOf(context),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
+      );
 }

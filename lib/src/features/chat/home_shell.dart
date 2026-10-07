@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
-import 'dart:ui' as ui;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -67,7 +66,12 @@ import 'package:finn_ai/src/shared/layout/finn_layout.dart';
 import 'package:finn_ai/src/shared/widgets/desktop_shortcuts.dart';
 import 'package:finn_ai/src/shared/widgets/enter_to_send.dart';
 import 'package:finn_ai/src/shared/widgets/finn_page_route.dart';
+import 'package:finn_ai/src/shared/widgets/finn_bubble.dart';
+import 'package:finn_ai/src/shared/widgets/finn_composer_frame.dart';
 import 'package:finn_ai/src/shared/widgets/finn_edge_fade.dart';
+import 'package:finn_ai/src/shared/widgets/finn_greeting.dart';
+import 'package:finn_ai/src/shared/widgets/finn_shell_header.dart';
+import 'package:finn_ai/src/shared/widgets/finn_ui.dart';
 import 'package:finn_ai/src/shared/widgets/finn_sidebar_parts.dart';
 import 'package:finn_ai/src/shared/widgets/finn_sidebar_surface.dart';
 import 'package:finn_ai/src/shared/widgets/flux_context_menu.dart';
@@ -123,6 +127,13 @@ class HomeShell extends StatefulWidget {
 
   @override
   State<HomeShell> createState() => _HomeShellState();
+}
+
+/// The keyboard's height in logical pixels, from the physical view: a
+/// Scaffold that resizes for it hides it from its body's MediaQuery.
+double _keyboardHeight(BuildContext context) {
+  final view = View.of(context);
+  return view.viewInsets.bottom / view.devicePixelRatio;
 }
 
 class _HomeShellState extends State<HomeShell>
@@ -382,8 +393,8 @@ class _HomeShellState extends State<HomeShell>
         resizeToAvoidBottomInset: true,
         body: LayoutBuilder(
           builder: (context, constraints) {
-            final sy =
-                FinnLayout.scaleY(constraints.maxHeight, constraints.maxWidth);
+            final sy = FinnLayout.shellScaleY(constraints.maxHeight,
+                constraints.maxWidth, _keyboardHeight(context));
             final safeBottom = FluxBottomInset.bottomOf(context);
             // Clear of the navigation bar; with the keyboard up on a phone
             // (the physical view's: the Scaffold hides it from this
