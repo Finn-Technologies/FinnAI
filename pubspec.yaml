@@ -47,7 +47,7 @@ dependencies:
       url: https://gitcode.com/openharmony-tpc/flutter_packages.git
       ref: 2f21e26e09efb92b8429c840ae7ca0cb024f036c
       path: packages/webview_flutter/webview_flutter_ohos
-  lucide_icons_flutter: ^3.1.22
+  hugeicons_pro: ^0.0.3
 
 dependency_overrides:
   # webview_flutter_ohos pins a git copy of the platform interface (2.10);

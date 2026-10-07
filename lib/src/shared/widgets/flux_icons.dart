@@ -1,97 +1,99 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:hugeicons_pro/hugeicons.dart';
 
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 import 'package:finn_ai/src/shared/widgets/figma_assets.dart';
 
-/// The app's icon set: Lucide, one stroke weight, everywhere. Every glyph
-/// shares the same 24-unit grid, rounded caps and joins, and line weight, so no
-/// screen mixes outline and filled styles.
+/// The app's icon set: Hugeicons, one solid (filled) style, everywhere.
+///
+/// Icons are named after what they mean, not how they are drawn, so the set can
+/// change under the app without touching a call site. The values are the filled
+/// glyphs; contrast is carried by colour, never by an outline/filled swap.
 abstract final class FluxIcons {
-  // Lucide at a 1.55 stroke on its 24-unit grid ("300"): a thin, rounded
-  // line that reads as one family with the type, the way the references
-  // (libraries.dev, SF Symbols' regular weight) draw their chrome. One
-  // weight everywhere; a selected or toggled state is shown with colour or
-  // a backing, never by swapping the glyph for a filled one.
-  static const add = LucideIcons.plus300;
-  static const close = LucideIcons.x300;
-  static const arrowUp01 = LucideIcons.chevronUp300;
-  static const arrowUp02 = LucideIcons.arrowUp300;
-  static const menu = LucideIcons.menu300;
-  static const chevronLeft = LucideIcons.chevronLeft300;
-  static const chevronRight = LucideIcons.chevronRight300;
-  static const chevronUp = LucideIcons.chevronUp300;
-  static const chevronDown = LucideIcons.chevronDown300;
-  static const arrowLeft = LucideIcons.arrowLeft300;
-  static const newChat = LucideIcons.squarePen300;
-  static const creations = LucideIcons.layoutGrid300;
-  static const widget = LucideIcons.panelsTopLeft300;
-  static const contacts = LucideIcons.bookUser300;
-  static const notifications = LucideIcons.bell300;
-  static const location = LucideIcons.mapPin300;
-  static const share = LucideIcons.share300;
-  static const pin = LucideIcons.pin300;
-  static const feedback = LucideIcons.messageSquareText300;
-  static const selectText = LucideIcons.textCursorInput300;
-  static const miniApp = LucideIcons.smartphone300;
-  static const presentation = LucideIcons.presentation300;
-  static const photo = LucideIcons.image300;
-  static const file = LucideIcons.file300;
-  static const copy = LucideIcons.copy300;
-  static const exchange = LucideIcons.arrowLeftRight300;
-  static const internet = LucideIcons.globe300;
-  static const sad = LucideIcons.frown300;
-  static const canvas = LucideIcons.paintbrush300;
-  static const you = LucideIcons.smile300;
-  static const flows = LucideIcons.workflow300;
-  static const chip = LucideIcons.cpu300;
-  static const settings = LucideIcons.settings300;
-  static const edit = LucideIcons.pencil300;
-  static const security = LucideIcons.shieldAlert300;
-  static const magic = LucideIcons.sparkles300;
-  static const lock = LucideIcons.lock300;
-  static const download = LucideIcons.download300;
-  static const delete = LucideIcons.trash2300;
-  static const translate = LucideIcons.languages300;
-  static const voiceId = LucideIcons.speech300;
-  static const speed = LucideIcons.gauge300;
-  static const subtitle = LucideIcons.captions300;
-  static const bluetooth = LucideIcons.bluetooth300;
-  static const robot = LucideIcons.bot300;
-  static const leaf = LucideIcons.leaf300;
-  static const game = LucideIcons.gamepad2300;
-  static const refresh = LucideIcons.rotateCw300;
-  static const loading = LucideIcons.loaderCircle300;
-  static const check = LucideIcons.circleCheck300;
-  static const flag = LucideIcons.flag300;
-  static const mic = LucideIcons.mic300;
-  static const micOff = LucideIcons.micOff300;
-  static const voiceWaveform = LucideIcons.audioLines300;
-  static const cpu = LucideIcons.cpu300;
-  static const error = LucideIcons.circleAlert300;
-  static const info = LucideIcons.info300;
-  static const moreHorizontal = LucideIcons.ellipsis300;
-  static const arrowRight01 = LucideIcons.chevronRight300;
-  static const arrowRight02 = LucideIcons.arrowRight300;
-  static const cloudOff = LucideIcons.cloudOff300;
-  static const image = LucideIcons.image300;
-  static const brokenImage = LucideIcons.imageOff300;
-  static const note = LucideIcons.stickyNote300;
-  static const sourceCode = LucideIcons.codeXml300;
-  static const education = LucideIcons.graduationCap300;
-  static const task = LucideIcons.clipboardList300;
-  static const search = LucideIcons.search300;
-  static const alarm = LucideIcons.alarmClock300;
-  static const timer = LucideIcons.timer300;
-  static const flashlight = LucideIcons.flashlight300;
-  static const volume = LucideIcons.volume2300;
-  static const wifi = LucideIcons.wifi300;
-  static const calendar = LucideIcons.calendar300;
-  static const navigation = LucideIcons.navigation300;
-  static const camera = LucideIcons.camera300;
-  static const battery = LucideIcons.batteryFull300;
-  static const moon = LucideIcons.moon300;
-  static const sun = LucideIcons.sun300;
+  // Hugeicons Solid: one filled family on the same 24-unit grid. Selection and
+  // state are shown with colour or a backing, never by swapping the glyph for
+  // an outline.
+  static const add = HugeIconsSolid.plusSign;
+  static const close = HugeIconsSolid.cancel01;
+  static const arrowUp01 = HugeIconsSolid.arrowUp01;
+  static const arrowUp02 = HugeIconsSolid.arrowUp02;
+  static const menu = HugeIconsSolid.menu01;
+  static const chevronLeft = HugeIconsSolid.arrowLeft01;
+  static const chevronRight = HugeIconsSolid.arrowRight01;
+  static const chevronUp = HugeIconsSolid.arrowUp01;
+  static const chevronDown = HugeIconsSolid.arrowDown01;
+  static const arrowLeft = HugeIconsSolid.arrowLeft01;
+  static const newChat = HugeIconsSolid.edit01;
+  static const creations = HugeIconsSolid.dashboardSquare01;
+  static const widget = HugeIconsSolid.layout01;
+  static const contacts = HugeIconsSolid.contactBook;
+  static const notifications = HugeIconsSolid.notification01;
+  static const location = HugeIconsSolid.mapPin;
+  static const share = HugeIconsSolid.share01;
+  static const pin = HugeIconsSolid.pin;
+  static const feedback = HugeIconsSolid.comment01;
+  static const selectText = HugeIconsSolid.inputCursorText;
+  static const miniApp = HugeIconsSolid.smartPhone01;
+  static const presentation = HugeIconsSolid.presentation01;
+  static const photo = HugeIconsSolid.image01;
+  static const file = HugeIconsSolid.file01;
+  static const copy = HugeIconsSolid.copy01;
+  static const exchange = HugeIconsSolid.arrowLeftRight;
+  static const internet = HugeIconsSolid.globe;
+  static const sad = HugeIconsSolid.sad01;
+  static const canvas = HugeIconsSolid.paintBrush01;
+  static const you = HugeIconsSolid.smile;
+  static const flows = HugeIconsSolid.flowchart01;
+  static const chip = HugeIconsSolid.cpu;
+  static const settings = HugeIconsSolid.settings01;
+  static const edit = HugeIconsSolid.pencil;
+  static const security = HugeIconsSolid.securityWarning;
+  static const magic = HugeIconsSolid.sparkles;
+  static const lock = HugeIconsSolid.squareLock01;
+  static const download = HugeIconsSolid.download01;
+  static const delete = HugeIconsSolid.delete01;
+  static const translate = HugeIconsSolid.translate;
+  static const voiceId = HugeIconsSolid.speechToText;
+  static const speed = HugeIconsSolid.dashboardSpeed01;
+  static const subtitle = HugeIconsSolid.closedCaption;
+  static const bluetooth = HugeIconsSolid.bluetooth;
+  static const robot = HugeIconsSolid.robot01;
+  static const leaf = HugeIconsSolid.leaf01;
+  static const game = HugeIconsSolid.gameController01;
+  static const refresh = HugeIconsSolid.refresh01;
+  static const loading = HugeIconsSolid.loading01;
+  static const check = HugeIconsSolid.checkmarkCircle01;
+  static const checkBox = HugeIconsSolid.checkmarkSquare01;
+  static const checkBoxEmpty = HugeIconsSolid.square;
+  static const flag = HugeIconsSolid.flag01;
+  static const mic = HugeIconsSolid.mic01;
+  static const micOff = HugeIconsSolid.micOff01;
+  static const voiceWaveform = HugeIconsSolid.audioWave01;
+  static const cpu = HugeIconsSolid.cpu;
+  static const error = HugeIconsSolid.alertCircle;
+  static const info = HugeIconsSolid.informationCircle;
+  static const moreHorizontal = HugeIconsSolid.moreHorizontal;
+  static const arrowRight01 = HugeIconsSolid.arrowRight01;
+  static const arrowRight02 = HugeIconsSolid.arrowRight02;
+  static const cloudOff = HugeIconsSolid.cloud;
+  static const image = HugeIconsSolid.image01;
+  static const brokenImage = HugeIconsSolid.imageNotFound01;
+  static const note = HugeIconsSolid.stickyNote01;
+  static const sourceCode = HugeIconsSolid.sourceCode;
+  static const education = HugeIconsSolid.school01;
+  static const task = HugeIconsSolid.task01;
+  static const search = HugeIconsSolid.search01;
+  static const alarm = HugeIconsSolid.alarmClock;
+  static const timer = HugeIconsSolid.timer01;
+  static const flashlight = HugeIconsSolid.flashlight;
+  static const volume = HugeIconsSolid.volumeHigh;
+  static const wifi = HugeIconsSolid.wifi01;
+  static const calendar = HugeIconsSolid.calendar01;
+  static const navigation = HugeIconsSolid.navigation01;
+  static const camera = HugeIconsSolid.camera01;
+  static const battery = HugeIconsSolid.batteryFull;
+  static const moon = HugeIconsSolid.moon01;
+  static const sun = HugeIconsSolid.sun01;
 
   /// The design's chrome icons, drawn from the app's one icon set instead of
   /// their mixed outline/filled SVGs (`FluxIcons`). Artwork is untouched.
@@ -135,7 +137,7 @@ class FluxIcon extends StatelessWidget {
     this.color,
   });
 
-  /// A glyph from [FluxIcons] (Lucide, one stroke weight). One style app
+  /// A glyph from [FluxIcons] (Hugeicons, one filled weight). One style app
   /// wide: selection is shown with colour or a backing, never by swapping
   /// the glyph.
   final IconData icon;

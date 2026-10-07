@@ -1,36 +1,37 @@
 import 'package:flutter/widgets.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:hugeicons_pro/hugeicons.dart';
 
 import 'package:finn_ai/src/features/flows/flow_model.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
 
-/// The icon for each thing a flow can start from, check or do.
+/// The icon for each thing a flow can start from, check or do. Hugeicons
+/// Solid, matching [FluxIcons].
 abstract final class FlowIcons {
-  static const plug = LucideIcons.unplug300;
-  static const charger = LucideIcons.plug300;
-  static const batteryLow = LucideIcons.batteryLow300;
-  static const batteryCharging = LucideIcons.batteryCharging300;
-  static const headphones = LucideIcons.headphones300;
-  static const wifi = LucideIcons.wifi300;
-  static const wifiOff = LucideIcons.wifiOff300;
-  static const airplane = LucideIcons.plane300;
-  static const power = LucideIcons.plug300;
-  static const unlock = LucideIcons.lockOpen300;
-  static const repeat = LucideIcons.repeat300;
-  static const clock = LucideIcons.clock300;
-  static const bell = LucideIcons.bell300;
-  static const hourglass = LucideIcons.hourglass300;
-  static const branch = LucideIcons.gitBranch300;
-  static const stop = LucideIcons.circleStop300;
-  static const chat = LucideIcons.messageCircle300;
-  static const phone = LucideIcons.smartphone300;
-  static const bolt = LucideIcons.zap300;
-  static const arrowDown = LucideIcons.chevronDown300;
-  static const arrowUp = LucideIcons.chevronUp300;
-  static const trash = LucideIcons.trash2300;
-  static const play = LucideIcons.circlePlay300;
-  static const flowchart = LucideIcons.waypoints300;
-  static const hand = LucideIcons.pointer300;
+  static const plug = HugeIconsSolid.plug02;
+  static const charger = HugeIconsSolid.plug01;
+  static const batteryLow = HugeIconsSolid.batteryLow;
+  static const batteryCharging = HugeIconsSolid.batteryCharging01;
+  static const headphones = HugeIconsSolid.headphones;
+  static const wifi = HugeIconsSolid.wifi01;
+  static const wifiOff = HugeIconsSolid.wifiOff01;
+  static const airplane = HugeIconsSolid.airplane01;
+  static const power = HugeIconsSolid.powerSocket01;
+  static const unlock = HugeIconsSolid.squareUnlock01;
+  static const repeat = HugeIconsSolid.repeat;
+  static const clock = HugeIconsSolid.clock01;
+  static const bell = HugeIconsSolid.notification01;
+  static const hourglass = HugeIconsSolid.hourglass;
+  static const branch = HugeIconsSolid.gitBranch;
+  static const stop = HugeIconsSolid.stopCircle;
+  static const chat = HugeIconsSolid.message01;
+  static const phone = HugeIconsSolid.smartPhone01;
+  static const bolt = HugeIconsSolid.zap;
+  static const arrowDown = HugeIconsSolid.arrowDown01;
+  static const arrowUp = HugeIconsSolid.arrowUp01;
+  static const trash = HugeIconsSolid.delete01;
+  static const play = HugeIconsSolid.playCircle;
+  static const flowchart = HugeIconsSolid.flowchart01;
+  static const hand = HugeIconsSolid.cursorPointer01;
 
   static IconData forTrigger(FlowTriggerKind kind) => switch (kind) {
         FlowTriggerKind.manual => hand,

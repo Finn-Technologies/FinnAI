@@ -76,12 +76,12 @@ String _suffix(_Device device, Brightness brightness) =>
 Future<void> _loadAppFont() async {
   await _loadFont('Geist', 'assets/fonts/Geist-Variable.ttf');
   await _loadFont('JetBrainsMono', 'assets/fonts/JetBrainsMono-Variable.ttf');
-  // The app's icons are Lucide's 300-weight set, a font in its package.
-  final lucide = _packagePath('lucide_icons_flutter');
-  if (lucide != null) {
+  // The app's icons are Hugeicons' Solid set, a font in its package.
+  final hugeicons = _packagePath('hugeicons_pro');
+  if (hugeicons != null) {
     await _loadFont(
-      'packages/lucide_icons_flutter/Lucide300',
-      '$lucide/assets/build_font/LucideVariable-w300.ttf',
+      'packages/hugeicons_pro/HugeIconsSolid',
+      '$hugeicons/fonts/hugeicons-solid.ttf',
     );
   }
   // Material's icon font is not registered in the test engine either, so a

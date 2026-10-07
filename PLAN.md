@@ -735,6 +735,13 @@ Also: `FluxPressScale` gained an `alignment` so the wordmark (much wider than it
 - *Tablet threads, measured* (Tab A8, 1.6B Lite; 10-case subset): **4 threads 34.9 prompt tok/s and 1.69 s first word**; 6 threads 12.4 tok/s; 8 threads 12.5; 2 threads 18.8; flash attention on 36.9 tok/s but a wash (−2% decode, same first word), so it stays off. This reverted the `cpu_capacity` fast-core detection added earlier in the day — it correctly found the two A75s, but prefill on two cores is half as fast as the default four — back to peak frequency (`profiler/device_profile.dart`). Removing a temporary `FINN_BENCH_FLASH_ON` experiment define was the only other change.
 - Gate: format, seam, boundaries, analyze, **1729 tests**. **Not verified:** the session change on the tablet (that A/B was stopped for the thread sweep); voice mode in dark mode; a full post-change device baseline; HarmonyOS.
 
+**Filled icons, one cross — 2026-10-07 (part 11).** At the user's request; verified on the Mi 11 Lite (3B).
+
+- *The icon set is filled.* Lucide ships outline glyphs only (its 100–600 are stroke weights), so the whole set moved to **Hugeicons Solid** (`hugeicons_pro`, MIT): 128 semantic glyphs across `FluxIcons`, `CodeIcons` and `FlowIcons`, the design-asset map, and the eight direct Material icons. Call sites name meaning, not glyph, so nothing else changed; the font tree-shakes 2.1 MB → 35 KB. Lucide dropped from `pubspec.yaml`; `THIRD_PARTY_NOTICES.md` and `CODE_MAP.md` updated.
+- *The top-left X is the composer's plus, turned 45°.* The sidebar toggle — shared by chat and FinnAI Code — drew its close cross with a bespoke stroked painter; it now shows the same `FluxIcons.add` the chat composer rotates into its own cancel, so the two are one glyph. The hamburger→cross point-morph became a fade-and-rotate (a filled glyph has no strokes to interpolate). Measured on the phone: the X's 39 px ink box against the composer plus's 55 px is exactly 1/√2, the shrink of a plus at 45° — same size.
+- Golden tests regenerated and inspected (the icon set appears in every screen); the golden loader now registers `HugeIconsSolid` instead of Lucide.
+- Gate: format, seam, boundaries, analyze, 1729 tests. Seen on the phone: chat, sidebar, Settings, FinnAI Code. **Not verified:** dark mode, the Tab A8, HarmonyOS, Linux; individual glyph choices are a first pass ("modify them" was the brief) and open to tuning.
+
 ---
 
 *Plan approved 2026-09-30. Phases 0-2 in progress; §10 records what is verified.*

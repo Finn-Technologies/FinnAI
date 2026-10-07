@@ -273,7 +273,7 @@ class _PlayButton extends StatelessWidget {
                                 // Optical centre: a triangle's mass sits left.
                                 padding: EdgeInsets.only(left: 2),
                                 child: Icon(
-                                  Icons.play_arrow_rounded,
+                                  FlowIcons.play,
                                   size: 24,
                                   color: Colors.white,
                                 ),

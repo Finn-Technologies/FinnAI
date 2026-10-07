@@ -311,9 +311,10 @@ class FinnSidebarMotion {
 
 /// The single control that opens the sidebar and closes it again.
 ///
-/// One button, not two: the design's hamburger and its "X" are the same 25-unit
-/// grid of 2px round strokes, so the glyph is interpolated between them by
-/// [progress] rather than swapped. 0 is the menu, 1 is the close.
+/// One button, not two: as [progress] moves from 0 to 1 the hamburger fades out
+/// and the chat composer's "+" rotates 45° into the close cross — the same
+/// glyph and rotation the composer uses for its own cancel — so the two ends
+/// read as one control changing state. 0 is the menu, 1 is the close.
 class FinnSidebarToggleButton extends StatelessWidget {
   const FinnSidebarToggleButton({
     super.key,
@@ -344,6 +345,9 @@ class FinnSidebarToggleButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final open = progress < .5;
     final tooltip = open ? openTooltip : closeTooltip;
+    final t = Curves.easeInOutCubic.transform(progress.clamp(0.0, 1.0));
+    final glyph = _glyph * size / dimension;
+    final color = FluxColors.inkOf(context);
     return Tooltip(
       message: tooltip,
       child: Semantics(
@@ -363,12 +367,32 @@ class FinnSidebarToggleButton extends StatelessWidget {
                 customBorder: const CircleBorder(),
                 child: Center(
                   child: SizedBox.square(
-                    dimension: _glyph * size / dimension,
-                    child: CustomPaint(
-                      painter: _SidebarGlyphPainter(
-                        progress: progress,
-                        color: FluxColors.inkOf(context),
-                      ),
+                    dimension: glyph,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        // The hamburger, fading out as the panel opens.
+                        Opacity(
+                          opacity: (1 - t).clamp(0.0, 1.0),
+                          child: FluxIcon(
+                            icon: FluxIcons.menu,
+                            size: glyph,
+                            color: color,
+                          ),
+                        ),
+                        // The composer's own "+", turned 45° into the cross.
+                        Opacity(
+                          opacity: t,
+                          child: Transform.rotate(
+                            angle: math.pi / 4 * t,
+                            child: FluxIcon(
+                              icon: FluxIcons.add,
+                              size: glyph,
+                              color: color,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -379,86 +403,4 @@ class FinnSidebarToggleButton extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Interpolates the hamburger/close pair in [FigmaAssets.appMenu] and
-/// [FigmaAssets.appClose].
-///
-/// Both icons are 2px round-capped strokes on the same 25-unit grid, so each
-/// pair of endpoints lerps point-for-point: the middle rule rotates into one
-/// diagonal of the cross while the top and bottom rules pull inward and rotate
-/// onto the other. Painting them keeps the two states one continuous motion
-/// rather than a cross-fade between two separate assets.
-class _SidebarGlyphPainter extends CustomPainter {
-  const _SidebarGlyphPainter({required this.progress, required this.color});
-
-  /// 0 = menu, 1 = close.
-  final double progress;
-  final Color color;
-
-  /// Half-length of the middle rule: the design's widest stroke.
-  static const double _fullHalfLength = 8.33;
-
-  /// Half-length of the menu's shorter top and bottom rules.
-  static const double _shortHalfLength = 5.21;
-
-  /// Distance of the menu's top and bottom rules from the glyph centre, and the
-  /// span the cross's endpoints settle on.
-  static const double _offset = 7.29;
-
-  /// Half of the close cross's span, matching the design's 6.25 inset.
-  static const double _crossHalfSpan = 6.25;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final centre = Offset(size.width / 2, size.height / 2);
-    final stroke = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2
-      ..strokeCap = StrokeCap.round;
-    final t = Curves.easeInOutCubic.transform(progress.clamp(0.0, 1.0));
-    // Distance the outer rules still sit from the centre; at t=1 both have
-    // collapsed onto it, which is what lets them become the two diagonals.
-    final ruleOffset = _offset * (1 - t);
-
-    // The middle rule turns one way, the outer pair the other, so the two
-    // diagonals of the cross cross rather than lying parallel.
-    void drawRule({
-      required double verticalOffset,
-      required double angle,
-      required double halfLength,
-      required double alpha,
-    }) {
-      canvas.save();
-      canvas.translate(centre.dx, centre.dy + verticalOffset);
-      canvas.rotate(angle);
-      canvas.drawLine(
-        Offset(-halfLength, 0),
-        Offset(halfLength, 0),
-        stroke..color = color.withValues(alpha: alpha),
-      );
-      canvas.restore();
-    }
-
-    drawRule(
-      verticalOffset: 0,
-      angle: -math.pi / 4 * t,
-      halfLength: _fullHalfLength + (_crossHalfSpan - _fullHalfLength) * t,
-      alpha: 1,
-    );
-    for (final sign in const <double>[-1, 1]) {
-      drawRule(
-        verticalOffset: sign * ruleOffset,
-        angle: math.pi / 4 * t,
-        halfLength: _shortHalfLength + (_crossHalfSpan - _shortHalfLength) * t,
-        // The design draws the outer rules at half opacity; the cross does
-        // not, so they gain their opacity as they turn.
-        alpha: 0.5 + 0.5 * t,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(_SidebarGlyphPainter oldDelegate) =>
-      oldDelegate.progress != progress || oldDelegate.color != color;
 }

@@ -5,6 +5,7 @@ import 'package:finn_ai/l10n/l10n_helper.dart';
 import 'package:finn_ai/src/features/creations/creation_palette.dart';
 import 'package:finn_ai/src/features/creations/spec/widget_spec.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
+import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
 
 /// A home-screen widget drawn in the app, and *working*: the same taps do the
 /// same things as on the launcher, so a creation can be tried before it is put
@@ -123,7 +124,7 @@ class _HomeWidgetPreviewState extends State<HomeWidgetPreview> {
                       width: 36,
                       height: 28,
                       child: Icon(
-                        Icons.refresh_rounded,
+                        FluxIcons.refresh,
                         size: 18,
                         color: CreationPalette.onPastelMuted,
                       ),
@@ -250,9 +251,7 @@ class _HomeWidgetPreviewState extends State<HomeWidgetPreview> {
         children: [
           if (kind == HomeWidgetKind.checklist) ...[
             Icon(
-              done
-                  ? Icons.check_box_rounded
-                  : Icons.check_box_outline_blank_rounded,
+              done ? FluxIcons.checkBox : FluxIcons.checkBoxEmpty,
               size: 20,
               color:
                   done ? accent.withValues(alpha: 1) : CreationPalette.onPastel,

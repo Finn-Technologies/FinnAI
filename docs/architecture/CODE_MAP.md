@@ -209,7 +209,7 @@ A second app inside the app: its own sessions, settings and providers, in the sa
 | Motion tokens (durations, curves, the control→surface morph) | `lib/src/shared/theme/flux_motion_tokens.dart` (`FluxMotion`, re-exported by `flux_theme.dart`) |
 | Space reserved below bottom-anchored UI (composer, nav bar height) | `lib/src/shared/theme/flux_theme.dart` (`FluxBottomInset.bottomOf`) |
 | Buttons, pills (primary and `secondary`), glass surfaces | `lib/src/shared/widgets/flux_controls.dart` |
-| The icon set (`FluxIcons`, Lucide at the 300 stroke weight), `FluxIcon`, and the design-asset → icon map | `lib/src/shared/widgets/flux_icons.dart` |
+| The icon set (`FluxIcons`, Hugeicons Solid), `FluxIcon`, and the design-asset → icon map | `lib/src/shared/widgets/flux_icons.dart` |
 | Paths of the design's exported SVGs | `lib/src/shared/widgets/figma_assets.dart` |
 | Shimmering placeholder rows while a list loads | `lib/src/shared/widgets/finn_skeleton.dart` |
 | The bottom-centre "+" that starts something new on list screens (Creations, Flows, You) | `lib/src/shared/widgets/finn_create_button.dart` |

@@ -255,7 +255,7 @@ class _PresentPageState extends State<_PresentPage> {
                 left: 10,
                 child: IconButton(
                   tooltip: L10n.of(context).commonClose,
-                  icon: const Icon(Icons.close, color: Colors.white),
+                  icon: const Icon(FluxIcons.close, color: Colors.white),
                   onPressed: () => Navigator.of(context).pop(),
                 ),
               ),

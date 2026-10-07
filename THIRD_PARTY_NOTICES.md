@@ -201,7 +201,7 @@ Used by voice mode; the model files are downloaded on first use.
 
 ## 7. Typography & Fonts
 - **Geist** (the app's typeface): SIL Open Font License, Version 1.1. Copyright 2024 The Geist Project Authors. Licence text: `assets/fonts/Geist-OFL.txt`.
-- **Lucide** icons (`lucide_icons_flutter`): ISC License, Copyright (c) Lucide Contributors; derived from Feather, MIT License, Copyright (c) 2013-2023 Cole Bemis.
+- **Hugeicons** icons (`hugeicons_pro`, Solid style): MIT License, Copyright (c) 2024 GB coder.
 - **JetBrains Mono** (FinnAI Code: code, commands, output): SIL Open Font License, Version 1.1. Copyright 2020 The JetBrains Mono Project Authors. Licence text: `assets/fonts/JetBrainsMono-OFL.txt`.
 
 ## FinnAI Code: Linux sandbox (Android)

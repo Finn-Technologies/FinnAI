@@ -140,7 +140,7 @@ class _FlowCard extends StatelessWidget {
                   for (var i = 0; i < blocks.length; i++) ...[
                     if (i > 0)
                       Icon(
-                        Icons.chevron_right_rounded,
+                        FluxIcons.arrowRight01,
                         size: 18,
                         color: FluxColors.mutedOf(context),
                       ),

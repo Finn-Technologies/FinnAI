@@ -494,7 +494,7 @@ class _InsertLine extends StatelessWidget {
                   border: Border.all(color: line, width: 1.5),
                 ),
                 child: Icon(
-                  Icons.add_rounded,
+                  FluxIcons.add,
                   size: 17,
                   color: FluxColors.mutedOf(context),
                 ),
@@ -534,7 +534,7 @@ class _AddChip extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        Icons.add_rounded,
+                        FluxIcons.add,
                         size: 18,
                         color: FluxColors.mutedOf(context),
                       ),
