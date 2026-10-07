@@ -4318,4 +4318,22 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get codeProviderModelsOne => '1 Modell verfügbar';
+
+  @override
+  String get codeChangesTitle => 'Änderungen';
+
+  @override
+  String get codeChangesSubtitle =>
+      'Alles, was diese Sitzung geändert hat, Datei für Datei.';
+
+  @override
+  String codeChangesSemantic(String files, String added, String removed) {
+    return 'Änderungen prüfen: $files, plus $added, minus $removed';
+  }
+
+  @override
+  String get codeChangesNewFile => 'Neue Datei';
+
+  @override
+  String get codeApproveSession => 'In Sitzung erlauben';
 }

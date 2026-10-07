@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import 'package:finn_ai/l10n/l10n_helper.dart';
 import 'package:finn_ai/src/features/code/agent/code_agent.dart';
+import 'package:finn_ai/src/features/code/agent/session_grants.dart';
 import 'package:finn_ai/src/features/code/sessions/code_session.dart';
 import 'package:finn_ai/src/features/code/ui/code_style.dart';
 import 'package:finn_ai/src/features/code/ui/code_text.dart';
@@ -96,6 +97,10 @@ class CodeConversation extends StatelessWidget {
                         resumable: resumable && message.id == last.id,
                         onApprove: () => agent.approve(message.id),
                         onSkip: () => agent.skip(message.id),
+                        onApproveForSession: message.action != null &&
+                                CodeSessionGrants.canGrant(message.action!)
+                            ? () => agent.approveForSession(message.id)
+                            : null,
                         onResume: agent.resume,
                       ),
               ),
@@ -232,6 +237,7 @@ class _AssistantMessage extends StatelessWidget {
     required this.resumable,
     required this.onApprove,
     required this.onSkip,
+    required this.onApproveForSession,
     required this.onResume,
   });
 
@@ -241,6 +247,7 @@ class _AssistantMessage extends StatelessWidget {
   final bool resumable;
   final VoidCallback onApprove;
   final VoidCallback onSkip;
+  final VoidCallback? onApproveForSession;
   final VoidCallback onResume;
 
   @override
@@ -269,6 +276,7 @@ class _AssistantMessage extends StatelessWidget {
             awaitingApproval: awaiting,
             onApprove: onApprove,
             onSkip: onSkip,
+            onApproveForSession: onApproveForSession,
           ),
         ],
         if (message.failed && (isLast || !_recovered(message))) ...[

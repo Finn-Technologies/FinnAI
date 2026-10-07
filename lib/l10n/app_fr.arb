@@ -2382,5 +2382,10 @@
   "codeLinuxLicence": "Alpine Linux et ses paquets ont leurs propres licences. proot (GPL-2.0) les exécute ; son code source est sur github.com/termux/proot.",
   "codeTerminalIntroLinux": "Alpine Linux, dans le dossier du projet de cette session (/workspace).",
   "codeSettingsLinuxSubReady": "Alpine Linux · les commandes s’exécutent ici",
-  "codeProviderModelsOne": "1 modèle disponible"
+  "codeProviderModelsOne": "1 modèle disponible",
+  "codeChangesTitle": "Modifications",
+  "codeChangesSubtitle": "Tout ce que cette session a modifié, fichier par fichier.",
+  "codeChangesSemantic": "Examiner les modifications : {files}, plus {added}, moins {removed}",
+  "codeChangesNewFile": "Nouveau fichier",
+  "codeApproveSession": "Autoriser pour la session"
 }

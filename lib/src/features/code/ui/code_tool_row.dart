@@ -10,6 +10,7 @@ import 'package:finn_ai/src/features/code/ui/code_style.dart';
 import 'package:finn_ai/src/features/code/ui/code_text.dart';
 import 'package:finn_ai/src/features/code/ui/line_diff.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
+import 'package:finn_ai/src/shared/widgets/finn_thinking.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
 
 /// One thing the agent did, as a single line: what, on what, and how it went.
@@ -26,12 +27,16 @@ class CodeToolRow extends StatefulWidget {
     this.awaitingApproval = false,
     this.onApprove,
     this.onSkip,
+    this.onApproveForSession,
   });
 
   final CodeAction action;
   final bool awaitingApproval;
   final VoidCallback? onApprove;
   final VoidCallback? onSkip;
+
+  /// "Allow in this session"; null hides the choice.
+  final VoidCallback? onApproveForSession;
 
   /// A diff with at most this many changed lines opens by itself.
   static const int smallDiff = 12;
@@ -115,6 +120,7 @@ class _CodeToolRowState extends State<CodeToolRow> {
                       awaitingApproval: widget.awaitingApproval,
                       onApprove: widget.onApprove,
                       onSkip: widget.onSkip,
+                      onApproveForSession: widget.onApproveForSession,
                     ),
                   )
                 : const SizedBox(width: double.infinity),
@@ -268,7 +274,7 @@ class _Result extends StatelessWidget {
         return Text(l10n.codeActionDenied,
             style: style.copyWith(color: FluxColors.warningOf(context)));
       case CodeActionStatus.running:
-        return Text(l10n.codeActionRunning, style: style);
+        return _Working(text: l10n.codeActionRunning, style: style);
       case CodeActionStatus.proposed:
       case CodeActionStatus.done:
       case CodeActionStatus.failed:
@@ -344,6 +350,7 @@ class _Body extends StatelessWidget {
     required this.awaitingApproval,
     required this.onApprove,
     required this.onSkip,
+    required this.onApproveForSession,
   });
 
   final CodeAction action;
@@ -351,6 +358,7 @@ class _Body extends StatelessWidget {
   final bool awaitingApproval;
   final VoidCallback? onApprove;
   final VoidCallback? onSkip;
+  final VoidCallback? onApproveForSession;
 
   @override
   Widget build(BuildContext context) {
@@ -393,6 +401,7 @@ class _Body extends StatelessWidget {
         approveLabel: action.isShell ? l10n.codeActionRun : l10n.codeApply,
         onApprove: onApprove,
         onSkip: onSkip,
+        onApproveForSession: onApproveForSession,
       ));
     }
     return Column(
@@ -407,20 +416,24 @@ class _Body extends StatelessWidget {
   }
 }
 
-/// "Run this command?  [Reject] [Run]" — inline, under what it asks about,
-/// with the chat's confirm pills (48dp targets).
+/// "Run this command?" over three choices: reject, allow for the rest of
+/// the session (Codex's approval scope), or allow once, with the chat's
+/// confirm pills (48dp targets). They wrap onto two lines in longer
+/// languages rather than squeezing.
 class _ApprovalBar extends StatelessWidget {
   const _ApprovalBar({
     required this.question,
     required this.approveLabel,
     required this.onApprove,
     required this.onSkip,
+    required this.onApproveForSession,
   });
 
   final String question;
   final String approveLabel;
   final VoidCallback? onApprove;
   final VoidCallback? onSkip;
+  final VoidCallback? onApproveForSession;
 
   static void _decide(VoidCallback decision) {
     HapticFeedback.selectionClick();
@@ -430,28 +443,90 @@ class _ApprovalBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = L10n.of(context);
-    return Row(
+    final session = onApproveForSession;
+    return Column(
       key: const ValueKey('code-approval-bar'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Expanded(
-          child: Text(question, style: CodeStyle.label(context)),
-        ),
-        const SizedBox(width: 8),
-        FluxPillButton(
-          key: const ValueKey('code-approval-reject'),
-          label: l10n.codeReject,
-          compact: true,
-          secondary: true,
-          onTap: onSkip == null ? null : () => _decide(onSkip!),
-        ),
-        const SizedBox(width: 8),
-        FluxPillButton(
-          key: const ValueKey('code-approval-approve'),
-          label: approveLabel,
-          compact: true,
-          onTap: onApprove == null ? null : () => _decide(onApprove!),
+        Text(question, style: CodeStyle.label(context)),
+        const SizedBox(height: 4),
+        Wrap(
+          alignment: WrapAlignment.end,
+          spacing: 8,
+          children: [
+            FluxPillButton(
+              key: const ValueKey('code-approval-reject'),
+              label: l10n.codeReject,
+              compact: true,
+              secondary: true,
+              onTap: onSkip == null ? null : () => _decide(onSkip!),
+            ),
+            if (session != null)
+              FluxPillButton(
+                key: const ValueKey('code-approval-session'),
+                label: l10n.codeApproveSession,
+                compact: true,
+                secondary: true,
+                onTap: () => _decide(session),
+              ),
+            FluxPillButton(
+              key: const ValueKey('code-approval-approve'),
+              label: approveLabel,
+              compact: true,
+              onTap: onApprove == null ? null : () => _decide(onApprove!),
+            ),
+          ],
         ),
       ],
     );
   }
+}
+
+/// "Running" with a band of light passing through it, the chat's "still
+/// working" voice ([FinnShimmerText]). Only a running row has one, so the
+/// ticker lives exactly as long as the step; reduced motion holds it still.
+class _Working extends StatefulWidget {
+  const _Working({required this.text, required this.style});
+
+  final String text;
+  final TextStyle style;
+
+  @override
+  State<_Working> createState() => _WorkingState();
+}
+
+class _WorkingState extends State<_Working>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _sweep = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1700),
+  );
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _sweep.stop();
+    } else if (!_sweep.isAnimating) {
+      _sweep.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _sweep.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => RepaintBoundary(
+        child: AnimatedBuilder(
+          animation: _sweep,
+          builder: (context, _) => FinnShimmerText(
+            text: widget.text,
+            t: _sweep.value,
+            style: widget.style,
+          ),
+        ),
+      );
 }

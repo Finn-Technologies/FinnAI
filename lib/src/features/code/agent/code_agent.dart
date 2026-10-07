@@ -7,6 +7,7 @@ import 'package:finn_ai/src/features/code/agent/action_runner.dart';
 import 'package:finn_ai/src/features/code/agent/agent_protocol.dart';
 import 'package:finn_ai/src/features/code/agent/code_mentions.dart';
 import 'package:finn_ai/src/features/code/agent/live_output.dart';
+import 'package:finn_ai/src/features/code/agent/session_grants.dart';
 import 'package:finn_ai/src/features/code/agent/small_model_aids.dart';
 import 'package:finn_ai/src/features/code/providers/code_gateway.dart';
 import 'package:finn_ai/src/features/code/providers/provider_errors.dart';
@@ -51,6 +52,9 @@ class CodeAgent extends ChangeNotifier {
   final CodeSettingsStore settings;
   final CodeActionRunner runner;
   final CodeGatewayFactory gatewayFactory;
+
+  /// Approvals widened to a session (see [CodeSessionGrants]).
+  final CodeSessionGrants grants = CodeSessionGrants();
 
   /// Tokens arrive far faster than a screen can use them; the transcript is
   /// updated at most this often while a reply streams.
@@ -166,6 +170,13 @@ class CodeAgent extends ChangeNotifier {
 
   /// The user's tap on "Run" (or "Allow").
   void approve(String messageId) => _decide(messageId, true);
+
+  /// "Allow in this session": approves, and stops asking for the same kind.
+  void approveForSession(String messageId) {
+    final action = _message(_sessionId ?? '', messageId)?.action;
+    if (action != null) grants.grant(_sessionId!, action);
+    _decide(messageId, true);
+  }
 
   /// The user's tap on "Skip".
   void skip(String messageId) => _decide(messageId, false);
@@ -466,7 +477,8 @@ class CodeAgent extends ChangeNotifier {
     CodeAction action,
     int epoch,
   ) async {
-    if (_needsApproval(action)) {
+    if (codeNeedsApproval(settings.settings.permissionMode, action) &&
+        !grants.covers(sessionId, action)) {
       _pendingMessageId = messageId;
       _approval = Completer<bool>();
       _setPhase(CodeAgentPhase.awaitingApproval);
@@ -510,17 +522,6 @@ class CodeAgent extends ChangeNotifier {
       before.status == CodeActionStatus.done &&
       now.signature == before.signature &&
       now.output == before.output;
-
-  bool _needsApproval(CodeAction action) {
-    switch (settings.settings.permissionMode) {
-      case CodePermissionMode.askEveryTime:
-        return true;
-      case CodePermissionMode.acceptEdits:
-        return action.isShell;
-      case CodePermissionMode.autoRun:
-        return false;
-    }
-  }
 
   // ------------------------------------------------------------ helpers
 

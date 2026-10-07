@@ -215,6 +215,29 @@ void main() {
       expect(gateway.requests[1].turns.last.content, contains('chose not to'));
     });
 
+    test('allowing a program for the session stops asking for it', () async {
+      final gateway = FakeGateway([
+        '```sh\nls\n```',
+        '```sh\nls -la\n```',
+        '```sh\nrm x\n```',
+        'Done.',
+      ]);
+      final runner = FakeRunner();
+      final agent = agentFor(gateway, runner);
+
+      final request = agent.send('list twice, then clean');
+      await until(() => agent.phase == CodeAgentPhase.awaitingApproval);
+      agent.approveForSession(agent.pendingMessageId!);
+      // `ls -la` runs without a tap; `rm` is another program and asks.
+      await until(() =>
+          agent.phase == CodeAgentPhase.awaitingApproval &&
+          runner.ran.length == 2);
+      expect(messages().last.action!.command, 'rm x');
+      agent.skip(agent.pendingMessageId!);
+      await request;
+      expect(runner.ran, hasLength(2));
+    });
+
     test('approving the wrong message does nothing', () async {
       final gateway = FakeGateway(['```sh\nls\n```', 'ok']);
       final agent = agentFor(gateway);

@@ -11,6 +11,7 @@ import 'package:finn_ai/l10n/l10n_helper.dart';
 import 'package:finn_ai/src/features/code/code_services.dart';
 import 'package:finn_ai/src/features/code/sessions/code_session.dart';
 import 'package:finn_ai/src/features/code/settings/code_settings_page.dart';
+import 'package:finn_ai/src/features/code/ui/code_changes.dart';
 import 'package:finn_ai/src/features/code/ui/code_composer.dart';
 import 'package:finn_ai/src/features/code/ui/code_conversation.dart';
 import 'package:finn_ai/src/features/code/ui/code_files_page.dart';
@@ -383,6 +384,11 @@ class _CodeShellState extends State<CodeShell>
                     builder: (context, _) {
                       final session = _services.sessions.active;
                       final empty = session == null || session.messages.isEmpty;
+                      final changes = session == null
+                          ? const CodeChanges([])
+                          : CodeChanges.of(session);
+                      // The changes chip takes a row above the field.
+                      final changesRow = changes.isEmpty ? 0.0 : 56.0;
                       final agent = _services.agent;
                       final status = CodeStatusLine(
                         // The chip icon already says "on this device"; the
@@ -414,7 +420,10 @@ class _CodeShellState extends State<CodeShell>
                               agent: agent,
                               topInset: headerTop + FinnShellHeader.height + 20,
                               // The field (50), a gap and the status line (48).
-                              bottomInset: composerBottom + 102 + fusedExtra,
+                              bottomInset: composerBottom +
+                                  102 +
+                                  fusedExtra +
+                                  changesRow,
                               scrollController: _scrollController,
                             ),
                           ),
@@ -452,6 +461,9 @@ class _CodeShellState extends State<CodeShell>
                               onAttach: _attach,
                               onRemoveAttachment: (i) =>
                                   setState(() => _attachments.removeAt(i)),
+                              changes: changes.isEmpty
+                                  ? null
+                                  : CodeChangesChip(changes: changes),
                             ),
                           ),
                           Positioned(

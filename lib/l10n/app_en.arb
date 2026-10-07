@@ -5724,5 +5724,36 @@
   "codeProviderModelsOne": "1 model available",
   "@codeProviderModelsOne": {
     "description": "Exactly one model in a provider's list"
+  },
+  "codeChangesTitle": "Changes",
+  "@codeChangesTitle": {
+    "description": "FinnAI Code changes review: codeChangesTitle"
+  },
+  "codeChangesSubtitle": "Everything this session changed, file by file.",
+  "@codeChangesSubtitle": {
+    "description": "FinnAI Code changes review: codeChangesSubtitle"
+  },
+  "codeChangesSemantic": "Review changes: {files}, plus {added}, minus {removed}",
+  "@codeChangesSemantic": {
+    "description": "FinnAI Code changes review: codeChangesSemantic",
+    "placeholders": {
+      "files": {
+        "type": "String"
+      },
+      "added": {
+        "type": "String"
+      },
+      "removed": {
+        "type": "String"
+      }
+    }
+  },
+  "codeChangesNewFile": "New file",
+  "@codeChangesNewFile": {
+    "description": "FinnAI Code changes review: codeChangesNewFile"
+  },
+  "codeApproveSession": "Allow in session",
+  "@codeApproveSession": {
+    "description": "FinnAI Code approval: allow this kind of action for the rest of the session"
   }
 }

@@ -4312,4 +4312,22 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get codeProviderModelsOne => '1 modello disponibile';
+
+  @override
+  String get codeChangesTitle => 'Modifiche';
+
+  @override
+  String get codeChangesSubtitle =>
+      'Tutto ciò che questa sessione ha cambiato, file per file.';
+
+  @override
+  String codeChangesSemantic(String files, String added, String removed) {
+    return 'Rivedi le modifiche: $files, più $added, meno $removed';
+  }
+
+  @override
+  String get codeChangesNewFile => 'Nuovo file';
+
+  @override
+  String get codeApproveSession => 'Consenti nella sessione';
 }

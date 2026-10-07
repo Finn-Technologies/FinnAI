@@ -7615,6 +7615,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'1 model available'**
   String get codeProviderModelsOne;
+
+  /// FinnAI Code changes review: codeChangesTitle
+  ///
+  /// In en, this message translates to:
+  /// **'Changes'**
+  String get codeChangesTitle;
+
+  /// FinnAI Code changes review: codeChangesSubtitle
+  ///
+  /// In en, this message translates to:
+  /// **'Everything this session changed, file by file.'**
+  String get codeChangesSubtitle;
+
+  /// FinnAI Code changes review: codeChangesSemantic
+  ///
+  /// In en, this message translates to:
+  /// **'Review changes: {files}, plus {added}, minus {removed}'**
+  String codeChangesSemantic(String files, String added, String removed);
+
+  /// FinnAI Code changes review: codeChangesNewFile
+  ///
+  /// In en, this message translates to:
+  /// **'New file'**
+  String get codeChangesNewFile;
+
+  /// FinnAI Code approval: allow this kind of action for the rest of the session
+  ///
+  /// In en, this message translates to:
+  /// **'Allow in session'**
+  String get codeApproveSession;
 }
 
 class _AppLocalizationsDelegate

@@ -34,7 +34,12 @@ class CodeComposer extends StatefulWidget {
     this.attachments = const [],
     this.onAttach,
     this.onRemoveAttachment,
+    this.changes,
   });
+
+  /// Above the field: what the session has changed so far (a
+  /// `CodeChangesChip`), or null.
+  final Widget? changes;
 
   final TextEditingController controller;
   final FocusNode focusNode;
@@ -311,6 +316,31 @@ class _CodeComposerState extends State<CodeComposer>
                 : Padding(
                     padding: const EdgeInsets.only(bottom: 6),
                     child: suggestions,
+                  ),
+          ),
+          // The changes chip pops in the first time there is something to
+          // review, and leaves the same way.
+          AnimatedSwitcher(
+            duration: CodeStyle.motion(context, FluxMotion.modalDuration),
+            switchInCurve: Curves.easeOutBack,
+            switchOutCurve: Curves.easeInCubic,
+            transitionBuilder: (child, animation) => FadeTransition(
+              opacity: animation,
+              child: ScaleTransition(
+                scale: Tween<double>(begin: .85, end: 1).animate(animation),
+                alignment: Alignment.bottomLeft,
+                child: child,
+              ),
+            ),
+            child: widget.changes == null
+                ? const SizedBox(width: double.infinity)
+                : Padding(
+                    key: const ValueKey('code-changes-slot'),
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: widget.changes,
+                    ),
                   ),
           ),
           if (widget.attachments.isNotEmpty)
