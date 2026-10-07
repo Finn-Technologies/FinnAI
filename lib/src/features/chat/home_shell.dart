@@ -52,7 +52,6 @@ import 'package:finn_ai/src/shared/widgets/keyboard_fuse.dart';
 import 'package:finn_ai/src/shared/widgets/finn_overlays.dart';
 import 'package:finn_ai/src/app/data_export.dart';
 import 'package:finn_ai/src/features/chat/widgets/voice_glow.dart';
-import 'package:finn_ai/src/features/chat/widgets/voice_orb.dart';
 import 'package:finn_ai/src/features/chat/widgets/voice_morph_bar.dart';
 import 'package:finn_ai/src/features/voice/read_aloud.dart';
 import 'package:finn_ai/src/features/voice/reply_chunker.dart';
@@ -469,15 +468,6 @@ class _HomeShellState extends State<HomeShell>
                             _historyUnavailable && !_dismissedHistoryNotice,
                         onDismissHistoryNotice: () =>
                             setState(() => _dismissedHistoryNotice = true),
-                      ),
-                    ),
-                    // Voice mode's glass orb, dropped from the top.
-                    Positioned(
-                      left: 0,
-                      right: 0,
-                      top: 70 * sy + 96,
-                      child: Center(
-                        child: VoiceOrb(voice: _voice, active: _voiceListening),
                       ),
                     ),
                     // 4. Header and composer are the topmost layers: crisp over

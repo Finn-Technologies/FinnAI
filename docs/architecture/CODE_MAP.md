@@ -46,7 +46,6 @@ Use this before grepping. Paths are relative to the repository root.
 | Message bubbles, replies, sources, dialogs | `lib/src/features/chat/widgets/` (`bubbles.dart`, `replies.dart`, `sources.dart`, `dialogs.dart`, `conversation.dart`) |
 | Composer | `lib/src/features/chat/widgets/composer.dart` |
 | Voice mode's light (Siri-style rim and blurred orbs, one GPU pass) | `shaders/voice_glow.frag` drawn by `lib/src/features/chat/widgets/voice_glow.dart` (gradient fallback in the same file) |
-| Voice mode's glass orb (drops from the top, waveform strands follow the voice) | `lib/src/features/chat/widgets/voice_orb.dart` |
 | Frame timing on a device (`--dart-define=FINN_FRAME_LOG=true`, `FINN_FRAMES` lines) | `lib/src/app/frame_log.dart` |
 | Sidebar, and its history cards (Siri-style masonry: time, title, preview, photo) | `lib/src/features/chat/widgets/sidebar.dart` (`_HistoryMasonry`), `sidebar_tiles.dart` |
 | The panel, its scrim, the menu/close morph and the open/close swipe (shared by FinnAI and FinnAI Code) | `lib/src/shared/widgets/finn_sidebar_surface.dart` (`FinnSidebarSurface`, `FinnSidebarToggleButton`), the chat drag logic in `lib/src/features/chat/shell/sidebar_surface.dart` |

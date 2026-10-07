@@ -723,6 +723,7 @@ Also: `FluxPressScale` gained an `alignment` so the wordmark (much wider than it
 - *Tried, not shipped:* Liquid's recommended sampling (temperature 0.1, min_p 0.15); the run did not finish, so the change was reverted.
 - *Colour:* `shared/theme/flux_vivid.dart`, eleven hues (the Flows step colours) as gradient icon wells with white glyphs, in Settings and its pages, Code settings, the sidebar shortcuts and the "+" sheet; the greeting is painted in the brand sweep (paint shader, no layer); a ready send button fills with it. Contrast test: white glyph ≥ 3:1 on every stop, greeting ≥ 3:1 on both canvases.
 - Gate: format, seam, boundaries, analyze, 1722 tests. **Not verified on screen:** the colour changes (no screenshots taken this pass), HarmonyOS.
+- *Voice mode fixes (seen live on the Mi 11 Lite).* The orb is removed (at the user's request). Visual bug: the transcript's edge fades are painted in the solid canvas colour and sit inside the layer that recedes in voice mode, so they hid the glow at the top and bottom and, scaled 4.5%, showed as a hard-edged black rectangle inset from the screen. In voice mode those fades are now hidden and the transcript fades its own pixels out with an alpha mask instead, so the glow shows through to every edge. Verified on the phone in light mode with a conversation open; dark mode not re-checked.
 
 ---
 

@@ -213,6 +213,7 @@ class _ConversationState extends State<_Conversation> {
         .toList(growable: false);
     return _Recede(
       active: widget.receded,
+      bottomFade: widget.bottomInset,
       child: _transcript(context, visibleMessages, failedTurn, visibleError,
           ownsGeneration, activeJob),
     );
@@ -376,9 +377,12 @@ class _ConversationState extends State<_Conversation> {
           right: 0,
           height: finnTopFadeHeight,
           child: IgnorePointer(
-            child: const FinnEdgeFade(
-              key: ValueKey('chat-fade-top'),
-              top: true,
+            child: _VoiceHidden(
+              hidden: widget.receded,
+              child: const FinnEdgeFade(
+                key: ValueKey('chat-fade-top'),
+                top: true,
+              ),
             ),
           ),
         ),
@@ -388,9 +392,12 @@ class _ConversationState extends State<_Conversation> {
           right: 0,
           height: widget.bottomInset,
           child: IgnorePointer(
-            child: const FinnEdgeFade(
-              key: ValueKey('chat-fade-bottom'),
-              top: false,
+            child: _VoiceHidden(
+              hidden: widget.receded,
+              child: const FinnEdgeFade(
+                key: ValueKey('chat-fade-bottom'),
+                top: false,
+              ),
             ),
           ),
         ),
@@ -399,13 +406,62 @@ class _ConversationState extends State<_Conversation> {
   }
 }
 
+/// Hides [child] while voice mode is open. The edge fades are painted in the
+/// solid canvas colour: over voice mode's glow they hid it at the top and
+/// bottom, and once [_Recede] scaled them they showed as a hard-edged black
+/// rectangle inset from the screen's edges.
+class _VoiceHidden extends StatelessWidget {
+  const _VoiceHidden({required this.hidden, required this.child});
+
+  final bool hidden;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => AnimatedOpacity(
+        opacity: hidden ? 0 : 1,
+        duration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : const Duration(milliseconds: 650),
+        curve: Curves.easeOutCubic,
+        child: child,
+      );
+}
+
 /// Steps [child] back while [active]: scaled toward its centre and dimmed.
 /// Transform and opacity only, so it costs no more than the frame it is in.
 class _Recede extends StatelessWidget {
-  const _Recede({required this.active, required this.child});
+  const _Recede({
+    required this.active,
+    required this.bottomFade,
+    required this.child,
+  });
 
   final bool active;
+
+  /// Height of the band over the composer that messages fade out in.
+  final double bottomFade;
   final Widget child;
+
+  /// Fades the transcript's own pixels out under the header and over the
+  /// composer, so voice mode's glow shows through where the canvas-coloured
+  /// edge fades (hidden in voice mode, see [_VoiceHidden]) used to cover it.
+  Widget _edgeMask(Widget child, double t) => ShaderMask(
+        blendMode: BlendMode.dstIn,
+        shaderCallback: (bounds) {
+          final h = bounds.height <= 0 ? 1.0 : bounds.height;
+          final top = (finnTopFadeOpaqueDepth / h).clamp(0.0, .45);
+          final topEnd = (finnTopFadeHeight / h).clamp(top, .5);
+          final bottom = (1 - bottomFade / h).clamp(.5, 1.0);
+          final hidden = Color.fromRGBO(255, 255, 255, 1 - t);
+          return LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [hidden, hidden, Colors.white, Colors.white, hidden],
+            stops: [0, top, topEnd, bottom, 1],
+          ).createShader(bounds);
+        },
+        child: child,
+      );
 
   @override
   Widget build(BuildContext context) => TweenAnimationBuilder<double>(
@@ -417,9 +473,12 @@ class _Recede extends StatelessWidget {
         child: child,
         builder: (context, t, child) => t == 0
             ? child!
-            : Opacity(
-                opacity: 1 - .55 * t,
-                child: Transform.scale(scale: 1 - .045 * t, child: child),
+            : _edgeMask(
+                Opacity(
+                  opacity: 1 - .55 * t,
+                  child: Transform.scale(scale: 1 - .045 * t, child: child),
+                ),
+                t,
               ),
       );
 }
