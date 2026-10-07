@@ -7,6 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:finn_ai/src/platform/platform_target.dart';
+
 import 'support/fake_speech_backend.dart';
 
 class _Tts implements TtsBackend {
@@ -137,6 +139,32 @@ Future<void> _run(WidgetTester tester, int ms) async {
 }
 
 void main() {
+  testWidgets('the keyboard rising keeps the same field, and its focus',
+      (tester) async {
+    // The row hands over from the voice bar to the fused panel as the
+    // keyboard rises. The field used to be rebuilt in the new tree, which
+    // closed its input connection and dropped the keyboard at once.
+    // A phone: desktops never fuse.
+    debugSetFinnPlatformOverride(FinnPlatform.android);
+    addTearDown(() => debugSetFinnPlatformOverride(null));
+    final h = _Harness();
+    await h.pump(tester);
+    await tester.tap(_field);
+    await tester.pump();
+    final before = tester.state<EditableTextState>(find.byType(EditableText));
+    expect(h.focusNode.hasFocus, isTrue);
+
+    tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+    addTearDown(tester.view.resetViewInsets);
+    await _run(tester, 600);
+
+    final after = tester.state<EditableTextState>(find.byType(EditableText));
+    expect(identical(before, after), isTrue,
+        reason: 'the field must not be remounted by the hand-over');
+    expect(h.focusNode.hasFocus, isTrue);
+    expect(tester.takeException(), isNull);
+  });
+
   group('settled in chat', () {
     testWidgets('the field fills the row, as the plain field does',
         (tester) async {
@@ -148,9 +176,10 @@ void main() {
       expect(_voiceMic, findsNothing);
       // 390 wide minus two 50 buttons and two 20 gaps.
       expect(_pillWidth(tester), closeTo(390 - 100 - 40, 1));
-      // 52, like the plain pill: the 50dp field plus its 1px hairline on
-      // each side.
-      expect(tester.getSize(_pill).height, closeTo(52, 1));
+      // 50, like the plain pill and the circles beside it: the 48dp band
+      // plus its 1px hairline on each side (was 52 before the shared
+      // FinnComposerFrame dropped the 1px rest padding).
+      expect(tester.getSize(_pill).height, closeTo(50, 1));
     });
 
     testWidgets('it does not redraw sixty times a second while idle',

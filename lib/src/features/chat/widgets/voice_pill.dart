@@ -146,10 +146,10 @@ class _VoicePillState extends State<VoicePill>
     final pillWidth = 86 + 22 * _awake + 56 * swell;
     final pillHeight = 50 + 6 * swell;
     final width = lerpDouble(pillWidth, widget.slotWidth, expand)!;
-    // Both boxes end 2px taller than the fill they frame: the 1px hairline
-    // lives outside the content under loose constraints, so the field's
-    // 48dp band plus its padding still fits with the border on.
-    final height = lerpDouble(pillHeight + 2, 52, expand)!;
+    // Both boxes end 2px taller than the 48dp band they frame: the 1px
+    // hairline lives outside the content, so the field lands on the
+    // composer's 50dp (FinnComposerFrame), the same height as its circles.
+    final height = lerpDouble(pillHeight + 2, 50, expand)!;
     final angle = _phase * 1.4;
     final glow = reduced || widget.ghost ? 0.0 : (0.12 + 0.30 * swell) * _awake;
     final hot = colors.last;
@@ -173,10 +173,10 @@ class _VoicePillState extends State<VoicePill>
         behavior: HitTestBehavior.opaque,
         child: SizedBox(
           width: widget.slotWidth,
-          // Ends at 52, the settled field's height with its hairline: a
-          // 50 box would starve the 48dp band once the border takes its 2px.
-          // Starts 2px above the old 56 for the same reason at full swell.
-          height: settled ? null : lerpDouble(VoicePill.height + 2, 52, expand),
+          // Ends at 50, the settled field's height with its hairline (the
+          // 48dp band plus 2px of border). Starts 2px above the old 56 for
+          // the same reason at full swell.
+          height: settled ? null : lerpDouble(VoicePill.height + 2, 50, expand),
           child: Center(
             child: RepaintBoundary(
               child: Opacity(

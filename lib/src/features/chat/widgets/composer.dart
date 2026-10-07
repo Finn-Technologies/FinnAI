@@ -111,6 +111,10 @@ class _ChatComposerState extends State<ChatComposer>
     with TickerProviderStateMixin {
   late bool _hasText;
 
+  /// Keeps the message field mounted across the voice-bar / fused-panel
+  /// hand-over (see `fieldColumn` in [build]).
+  final GlobalKey _fieldKey = GlobalKey(debugLabel: 'composer-field');
+
   /// 0 = three controls (the circles and the field between them), 1 = one
   /// panel: text on top, "+" bottom-left, mic and send bottom-right, while
   /// the keyboard is up on a phone (see [KeyboardFuse]).
@@ -323,76 +327,84 @@ class _ChatComposerState extends State<ChatComposer>
     );
 
     // What is inside the message field: an attachment, then the text itself.
-    final fieldColumn = Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (hasAttachment)
-          Padding(
-            padding: const EdgeInsets.only(
-              bottom: 8,
-              left: 6,
-              right: 6,
-              top: 2,
+    // Keyed globally: when the keyboard rises the row hands over from the
+    // voice bar to the fused panel, and without the key the TextField was
+    // rebuilt in the new tree, which closed its input connection and put the
+    // keyboard straight back down (a tap on the chat field never kept it up).
+    final fieldColumn = KeyedSubtree(
+      key: _fieldKey,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (hasAttachment)
+            Padding(
+              padding: const EdgeInsets.only(
+                bottom: 8,
+                left: 6,
+                right: 6,
+                top: 2,
+              ),
+              child: Row(
+                children: [
+                  _buildAttachmentPreview(
+                    context,
+                    widget.attachmentPath!,
+                  ),
+                ],
+              ),
             ),
-            child: Row(
-              children: [
-                _buildAttachmentPreview(
-                  context,
-                  widget.attachmentPath!,
-                ),
-              ],
-            ),
-          ),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Expanded(
-              // The pill reads as one big input, so the whole row focuses
-              // the field (FinnComposerText.band).
-              child: FinnComposerText.band(
-                key: const ValueKey('composer-field-band'),
-                label: l10n.chatMessageToFinnSemantic,
-                focusNode: widget.focusNode,
-                field: EnterToSend(
-                  canSend: canSend,
-                  onSend: widget.onSend,
-                  child: TextField(
-                    controller: widget.controller,
-                    focusNode: widget.focusNode,
-                    inputFormatters: [
-                      LengthLimitingTextInputFormatter(4000),
-                    ],
-                    enabled: !widget.blocked,
-                    minLines: 1,
-                    maxLines: 5,
-                    textAlignVertical: TextAlignVertical.center,
-                    keyboardType: TextInputType.multiline,
-                    textInputAction: TextInputAction.send,
-                    onSubmitted: (_) => canSend ? widget.onSend() : null,
-                    onTap: () => widget.onReturnToLatest?.call(),
-                    style: FinnComposerText.style(context),
-                    cursorColor: FluxColors.inkOf(context),
-                    decoration: InputDecoration.collapsed(
-                      hintText: widget.hintText ??
-                          (widget.preparing
-                              ? l10n.chatFinnTyping
-                              : l10n.chatAskAnythingHint),
-                      // One line, always. A wrapped hint stretches
-                      // the field — and with it the pill — on
-                      // narrow screens and in longer locales.
-                      hintMaxLines: 1,
-                      hintStyle: FinnComposerText.hintStyle(context),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                // The pill reads as one big input, so the whole row focuses
+                // the field (FinnComposerText.band).
+                child: FinnComposerText.band(
+                  key: const ValueKey('composer-field-band'),
+                  label: l10n.chatMessageToFinnSemantic,
+                  focusNode: widget.focusNode,
+                  field: EnterToSend(
+                    canSend: canSend,
+                    onSend: widget.onSend,
+                    child: TextField(
+                      controller: widget.controller,
+                      focusNode: widget.focusNode,
+                      inputFormatters: [
+                        LengthLimitingTextInputFormatter(4000),
+                      ],
+                      enabled: !widget.blocked,
+                      minLines: 1,
+                      maxLines: 5,
+                      textAlignVertical: TextAlignVertical.center,
+                      keyboardType: TextInputType.multiline,
+                      textInputAction: TextInputAction.send,
+                      onSubmitted: (_) => canSend ? widget.onSend() : null,
+                      onTap: () => widget.onReturnToLatest?.call(),
+                      style: FinnComposerText.style(context),
+                      cursorColor: FluxColors.inkOf(context),
+                      decoration: InputDecoration.collapsed(
+                        hintText: widget.hintText ??
+                            (widget.preparing
+                                ? l10n.chatFinnTyping
+                                : l10n.chatAskAnythingHint),
+                        // One line, always. A wrapped hint stretches
+                        // the field — and with it the pill — on
+                        // narrow screens and in longer locales.
+                        hintMaxLines: 1,
+                        hintStyle: FinnComposerText.hintStyle(context),
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
-        ),
-      ],
+            ],
+          ),
+        ],
+      ),
     );
-    const fieldInset = EdgeInsets.fromLTRB(17, 1, 4, 1);
+    // The 48dp band plus the 1px hairline: the composer's 50dp.
+    const fieldInset = EdgeInsets.fromLTRB(17, 0, 4, 0);
 
     // Outside live voice the row is three controls — the "+" circle, the
     // field pill, the send/mic circle — or, while typing on a phone, one
