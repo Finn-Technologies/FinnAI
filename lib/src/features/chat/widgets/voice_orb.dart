@@ -8,12 +8,11 @@ import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 
 /// The one thing on screen while you talk to Finn: a dark glass orb that
 /// drops from the top as voice mode opens (the way iOS 27's Siri leaves the
-/// Dynamic Island) with strands of the brand's colours moving inside it,
-/// following whoever is speaking, and turning slowly while Finn thinks.
+/// Dynamic Island), filled with the voice light's colours swirling inside
+/// it, following whoever is speaking and turning faster while Finn thinks.
 ///
-/// Like the voice light, it computes no blur: the glass is radial gradients,
-/// the glow around it a gradient ring, the strands three stroked paths
-/// clipped to the sphere. The ticker runs only while voice mode is open or
+/// Like the voice light, it computes no blur: the glass, the lights inside
+/// and the halo are radial gradients with Gaussian stops. The ticker runs only while voice mode is open or
 /// the orb is leaving; under reduced motion it is drawn still, in place.
 class VoiceOrb extends StatefulWidget {
   const VoiceOrb({
@@ -161,34 +160,43 @@ class VoiceOrbPainter extends CustomPainter {
   final VoiceOrbFrame frame;
   final bool dark;
 
-  static const _strands = [
-    Color(0xFFCB6BC6),
-    Color(0xFF5D75FF),
-    Color(0xFF7DFFCD),
+  // The voice light's run of colours (shaders/voice_glow.frag), at the edge
+  // of sRGB: on the black canvas saturated light is what reads as vivid.
+  static const _lights = [
+    Color(0xFFFF297A),
+    Color(0xFFDB33FF),
+    Color(0xFF7829FF),
+    Color(0xFF1F6BFF),
+    Color(0xFF00E6DB),
   ];
+
+  /// A soft disc of light: a radial gradient whose stops follow a Gaussian,
+  /// which is what a blurred disc looks like, with no blur computed.
+  static Paint _light(Offset c, double radius, Color color, double strength) =>
+      Paint()
+        ..blendMode = BlendMode.plus
+        ..shader = RadialGradient(
+          colors: [
+            color.withValues(alpha: strength),
+            color.withValues(alpha: strength * .6),
+            color.withValues(alpha: strength * .2),
+            color.withValues(alpha: 0),
+          ],
+          stops: const [0, .35, .7, 1],
+        ).createShader(Rect.fromCircle(center: c, radius: radius));
 
   @override
   void paint(Canvas canvas, Size size) {
     final c = size.center(Offset.zero);
     final r = size.shortestSide / 2;
-    final glow = (.35 + .65 * frame.level) * frame.presence;
+    final p = frame.presence;
+    final level = frame.level;
 
-    // The glow: a ring of colour fading out from the sphere's edge, with a
-    // Gaussian-like falloff in its stops (no blur filter).
-    final halo = Rect.fromCircle(center: c, radius: r * 1.45);
+    // The halo: the sphere's light spilling onto the black around it.
     canvas.drawCircle(
       c,
-      r * 1.45,
-      Paint()
-        ..shader = RadialGradient(
-          colors: [
-            const Color(0xFF5D75FF).withValues(alpha: .0),
-            const Color(0xFF7E0AC6).withValues(alpha: .30 * glow),
-            const Color(0xFFCB6BC6).withValues(alpha: .14 * glow),
-            const Color(0xFFCB6BC6).withValues(alpha: 0),
-          ],
-          stops: const [.62, .70, .82, 1],
-        ).createShader(halo),
+      r * 1.6,
+      _light(c, r * 1.6, const Color(0xFF8A1CFF), (.22 + .4 * level) * p),
     );
 
     // The glass: near-black in both themes, as Siri's orb is.
@@ -200,40 +208,37 @@ class VoiceOrbPainter extends CustomPainter {
         ..shader = const RadialGradient(
           center: Alignment(0, -.2),
           radius: 1,
-          colors: [Color(0xFF252528), Color(0xFF0B0B0C)],
+          colors: [Color(0xFF16161A), Color(0xFF000000)],
         ).createShader(sphere),
     );
 
-    // The strands, clipped to the sphere. Plus-blended so where they cross
-    // they brighten, as light does.
+    // The light inside: five soft discs of colour drifting round each other,
+    // larger and brighter as the voice rises, turning faster while Finn
+    // thinks. Plus-blended, so where they overlap they brighten toward
+    // white, the way light adds up.
     canvas.save();
     canvas.clipPath(Path()..addOval(sphere.deflate(1)));
-    final amp = r * (.08 + .42 * frame.level + .12 * frame.thinking);
-    final turn = frame.thinking * frame.phase * .9;
-    for (var i = 0; i < _strands.length; i++) {
-      final path = Path();
-      final k = 1.4 + .55 * i;
-      final p = frame.phase * (2.1 + .7 * i) + i * 2.1;
-      for (var s = 0; s <= 48; s++) {
-        final t = s / 48;
-        final x = -r + 2 * r * t;
-        // An envelope so the strand meets the rim at the middle line.
-        final env = math.sin(math.pi * t);
-        final y = math.sin(k * math.pi * 2 * t + p) * amp * env;
-        final px = c.dx + x * math.cos(turn) - y * math.sin(turn);
-        final py = c.dy + x * math.sin(turn) + y * math.cos(turn);
-        s == 0 ? path.moveTo(px, py) : path.lineTo(px, py);
-      }
-      canvas.drawPath(
-        path,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeCap = StrokeCap.round
-          ..strokeWidth = r * .07
-          ..blendMode = BlendMode.plus
-          ..color = _strands[i].withValues(alpha: .85 * frame.presence),
+    final spin = frame.phase * (1 + 1.5 * frame.thinking);
+    for (var i = 0; i < _lights.length; i++) {
+      final a =
+          spin * (i.isEven ? 1.0 : -.8) + i * 2 * math.pi / _lights.length;
+      final orbit = r * (.46 + .1 * math.sin(frame.phase * 1.7 + i));
+      final centre = c + Offset(math.cos(a) * orbit, math.sin(a) * orbit * .8);
+      final radius = r * (.78 + .22 * level + .08 * math.sin(frame.phase + i));
+      canvas.drawCircle(
+        centre,
+        radius,
+        _light(centre, radius, _lights[i], (.62 + .18 * level) * p),
       );
     }
+    // HDR-style: the app renders SDR (no extended range on Android), so
+    // light "brighter than its colour" is a white-hot core that grows with
+    // the voice.
+    canvas.drawCircle(
+      c,
+      r * (.22 + .25 * level),
+      _light(c, r * (.22 + .25 * level), Colors.white, (.05 + .3 * level) * p),
+    );
     canvas.restore();
 
     // The glass's own light: a soft highlight up and to the left, and a thin
@@ -246,7 +251,7 @@ class VoiceOrbPainter extends CustomPainter {
           center: const Alignment(-.45, -.55),
           radius: .75,
           colors: [
-            Colors.white.withValues(alpha: .16),
+            Colors.white.withValues(alpha: .18),
             Colors.white.withValues(alpha: 0),
           ],
         ).createShader(sphere),
@@ -261,8 +266,8 @@ class VoiceOrbPainter extends CustomPainter {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            Colors.white.withValues(alpha: dark ? .32 : .55),
-            Colors.white.withValues(alpha: .04),
+            Colors.white.withValues(alpha: dark ? .38 : .6),
+            Colors.white.withValues(alpha: .05),
           ],
         ).createShader(sphere),
     );

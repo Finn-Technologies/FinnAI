@@ -14,11 +14,11 @@ class FinnThinkingOrb extends StatelessWidget {
   final double size;
 
   static const _colors = [
-    Color(0xFFCB6BC6),
-    Color(0xFF7E0AC6),
-    Color(0xFF5D75FF),
-    Color(0xFF7DFFCD),
-    Color(0xFFCB6BC6),
+    Color(0xFFFF2E8A),
+    Color(0xFF8A1CFF),
+    Color(0xFF3D5BFF),
+    Color(0xFF00F0D0),
+    Color(0xFFFF2E8A),
   ];
 
   @override
@@ -37,8 +37,8 @@ class FinnThinkingOrb extends StatelessWidget {
             ),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFFB30DBF)
-                    .withValues(alpha: FluxColors.isDark(context) ? .45 : .25),
+                color: const Color(0xFFC21CFF)
+                    .withValues(alpha: FluxColors.isDark(context) ? .6 : .3),
                 blurRadius: size * .9,
               ),
             ],

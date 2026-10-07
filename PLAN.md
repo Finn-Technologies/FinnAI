@@ -707,6 +707,13 @@ Also: `FluxPressScale` gained an `alignment` so the wordmark (much wider than it
 - *Both:* the empty-chat wash is the brand's violet-blue; the voice orb, Code wells, the morph sheet's glass and the paused Flows tile follow the neutral ramp.
 - Verified on the emulator in both themes (before/after in `docs/design/palette-2026-10/`); every AA test passes; goldens regenerated and inspected. **Not verified:** a physical OLED/LCD phone (near-black #0B0B0C was chosen to avoid OLED smear, not measured on one).
 
+**Pure black, vivid colour, HDR-style light — 2026-10-07 (part 8).** At the user's request the dark canvas is true black (#000000; OLED pixels off), with surfaces stepping up from it (surface #0A0A0B, card #121214, control #1C1C1E, user bubble #424246 at 2.1:1, hairline #2A2A2D).
+
+- *Vivid:* the voice light's hues, the orb, the thinking orb and the dark accents (link #7B9DFF, info #5FA8FF, success #2EE08A, warning #FFC21A, danger #FF8A80) are pushed toward the edge of sRGB, every text pair still far past AA; Flows tiles are the most saturated colour of each hue (88% HSL) that keeps white text at AA; the empty-chat wash is a stronger brand violet.
+- *HDR:* real HDR or Display P3 is not available here: Flutter renders wide gamut only on iOS with Impeller, Android support is still in progress, and FinnAI runs Android on Skia (Impeller is off for stability). The light is made to *look* HDR in SDR: a filmic curve (1 − e^−x) keeps hue where light stacks up, loud light spills toward white, and the voice rim carries a white-hot core line that brightens with the voice.
+- *Orb:* no more strands; the glass is filled with five soft discs of the voice light's colours swirling (Gaussian-stop radial gradients, plus-blended), with a white-hot centre when loud and a violet halo.
+- Verified: goldens regenerated and inspected, the gate, the emulator in dark. **Not verified:** the orb live (microphone permission denied on the emulator), a physical OLED phone.
+
 ---
 
 *Plan approved 2026-09-30. Phases 0-2 in progress; §10 records what is verified.*

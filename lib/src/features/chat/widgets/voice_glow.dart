@@ -260,12 +260,12 @@ class VoiceGlowPainter extends CustomPainter {
 
   // Siri's warm-to-cool run, in the brand's own hues.
   static const _palette = [
-    Color(0xFFFF6A9A),
-    Color(0xFFCB6BC6),
-    Color(0xFF8B3BFF),
-    Color(0xFF4D7CFF),
-    Color(0xFF2FD3C6),
-    Color(0xFFFF9A5A),
+    Color(0xFFFF297A),
+    Color(0xFFDB33FF),
+    Color(0xFF7829FF),
+    Color(0xFF1F6BFF),
+    Color(0xFF00E6DB),
+    Color(0xFFFF751A),
   ];
 
   /// A Gaussian falloff sampled into gradient stops: the profile of a disc

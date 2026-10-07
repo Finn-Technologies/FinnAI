@@ -22,15 +22,17 @@ out vec4 fragColor;
 
 const float TAU = 6.2831853;
 
-// Siri's warm-to-cool run, in the brand's hues, as a smooth loop.
+// Siri's warm-to-cool run, in the brand's hues, as a smooth loop. Pushed to
+// the edge of sRGB (each stop has a channel at or near zero): on a black
+// OLED canvas saturated light is what reads as vivid.
 vec3 hue(float t) {
   t = fract(t) * 6.0;
-  vec3 c0 = vec3(1.00, 0.42, 0.60);
-  vec3 c1 = vec3(0.80, 0.42, 0.78);
-  vec3 c2 = vec3(0.55, 0.23, 1.00);
-  vec3 c3 = vec3(0.30, 0.49, 1.00);
-  vec3 c4 = vec3(0.18, 0.83, 0.78);
-  vec3 c5 = vec3(1.00, 0.60, 0.35);
+  vec3 c0 = vec3(1.00, 0.16, 0.48);
+  vec3 c1 = vec3(0.86, 0.20, 1.00);
+  vec3 c2 = vec3(0.47, 0.16, 1.00);
+  vec3 c3 = vec3(0.12, 0.42, 1.00);
+  vec3 c4 = vec3(0.00, 0.90, 0.86);
+  vec3 c5 = vec3(1.00, 0.46, 0.10);
   float f = smoothstep(0.0, 1.0, fract(t));
   if (t < 1.0) return mix(c0, c1, f);
   if (t < 2.0) return mix(c1, c2, f);
@@ -96,11 +98,25 @@ void main() {
   vec3 orbs = orbC * orbStrength;
   float orbAlpha = clamp(orbA * orbStrength, 0.0, 1.0);
 
-  // Dark: light adds to what is behind it. Light: colour lies over the
-  // canvas like ink, at a strength that keeps text above it readable.
+  // Dark: light adds to what is behind it, HDR-style. The app renders in
+  // SDR (Flutter has no extended range on Android), so brightness past
+  // white is shown the way a camera shows it: light that stacks above 1.0
+  // spills into white, and the rim's core carries a thin white-hot line that
+  // brightens with the voice. Light: colour lies over the canvas like ink,
+  // at a strength that keeps text above it readable.
   vec3 rgb = rimC * rimA + orbs;
   float alpha = clamp(rimA + orbAlpha, 0.0, 1.0);
-  if (uDark < 0.5) {
+  if (uDark > 0.5) {
+    // A filmic curve keeps the hue as light stacks up instead of clipping
+    // it to a flat blob; only the loud part spills toward white.
+    vec3 hdr = rgb * 1.6;
+    vec3 film = vec3(1.0) - exp(-hdr);
+    float over = max(max(hdr.r, max(hdr.g, hdr.b)) - 1.2, 0.0);
+    float spill = min(over * 0.18, 0.35) * (0.2 + 0.8 * level);
+    float hot = core * shown * p * (0.15 + 0.5 * level);
+    rgb = min(film + vec3(spill + hot), vec3(1.0));
+    alpha = clamp(alpha + hot, 0.0, 1.0);
+  } else {
     rgb = rgb * 0.92;
     alpha = alpha * 0.85;
     rgb = min(rgb, vec3(alpha));

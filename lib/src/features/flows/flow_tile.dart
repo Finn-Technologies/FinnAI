@@ -18,29 +18,30 @@ import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
 /// colour says something (Tasker's contexts, made visible).
 ///
 /// Every stop keeps white text at WCAG AA (4.5:1 or more, checked in
-/// `test/features/flow_tile_test.dart`); the first palette sat at 2.3-4.1:1
-/// where the name is drawn.
+/// `test/features/flows_page_test.dart`); the first palette sat at 2.3-4.1:1
+/// where the name is drawn. Within that, each hue is as saturated as it gets
+/// (88% in HSL) so the tiles read vivid rather than muddy.
 List<Color> flowTileColors(FlowTriggerKind kind) => switch (kind) {
       FlowTriggerKind.manual => const [Color(0xFF69748E), Color(0xFF576074)],
       FlowTriggerKind.timeOfDay || FlowTriggerKind.interval => const [
-          Color(0xFF556AE2),
-          Color(0xFF4553C2)
+          Color(0xFF4D66F4),
+          Color(0xFF3449F2)
         ],
       FlowTriggerKind.chargerConnected ||
       FlowTriggerKind.chargerDisconnected ||
       FlowTriggerKind.batteryLow =>
-        const [Color(0xFFB15F18), Color(0xFF984A21)],
+        const [Color(0xFFB65B0C), Color(0xFFA7400B)],
       FlowTriggerKind.headsetConnected ||
       FlowTriggerKind.headsetDisconnected =>
-        const [Color(0xFFD23282), Color(0xFF9E3D6F)],
+        const [Color(0xFFE00E77), Color(0xFFBC0C67)],
       FlowTriggerKind.wifiConnected ||
       FlowTriggerKind.wifiDisconnected ||
       FlowTriggerKind.airplaneOn ||
       FlowTriggerKind.airplaneOff =>
-        const [Color(0xFF237BB1), Color(0xFF22649A)],
+        const [Color(0xFF0C7ABE), Color(0xFF0B63AB)],
       FlowTriggerKind.deviceBooted || FlowTriggerKind.screenUnlocked => const [
-          Color(0xFF308261),
-          Color(0xFF1B6C4E)
+          Color(0xFF098654),
+          Color(0xFF076F49)
         ],
     };
 

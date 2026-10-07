@@ -35,26 +35,26 @@ abstract final class FluxColors {
   static const mint = Color(0xFF7DFFCD);
   static const green = Color(0xFF00FF2B);
 
-  // Dark palette: one neutral ramp, no hue. The old greys all carried a
-  // blue-violet cast (#101014, #26262E, #2C2C35, #45454F), the look of a
-  // stock dark theme; neutral near-black with surfaces stepping up in even
-  // lightness reads calmer and more expensive. Lifted off pure black
-  // (#000000 crushes on LCD and smears on OLED); flat surfaces separate with
-  // fill plus a 1px hairline instead of a shadow (see composer.dart).
+  // Dark palette: one neutral ramp on pure black. The old greys all carried
+  // a blue-violet cast (#101014, #26262E, #2C2C35, #45454F), the look of a
+  // stock dark theme. The canvas is true black: on an OLED panel its pixels
+  // are off, so colour (the voice light, the orb, the Flows tiles) sits on
+  // nothing and reads at full intensity. Surfaces step up in even lightness
+  // and separate with fill plus a 1px hairline, never a shadow.
   //
-  //   canvas #0B0B0C < surface #131315 < card #18181A < control #202023
-  //   < user bubble #454549; hairline #2C2C30, panel edge #38383C.
-  static const darkCanvas = Color(0xFF0B0B0C);
+  //   canvas #000000 < surface #0A0A0B < card #121214 < control #1C1C1E
+  //   < user bubble #424246; hairline #2A2A2D, panel edge #333336.
+  static const darkCanvas = Color(0xFF000000);
   static const darkInk = Color(0xFFF5F5F5);
   static const darkMuted = Color(0xFF8E8E93);
-  static const darkLine = Color(0xFF2C2C30);
-  static const darkPanelEdge = Color(0xFF38383C);
-  static const darkSurface = Color(0xFF131315);
-  static const darkCard = Color(0xFF18181A);
+  static const darkLine = Color(0xFF2A2A2D);
+  static const darkPanelEdge = Color(0xFF333336);
+  static const darkSurface = Color(0xFF0A0A0B);
+  static const darkCard = Color(0xFF121214);
 
   // Destructive (unified red)
   static const destructive = Color(0xFFB3261E);
-  static const destructiveDark = Color(0xFFFF9E96);
+  static const destructiveDark = Color(0xFFFF8A80);
 
   // Semantic tokens — light variants. Values and their measured contrast are
   // documented in test/shared/flux_color_tokens_test.dart.
@@ -72,13 +72,14 @@ abstract final class FluxColors {
 
   // Semantic tokens — dark variants.
   //
-  //   link/accent #93B4FF — 10.21:1 on canvas, 7.71:1 on card
-  //   info        #8FC0FF — 11.15:1 on canvas, 8.42:1 on card
-  //   warning     #FBBF24 — 12.58:1 on canvas, 9.50:1 on card
-  //   success     #5FD99A — 11.88:1 on canvas, 8.97:1 on card
-  //   danger      #FF9E96 — 10.58:1 on canvas, 7.99:1 on card
-  static const linkDark = Color(0xFF93B4FF);
-  static const info = Color(0xFF8FC0FF);
+  //   Saturated for the black canvas, each still far past AA:
+  //   link/accent #7B9DFF — 8.11:1 on canvas, 7.23:1 on card
+  //   info        #5FA8FF — 8.53:1 on canvas, 7.60:1 on card
+  //   warning     #FFC21A — 12.98:1 on canvas, 11.57:1 on card
+  //   success     #2EE08A — 12.15:1 on canvas, 10.82:1 on card
+  //   danger      #FF8A80 — 9.20:1 on canvas, 8.20:1 on card
+  static const linkDark = Color(0xFF7B9DFF);
+  static const info = Color(0xFF5FA8FF);
 
   // De-emphasised body copy — the second paragraph on a step, a supporting
   // line under a title. This replaces `inkOf(context).withValues(alpha: .5)`,
@@ -94,9 +95,9 @@ abstract final class FluxColors {
   static const accentBlue = infoLight;
   static const accentBlueMuted = infoLight;
   static const accentGreen = success;
-  static const accentGreenDark = Color(0xFF5FD99A);
+  static const accentGreenDark = Color(0xFF2EE08A);
   static const accentAmber = warning;
-  static const accentAmberDark = Color(0xFFFBBF24);
+  static const accentAmberDark = Color(0xFFFFC21A);
   static const accentAmberDeep = warning;
 
   // Overlay / scrim (frosted glass, context menus, scrims)
@@ -159,23 +160,24 @@ abstract final class FluxColors {
           : Colors.black.withValues(alpha: alpha);
 
   // Bubble fills. The dark user bubble was #64646E (3.25:1 on the canvas), a
-  // mid-grey slab that shouted over the conversation. #454549 is 2.06:1:
+  // mid-grey slab that shouted over the conversation. #424246 is 2.1:1 on the
+  // black canvas:
   // clearly a bubble (a device test found 1.5:1 read as "dark grey on
-  // black"), with white text at 8.75:1, and it sits on the right.
+  // black"), with white text at 9.18:1, and it sits on the right.
   static const bubbleUserLight = Color(0xFFFFFFFF);
-  static const bubbleUserDark = Color(0xFF454549);
+  static const bubbleUserDark = Color(0xFF424246);
   static const bubbleAssistantLight = Color(0xFFF4F4F5);
-  static const bubbleAssistantDark = Color(0xFF18181A);
+  static const bubbleAssistantDark = Color(0xFF121214);
 
   // Reveal pills that sit under a reply (sources, browser steps)
   static const disclosureLight = Color(0xFFEDEDEF);
-  static const disclosureDark = Color(0xFF202023);
+  static const disclosureDark = Color(0xFF1C1C1E);
 
   // Chat shell controls. controlDark is the lightest dark fill on purpose:
   // the flat composer pill separates from the chat background on fill plus
   // its hairline, with no shadow to lean on.
   static const controlLight = Color(0xFFFFFFFF);
-  static const controlDark = Color(0xFF202023);
+  static const controlDark = Color(0xFF1C1C1E);
   // True black and white for the primary action: the old #414141 charcoal
   // read as disabled next to the ink it sat beside.
   static const actionLight = Color(0xFF0A0A0B);
@@ -183,7 +185,7 @@ abstract final class FluxColors {
 
   // Flat tiles: sidebar chat cards and their circular shortcuts.
   static const tileLight = Color(0xFFF4F4F5);
-  static const tileDark = Color(0xFF0B0B0C);
+  static const tileDark = Color(0xFF000000);
 
   // Secondary copy on a tile, e.g. a chat card's timestamp. #848484 measured
   // 3.43:1 on the light tile fill; #646464 measures 5.43:1 on the same tile.
@@ -229,11 +231,11 @@ abstract final class FluxColors {
   // colours rather than tinted green.
   static const List<Color> ambientWashLight = <Color>[
     Color(0x00FFFFFF),
-    Color(0x247E8BFF),
+    Color(0x2E6F63FF),
   ];
   static const List<Color> ambientWashDark = <Color>[
-    Color(0x000B0B0C),
-    Color(0x1F5D5FEF),
+    Color(0x00000000),
+    Color(0x245B4BFF),
   ];
 
   /// Stops of the empty-chat ambient wash, in the active theme.
@@ -242,7 +244,7 @@ abstract final class FluxColors {
 
   // Rows inside a reveal pill
   static const disclosureRowLight = Color(0xFFF4F4F5);
-  static const disclosureRowDark = Color(0xFF131315);
+  static const disclosureRowDark = Color(0xFF0A0A0B);
 
   // Dynamic Context Resolvers
 
