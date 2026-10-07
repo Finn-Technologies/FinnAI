@@ -44,6 +44,7 @@ Use this before grepping. Paths are relative to the repository root.
 | Message bubbles, replies, sources, dialogs | `lib/src/features/chat/widgets/` (`bubbles.dart`, `replies.dart`, `sources.dart`, `dialogs.dart`, `conversation.dart`) |
 | Composer | `lib/src/features/chat/widgets/composer.dart` |
 | Voice mode's light (Siri-style rim and blurred orbs, one GPU pass) | `shaders/voice_glow.frag` drawn by `lib/src/features/chat/widgets/voice_glow.dart` (gradient fallback in the same file) |
+| Voice mode's glass orb (drops from the top, waveform strands follow the voice) | `lib/src/features/chat/widgets/voice_orb.dart` |
 | Frame timing on a device (`--dart-define=FINN_FRAME_LOG=true`, `FINN_FRAMES` lines) | `lib/src/app/frame_log.dart` |
 | Sidebar, and its history cards (Siri-style masonry: time, title, preview, photo) | `lib/src/features/chat/widgets/sidebar.dart` (`_HistoryMasonry`), `sidebar_tiles.dart` |
 | The panel, its scrim, the menu/close morph and the open/close swipe (shared by FinnAI and FinnAI Code) | `lib/src/shared/widgets/finn_sidebar_surface.dart` (`FinnSidebarSurface`, `FinnSidebarToggleButton`), the chat drag logic in `lib/src/features/chat/shell/sidebar_surface.dart` |
@@ -166,7 +167,9 @@ A second app inside the app: its own sessions, settings and providers, in the sa
 | Model picker and the cloud disclosure | `lib/src/features/code/ui/code_models_page.dart` |
 | Error and refusal wording | `lib/src/features/code/ui/code_text.dart` |
 | Code-only measures (mono font and sizes, tool rows, diff colours); shared surfaces use FinnAI's components | `lib/src/features/code/ui/code_style.dart` |
-| One collapsible row per agent action, inline approval | `lib/src/features/code/ui/code_tool_row.dart` |
+| One collapsible row per agent action, inline approval (reject / allow in session / allow once) | `lib/src/features/code/ui/code_tool_row.dart` |
+| What a session changed: the "+N −M" chip above the composer and the review sheet (file list, expandable diffs) | `lib/src/features/code/ui/code_changes.dart` (`CodeChanges`, `CodeChangesChip`, `showCodeChanges`) |
+| Which actions wait for a tap, and "Allow in session" grants (never for chained or redirecting commands) | `lib/src/features/code/agent/session_grants.dart` (`codeNeedsApproval`, `CodeSessionGrants`) |
 | Inline diffs (line diff, view) | `lib/src/features/code/ui/line_diff.dart`, `lib/src/features/code/ui/code_diff_view.dart` |
 | Input bar, `/` commands, `@` mentions, status line | `lib/src/features/code/ui/code_composer.dart`, `lib/src/features/code/ui/code_suggestions.dart`, `lib/src/features/code/ui/code_status_line.dart` |
 | The Linux sandbox: proot + Alpine (ADR 0012), its installer and settings page | `lib/src/features/code/linux/linux_sandbox.dart`, `lib/src/features/code/linux/linux_installer.dart`, `lib/src/features/code/settings/code_linux_page.dart` |

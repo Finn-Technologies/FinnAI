@@ -675,6 +675,16 @@ Also: `FluxPressScale` gained an `alignment` so the wordmark (much wider than it
 - Gate: format, seam, boundaries (`flux_controls.dart` 721 → 679, stale `home_shell.dart` entry removed), analyze, 1693 tests; goldens regenerated and inspected (two brand-reveal goldens, unchanged at rest). Also fixed a flows test that failed intermittently under a full run.
 - **Not verified:** a physical phone, HarmonyOS, Linux desktop, iOS; voice mode with a live microphone; onboarding (re-running it needs a reinstall, which deletes the model); French; screens with lots of data (one chat, two Code sessions, two flows); the Linux sandbox and real terminal output on the emulator ("the container view did not load"); a multi-line diff (only a one-line write); a streaming chat reply; tablet in light mode; notification permission (not granted). The chat's empty screen exposes a full-screen text-field node that merges the greeting into the field's hint for TalkBack; seen, not fixed.
 
+**Agent and assistant patterns from the newest apps — 2026-10-07 (part 4).** Researched the iOS 27 Siri app, Cursor for iOS, Codex in ChatGPT and Claude Code in the Claude app (sources in `docs/design/ui-pass-2026-10.md`). Verified on the emulator (API 37, `-gpu host`, profile) with the on-device 1.6B model.
+
+- *Changes review (Cursor, Codex, Claude Code).* A "+N −M · files" chip above Code's composer opens a sheet of every changed file with its net diff since the session began (`code/ui/code_changes.dart`). Seen on the device after a real write.
+- *Approval scope (Codex).* A third choice, "Allow in session": file changes as a kind, a command by its program. Never offered or honoured for chained, piped, multi-line or redirecting commands (the device run showed why: `mkdir hello\necho hello > hello.txt` would have ridden on a `mkdir` grant). In memory only. Seen on the device: after allowing `cat`, `cat hello.txt` ran without asking and `mkdir` asked. `code_agent.dart` kept at 600 lines by moving the approval policy beside the grants.
+- *Voice orb (Siri, iOS 27).* `chat/widgets/voice_orb.dart`: a dark glass orb dropping from the top in voice mode, brand-colour strands following the voice level; gradients and strokes only, ticker only while open. Fixed a ticker created lazily in `dispose` (caught by its test).
+- *Running step shimmer.* A running action's "Running" label shimmers (chat's thinking voice), ticker only while the step runs.
+- Also checked on the device: chat streams and stops; the Code terminal runs commands in the Linux container (`echo hi` → `hi`).
+- Gate: format, seam, boundaries, analyze, all tests; new tests for changes, grants (including chained commands), the agent's session grant, and the orb (idle, leaving, reduced motion, goldens).
+- **Not verified:** the voice orb live (microphone permission is denied on the emulator, so voice mode does not open there; seen in goldens only); a physical phone; HarmonyOS; notifications (not built).
+
 ---
 
 *Plan approved 2026-09-30. Phases 0-2 in progress; §10 records what is verified.*
