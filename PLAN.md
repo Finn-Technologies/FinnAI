@@ -694,6 +694,12 @@ Also: `FluxPressScale` gained an `alignment` so the wordmark (much wider than it
 - Tried and reverted: a shorter quick-question instruction (it is re-read on each chat's first turn, ~2.7s on the Mi 11 Lite) lost the brevity gains.
 - **Not verified:** the phone (its baseline should be re-run on the Mi 11 Lite), the 3B tier, HarmonyOS.
 
+**FinnAI Code: multi-file tasks on the small model; worker commands held during a reply — 2026-10-07 (part 6).** Verified on the emulator with the on-device 1.6B model.
+
+- *Multi-file requests.* "Create a.txt with hello then create b.txt with world": before, the model wrote only b.txt (or both files with both words). Now each file is forced in the order named (`SmallModelAids.filesToCreate`, conservative: any named file that is not clearly one to create disables it) and the request turn carries a per-file plan ("a.txt: with hello", "b.txt: with world"); the task ends once all are written unless something must run. On the device: a.txt = hello, b.txt = world, two steps, no extra actions.
+- *Worker ordering.* With the worker now reading its port between tokens (part 5), a new generate could arrive while a stopped one was still finishing and was rejected ("another generate is already in flight", seen on the device). Every command but Cancel/Shutdown is now held while a generation runs and replayed in order when it ends, restoring the strict ordering the KV cache relies on.
+- *Stop, measured on the device:* a long story stopped after 3s, then "What is 2 plus 2": first token 1.1s after sending (it reads the stopped story as history), instead of waiting for the stopped reply to decode to its budget.
+
 ---
 
 *Plan approved 2026-09-30. Phases 0-2 in progress; §10 records what is verified.*

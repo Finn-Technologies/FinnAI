@@ -154,9 +154,18 @@ Future<void> runEngineWorker(EngineBootstrap bootstrap) async {
       return;
     }
     // Other commands run as fire-and-forget microtasks. The worker still
-    // serializes generates via the inFlight slot.
+    // serializes generates via the inFlight slot; while one runs, they wait.
+    if (state.inFlightGenerateId != null || state.deferred.isNotEmpty) {
+      state.deferred.add(msg);
+      return;
+    }
     _dispatch(msg, state, reply);
   });
+  state.onIdle = () {
+    while (state.deferred.isNotEmpty && state.inFlightGenerateId == null) {
+      _dispatch(state.deferred.removeAt(0), state, reply);
+    }
+  };
 
   await completer.future;
 }
@@ -175,7 +184,21 @@ class _WorkerState {
   final MultimodalContext? multimodal;
   final Map<int, LlamaSession> sessions = <int, LlamaSession>{};
   final Set<int> cancelledRequests = <int>{};
-  int? inFlightGenerateId;
+
+  // FinnAI: a generation now lets the event loop run every few tokens so a
+  // CancelCommand is read at once. Every other command that arrives meanwhile
+  // is held here and run, in order, when the generation ends, so nothing
+  // touches the KV cache or claims the engine mid-reply (as before, when the
+  // loop never yielded and the port simply queued them).
+  final List<EngineCommand> deferred = <EngineCommand>[];
+  void Function()? onIdle;
+  int? _inFlightGenerateId;
+  int? get inFlightGenerateId => _inFlightGenerateId;
+  set inFlightGenerateId(int? id) {
+    _inFlightGenerateId = id;
+    if (id == null && deferred.isNotEmpty)
+      scheduleMicrotask(() => onIdle?.call());
+  }
 }
 
 Future<void> _dispatch(

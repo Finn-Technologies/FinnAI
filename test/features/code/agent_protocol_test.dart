@@ -620,6 +620,62 @@ void main() {
     CodeAction done(CodeAction action) =>
         action.copyWith(status: CodeActionStatus.done, exitCode: 0);
 
+    test('several files are written in the order the request names them', () {
+      const two = 'Create a.txt with hello then create b.txt with world';
+      expect(SmallModelAids.filesToCreate(two), ['a.txt', 'b.txt']);
+      expect(SmallModelAids.forcedStart([user(two)], shell: true),
+          '```file a.txt\n');
+      final first = [
+        user(two),
+        assistant('a1', action: done(const CodeAction.write('a.txt', 'hello'))),
+      ];
+      expect(SmallModelAids.forcedStart(first, shell: true), '```file b.txt\n');
+      expect(SmallModelAids.finished(first), isFalse);
+      final both = [
+        ...first,
+        assistant('a2', action: done(const CodeAction.write('b.txt', 'world'))),
+      ];
+      expect(SmallModelAids.forcedStart(both, shell: true), isNull);
+      expect(SmallModelAids.finished(both), isTrue);
+    });
+
+    test('the plan gives each file only its own part of the request', () {
+      expect(
+        SmallModelAids.filePlan(
+            'Create a.txt with hello then create b.txt with world.'),
+        [('a.txt', 'with hello'), ('b.txt', 'with world')],
+      );
+      final turn = AgentProtocol.reminded(
+        const CodeTurn.user('Create a.py and b.py, then make c.py'),
+        afterReply: false,
+        shell: true,
+      );
+      expect(turn.content, contains('One file per reply'));
+      expect(turn.content, contains('- a.py: '));
+      expect(turn.content, contains('- c.py: '));
+    });
+
+    test('a named input file is not one to create', () {
+      expect(
+        SmallModelAids.filesToCreate(
+            'Add a function to app.py that reads config.json'),
+        isEmpty,
+      );
+      expect(SmallModelAids.filesToCreate('Create a.py, b.py and c.py'),
+          ['a.py', 'b.py', 'c.py']);
+      expect(SmallModelAids.filesToCreate('Create notes.txt'), isEmpty);
+    });
+
+    test('several files to create and run: run is left to the model', () {
+      const run = 'Create util.py and main.py, then run main.py';
+      final both = [
+        user(run),
+        assistant('a1', action: done(const CodeAction.write('util.py', ''))),
+        assistant('a2', action: done(const CodeAction.write('main.py', ''))),
+      ];
+      expect(SmallModelAids.finished(both), isFalse);
+    });
+
     test('opens with the file to create, then with its run command', () {
       expect(SmallModelAids.forcedStart([user(request)], shell: true),
           '```file count.sh\n#!/bin/sh\n');

@@ -26,6 +26,80 @@ abstract final class SmallModelAids {
     caseSensitive: false,
   );
 
+  /// The files a request asks to be created when it names two or more, in
+  /// the order it names them: "create a.txt with hello, then b.txt with
+  /// world" → [a.txt, b.txt]. Empty otherwise.
+  ///
+  /// Conservative: every named file must be one to create, either after a
+  /// create verb or joined to the previous one by only "," / "and" /
+  /// "then". "Add a function to a.py that reads b.json" names an input, so
+  /// nothing is forced.
+  static List<String> filesToCreate(String request) {
+    if (!_create.hasMatch(request)) return const [];
+    final matches = _fileName
+        .allMatches(request)
+        .where((m) => !_notFiles.contains(m.group(1)!.toLowerCase()));
+    final files = <String>[];
+    var from = 0;
+    for (final match in matches) {
+      final between = request.substring(from, match.start);
+      final joined = files.isNotEmpty && _joiner.hasMatch(between);
+      if (!_create.hasMatch(between) && !joined) return const [];
+      if (!files.contains(match.group(1))) files.add(match.group(1)!);
+      from = match.end;
+    }
+    return files.length > 1 ? files : const [];
+  }
+
+  /// Each file of [filesToCreate] with only its own part of the request:
+  /// "create a.txt with hello then create b.txt with world" → a.txt: "with
+  /// hello", b.txt: "with world". Told to the small model, which otherwise
+  /// put both parts in both files.
+  static List<(String, String)> filePlan(String request) {
+    final files = filesToCreate(request);
+    if (files.isEmpty) return const [];
+    final matches = _fileName.allMatches(request).toList();
+    return [
+      for (final (i, match) in matches.indexed)
+        if (files.contains(match.group(1)))
+          (
+            match.group(1)!,
+            request
+                .substring(
+                  match.end,
+                  i + 1 < matches.length ? matches[i + 1].start : null,
+                )
+                .replaceAll(_trailingLink, '')
+                .trim(),
+          ),
+    ];
+  }
+
+  static final RegExp _trailingLink = RegExp(
+    r'([\s,.;:]|\b(and|then|also|create|write|make|add|a|an|new|file|'
+    r'named|called)\b)+$',
+    caseSensitive: false,
+  );
+
+  static final RegExp _joiner =
+      RegExp(r'^\s*(,|and|&|then|,\s*then|,\s*and)?\s*(also\s*)?$');
+
+  static final RegExp _fileName = RegExp(
+    r'(?<![\w/.-])([\w-]+(?:/[\w-]+)*\.(?:sh|py|js|mjs|ts|txt|md|json|html|'
+    r'css|c|h|cpp|rs|go|java|kt|rb|php|lua|yaml|yml|toml|csv|xml|sql))\b',
+  );
+
+  /// The files of [filesToCreate] not yet written since the request.
+  static List<String> _pending(List<String> files, List<CodeAction> actions) =>
+      [
+        for (final file in files)
+          if (!actions.any((a) =>
+              !a.isShell &&
+              a.status == CodeActionStatus.done &&
+              CodeWorkspace.samePath(a.path, file)))
+            file,
+      ];
+
   static String? _fileNamed(String request, RegExp verbs) {
     if (!verbs.hasMatch(request)) return null;
     final names = {
@@ -134,6 +208,20 @@ abstract final class SmallModelAids {
     final requestIndex = messages.lastIndexWhere((m) => m.isUser);
     if (requestIndex < 0) return null;
     final request = messages[requestIndex];
+    // Several files: each in the order the request names them. The 1.6B
+    // model asked for "a.txt … then b.txt" wrote b.txt and stopped.
+    final many = filesToCreate(request.text);
+    if (many.isNotEmpty) {
+      final done = [
+        for (final message in messages.skip(requestIndex + 1))
+          if (message.action != null) message.action!,
+      ];
+      final next = _pending(many, done).firstOrNull;
+      final last = done.lastOrNull;
+      final clear = last == null ||
+          (!last.isShell && last.status == CodeActionStatus.done);
+      return next != null && clear ? '```file $next\n${headerFor(next)}' : null;
+    }
     final created = fileToCreate(request.text);
     final target = created ?? fileToEdit(request.text);
     if (target == null) return null;
@@ -219,6 +307,15 @@ abstract final class SmallModelAids {
     final requestIndex = messages.lastIndexWhere((m) => m.isUser);
     if (requestIndex < 0) return false;
     final request = messages[requestIndex].text;
+    // Several files and nothing to run: done once each is written.
+    final many = filesToCreate(request);
+    if (many.isNotEmpty) {
+      final actions = [
+        for (final message in messages.skip(requestIndex + 1))
+          if (message.action != null) message.action!,
+      ];
+      return !_wantsRun.hasMatch(request) && _pending(many, actions).isEmpty;
+    }
     final target = fileToCreate(request) ?? fileToEdit(request);
     final run = target == null ? null : runCommandFor(target);
     if (target == null || run == null) return false;
@@ -245,6 +342,9 @@ abstract final class SmallModelAids {
         last.command.trim() == run &&
         hintFor(last) == null;
   }
+
+  static final RegExp _wantsRun =
+      RegExp(r'\b(run|execute|test|start|try)\b', caseSensitive: false);
 
   static final RegExp _installHint =
       RegExp(r'^Install it first: apk add (.+)$');

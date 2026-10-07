@@ -167,6 +167,17 @@ abstract final class AgentProtocol {
     required bool shell,
   }) {
     final reminder = afterReply ? resultReminder : taskReminder(shell: shell);
+    final plan = afterReply
+        ? const <(String, String)>[]
+        : SmallModelAids.filePlan(turn.content);
+    if (plan.isNotEmpty) {
+      return CodeTurn(
+        turn.role,
+        '${turn.content}\n\nOne file per reply, each with only its own '
+        'part:\n${[for (final (f, part) in plan) '- $f: $part'].join('\n')}'
+        '\n$reminder',
+      );
+    }
     final first = afterReply ? null : SmallModelAids.fileToCreate(turn.content);
     return CodeTurn(
       turn.role,
