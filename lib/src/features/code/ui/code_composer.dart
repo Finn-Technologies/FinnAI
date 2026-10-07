@@ -8,6 +8,7 @@ import 'package:finn_ai/src/features/code/ui/code_icons.dart';
 import 'package:finn_ai/src/features/code/ui/code_style.dart';
 import 'package:finn_ai/src/features/code/ui/code_suggestions.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
+import 'package:finn_ai/src/shared/theme/flux_vivid.dart';
 import 'package:finn_ai/src/shared/widgets/finn_composer_frame.dart';
 import 'package:finn_ai/src/shared/widgets/finn_ui.dart';
 import 'package:finn_ai/src/shared/widgets/keyboard_fuse.dart';
@@ -254,10 +255,11 @@ class _CodeComposerState extends State<CodeComposer>
             dark: true,
             onTap: canSend ? _send : null,
             dimmed: !canSend,
+            gradient: FluxVivid.brandDeep,
             glyph: FluxIcon(
               icon: FluxIcons.arrowUp02,
               size: 24,
-              color: FluxColors.actionInkOf(context),
+              color: canSend ? Colors.white : FluxColors.actionInkOf(context),
             ),
           );
 

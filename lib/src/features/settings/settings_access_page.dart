@@ -5,51 +5,57 @@ import 'package:flutter/material.dart';
 import 'package:finn_ai/l10n/app_localizations.dart';
 import 'package:finn_ai/l10n/l10n_helper.dart';
 import 'package:finn_ai/src/features/onboarding/context_consent_store.dart';
+import 'package:finn_ai/src/shared/theme/flux_vivid.dart';
 import 'package:finn_ai/src/shared/widgets/finn_page.dart';
 import 'package:finn_ai/src/shared/widgets/finn_ui.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
 
 /// The context kinds in the order the design lists them.
-List<({String key, IconData icon, String title, String sub})> contextKinds(
-        AppLocalizations l10n) =>
-    [
-      (
-        key: 'calendar',
-        icon: FluxIcons.calendar,
-        title: l10n.ctxCalendar,
-        sub: l10n.ctxCalendarSub,
-      ),
-      (
-        key: 'contacts',
-        icon: FluxIcons.contacts,
-        title: l10n.ctxContacts,
-        sub: l10n.ctxContactsSub,
-      ),
-      (
-        key: 'notifications',
-        icon: FluxIcons.notifications,
-        title: l10n.ctxNotifications,
-        sub: l10n.ctxNotificationsSub,
-      ),
-      (
-        key: 'photos',
-        icon: FluxIcons.image,
-        title: l10n.ctxPhotos,
-        sub: l10n.ctxPhotosSub,
-      ),
-      (
-        key: 'files',
-        icon: FluxIcons.file,
-        title: l10n.ctxFiles,
-        sub: l10n.ctxFilesSub,
-      ),
-      (
-        key: 'location',
-        icon: FluxIcons.location,
-        title: l10n.ctxLocation,
-        sub: l10n.ctxLocationSub,
-      ),
-    ];
+List<({String key, IconData icon, FluxHue hue, String title, String sub})>
+    contextKinds(AppLocalizations l10n) => [
+          (
+            key: 'calendar',
+            icon: FluxIcons.calendar,
+            hue: FluxHue.red,
+            title: l10n.ctxCalendar,
+            sub: l10n.ctxCalendarSub,
+          ),
+          (
+            key: 'contacts',
+            icon: FluxIcons.contacts,
+            hue: FluxHue.orange,
+            title: l10n.ctxContacts,
+            sub: l10n.ctxContactsSub,
+          ),
+          (
+            key: 'notifications',
+            icon: FluxIcons.notifications,
+            hue: FluxHue.pink,
+            title: l10n.ctxNotifications,
+            sub: l10n.ctxNotificationsSub,
+          ),
+          (
+            key: 'photos',
+            icon: FluxIcons.image,
+            hue: FluxHue.indigo,
+            title: l10n.ctxPhotos,
+            sub: l10n.ctxPhotosSub,
+          ),
+          (
+            key: 'files',
+            icon: FluxIcons.file,
+            hue: FluxHue.blue,
+            title: l10n.ctxFiles,
+            sub: l10n.ctxFilesSub,
+          ),
+          (
+            key: 'location',
+            icon: FluxIcons.location,
+            hue: FluxHue.green,
+            title: l10n.ctxLocation,
+            sub: l10n.ctxLocationSub,
+          ),
+        ];
 
 class SettingsAccessPage extends StatelessWidget {
   const SettingsAccessPage({super.key, this.onOpenActions});
@@ -71,6 +77,7 @@ class SettingsAccessPage extends StatelessWidget {
             FinnReveal(
               child: FinnTile(
                 icon: FluxIcons.chip,
+                hue: FluxHue.violet,
                 title: l10n.accessMaster,
                 subtitle: l10n.accessMasterSub,
                 trailing: FinnSwitch(
@@ -87,6 +94,7 @@ class SettingsAccessPage extends StatelessWidget {
                   opacity: store.granted ? 1 : .5,
                   child: FinnTile(
                     icon: kinds[i].icon,
+                    hue: kinds[i].hue,
                     title: kinds[i].title,
                     subtitle: kinds[i].sub,
                     trailing: FinnSwitch(
@@ -106,6 +114,7 @@ class SettingsAccessPage extends StatelessWidget {
                 index: kinds.length + 1,
                 child: FinnTile(
                   icon: FluxIcons.magic,
+                  hue: FluxHue.pink,
                   title: l10n.accessActions,
                   subtitle: l10n.accessActionsSub,
                   onTap: onOpenActions,

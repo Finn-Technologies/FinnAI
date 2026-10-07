@@ -104,12 +104,13 @@ class _ConversationSession {
   int messageCount;
   bool primed = false;
   bool basePrefixReady;
+  bool taskPrefixReady = false; // the restored state holds the task block too
   String? lastTaskInstruction;
   int lastUsed;
 
-  /// Tokens of the shared base prefix at the start of the KV cache: what a
-  /// context shift must keep. Measured, not assumed — it depends on the
-  /// model's tokenizer. 0 when unknown.
+  /// Tokens of the cached prefix (base, plus the task block when cached) at
+  /// the start of the KV cache: what a context shift must keep. Measured, not
+  /// assumed: it depends on the model's tokenizer. 0 when unknown.
   int basePrefixTokens = 0;
 
   /// For an agent session ([AgentPrompt]): what the KV cache holds, so the
@@ -185,9 +186,8 @@ class FinnAccelerator extends ChangeNotifier {
   ///
   /// `''` is the GGUF itself, `.part` an interrupted download, and
   /// `.finn_repack` the repacked-weight disk cache the vendored native build
-  /// writes next to the model (see `tool/llama_android_native.patch`). The
-  /// repack cache is worth ~693MB on the 1.6B — leaving it behind meant
-  /// "Delete All Local Data" left a third of a gigabyte on the device.
+  /// writes next to the model (see `tool/llama_android_native.patch`; ~693MB
+  /// on the 1.6B, which "Delete All Local Data" used to leave behind).
   static const modelFileSuffixes = <String>['', '.part', '.finn_repack'];
 
   FinnModelSpec _selected = finnModels.first;

@@ -45,6 +45,7 @@ import 'package:finn_ai/src/features/flows/flow_scheduler.dart';
 import 'package:finn_ai/src/features/flows/flows_page.dart';
 import 'package:finn_ai/src/features/flows/flows_store.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
+import 'package:finn_ai/src/shared/theme/flux_vivid.dart';
 import 'package:finn_ai/src/shared/widgets/flux_motion.dart';
 import 'package:finn_ai/src/shared/widgets/finn_thinking.dart';
 import 'package:finn_ai/src/shared/widgets/keyboard_fuse.dart';

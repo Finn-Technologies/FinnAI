@@ -13,6 +13,7 @@ import 'package:finn_ai/src/features/code/settings/code_workspace_page.dart';
 import 'package:finn_ai/src/features/code/ui/code_icons.dart';
 import 'package:finn_ai/src/features/code/ui/code_models_page.dart';
 import 'package:finn_ai/src/features/code/ui/code_text.dart';
+import 'package:finn_ai/src/shared/theme/flux_vivid.dart';
 import 'package:finn_ai/src/shared/widgets/finn_page.dart';
 import 'package:finn_ai/src/shared/widgets/finn_page_route.dart';
 import 'package:finn_ai/src/shared/widgets/finn_ui.dart';
@@ -55,6 +56,7 @@ class CodeSettingsPage extends StatelessWidget {
             FinnReveal(
               child: FinnTile(
                 icon: CodeIcons.key,
+                hue: FluxHue.amber,
                 title: l10n.codeSettingsProviders,
                 subtitle: connected.isEmpty
                     ? l10n.codeSettingsProvidersSubNone
@@ -67,6 +69,7 @@ class CodeSettingsPage extends StatelessWidget {
               index: 1,
               child: FinnTile(
                 icon: FluxIcons.chip,
+                hue: FluxHue.violet,
                 title: l10n.codeSettingsModel,
                 subtitle: activeLabel,
                 onTap: () => _push(context, CodeModelsPage(services: services)),
@@ -76,6 +79,7 @@ class CodeSettingsPage extends StatelessWidget {
               index: 2,
               child: FinnTile(
                 icon: FluxIcons.robot,
+                hue: FluxHue.teal,
                 title: l10n.codeSettingsAgent,
                 subtitle: CodeText.permission(
                   l10n,
@@ -105,6 +109,7 @@ class CodeSettingsPage extends StatelessWidget {
               index: 4,
               child: FinnTile(
                 icon: CodeIcons.folder,
+                hue: FluxHue.sky,
                 title: l10n.codeSettingsWorkspace,
                 onTap: () =>
                     _push(context, CodeWorkspacePage(services: services)),
@@ -114,6 +119,7 @@ class CodeSettingsPage extends StatelessWidget {
               index: 5,
               child: FinnTile(
                 icon: FluxIcons.lock,
+                hue: FluxHue.green,
                 title: l10n.codeSettingsData,
                 subtitle: l10n.codeSettingsDataSub,
                 onTap: () => _push(context, CodeDataPage(services: services)),
@@ -123,6 +129,7 @@ class CodeSettingsPage extends StatelessWidget {
               index: 6,
               child: FinnTile(
                 icon: FluxIcons.info,
+                hue: FluxHue.graphite,
                 title: l10n.codeSettingsAbout,
                 onTap: () => _push(context, const CodeAboutPage()),
               ),

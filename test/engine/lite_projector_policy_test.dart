@@ -38,9 +38,23 @@ void main() {
     expect(DeviceProfiler.loadsProjectorEagerly(profile), isFalse);
   });
 
-  test('a capable device keeps the single eager load', () {
+  test('a capable phone also defers the projector', () {
     final profile = _profile(ramGb: 8);
     expect(DeviceProfiler.isLowEnd(profile), isFalse);
+    expect(DeviceProfiler.loadsProjectorEagerly(profile), isFalse);
+  });
+
+  test('a capable desktop keeps the single eager load', () {
+    final profile = DeviceProfile(
+      totalRamBytes: 16 * 1000 * 1000 * 1000,
+      availableRamBytes: 12 * 1000 * 1000 * 1000,
+      processor: ProcessorClass.flagship,
+      soc: 'test',
+      cores: 8,
+      lowMemory: false,
+      supportedAbis: const ['x86_64'],
+      desktop: true,
+    );
     expect(DeviceProfiler.loadsProjectorEagerly(profile), isTrue);
   });
 

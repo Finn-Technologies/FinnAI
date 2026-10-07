@@ -199,6 +199,7 @@ class PrefixStateReport {
     this.preparation = Duration.zero,
     this.restoration = Duration.zero,
     this.promptTokensPerSecond = 0,
+    this.taskReady = false,
   });
 
   final bool cacheHit;
@@ -207,6 +208,10 @@ class PrefixStateReport {
   final Duration preparation;
   final Duration restoration;
   final double promptTokensPerSecond;
+
+  /// Whether the restored state already holds the turn's task instruction
+  /// after the base prefix, so the prompt must not write it again.
+  final bool taskReady;
 }
 
 /// Physical on-disk model installation & download recovery state.

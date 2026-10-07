@@ -9,6 +9,7 @@ import 'package:finn_ai/src/app/data_export.dart';
 import 'package:finn_ai/src/features/conversations/conversation_store.dart';
 import 'package:finn_ai/src/features/settings/storage_usage.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
+import 'package:finn_ai/src/shared/theme/flux_vivid.dart';
 import 'package:finn_ai/src/shared/widgets/finn_overlays.dart';
 import 'package:finn_ai/src/shared/widgets/finn_page.dart';
 import 'package:finn_ai/src/shared/widgets/finn_ui.dart';
@@ -165,6 +166,7 @@ class _SettingsDataPageState extends State<SettingsDataPage> {
           index: 1,
           child: FinnTile(
             icon: FluxIcons.download,
+            hue: FluxHue.blue,
             title: l10n.dataExport,
             subtitle: l10n.dataExportSub,
             onTap: () => unawaited(_export()),

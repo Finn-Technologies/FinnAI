@@ -148,13 +148,14 @@ class DeviceProfiler {
 
   /// Whether the image projector is loaded together with the model.
   ///
-  /// The projector is 854 MB, more than the 696 MB language model, and it is
-  /// only needed for a turn that carries an image. A Lite device (under 4 GB,
-  /// or an entry-class chip) therefore loads text-only and brings the
-  /// projector in on the first image (ADR 0004); a capable device keeps the
-  /// single load so its first image has no extra wait.
+  /// The projector is 854 MB (F16, read into RAM rather than mapped), and it
+  /// is only needed for a turn that carries an image. Loaded eagerly it held
+  /// ~0.85 GB of the 3 GB the app used on a Mi 11 Lite with the 3B, for every
+  /// text chat. Phones therefore load text-only and bring the projector in
+  /// when an image is attached (ADR 0004, extended from Lite devices to all
+  /// phones); desktop Linux, with memory to spare, keeps the single load.
   static bool loadsProjectorEagerly(DeviceProfile profile) =>
-      !isLowEnd(profile);
+      profile.desktop && !isLowEnd(profile);
 
   static bool isLowEnd(DeviceProfile profile) =>
       forceLite ||
@@ -517,12 +518,43 @@ class DeviceProfiler {
   /// homogeneous and leaves the thread counts alone.
   ///
   /// Read once: a CPU's cluster layout cannot change while the app runs.
+  /// The fast cluster's size. The scheduler's per-core `cpu_capacity` comes
+  /// first: peak frequency cannot tell the clusters apart where the vendor
+  /// caps every core alike (Galaxy Tab A8, Unisoc T618: eight cores at
+  /// 2.0 GHz, but capacity 1024 on its two A75s and 544 on six A55s), and
+  /// prefill then ran four threads with two of them on little cores.
   static Future<int?> _performanceCores(int cores) async {
     final cached = _cachedPerformanceCores;
     if (cached != null) return cached;
+    final fromCapacity = await _fastCluster(cores, _cpuFile('cpu_capacity'));
+    if (fromCapacity != null) return _cachedPerformanceCores = fromCapacity;
+    final fromFrequency = await _fastCluster(
+      cores,
+      _cpuFile('cpufreq/cpuinfo_max_freq'),
+    );
+    if (fromFrequency != null) _cachedPerformanceCores = fromFrequency;
+    return fromFrequency;
+  }
+
+  static Future<int?> Function(int cpu) _cpuFile(String name) => (cpu) async {
+        try {
+          final raw = await File(
+            '/sys/devices/system/cpu/cpu$cpu/$name',
+          ).readAsString();
+          return int.tryParse(raw.trim());
+        } catch (_) {
+          return null;
+        }
+      };
+
+  /// Cores rated above the slowest, or null when they cannot be told apart.
+  static Future<int?> _fastCluster(
+    int cores,
+    Future<int?> Function(int cpu) read,
+  ) async {
     final peaks = <int>[];
     for (var cpu = 0; cpu < cores; cpu++) {
-      final peak = await _peakFrequencyKhz(cpu);
+      final peak = await read(cpu);
       if (peak == null || peak <= 0) return null;
       peaks.add(peak);
     }
@@ -530,18 +562,6 @@ class DeviceProfiler {
     final slowest = peaks.reduce(math.min);
     if (peaks.every((peak) => peak == slowest)) return null;
     final performance = peaks.where((peak) => peak > slowest).length;
-    if (performance < 1) return null;
-    return _cachedPerformanceCores = performance;
-  }
-
-  static Future<int?> _peakFrequencyKhz(int cpu) async {
-    try {
-      final raw = await File(
-        '/sys/devices/system/cpu/cpu$cpu/cpufreq/cpuinfo_max_freq',
-      ).readAsString();
-      return int.tryParse(raw.trim());
-    } catch (_) {
-      return null;
-    }
+    return performance < 1 ? null : performance;
   }
 }

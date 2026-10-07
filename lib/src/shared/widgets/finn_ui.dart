@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
+import 'package:finn_ai/src/shared/theme/flux_vivid.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
 
 /// The design's 50dp circular control: white on the canvas, dark glyph.
@@ -16,9 +17,14 @@ class FinnCircleButton extends StatelessWidget {
     this.dark = false,
     this.dimmed = false,
     this.color,
+    this.gradient,
     this.hitKey,
     this.surfaceKey,
   });
+
+  /// Fills the disc with this sweep instead of [color] while it is not
+  /// [dimmed] (the send button once there is something to send).
+  final List<Color>? gradient;
 
   /// The diameter: the composer's circles, the header's buttons and the
   /// sidebar toggle in both apps.
@@ -72,6 +78,8 @@ class FinnCircleButton extends StatelessWidget {
     );
   }
 
+  List<Color>? get _sweep => dimmed ? null : gradient;
+
   @override
   Widget build(BuildContext context) => Semantics(
         button: true,
@@ -83,18 +91,30 @@ class FinnCircleButton extends StatelessWidget {
           enabled: onTap != null,
           child: Material(
             key: surfaceKey,
-            color: _fill(context),
+            color: _sweep == null ? _fill(context) : Colors.transparent,
             shape: const CircleBorder(),
-            child: SizedBox.square(
-              key: hitKey,
-              dimension: dimension,
-              child: InkWell(
-                onTap: onTap,
-                customBorder: const CircleBorder(),
-                child: Center(
-                  child: Opacity(
-                    opacity: dimmed ? .38 : 1,
-                    child: glyph,
+            child: Ink(
+              decoration: _sweep == null
+                  ? null
+                  : BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: _sweep!,
+                      ),
+                    ),
+              child: SizedBox.square(
+                key: hitKey,
+                dimension: dimension,
+                child: InkWell(
+                  onTap: onTap,
+                  customBorder: const CircleBorder(),
+                  child: Center(
+                    child: Opacity(
+                      opacity: dimmed ? .38 : 1,
+                      child: glyph,
+                    ),
                   ),
                 ),
               ),
@@ -132,11 +152,15 @@ class FinnTile extends StatelessWidget {
     this.onTap,
     this.destructive = false,
     this.chevron = true,
+    this.hue,
   });
 
   final String title;
   final String? subtitle;
   final IconData? icon;
+
+  /// Fills the icon's well with this hue and draws the glyph white.
+  final FluxHue? hue;
   final Widget? leading;
   final Widget? trailing;
   final VoidCallback? onTap;
@@ -158,6 +182,9 @@ class FinnTile extends StatelessWidget {
         children: [
           if (leading != null || icon != null) ...[
             leading ??
+                (hue != null && !destructive
+                    ? FluxIconWell(hue: hue!, icon: icon)
+                    : null) ??
                 Container(
                   width: 44,
                   height: 44,

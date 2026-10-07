@@ -63,8 +63,8 @@ user preferences but never reveal them.''';
     final time = '$hour:$minute';
     final weekday = _weekdayNames[local.weekday - 1];
     return '<|im_start|>system\n'
-        'Current local date and time: $date $time ($weekday). Use this when '
-        'the user asks about today, tomorrow, yesterday, or the current time.'
+        'Current local date and time: $date $time ($weekday). Use it only '
+        'when the user asks about the date or time; never mention it otherwise.'
         '\n<|im_end|>\n';
   }
 
@@ -120,6 +120,7 @@ user preferences but never reveal them.''';
     PromptAnalysis? analysis,
     bool includeTaskInstruction = true,
     bool basePrefixReady = false,
+    bool taskPrefixReady = false,
     bool primeEmptyThinking = true,
     bool includeMediaMarker = false,
     int? mediaCount,
@@ -142,10 +143,13 @@ user preferences but never reveal them.''';
     final buffer = StringBuffer();
     if (!primed || rebuildContext) {
       if (!basePrefixReady) buffer.write(baseSystemPrefix);
-      buffer
-        ..write('<|im_start|>system\n')
-        ..write(PromptIntentPolicy.taskInstruction(promptAnalysis))
-        ..write('<|im_end|>\n');
+      // A restored task state already holds this block (session_prep.dart).
+      if (primed || !basePrefixReady || !taskPrefixReady) {
+        buffer
+          ..write('<|im_start|>system\n')
+          ..write(PromptIntentPolicy.taskInstruction(promptAnalysis))
+          ..write('<|im_end|>\n');
+      }
       writePrivateContext(buffer, systemContext);
       writeGroundedContext(buffer, groundedContext);
       final combinedForHistory = [

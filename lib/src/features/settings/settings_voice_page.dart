@@ -7,6 +7,7 @@ import 'package:finn_ai/l10n/l10n_helper.dart';
 import 'package:finn_ai/src/features/voice/tts/tts_voice_catalog.dart';
 import 'package:finn_ai/src/features/voice/voice_settings_store.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
+import 'package:finn_ai/src/shared/theme/flux_vivid.dart';
 import 'package:finn_ai/src/shared/widgets/finn_overlays.dart';
 import 'package:finn_ai/src/shared/widgets/finn_page.dart';
 import 'package:finn_ai/src/shared/widgets/finn_ui.dart';
@@ -100,6 +101,7 @@ class SettingsVoicePage extends StatelessWidget {
             FinnReveal(
               child: FinnTile(
                 icon: FluxIcons.translate,
+                hue: FluxHue.blue,
                 title: l10n.voiceLanguage,
                 subtitle: l10n.voiceLanguageSub,
               ),
@@ -108,6 +110,7 @@ class SettingsVoicePage extends StatelessWidget {
               index: 1,
               child: FinnTile(
                 icon: FluxIcons.voiceId,
+                hue: FluxHue.pink,
                 title: l10n.voiceStyle,
                 subtitle: ttsStyleLabel(l10n, store.ttsStyle),
                 onTap: () => unawaited(_pickStyle(context)),
@@ -117,6 +120,7 @@ class SettingsVoicePage extends StatelessWidget {
               index: 2,
               child: FinnTile(
                 icon: FluxIcons.speed,
+                hue: FluxHue.orange,
                 title: l10n.voiceSpeed,
                 subtitle: voiceSpeedLabel(l10n, store.speed),
                 onTap: () => unawaited(_pickSpeed(context)),
@@ -126,6 +130,7 @@ class SettingsVoicePage extends StatelessWidget {
               index: 3,
               child: FinnTile(
                 icon: FluxIcons.volume,
+                hue: FluxHue.violet,
                 title: l10n.voiceReadAloud,
                 subtitle: l10n.voiceReadAloudSub,
                 trailing: FinnSwitch(
@@ -139,6 +144,7 @@ class SettingsVoicePage extends StatelessWidget {
               index: 4,
               child: FinnTile(
                 icon: FluxIcons.subtitle,
+                hue: FluxHue.teal,
                 title: l10n.voiceTranscript,
                 subtitle: l10n.voiceTranscriptSub,
                 trailing: FinnSwitch(

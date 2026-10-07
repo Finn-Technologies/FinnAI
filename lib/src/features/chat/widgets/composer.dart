@@ -216,11 +216,13 @@ class _ChatComposerState extends State<ChatComposer>
       VoidCallback? onTap,
       String? label,
       bool dimmed = false,
+      List<Color>? gradient,
     }) =>
         FinnCircleButton(
           hitKey: key,
           surfaceKey: surfaceKey,
           color: color,
+          gradient: gradient,
           label: label ?? '',
           onTap: onTap,
           dimmed: dimmed,
@@ -297,11 +299,14 @@ class _ChatComposerState extends State<ChatComposer>
                 label: l10n.chatSendMessageSemantic,
                 onTap: canSend ? widget.onSend : null,
                 dimmed: !canSend,
+                // Ready to send: the brand sweep, the one coloured control.
+                gradient: FluxVivid.brandDeep,
                 child: FluxIcon(
                   key: const ValueKey('send-button-icon'),
                   icon: FluxIcons.arrowUp02,
                   size: 24,
-                  color: FluxColors.actionInkOf(context),
+                  color:
+                      canSend ? Colors.white : FluxColors.actionInkOf(context),
                 ),
               )
             : circle(

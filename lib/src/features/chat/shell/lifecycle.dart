@@ -187,6 +187,9 @@ extension _HomeShellLifecycle on _HomeShellState {
         // FinnAccelerator exposes multimodalLoaded via engine; check via isMmprojInstalled
         // as a lightweight file probe does not need the engine to be warm.
         final hasMmproj = await _inference.hasMmprojFile();
+        // Images load the vision component on demand; start now so it is
+        // ready by the time the message is sent.
+        if (hasMmproj) unawaited(_inference.prepareForImages());
         if (!hasMmproj && mounted) {
           ScaffoldMessenger.of(context)
             ..clearSnackBars()

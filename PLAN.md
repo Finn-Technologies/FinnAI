@@ -714,6 +714,16 @@ Also: `FluxPressScale` gained an `alignment` so the wordmark (much wider than it
 - *Orb:* no more strands; the glass is filled with five soft discs of the voice light's colours swirling (Gaussian-stop radial gradients, plus-blended), with a white-hot centre when loud and a violet halo.
 - Verified: goldens regenerated and inspected, the gate, the emulator in dark. **Not verified:** the orb live (microphone permission denied on the emulator), a physical OLED phone.
 
+**Faster first replies, lighter memory, vivid colour — 2026-10-07 (part 9).** Measured on physical devices only: Mi 11 Lite 5G NE (3B tier) and Galaxy Tab A8 (Unisoc T618, 2.5 GB, 1.6B Lite tier), built-in eval suite.
+
+- *Task-instruction prefix cache* (`session/session_prep.dart`): a fresh chat restores the base prompt *and* its intent's instruction from one saved state (keyed by the instruction's hash, 12 kept) instead of re-reading ~235 tokens every first turn. Mi 11 Lite: first token p50 3.78 s → 1.61-1.63 s (two runs), checks 87.5% → 87.5% / 84.4% (within spread), decode unchanged (9.0 / 8.9 tok/s). Tab A8: before p50 6.31 s at 36 prompt tok/s; after, a partial cold run (16 cases) had a median of 2.5 s.
+- *Vision projector on demand on every phone* (ADR 0004 extended): the 854 MB F16 projector was held for every text chat; the app was 3.0 GB PSS on the Mi 11 Lite. It now loads when an image is attached (`prepareForImages`, started from the composer before Send). Desktop keeps the eager load. **Not measured:** the new PSS, and the first-image wait.
+- *Fast-core detection* reads `cpu_capacity` before peak frequency: the Tab A8 reports 2.0 GHz on all eight cores, so prefill ran 4 threads with two on little cores; it now uses its 2 A75s. **Not measured** (the run was cut short).
+- *Date line* says to mention the date/time only when asked (stories began "Today is October 7th, 2026…").
+- *Tried, not shipped:* Liquid's recommended sampling (temperature 0.1, min_p 0.15); the run did not finish, so the change was reverted.
+- *Colour:* `shared/theme/flux_vivid.dart`, eleven hues (the Flows step colours) as gradient icon wells with white glyphs, in Settings and its pages, Code settings, the sidebar shortcuts and the "+" sheet; the greeting is painted in the brand sweep (paint shader, no layer); a ready send button fills with it. Contrast test: white glyph ≥ 3:1 on every stop, greeting ≥ 3:1 on both canvases.
+- Gate: format, seam, boundaries, analyze, 1722 tests. **Not verified on screen:** the colour changes (no screenshots taken this pass), HarmonyOS.
+
 ---
 
 *Plan approved 2026-09-30. Phases 0-2 in progress; §10 records what is verified.*

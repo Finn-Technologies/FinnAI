@@ -38,6 +38,7 @@ typedef _PlusEntry = ({
   String title,
   String? subtitle,
   IconData icon,
+  FluxHue hue,
   VoidCallback onTap,
 });
 
@@ -92,24 +93,28 @@ class _PlusSheetState extends State<_PlusSheet>
           title: l10n.plusWidget,
           subtitle: l10n.plusWidgetSub,
           icon: FluxIcons.widget,
+          hue: FluxHue.blue,
           onTap: () => widget.onCreate('widget'),
         ),
       (
         title: l10n.plusMiniApp,
         subtitle: l10n.plusMiniAppSub,
         icon: FluxIcons.miniApp,
+        hue: FluxHue.teal,
         onTap: () => widget.onCreate('app'),
       ),
       (
         title: l10n.plusPresentation,
         subtitle: l10n.plusPresentationSub,
         icon: FluxIcons.presentation,
+        hue: FluxHue.orange,
         onTap: () => widget.onCreate('presentation'),
       ),
       (
         title: l10n.plusFlow,
         subtitle: l10n.plusFlowSub,
         icon: FluxIcons.flows,
+        hue: FluxHue.violet,
         onTap: () => widget.onCreate('flow'),
       ),
     ];
@@ -118,6 +123,7 @@ class _PlusSheetState extends State<_PlusSheet>
         title: l10n.plusPhoto,
         subtitle: null,
         icon: FluxIcons.photo,
+        hue: FluxHue.pink,
         onTap: widget.onSelectPhoto,
       ),
       // image_picker has no camera on a desktop; a webcam is not a photo
@@ -127,12 +133,14 @@ class _PlusSheetState extends State<_PlusSheet>
           title: l10n.attachmentCamera,
           subtitle: null,
           icon: FluxIcons.camera,
+          hue: FluxHue.indigo,
           onTap: widget.onSelectCamera,
         ),
       (
         title: l10n.attachmentFiles,
         subtitle: null,
         icon: FluxIcons.file,
+        hue: FluxHue.sky,
         onTap: widget.onSelectFile,
       ),
     ];
@@ -260,7 +268,7 @@ class _PlusSheetState extends State<_PlusSheet>
   }
 }
 
-/// One option: a white card with its icon at the top and its name (and what
+/// One option: a card with its icon, in its own colour, at the top and its name (and what
 /// it is for) at the bottom.
 class _PlusCard extends StatelessWidget {
   const _PlusCard({
@@ -290,16 +298,17 @@ class _PlusCard extends StatelessWidget {
             onTap: onTap,
             borderRadius: BorderRadius.circular(20),
             child: SizedBox(
-              height: subtitle == null ? 92 : 104,
+              height: subtitle == null ? 96 : 110,
               child: Padding(
                 padding: const EdgeInsets.all(14),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    FluxIcon(
+                    FluxIconWell(
+                      hue: entry.hue,
                       icon: entry.icon,
-                      size: 24,
-                      color: FluxColors.inkOf(context),
+                      size: 30,
+                      iconSize: 17,
                     ),
                     const Spacer(),
                     Text(

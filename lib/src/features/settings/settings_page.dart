@@ -11,6 +11,7 @@ import 'package:finn_ai/src/features/settings/settings_model_page.dart';
 import 'package:finn_ai/src/features/settings/settings_voice_page.dart';
 import 'package:finn_ai/src/features/settings/storage_usage.dart';
 import 'package:finn_ai/src/features/voice/voice_settings_store.dart';
+import 'package:finn_ai/src/shared/theme/flux_vivid.dart';
 import 'package:finn_ai/src/shared/widgets/finn_page.dart';
 import 'package:finn_ai/src/shared/widgets/finn_page_route.dart';
 import 'package:finn_ai/src/shared/widgets/finn_ui.dart';
@@ -75,6 +76,7 @@ class _SettingsPageState extends State<SettingsPage> {
         FinnReveal(
           child: FinnTile(
             icon: FluxIcons.chip,
+            hue: FluxHue.violet,
             title: l10n.hubModelTitle,
             subtitle: modelBytes == null || modelBytes == 0
                 ? null
@@ -88,6 +90,7 @@ class _SettingsPageState extends State<SettingsPage> {
             listenable: VoiceSettingsStore.instance,
             builder: (context, _) => FinnTile(
               icon: FluxIcons.volume,
+              hue: FluxHue.pink,
               title: l10n.hubVoiceTitle,
               subtitle: l10n.hubVoiceSub(
                 voiceSpeedLabel(l10n, VoiceSettingsStore.instance.speed),
@@ -101,6 +104,7 @@ class _SettingsPageState extends State<SettingsPage> {
           index: 2,
           child: FinnTile(
             icon: FluxIcons.internet,
+            hue: FluxHue.blue,
             title: l10n.hubAccessTitle,
             subtitle: l10n.hubAccessSub,
             onTap: () => _push(
@@ -112,6 +116,7 @@ class _SettingsPageState extends State<SettingsPage> {
           index: 3,
           child: FinnTile(
             icon: FluxIcons.you,
+            hue: FluxHue.orange,
             title: l10n.hubYouTitle,
             subtitle: l10n.hubYouSub,
             onTap: widget.onOpenYou,
@@ -121,6 +126,7 @@ class _SettingsPageState extends State<SettingsPage> {
           index: 4,
           child: FinnTile(
             icon: FluxIcons.lock,
+            hue: FluxHue.green,
             title: l10n.hubDataTitle,
             subtitle: l10n.hubDataSub,
             onTap: () => _push(const SettingsDataPage()),
@@ -130,6 +136,7 @@ class _SettingsPageState extends State<SettingsPage> {
           index: 5,
           child: FinnTile(
             icon: FluxIcons.info,
+            hue: FluxHue.graphite,
             title: l10n.hubAboutTitle,
             subtitle: l10n.hubAboutSub(_version),
             onTap: () => _push(SettingsAboutPage(version: _version)),

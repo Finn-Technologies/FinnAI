@@ -228,10 +228,8 @@ extension FinnAcceleratorTurn on FinnAccelerator {
           );
           final includeTaskInstruction =
               !entry.primed || entry.lastTaskInstruction != taskInstruction;
-          // This runtime is intentionally single-model (LFM2.5-VL 1.6B). Its
-          // non-thinking ChatML template
-          // needs an empty reasoning block to avoid hidden-chain generation
-          // while keeping everyday replies fast.
+          // LFM2.5-VL's non-thinking ChatML template needs an empty reasoning
+          // block to avoid hidden-chain generation.
           const primeEmptyThinking = true;
           String renderAgent() => entry.primed
               ? AgentPrompt.continuation(prompt, start: agentStart)
@@ -267,6 +265,7 @@ extension FinnAcceleratorTurn on FinnAccelerator {
               systemContext: combinedContext,
               primed: entry.primed,
               basePrefixReady: entry.basePrefixReady,
+              taskPrefixReady: entry.taskPrefixReady,
               includeTaskInstruction: includeTaskInstruction,
               primeEmptyThinking: primeEmptyThinking,
             );
@@ -325,6 +324,7 @@ extension FinnAcceleratorTurn on FinnAccelerator {
           debugPrint(
             'FINN_PROMPT primed=${entry.primed} '
             'basePrefix=${entry.basePrefixReady} '
+            'taskPrefix=${entry.taskPrefixReady} '
             'media=${(hasAttachedImage && runtime.engine.multimodalLoaded) ? effectiveMediaList.length : 0} '
             'docChars=${attachedDocContext?.length ?? 0} '
             'historyTurns=${history.length} '
@@ -466,7 +466,7 @@ extension FinnAcceleratorTurn on FinnAccelerator {
                         try {
                           await session.clear();
                           entry.primed = false;
-                          entry.basePrefixReady = false;
+                          entry.basePrefixReady = entry.taskPrefixReady = false;
                           emittedTokens = 0;
                           final again = agentPrompt
                               ? renderAgent()

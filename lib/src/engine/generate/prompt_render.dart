@@ -23,6 +23,7 @@ extension FinnAcceleratorPrompts on FinnAccelerator {
       analysis: analysis,
       includeTaskInstruction: includeTaskInstruction,
       basePrefixReady: entry.basePrefixReady,
+      taskPrefixReady: entry.taskPrefixReady,
       primeEmptyThinking: primeEmptyThinking,
       includeMediaMarker: includeMediaMarker,
       mediaCount: mediaCount,
@@ -39,6 +40,7 @@ extension FinnAcceleratorPrompts on FinnAccelerator {
     PromptAnalysis? analysis,
     bool includeTaskInstruction = true,
     bool basePrefixReady = false,
+    bool taskPrefixReady = false,
     bool primeEmptyThinking = true,
     bool includeMediaMarker = false,
     int? mediaCount,
@@ -57,6 +59,7 @@ extension FinnAcceleratorPrompts on FinnAccelerator {
       analysis: analysis,
       includeTaskInstruction: includeTaskInstruction,
       basePrefixReady: basePrefixReady,
+      taskPrefixReady: taskPrefixReady,
       primeEmptyThinking: primeEmptyThinking,
       includeMediaMarker: includeMediaMarker,
       mediaCount: mediaCount,
@@ -96,6 +99,7 @@ extension FinnAcceleratorPrompts on FinnAccelerator {
     bool primed = false,
     bool includeTaskInstruction = true,
     bool basePrefixReady = false,
+    bool taskPrefixReady = false,
     bool primeEmptyThinking = true,
   }) {
     int tokens(String value) => (value.length / 3.2).ceil();
@@ -109,7 +113,8 @@ extension FinnAcceleratorPrompts on FinnAccelerator {
         priorRecipe &&
         PromptFormatter.freshRecipeRequest.hasMatch(prompt);
     final rebuildContext = primed && isRecipeFollowUp;
-    final task = (includeTaskInstruction || rebuildContext)
+    final taskCached = !primed && basePrefixReady && taskPrefixReady;
+    final task = (includeTaskInstruction || rebuildContext) && !taskCached
         ? PromptIntentPolicy.taskInstruction(analysis)
         : '';
     final replayHistory = isRecipeFollowUp
@@ -130,6 +135,7 @@ extension FinnAcceleratorPrompts on FinnAccelerator {
       analysis: analysis,
       includeTaskInstruction: includeTaskInstruction,
       basePrefixReady: basePrefixReady,
+      taskPrefixReady: taskPrefixReady,
       primeEmptyThinking: primeEmptyThinking,
     );
     final baseTokens = tokens(base);

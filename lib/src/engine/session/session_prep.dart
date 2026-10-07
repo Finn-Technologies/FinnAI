@@ -1,5 +1,9 @@
 part of '../finn_accelerator.dart';
 
+/// Task-instruction prefix states kept on disk (one per intent and language
+/// in use; a few MB each).
+const _maxTaskPrefixStates = 12;
+
 extension FinnAcceleratorSessions on FinnAccelerator {
   /// Whether the base prompt prefix is kept on disk between launches.
   ///
@@ -102,6 +106,7 @@ extension FinnAcceleratorSessions on FinnAccelerator {
             runtime,
             session,
             _prefixCacheKey(runtime),
+            taskInstruction: taskInstruction,
           );
     final entry = _ConversationSession(
       session: session,
@@ -114,7 +119,9 @@ extension FinnAcceleratorSessions on FinnAccelerator {
           _prefixCacheEnabled &&
           !FinnAccelerator.debugDisablePrefixCache,
     );
-    entry.basePrefixTokens = prefix.tokens;
+    entry
+      ..basePrefixTokens = prefix.tokens
+      ..taskPrefixReady = entry.basePrefixReady && prefix.taskReady;
     runtime.sessions[conversationId] = entry;
     return (entry: entry, cacheHit: false, prefix: prefix);
   }
@@ -172,28 +179,145 @@ extension FinnAcceleratorSessions on FinnAccelerator {
     File compatible,
   ) async {
     final directory = await _prefixCacheDirectory(key);
+    final taskStates = <File>[];
     await for (final entity in directory.list()) {
-      if (entity is File &&
-          entity.path.endsWith('.state') &&
-          entity.path != compatible.path) {
+      if (entity is! File) continue;
+      final name = entity.uri.pathSegments.last;
+      if (name.endsWith('.part')) {
         await entity.delete();
+      } else if (name.endsWith('.state') && entity.path != compatible.path) {
+        // Task states (see [_taskStateFile]) share the compatible key's name.
+        if (name.startsWith('${key.stableHash}.task-')) {
+          taskStates.add(entity);
+        } else {
+          await entity.delete();
+        }
       }
-      if (entity is File && entity.path.endsWith('.part')) {
-        await entity.delete();
-      }
+    }
+    // A state is a few MB; keep the most recently used few.
+    if (taskStates.length <= _maxTaskPrefixStates) return;
+    final stamped = [
+      for (final file in taskStates) (file, await file.lastModified()),
+    ]..sort((a, b) => b.$2.compareTo(a.$2));
+    for (final (file, _) in stamped.skip(_maxTaskPrefixStates)) {
+      await file.delete();
     }
   }
 
+  Future<File> _taskStateFile(
+    PrefixCacheCompatibilityKey key,
+    String taskInstruction,
+  ) async {
+    final directory = await _prefixCacheDirectory(key);
+    final task = sha256.convert(utf8.encode(taskInstruction.trim())).toString();
+    return File(
+      '${directory.path}${Platform.pathSeparator}'
+      '${key.stableHash}.task-${task.substring(0, 24)}.state',
+    );
+  }
+
+  /// The system block a fresh chat writes after the base prefix.
+  static String _taskBlock(String taskInstruction) =>
+      '<|im_start|>system\n$taskInstruction<|im_end|>\n';
+
+  Future<void> _saveState(
+    EngineSession session,
+    File file,
+    Map<String, Object?> extra,
+  ) async {
+    final partial = File('${file.path}.part');
+    if (await partial.exists()) await partial.delete();
+    await session.saveState(partial.path, extra: extra);
+    if (await file.exists()) await file.delete();
+    await partial.rename(file.path);
+  }
+
+  /// Restores the shared base prefix into [session], computing and saving it
+  /// on a miss.
+  ///
+  /// With a [taskInstruction], the state saved and restored is the base prefix
+  /// followed by that instruction's system block. A fresh chat used to read the
+  /// instruction from scratch on every first turn: ~330 tokens after the
+  /// cached prefix, 3.5-4 s to the first token on the 3B on a Mi 11 Lite. The
+  /// instruction depends only on the intent and language, so its state is
+  /// computed once and then restored like the base prefix.
   Future<PrefixStateReport> _restoreOrPrepareBasePrefix(
     _ModelRuntime runtime,
     EngineSession session,
-    PrefixCacheCompatibilityKey key,
-  ) async {
+    PrefixCacheCompatibilityKey key, {
+    String taskInstruction = '',
+  }) async {
     if (!_prefixCacheEnabled || FinnAccelerator.debugDisablePrefixCache) {
       return const PrefixStateReport(cacheHit: false, tokens: 0, fileBytes: 0);
     }
     final file = await _prefixStateFile(key);
     await _deleteIncompatiblePrefixStates(key, file);
+    final task = taskInstruction.trim();
+    if (task.isEmpty) return _restoreOrPrepareBaseOnly(session, key, file);
+
+    final taskFile = await _taskStateFile(key, task);
+    if (await taskFile.exists()) {
+      final watch = Stopwatch()..start();
+      try {
+        final extra = await session.loadState(taskFile.path);
+        watch.stop();
+        if (extra['cache_key'] != key.stableHash ||
+            extra['task_hash'] != taskFile.uri.pathSegments.last) {
+          throw const FormatException('task prefix cache key mismatch');
+        }
+        // Touch it so the most recently used task states survive pruning.
+        unawaited(taskFile.setLastModified(DateTime.now()).catchError((_) {}));
+        return PrefixStateReport(
+          cacheHit: true,
+          tokens: (extra['prefix_tokens'] as num?)?.toInt() ?? 0,
+          fileBytes: await taskFile.length(),
+          restoration: watch.elapsed,
+          taskReady: true,
+        );
+      } catch (_) {
+        watch.stop();
+        await session.clear();
+        if (await taskFile.exists()) await taskFile.delete();
+      }
+    }
+
+    final base = await _restoreOrPrepareBaseOnly(session, key, file);
+    final watch = Stopwatch()..start();
+    try {
+      await session.append(_taskBlock(task), addSpecial: false);
+      final prefill = await session.prefill();
+      final tokens = base.tokens + prefill.evaluatedTokens;
+      await _saveState(session, taskFile, <String, Object?>{
+        ...key.toDiagnosticJson(),
+        'cache_key': key.stableHash,
+        'task_hash': taskFile.uri.pathSegments.last,
+        'prefix_tokens': tokens,
+        'stable_shared_content_only': true,
+      });
+      watch.stop();
+      return PrefixStateReport(
+        cacheHit: base.cacheHit,
+        tokens: tokens,
+        fileBytes: await taskFile.length(),
+        preparation: base.preparation + watch.elapsed,
+        restoration: base.restoration,
+        promptTokensPerSecond: prefill.tokensPerSecond,
+        taskReady: true,
+      );
+    } catch (error) {
+      // The base prefix is intact or the session is unusable; either way the
+      // turn renders the instruction itself, as it did before this cache.
+      debugPrint('FINN_PREFIX task state skipped: ${error.runtimeType}');
+      await session.clear();
+      return _restoreOrPrepareBaseOnly(session, key, file);
+    }
+  }
+
+  Future<PrefixStateReport> _restoreOrPrepareBaseOnly(
+    EngineSession session,
+    PrefixCacheCompatibilityKey key,
+    File file,
+  ) async {
     if (await file.exists()) {
       final watch = Stopwatch()..start();
       try {
@@ -218,19 +342,12 @@ extension FinnAcceleratorSessions on FinnAccelerator {
     final watch = Stopwatch()..start();
     await session.append(_baseSystemPrefix, addSpecial: true);
     final prefill = await session.prefill();
-    final partial = File('${file.path}.part');
-    if (await partial.exists()) await partial.delete();
-    await session.saveState(
-      partial.path,
-      extra: <String, Object?>{
-        ...key.toDiagnosticJson(),
-        'cache_key': key.stableHash,
-        'prefix_tokens': prefill.evaluatedTokens,
-        'stable_shared_content_only': true,
-      },
-    );
-    if (await file.exists()) await file.delete();
-    await partial.rename(file.path);
+    await _saveState(session, file, <String, Object?>{
+      ...key.toDiagnosticJson(),
+      'cache_key': key.stableHash,
+      'prefix_tokens': prefill.evaluatedTokens,
+      'stable_shared_content_only': true,
+    });
     watch.stop();
     return PrefixStateReport(
       cacheHit: false,

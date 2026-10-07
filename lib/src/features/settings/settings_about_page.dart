@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:finn_ai/l10n/l10n_helper.dart';
 import 'package:finn_ai/src/shared/config/legal_config.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
+import 'package:finn_ai/src/shared/theme/flux_vivid.dart';
 import 'package:finn_ai/src/shared/widgets/finn_page.dart';
 import 'package:finn_ai/src/shared/widgets/finn_ui.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
@@ -73,6 +74,7 @@ class SettingsAboutPage extends StatelessWidget {
             index: 1,
             child: FinnTile(
               icon: FluxIcons.lock,
+              hue: FluxHue.green,
               title: l10n.aboutPrivacy,
               onTap: () => unawaited(
                 _open(context, LegalConfig.privacyPolicyUrl),
@@ -84,6 +86,7 @@ class SettingsAboutPage extends StatelessWidget {
             index: 2,
             child: FinnTile(
               icon: FluxIcons.note,
+              hue: FluxHue.blue,
               title: l10n.aboutTerms,
               onTap: () => unawaited(_open(context, LegalConfig.termsUrl)),
             ),
@@ -92,6 +95,7 @@ class SettingsAboutPage extends StatelessWidget {
           index: 3,
           child: FinnTile(
             icon: FluxIcons.sourceCode,
+            hue: FluxHue.graphite,
             title: l10n.aboutLicences,
             onTap: () => showLicensePage(
               context: context,
@@ -107,6 +111,7 @@ class SettingsAboutPage extends StatelessWidget {
           index: 4,
           child: FinnTile(
             icon: FluxIcons.feedback,
+            hue: FluxHue.orange,
             title: l10n.aboutFeedback,
             onTap: () => unawaited(
               _open(

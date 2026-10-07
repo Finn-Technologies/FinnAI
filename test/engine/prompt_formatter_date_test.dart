@@ -6,14 +6,15 @@ void main() {
   // 2026-09-18 is a Friday.
   final fixed = DateTime(2026, 9, 18, 14, 32);
   const expectedBlock = '<|im_start|>system\n'
-      'Current local date and time: 2026-09-18 14:32 (Friday). Use this when '
-      'the user asks about today, tomorrow, yesterday, or the current time.\n'
+      'Current local date and time: 2026-09-18 14:32 (Friday). Use it only '
+      'when the user asks about the date or time; never mention it otherwise.\n'
       '<|im_end|>\n';
   const userTurnMarker = '<|im_start|>user\n';
 
   void expectSingleBlockBeforeFinalUserTurn(String rendered) {
     expect(rendered, contains(expectedBlock));
-    expect(expectedBlock, endsWith('current time.\n<|im_end|>\n'));
+    expect(
+        expectedBlock, endsWith('never mention it otherwise.\n<|im_end|>\n'));
     expect(expectedBlock, contains('(Friday).'));
     expect(rendered.split(expectedBlock).length - 1, 1);
     final blockStart = rendered.indexOf(expectedBlock);

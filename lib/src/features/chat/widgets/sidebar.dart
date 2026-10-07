@@ -310,18 +310,21 @@ class _SidebarState extends State<_Sidebar> {
                       children: [
                         FinnSidebarTile(
                           asset: FigmaAssets.tileCreations,
+                          hue: FluxHue.blue,
                           label: L10n.of(context).creationsTitle,
                           onTap: widget.onCreations,
                           size: navSize,
                         ),
                         FinnSidebarTile(
                           asset: FigmaAssets.tileFlows,
+                          hue: FluxHue.orange,
                           label: L10n.of(context).flowsTitle,
                           onTap: widget.onFlows,
                           size: navSize,
                         ),
                         FinnSidebarTile(
                           asset: FigmaAssets.tileYou,
+                          hue: FluxHue.violet,
                           label: L10n.of(context).youTitle,
                           onTap: widget.onYou,
                           size: navSize,

@@ -3,10 +3,11 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
+import 'package:finn_ai/src/shared/theme/flux_vivid.dart';
 
 /// The greeting of an empty shell, FinnAI's chat or FinnAI Code: one line at
-/// 26sp, centred, said rather than printed (see [FinnWordReveal]), with an
-/// optional quieter [caption] under it.
+/// 26sp, centred, said rather than printed (see [FinnWordReveal]), in the
+/// brand's violet-blue-pink sweep, with an optional quieter [caption] under it.
 class FinnGreeting extends StatelessWidget {
   const FinnGreeting({super.key, required this.text, this.caption});
 
@@ -21,6 +22,28 @@ class FinnGreeting extends StatelessWidget {
     letterSpacing: -0.7,
   );
 
+  /// [style] painted with the brand sweep across the laid-out text. A paint
+  /// shader rather than a ShaderMask: no extra layer once the reveal is done.
+  /// Each stop is at least 3:1 on the canvas (large text), in both themes.
+  TextStyle _brandStyle(BuildContext context, double maxWidth) {
+    final painter = TextPainter(
+      text: TextSpan(text: text, style: style),
+      textAlign: TextAlign.center,
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+    )..layout(maxWidth: maxWidth.isFinite ? maxWidth : double.infinity);
+    final size = painter.size;
+    painter.dispose();
+    final colors =
+        FluxColors.isDark(context) ? FluxVivid.brand : FluxVivid.brandDeep;
+    return style.copyWith(
+      foreground: Paint()
+        ..shader = LinearGradient(colors: colors).createShader(
+          Rect.fromLTWH(0, 0, size.width, size.height),
+        ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final caption = this.caption;
@@ -30,7 +53,13 @@ class FinnGreeting extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            FinnWordReveal(key: ValueKey(text), text: text, style: style),
+            LayoutBuilder(
+              builder: (context, constraints) => FinnWordReveal(
+                key: ValueKey(text),
+                text: text,
+                style: _brandStyle(context, constraints.maxWidth),
+              ),
+            ),
             if (caption != null) ...[
               const SizedBox(height: 10),
               Text(

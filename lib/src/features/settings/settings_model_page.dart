@@ -9,6 +9,7 @@ import 'package:finn_ai/src/app/bootstrap.dart';
 import 'package:finn_ai/src/features/onboarding/context_consent_store.dart';
 import 'package:finn_ai/src/features/settings/storage_usage.dart';
 import 'package:finn_ai/src/inference/finn_inference.dart';
+import 'package:finn_ai/src/shared/theme/flux_vivid.dart';
 import 'package:finn_ai/src/shared/widgets/finn_overlays.dart';
 import 'package:finn_ai/src/shared/widgets/finn_page.dart';
 import 'package:finn_ai/src/shared/widgets/finn_ui.dart';
@@ -88,6 +89,7 @@ class _SettingsModelPageState extends State<SettingsModelPage> {
           FinnReveal(
             child: FinnTile(
               icon: FluxIcons.chip,
+              hue: FluxHue.violet,
               title: l10n.hubModelTitle,
               subtitle: [
                 l10n.modelVersion(_version),
@@ -107,6 +109,7 @@ class _SettingsModelPageState extends State<SettingsModelPage> {
             index: 1,
             child: FinnTile(
               icon: FluxIcons.cloudOff,
+              hue: FluxHue.teal,
               title: l10n.modelOffline,
               subtitle: l10n.modelOfflineSub,
             ),
@@ -115,6 +118,7 @@ class _SettingsModelPageState extends State<SettingsModelPage> {
             index: 2,
             child: FinnTile(
               icon: FluxIcons.internet,
+              hue: FluxHue.blue,
               title: l10n.modelLookups,
               subtitle: l10n.modelLookupsSub,
               trailing: FinnSwitch(
@@ -128,6 +132,7 @@ class _SettingsModelPageState extends State<SettingsModelPage> {
             index: 3,
             child: FinnTile(
               icon: FluxIcons.check,
+              hue: FluxHue.green,
               title: l10n.modelUpdates,
               subtitle: l10n.modelUpToDate,
             ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
+import 'package:finn_ai/src/shared/theme/flux_vivid.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
 
 // The sidebar's brand row belongs with its other parts, so a screen that builds
@@ -19,13 +20,29 @@ class FinnSidebarTile extends StatelessWidget {
     this.icon,
     this.asset,
     this.size = 70,
+    this.hue,
   }) : assert(icon != null || asset != null);
 
+  /// Fills the circle with this hue and draws the glyph white.
+  final FluxHue? hue;
   final IconData? icon;
   final String? asset;
   final String label;
   final VoidCallback onTap;
   final double size;
+
+  Widget _glyph(BuildContext context, Color? color) => asset != null
+      ? FigmaSvg(
+          asset: asset!,
+          width: size * .57,
+          height: size * .57,
+          color: color,
+        )
+      : FluxIcon(
+          icon: icon!,
+          size: size * 0.42,
+          color: color ?? FluxColors.inkOf(context),
+        );
 
   @override
   Widget build(BuildContext context) => Semantics(
@@ -45,27 +62,22 @@ class FinnSidebarTile extends StatelessWidget {
                 height: size + 22,
                 child: Column(
                   children: [
-                    Container(
-                      width: size,
-                      height: size,
-                      decoration: BoxDecoration(
-                        color: FluxColors.tileOf(context),
-                        shape: BoxShape.circle,
+                    if (hue != null)
+                      FluxIconWell(
+                        hue: hue!,
+                        size: size,
+                        child: _glyph(context, Colors.white),
+                      )
+                    else
+                      Container(
+                        width: size,
+                        height: size,
+                        decoration: BoxDecoration(
+                          color: FluxColors.tileOf(context),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(child: _glyph(context, null)),
                       ),
-                      child: Center(
-                        child: asset != null
-                            ? FigmaSvg(
-                                asset: asset!,
-                                width: size * .57,
-                                height: size * .57,
-                              )
-                            : FluxIcon(
-                                icon: icon!,
-                                size: size * 0.42,
-                                color: FluxColors.inkOf(context),
-                              ),
-                      ),
-                    ),
                     const SizedBox(height: 5),
                     SizedBox(
                       height: 17,
