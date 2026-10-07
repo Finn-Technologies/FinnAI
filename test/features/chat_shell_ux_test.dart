@@ -376,10 +376,10 @@ void main() {
       expect(tester.getSize(tile).height, greaterThanOrEqualTo(48));
     });
 
-    // The design sets the reply glyphs on a 40dp pitch (25px artwork, 15px
-    // between neighbours), so the touch target follows that pitch rather than
-    // the usual 48dp: overlapping targets would steal each other's taps.
-    testWidgets('reply actions sit on the design\'s 40dp pitch', (
+    // The design set the reply glyphs on a 40dp pitch, under the 48dp
+    // minimum. The UI pass of 2026-10 deliberately replaced that: each glyph
+    // has its own 48dp target, side by side (no overlap), so the pitch is 48.
+    testWidgets('reply actions are full 48dp targets', (
       tester,
     ) async {
       _useMobileSize(tester);
@@ -393,15 +393,15 @@ void main() {
 
       final copy = find.byTooltip('Copy');
       expect(copy, findsWidgets);
-      expect(tester.getSize(copy.first), const Size(40, 40));
+      expect(tester.getSize(copy.first), const Size(48, 48));
       expect(
         tester.getSize(find.byTooltip('Report').first),
-        const Size(40, 40),
+        const Size(48, 48),
       );
       // Regenerate moved into the overflow, which shares the same pitch.
       expect(
         tester.getSize(find.byTooltip('More actions').first),
-        const Size(40, 40),
+        const Size(48, 48),
       );
     });
 

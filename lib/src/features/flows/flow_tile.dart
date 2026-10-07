@@ -226,21 +226,25 @@ class _PlayButton extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
 
+  void _run() {
+    HapticFeedback.mediumImpact();
+    onTap();
+  }
+
   @override
   Widget build(BuildContext context) => Semantics(
+        // Its own node: without it the run button merged into the tile and a
+        // screen reader could not reach it.
+        container: true,
         button: true,
         label: label,
+        onTap: running ? null : _run,
         excludeSemantics: true,
         child: FluxPressScale(
           // A 48dp target; the frosted disc inside it stays 38dp.
           child: InkWell(
             customBorder: const CircleBorder(),
-            onTap: running
-                ? null
-                : () {
-                    HapticFeedback.mediumImpact();
-                    onTap();
-                  },
+            onTap: running ? null : _run,
             child: SizedBox.square(
               dimension: FluxMotion.minTapTarget,
               child: Center(
@@ -298,17 +302,21 @@ class _TileSwitch extends StatelessWidget {
   final String label;
   final ValueChanged<bool> onChanged;
 
+  void _flip() {
+    HapticFeedback.selectionClick();
+    onChanged(!value);
+  }
+
   @override
   Widget build(BuildContext context) => Semantics(
+        container: true,
         toggled: value,
         label: label,
+        onTap: _flip,
         excludeSemantics: true,
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTap: () {
-            HapticFeedback.selectionClick();
-            onChanged(!value);
-          },
+          onTap: _flip,
           child: Padding(
             // A 48dp target around the 38x22 track.
             padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 13),

@@ -189,6 +189,7 @@ class _FamilyChip extends StatelessWidget {
     final accent = FluxColors.accentOf(context);
     return Semantics(
       button: true,
+      onTap: onTap,
       selected: selected,
       label: label,
       excludeSemantics: true,
@@ -250,6 +251,7 @@ class _StepRow extends StatelessWidget {
     final color = flowBlockColor(kind);
     return Semantics(
       button: true,
+      onTap: onTap,
       label: '${flowBlockTitle(l10n, kind)}. ${flowBlockHint(l10n, kind)}',
       excludeSemantics: true,
       child: FluxPressScale(

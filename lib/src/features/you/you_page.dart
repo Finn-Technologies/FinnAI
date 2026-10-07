@@ -321,6 +321,7 @@ class _CategoryCard extends StatelessWidget {
     final l10n = L10n.of(context);
     return Semantics(
       button: true,
+      onTap: onTap,
       label: youCategoryLabel(l10n, category),
       excludeSemantics: true,
       child: FluxPressScale(

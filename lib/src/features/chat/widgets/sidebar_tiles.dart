@@ -88,6 +88,7 @@ class _SidebarConversationTile extends StatelessWidget {
     // a bold title and how it went; a chat with a photo shows the photo.
     return Semantics(
       button: true,
+      onTap: onTap,
       selected: selected,
       label: '${conversation.title}. $when',
       excludeSemantics: true,

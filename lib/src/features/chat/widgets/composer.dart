@@ -401,6 +401,7 @@ class _ChatComposerState extends State<ChatComposer>
     final fusedMic = widget.voiceEnabled && !widget.busy
         ? Semantics(
             button: true,
+            onTap: widget.onMic,
             label: l10n.voiceMicSemantic,
             excludeSemantics: true,
             child: FluxPressScale(

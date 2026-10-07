@@ -439,9 +439,16 @@ class _ContextMenuItemTile extends StatelessWidget {
         ? FluxColors.destructiveOf(context)
         : FluxColors.actionOf(context);
 
+    void tap() {
+      HapticFeedback.selectionClick();
+      Navigator.of(context).pop();
+      item.onTap();
+    }
+
     return Semantics(
       button: true,
       label: item.label,
+      onTap: tap,
       excludeSemantics: true,
       child: Material(
         color: Colors.transparent,
@@ -451,11 +458,7 @@ class _ContextMenuItemTile extends StatelessWidget {
             minHeight: FluxMotion.minTapTarget,
           ),
           child: InkWell(
-            onTap: () {
-              HapticFeedback.selectionClick();
-              Navigator.of(context).pop();
-              item.onTap();
-            },
+            onTap: tap,
             borderRadius: BorderRadius.circular(FluxRadius.sm),
             child: Align(
               widthFactor: 1,

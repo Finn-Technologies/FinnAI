@@ -195,7 +195,7 @@ class CodeTerminalIntro extends StatelessWidget {
               key: const ValueKey('terminal-set-up-container'),
               style: TextButton.styleFrom(
                 padding: EdgeInsets.zero,
-                visualDensity: VisualDensity.compact,
+                minimumSize: const Size(0, FluxMotion.minTapTarget),
               ),
               onPressed: () => Navigator.of(context).push(FinnPageRoute<void>(
                 child: codeLinuxPageFor(services),

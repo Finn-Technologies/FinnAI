@@ -332,6 +332,7 @@ class _NodeCard extends StatelessWidget {
     final theme = Theme.of(context).textTheme;
     return Semantics(
       button: true,
+      onTap: onTap,
       label: '$title. $summary',
       excludeSemantics: true,
       child: Material(
@@ -465,15 +466,18 @@ class _InsertLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final line = FluxColors.lineOf(context);
+    void tap() {
+      HapticFeedback.selectionClick();
+      onTap();
+    }
+
     return Semantics(
       button: true,
       label: L10n.of(context).flowsEdInsertHere,
+      onTap: tap,
       excludeSemantics: true,
       child: InkResponse(
-        onTap: () {
-          HapticFeedback.selectionClick();
-          onTap();
-        },
+        onTap: tap,
         radius: 28,
         child: SizedBox(
           height: 48,
@@ -516,13 +520,14 @@ class _AddChip extends StatelessWidget {
           alignment: Alignment.centerLeft,
           child: Semantics(
             button: true,
+            onTap: onTap,
             label: label,
             excludeSemantics: true,
             child: InkWell(
               borderRadius: BorderRadius.circular(FluxRadius.pill),
               onTap: onTap,
               child: ConstrainedBox(
-                constraints: const BoxConstraints(minHeight: 44),
+                constraints: const BoxConstraints(minHeight: 48),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   child: Row(

@@ -156,6 +156,7 @@ class CodeStatusLine extends StatelessWidget {
           if (onTerminal != null)
             Semantics(
               button: true,
+              onTap: onTerminal,
               label: l10n.codeTerminalShow,
               excludeSemantics: true,
               child: InkResponse(
@@ -201,6 +202,7 @@ class _Segment extends StatelessWidget {
         CodeStyle.meta(context, color: FluxColors.secondaryInkOf(context));
     return Semantics(
       button: true,
+      onTap: onTap,
       label: semanticLabel,
       excludeSemantics: true,
       child: InkWell(

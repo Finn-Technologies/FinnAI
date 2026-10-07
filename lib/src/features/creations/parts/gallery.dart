@@ -73,6 +73,7 @@ class _CreationCard extends StatelessWidget {
     return Builder(
       builder: (cardContext) => Semantics(
         button: true,
+        onTap: onTap,
         label: creation.title,
         onLongPress: () => onMenu(finnAnchorOf(cardContext)),
         excludeSemantics: true,

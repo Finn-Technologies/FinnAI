@@ -88,6 +88,10 @@ class _ConditionBodyState extends State<_ConditionBody> {
   late final Set<int> _days = widget.initial?.kind == FlowConditionKind.weekdays
       ? {...widget.initial!.days}
       : {1, 2, 3, 4, 5};
+
+  void _toggleDay(int day) => setState(
+        () => _days.contains(day) ? _days.remove(day) : _days.add(day),
+      );
   late final TextEditingController _text =
       TextEditingController(text: widget.initial?.text ?? '');
 
@@ -243,14 +247,11 @@ class _ConditionBodyState extends State<_ConditionBody> {
                   button: true,
                   selected: _days.contains(day),
                   label: names[day - 1],
+                  onTap: () => _toggleDay(day),
                   excludeSemantics: true,
                   child: GestureDetector(
                     key: Key('condition-day-$day'),
-                    onTap: () => setState(
-                      () => _days.contains(day)
-                          ? _days.remove(day)
-                          : _days.add(day),
-                    ),
+                    onTap: () => _toggleDay(day),
                     child: Container(
                       width: 42,
                       height: 42,
@@ -305,6 +306,7 @@ class _TimeBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Semantics(
         button: true,
+        onTap: onTap,
         label: '$label $value',
         excludeSemantics: true,
         child: Material(

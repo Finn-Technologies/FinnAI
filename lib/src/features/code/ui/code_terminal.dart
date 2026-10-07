@@ -245,65 +245,70 @@ class _CodeTerminalViewState extends State<CodeTerminalView> {
             widget.padding.right,
             widget.padding.bottom,
           ),
-          child: Container(
-            height: 40,
-            padding: const EdgeInsets.only(left: 12, right: 4),
-            decoration: BoxDecoration(
-              color: CodeStyle.wellOf(context),
-              borderRadius: BorderRadius.circular(CodeStyle.radius),
-            ),
-            child: Row(
-              children: [
-                Text(r'$', style: style.copyWith(color: muted)),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
-                    key: const ValueKey('terminal-input'),
-                    controller: _input,
-                    focusNode: _focus,
-                    autofocus: widget.autofocus,
-                    enabled: !widget.log.running,
-                    style: style,
-                    cursorColor: FluxColors.inkOf(context),
-                    cursorWidth: 7,
-                    cursorRadius: const Radius.circular(1),
-                    autocorrect: false,
-                    enableSuggestions: false,
-                    textCapitalization: TextCapitalization.none,
-                    // Android keyboards drop autocorrect for this type;
-                    // HarmonyOS treats it as a password and blacks out
-                    // screen capture, so there it stays plain text.
-                    keyboardType: Platform.isAndroid
-                        ? TextInputType.visiblePassword
-                        : TextInputType.text,
-                    textInputAction: TextInputAction.go,
-                    inputFormatters: [LengthLimitingTextInputFormatter(2000)],
-                    onSubmitted: (_) => _run(),
-                    decoration: InputDecoration.collapsed(
-                      hintText: l10n.codeTerminalHint,
-                      hintStyle: style.copyWith(color: muted),
+          // 48dp, and the whole well focuses the prompt, not only its line.
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: _focus.requestFocus,
+            excludeFromSemantics: true,
+            child: Container(
+              height: FluxMotion.minTapTarget,
+              padding: const EdgeInsets.only(left: 12),
+              decoration: BoxDecoration(
+                color: CodeStyle.wellOf(context),
+                borderRadius: BorderRadius.circular(CodeStyle.radius),
+              ),
+              child: Row(
+                children: [
+                  Text(r'$', style: style.copyWith(color: muted)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      key: const ValueKey('terminal-input'),
+                      controller: _input,
+                      focusNode: _focus,
+                      autofocus: widget.autofocus,
+                      enabled: !widget.log.running,
+                      style: style,
+                      cursorColor: FluxColors.inkOf(context),
+                      cursorWidth: 7,
+                      cursorRadius: const Radius.circular(1),
+                      autocorrect: false,
+                      enableSuggestions: false,
+                      textCapitalization: TextCapitalization.none,
+                      // Android keyboards drop autocorrect for this type;
+                      // HarmonyOS treats it as a password and blacks out
+                      // screen capture, so there it stays plain text.
+                      keyboardType: Platform.isAndroid
+                          ? TextInputType.visiblePassword
+                          : TextInputType.text,
+                      textInputAction: TextInputAction.go,
+                      inputFormatters: [LengthLimitingTextInputFormatter(2000)],
+                      onSubmitted: (_) => _run(),
+                      decoration: InputDecoration.collapsed(
+                        hintText: l10n.codeTerminalHint,
+                        hintStyle: style.copyWith(color: muted),
+                      ),
                     ),
                   ),
-                ),
-                ValueListenableBuilder<TextEditingValue>(
-                  valueListenable: _input,
-                  builder: (context, value, _) {
-                    final canRun =
-                        !widget.log.running && value.text.trim().isNotEmpty;
-                    return IconButton(
-                      key: const ValueKey('terminal-run-button'),
-                      tooltip: l10n.codeActionRun,
-                      onPressed: canRun ? _run : null,
-                      visualDensity: VisualDensity.compact,
-                      icon: FluxIcon(
-                        icon: FluxIcons.arrowRight02,
-                        size: 16,
-                        color: canRun ? FluxColors.inkOf(context) : muted,
-                      ),
-                    );
-                  },
-                ),
-              ],
+                  ValueListenableBuilder<TextEditingValue>(
+                    valueListenable: _input,
+                    builder: (context, value, _) {
+                      final canRun =
+                          !widget.log.running && value.text.trim().isNotEmpty;
+                      return IconButton(
+                        key: const ValueKey('terminal-run-button'),
+                        tooltip: l10n.codeActionRun,
+                        onPressed: canRun ? _run : null,
+                        icon: FluxIcon(
+                          icon: FluxIcons.arrowRight02,
+                          size: 16,
+                          color: canRun ? FluxColors.inkOf(context) : muted,
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
             ),
           ),
         ),

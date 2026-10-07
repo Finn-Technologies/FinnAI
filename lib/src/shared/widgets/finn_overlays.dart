@@ -230,18 +230,21 @@ class _DialogBlock extends StatelessWidget {
                 ? FluxColors.darkCanvas
                 : Colors.white)
             : FluxColors.actionInkOf(context);
+    void tap() {
+      HapticFeedback.selectionClick();
+      onTap();
+    }
+
     return Semantics(
       button: true,
       label: label,
+      onTap: tap,
       excludeSemantics: true,
       child: Material(
         color: bg,
         borderRadius: radius,
         child: InkWell(
-          onTap: () {
-            HapticFeedback.selectionClick();
-            onTap();
-          },
+          onTap: tap,
           borderRadius: radius,
           child: SizedBox(
             height: 60,
@@ -362,6 +365,13 @@ class FinnMenuItem {
   final bool selected;
 }
 
+/// Chooses [item] from an open menu: a tick, the menu closes, the item runs.
+void _pick(BuildContext context, FinnMenuItem item) {
+  HapticFeedback.selectionClick();
+  Navigator.of(context).pop();
+  item.onTap();
+}
+
 /// A 260dp white popup anchored under [anchor] (usually a header action), with
 /// the design's light scrim behind it.
 Future<void> showFinnMenu(
@@ -422,14 +432,11 @@ Future<void> showFinnMenu(
                             button: true,
                             selected: item.selected,
                             label: item.label,
+                            onTap: () => _pick(context, item),
                             excludeSemantics: true,
                             child: InkWell(
                               borderRadius: BorderRadius.circular(17),
-                              onTap: () {
-                                HapticFeedback.selectionClick();
-                                Navigator.of(context).pop();
-                                item.onTap();
-                              },
+                              onTap: () => _pick(context, item),
                               child: SizedBox(
                                 height: 50,
                                 child: Padding(

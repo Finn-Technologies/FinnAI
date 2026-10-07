@@ -277,6 +277,7 @@ class _PlusCard extends StatelessWidget {
     final subtitle = entry.subtitle;
     return Semantics(
       button: true,
+      onTap: onTap,
       label: subtitle == null ? entry.title : '${entry.title}. $subtitle',
       excludeSemantics: true,
       child: FluxPressScale(

@@ -380,40 +380,46 @@ class _ReplyActionsState extends State<_ReplyActions> {
   Widget build(BuildContext context) {
     // The row arrives with the finished reply, so it settles in rather than
     // appearing under text that was already on screen.
+    // The targets grew from 40 to 48dp; the row steps back by the 4dp so the
+    // first glyph still lines up where it did under the reply's text.
+    final rtl = Directionality.of(context) == TextDirection.rtl;
     return _FadeRise(
       rise: 6,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _ReplyActionButton(
-            asset: FigmaAssets.replyCopy,
-            tooltip: L10n.of(context).chatCopy,
-            onTap: _copy,
-          ),
-          _ReplyActionButton(
-            asset: FigmaAssets.replyAlert,
-            tooltip: L10n.of(context).chatReportAction,
-            onTap: () => ReportDialog.show(
-              context,
-              assistantResponse: widget.text,
-              userPrompt: widget.userPrompt,
-              modelTier: widget.modelTier,
+      child: Transform.translate(
+        offset: Offset(rtl ? 4 : -4, 0),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _ReplyActionButton(
+              asset: FigmaAssets.replyCopy,
+              tooltip: L10n.of(context).chatCopy,
+              onTap: _copy,
             ),
-          ),
-          _ReplyActionButton(
-            key: _overflowKey,
-            asset: FigmaAssets.replyMore,
-            tooltip: L10n.of(context).chatMoreActions,
-            onTap: _openOverflow,
-          ),
-        ],
+            _ReplyActionButton(
+              asset: FigmaAssets.replyAlert,
+              tooltip: L10n.of(context).chatReportAction,
+              onTap: () => ReportDialog.show(
+                context,
+                assistantResponse: widget.text,
+                userPrompt: widget.userPrompt,
+                modelTier: widget.modelTier,
+              ),
+            ),
+            _ReplyActionButton(
+              key: _overflowKey,
+              asset: FigmaAssets.replyMore,
+              tooltip: L10n.of(context).chatMoreActions,
+              onTap: _openOverflow,
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
 /// One glyph of the row that sits under a reply: the design's 25px artwork on
-/// a 40px touch target.
+/// a 48dp touch target (it was 40, under the minimum).
 class _ReplyActionButton extends StatelessWidget {
   const _ReplyActionButton({
     super.key,
@@ -438,7 +444,7 @@ class _ReplyActionButton extends StatelessWidget {
       child: FluxPressScale(
         scale: .9,
         child: SizedBox.square(
-          dimension: 40,
+          dimension: FluxMotion.minTapTarget,
           child: InkWell(
             onTap: onTap,
             customBorder: const CircleBorder(),

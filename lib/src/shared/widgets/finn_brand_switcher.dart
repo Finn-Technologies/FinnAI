@@ -217,6 +217,7 @@ class _FinnBrandSwitcherState extends State<FinnBrandSwitcher>
           height: FinnBrandSwitcher.rowHeight,
           child: Semantics(
             button: true,
+            onTap: _toggle,
             expanded: _open,
             label: '$label. ${l10n.appModeSwitchSemantic}',
             excludeSemantics: true,
@@ -335,6 +336,7 @@ class _Reveal extends StatelessWidget {
                           alignment: Alignment.centerLeft,
                           child: Semantics(
                             button: true,
+                            onTap: onTap,
                             label: label,
                             excludeSemantics: true,
                             child: InkWell(

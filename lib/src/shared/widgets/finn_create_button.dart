@@ -61,6 +61,12 @@ class _FinnCreateButtonState extends State<FinnCreateButton>
     super.dispose();
   }
 
+  void _tap() {
+    HapticFeedback.lightImpact();
+    widget.onTap?.call();
+    widget.onTapFrom?.call(globalRectOf(_surface));
+  }
+
   @override
   Widget build(BuildContext context) {
     // A beat after the page, then a small overshoot.
@@ -79,6 +85,7 @@ class _FinnCreateButtonState extends State<FinnCreateButton>
         child: Semantics(
           button: true,
           label: widget.label,
+          onTap: _tap,
           excludeSemantics: true,
           child: FadeTransition(
             opacity: fade,
@@ -95,11 +102,7 @@ class _FinnCreateButtonState extends State<FinnCreateButton>
                     ),
                   ),
                   child: InkWell(
-                    onTap: () {
-                      HapticFeedback.lightImpact();
-                      widget.onTap?.call();
-                      widget.onTapFrom?.call(globalRectOf(_surface));
-                    },
+                    onTap: _tap,
                     customBorder: const CircleBorder(),
                     child: SizedBox.square(
                       key: const ValueKey('finn-create-button'),

@@ -143,9 +143,15 @@ class _MiniAppRendererState extends State<MiniAppRenderer> {
         quiet ? FluxColors.cardOf(context) : FluxColors.actionOf(context);
     final ink =
         quiet ? FluxColors.inkOf(context) : FluxColors.actionInkOf(context);
+    void tap() {
+      HapticFeedback.selectionClick();
+      widget.state.dispatch(node.action);
+    }
+
     return Semantics(
       button: true,
       label: node.label,
+      onTap: tap,
       excludeSemantics: true,
       child: FluxPressScale(
         child: Material(
@@ -153,10 +159,7 @@ class _MiniAppRendererState extends State<MiniAppRenderer> {
           borderRadius: BorderRadius.circular(FluxRadius.pill),
           child: InkWell(
             borderRadius: BorderRadius.circular(FluxRadius.pill),
-            onTap: () {
-              HapticFeedback.selectionClick();
-              widget.state.dispatch(node.action);
-            },
+            onTap: tap,
             child: ConstrainedBox(
               constraints: const BoxConstraints(minHeight: 52),
               child: Padding(

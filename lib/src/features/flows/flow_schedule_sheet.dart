@@ -35,6 +35,10 @@ class _ScheduleBodyState extends State<_ScheduleBody> {
           ? {1, 2, 3, 4, 5, 6, 7}
           : {...widget.initial.daysOfWeek};
 
+  void _toggleDay(int day) => setState(
+        () => _days.contains(day) ? _days.remove(day) : _days.add(day),
+      );
+
   Future<void> _pick() async {
     final picked = await showTimePicker(
       context: context,
@@ -56,6 +60,7 @@ class _ScheduleBodyState extends State<_ScheduleBody> {
     String two(int v) => v.toString().padLeft(2, '0');
     Widget box(String text, {required Key key}) => Semantics(
           button: true,
+          onTap: _pick,
           label: l10n.flowsScheduleTime,
           excludeSemantics: true,
           child: Material(
@@ -101,6 +106,7 @@ class _ScheduleBodyState extends State<_ScheduleBody> {
                 button: true,
                 selected: _days.contains(day),
                 label: names[day - 1],
+                onTap: () => _toggleDay(day),
                 excludeSemantics: true,
                 child: Material(
                   color: _days.contains(day)
@@ -110,9 +116,7 @@ class _ScheduleBodyState extends State<_ScheduleBody> {
                   child: InkWell(
                     key: Key('flow-day-$day'),
                     customBorder: const CircleBorder(),
-                    onTap: () => setState(() {
-                      _days.contains(day) ? _days.remove(day) : _days.add(day);
-                    }),
+                    onTap: () => _toggleDay(day),
                     child: SizedBox.square(
                       dimension: 44,
                       child: Center(

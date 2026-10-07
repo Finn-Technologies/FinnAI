@@ -118,6 +118,7 @@ class CodeSessionRow extends StatelessWidget {
     );
     return Semantics(
       button: true,
+      onTap: onTap,
       selected: selected,
       label: [title, if (status != null) status, files].join('. '),
       excludeSemantics: true,
