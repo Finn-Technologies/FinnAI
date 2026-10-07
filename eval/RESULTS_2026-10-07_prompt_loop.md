@@ -51,3 +51,11 @@ each); the new runs did not loop on those.
 **Not measured:** a physical phone (these are emulator numbers; the phone's baseline in
 `baseline_Abhi-Flex1-device.json` is unchanged and should be re-run with `./tool/run_eval.sh` on the Mi 11 Lite);
 the 3B tier; HarmonyOS.
+
+## Final gated run (`a25df2b`, after the worker command-holding fix)
+
+Checks passed 75.0%, first token p50 / p95 624 / 4112 ms, decode 66.0 tok/s (the Mac was warm), 4,539 output tokens.
+**The gate fails** against the committed emulator baseline: check pass rate 75.0% is under its floor of 76.3%, and
+p95 4112 ms is over its +25% bar of 3930 ms. Both are inside the spread measured for the new code above (71.9-87.5%;
+p95 3.0-6.3 s, set by web-search turns), and the baseline is a single run that came out high. A steadier emulator
+baseline would be the median of three runs; the gate's tolerances were set for a phone, where runs vary less.
