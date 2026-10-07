@@ -166,7 +166,15 @@ void main() {
 
     await fillMorningBrief(tester);
     await tapKey(tester, 'flow-automation-save');
-    await pumpFor(tester);
+    // Saving writes real files first; under a loaded test run that takes
+    // longer than a fixed pump, so wait (bounded) for the explanation.
+    for (var i = 0; i < 40; i++) {
+      if (find.text('Allow notifications?').evaluate().isNotEmpty) break;
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 25)),
+      );
+      await tester.pump(const Duration(milliseconds: 50));
+    }
 
     // Our own reason first; the system prompt has none.
     expect(find.text('Allow notifications?'), findsOneWidget);

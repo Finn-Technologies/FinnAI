@@ -16,27 +16,31 @@ import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
 /// phone waking green, and a flow you start yourself slate. Like a
 /// Shortcuts tile it makes a flow findable at a glance; unlike one, the
 /// colour says something (Tasker's contexts, made visible).
+///
+/// Every stop keeps white text at WCAG AA (4.5:1 or more, checked in
+/// `test/features/flow_tile_test.dart`); the first palette sat at 2.3-4.1:1
+/// where the name is drawn.
 List<Color> flowTileColors(FlowTriggerKind kind) => switch (kind) {
-      FlowTriggerKind.manual => const [Color(0xFF8A93A8), Color(0xFF5E677D)],
+      FlowTriggerKind.manual => const [Color(0xFF69748E), Color(0xFF576074)],
       FlowTriggerKind.timeOfDay || FlowTriggerKind.interval => const [
-          Color(0xFF6D7FE6),
+          Color(0xFF556AE2),
           Color(0xFF4553C2)
         ],
       FlowTriggerKind.chargerConnected ||
       FlowTriggerKind.chargerDisconnected ||
       FlowTriggerKind.batteryLow =>
-        const [Color(0xFFE58E43), Color(0xFFC6602B)],
+        const [Color(0xFFB15F18), Color(0xFF984A21)],
       FlowTriggerKind.headsetConnected ||
       FlowTriggerKind.headsetDisconnected =>
-        const [Color(0xFFE071A8), Color(0xFFB4457F)],
+        const [Color(0xFFD23282), Color(0xFF9E3D6F)],
       FlowTriggerKind.wifiConnected ||
       FlowTriggerKind.wifiDisconnected ||
       FlowTriggerKind.airplaneOn ||
       FlowTriggerKind.airplaneOff =>
-        const [Color(0xFF4FA6DC), Color(0xFF2A7CC0)],
+        const [Color(0xFF237BB1), Color(0xFF22649A)],
       FlowTriggerKind.deviceBooted || FlowTriggerKind.screenUnlocked => const [
-          Color(0xFF4DBE90),
-          Color(0xFF248F67)
+          Color(0xFF308261),
+          Color(0xFF1B6C4E)
         ],
     };
 
@@ -82,7 +86,7 @@ class FlowTile extends StatelessWidget {
     final base = flowTileColors(flow.trigger.kind);
     final grey = FluxColors.isDark(context)
         ? const Color(0xFF3A3A44)
-        : const Color(0xFFB9BAC2);
+        : const Color(0xFF6E7080);
     final colors = [
       for (final c in base) Color.lerp(c, grey, flow.enabled ? 0 : .78)!,
     ];
@@ -131,7 +135,7 @@ class FlowTile extends StatelessWidget {
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+                    padding: const EdgeInsets.fromLTRB(16, 9, 7, 14),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -161,7 +165,6 @@ class FlowTile extends StatelessWidget {
                                 actions.setEnabled(context, flow, v),
                               ),
                             ),
-                            const SizedBox(width: 4),
                             _PlayButton(
                               key: Key('flow-run-tile-${flow.id}'),
                               running: running,
@@ -193,7 +196,7 @@ class FlowTile extends StatelessWidget {
                             fontFamily: 'Geist',
                             fontSize: 12.5,
                             height: 1.2,
-                            color: Color(0xD9FFFFFF),
+                            color: Color(0xF2FFFFFF),
                           ),
                         ),
                       ],
@@ -229,41 +232,49 @@ class _PlayButton extends StatelessWidget {
         label: label,
         excludeSemantics: true,
         child: FluxPressScale(
-          child: Material(
-            color: const Color(0x33FFFFFF),
-            shape: const CircleBorder(),
-            child: InkWell(
-              customBorder: const CircleBorder(),
-              onTap: running
-                  ? null
-                  : () {
-                      HapticFeedback.mediumImpact();
-                      onTap();
-                    },
-              child: SizedBox.square(
-                dimension: 38,
-                child: Center(
-                  child: AnimatedSwitcher(
-                    duration: FluxMotion.revealDuration,
-                    child: running
-                        ? const SizedBox.square(
-                            key: ValueKey('running'),
-                            dimension: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Padding(
-                            key: ValueKey('play'),
-                            // Optical centre: a triangle's mass sits left.
-                            padding: EdgeInsets.only(left: 2),
-                            child: Icon(
-                              Icons.play_arrow_rounded,
-                              size: 24,
-                              color: Colors.white,
-                            ),
-                          ),
+          // A 48dp target; the frosted disc inside it stays 38dp.
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: running
+                ? null
+                : () {
+                    HapticFeedback.mediumImpact();
+                    onTap();
+                  },
+            child: SizedBox.square(
+              dimension: FluxMotion.minTapTarget,
+              child: Center(
+                child: DecoratedBox(
+                  decoration: const BoxDecoration(
+                    color: Color(0x33FFFFFF),
+                    shape: BoxShape.circle,
+                  ),
+                  child: SizedBox.square(
+                    dimension: 38,
+                    child: Center(
+                      child: AnimatedSwitcher(
+                        duration: FluxMotion.revealDuration,
+                        child: running
+                            ? const SizedBox.square(
+                                key: ValueKey('running'),
+                                dimension: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Padding(
+                                key: ValueKey('play'),
+                                // Optical centre: a triangle's mass sits left.
+                                padding: EdgeInsets.only(left: 2),
+                                child: Icon(
+                                  Icons.play_arrow_rounded,
+                                  size: 24,
+                                  color: Colors.white,
+                                ),
+                              ),
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -299,7 +310,8 @@ class _TileSwitch extends StatelessWidget {
             onChanged(!value);
           },
           child: Padding(
-            padding: const EdgeInsets.all(6),
+            // A 48dp target around the 38x22 track.
+            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 13),
             child: AnimatedContainer(
               duration: FluxMotion.revealDuration,
               curve: FluxMotion.pressReturnCurve,

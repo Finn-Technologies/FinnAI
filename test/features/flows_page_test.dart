@@ -1,8 +1,10 @@
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:finn_ai/src/features/actions/device_action.dart';
 import 'package:finn_ai/src/features/actions/device_action_executor.dart';
 import 'package:finn_ai/src/features/flows/flow_runner.dart';
+import 'package:finn_ai/src/features/flows/flow_tile.dart';
 import 'package:finn_ai/src/features/flows/flows_page.dart';
 import 'package:finn_ai/src/features/flows/flows_store.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
@@ -11,6 +13,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:finn_ai/src/shared/widgets/finn_ui.dart';
 
 void main() {
+  test('every tile colour keeps white text at WCAG AA', () {
+    for (final kind in FlowTriggerKind.values) {
+      for (final colour in flowTileColors(kind)) {
+        final ratio = 1.05 / (_luminance(colour) + 0.05);
+        expect(ratio, greaterThanOrEqualTo(4.5), reason: '$kind $colour');
+      }
+    }
+  });
+
   // The store reads and writes real files, which never settle under the
   // default test binding's fake clock.
   LiveTestWidgetsFlutterBinding.ensureInitialized();
@@ -79,6 +90,28 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
     }
+
+    testWidgets(
+        'a tile\'s run and on/off controls are 48dp targets, '
+        'even under a long name', (tester) async {
+      await store.upsertCustom(
+        id: null,
+        name: 'Benachrichtigung über den Akkustand am frühen Morgen',
+        description: '',
+        blocks: const [FlowBlock.ask('Summarise')],
+      );
+      await open(tester);
+      final flow = store.flows.last;
+      for (final key in [
+        'flow-run-tile-${flow.id}',
+        'flow-toggle-${flow.id}'
+      ]) {
+        final size = tester.getSize(find.byKey(Key(key)));
+        expect(size.width, greaterThanOrEqualTo(48), reason: key);
+        expect(size.height, greaterThanOrEqualTo(48), reason: key);
+      }
+      expect(tester.takeException(), isNull);
+    });
 
     /// Scrolls a flow's card into view.
     testWidgets('an ask-only flow shows a run button and no grant switch',
@@ -255,4 +288,11 @@ class _RecordingExecutor implements DeviceActionExecutor {
     calls.add(invocation);
     return const DeviceActionResult.performed();
   }
+}
+
+/// WCAG 2.x relative luminance of an opaque colour.
+double _luminance(Color c) {
+  double channel(double v) =>
+      v <= 0.03928 ? v / 12.92 : math.pow((v + 0.055) / 1.055, 2.4).toDouble();
+  return 0.2126 * channel(c.r) + 0.7152 * channel(c.g) + 0.0722 * channel(c.b);
 }
