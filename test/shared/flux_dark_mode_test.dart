@@ -78,8 +78,8 @@ void main() {
       expect(bubble, FluxColors.bubbleUserDark);
       expect(bubble, isNot(FluxColors.controlDark));
       expect(bubble, isNot(FluxColors.darkCanvas));
-      // bubbleUserDark measures 3.25:1 on the canvas, so the bubble reads as a
-      // raised surface without pushing the text off AA.
+      // bubbleUserDark measures 2.06:1 on the canvas, so the bubble reads as a
+      // raised surface without becoming a slab (see the token's note).
       expect(_contrast(bubble, FluxColors.darkCanvas), greaterThan(2.0));
     });
 

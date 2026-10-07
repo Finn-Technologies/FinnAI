@@ -68,8 +68,8 @@ abstract final class CodeStyle {
   /// The well code sits in: a step darker (lighter in dark) than the canvas.
   static Color wellOf(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark
-          ? const Color(0xFF1C1C22)
-          : const Color(0xFFEDEDED);
+          ? const Color(0xFF141416)
+          : const Color(0xFFEDEDEF);
 
   /// Diff line backgrounds and their sign colours. Measured so the text on
   /// them keeps 4.5:1 in both themes; the hue carries meaning only together

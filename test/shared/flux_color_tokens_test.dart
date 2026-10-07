@@ -196,11 +196,18 @@ void main() {
     });
 
     test('the dark user bubble is distinguishable from the black canvas', () {
-      // WCAG 1.4.11 non-text contrast. #2C2C2E measured 1.51:1 here, which is
-      // why the bubble read as "very dark grey on black" on the device.
+      // #2C2C2E measured 1.51:1 here and read as "very dark grey on black" on
+      // the device; the 3:1 bar that followed made the bubble a mid-grey slab
+      // (#64646E) that looked cheap. The 2026-10 palette deliberately settles
+      // on 2:1: the bubble's edge is not the only cue (it sits on the right,
+      // with a hairline), and its text clears AA by far.
       expect(
         _contrast(FluxColors.bubbleUserDark, FluxColors.darkCanvas),
-        greaterThanOrEqualTo(3.0),
+        greaterThanOrEqualTo(2.0),
+      );
+      expect(
+        _contrast(FluxColors.darkInk, FluxColors.bubbleUserDark),
+        greaterThanOrEqualTo(7.0),
       );
     });
   });

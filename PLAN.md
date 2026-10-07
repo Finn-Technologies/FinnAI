@@ -700,6 +700,13 @@ Also: `FluxPressScale` gained an `alignment` so the wordmark (much wider than it
 - *Worker ordering.* With the worker now reading its port between tokens (part 5), a new generate could arrive while a stopped one was still finishing and was rejected ("another generate is already in flight", seen on the device). Every command but Cancel/Shutdown is now held while a generation runs and replayed in order when it ends, restoring the strict ordering the KV cache relies on.
 - *Stop, measured on the device:* a long story stopped after 3s, then "What is 2 plus 2": first token 1.1s after sending (it reads the stopped story as history), instead of waiting for the stopped reply to decode to its budget.
 
+**Palette — 2026-10-07 (part 7).** Why it read as less premium: every dark neutral carried a blue-violet cast (#101014, #26262E, #2C2C35, #45454F) and the dark user message was a mid-grey slab (#64646E); light mode mixed three temperatures (neutral #F5F5F5 canvas, greenish lines and grey text #EAEAE7/#686966/#515250, iOS blue-grey #F2F2F7 bubbles) with a charcoal #414141 primary action; the empty chat glowed lime (#92FF86).
+
+- *Dark:* one neutral ramp, canvas #0B0B0C < surface #131315 < card #18181A < control #202023 < user bubble #454549; hairline #2C2C30; ink #F5F5F5, muted #8E8E93. The user bubble is 2.06:1 on the canvas (was 3.25:1); a device test once found 1.5:1 invisible, so the colour test now asks 2:1 plus text at 7:1 (changed deliberately, explained in the test).
+- *Light:* neutral #F4F4F5 canvas, white cards and controls, ink #0A0A0B, muted #6B6B70, hairline #E4E4E7; true-black primary action.
+- *Both:* the empty-chat wash is the brand's violet-blue; the voice orb, Code wells, the morph sheet's glass and the paused Flows tile follow the neutral ramp.
+- Verified on the emulator in both themes (before/after in `docs/design/palette-2026-10/`); every AA test passes; goldens regenerated and inspected. **Not verified:** a physical OLED/LCD phone (near-black #0B0B0C was chosen to avoid OLED smear, not measured on one).
+
 ---
 
 *Plan approved 2026-09-30. Phases 0-2 in progress; §10 records what is verified.*

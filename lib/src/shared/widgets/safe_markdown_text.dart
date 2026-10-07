@@ -416,7 +416,7 @@ class SafeMarkdownTextState extends State<SafeMarkdownText> {
       margin: const EdgeInsets.symmetric(vertical: 6),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1A1A1E) : const Color(0xFFF2F2F7),
+        color: isDark ? const Color(0xFF1A1A1E) : const Color(0xFFF4F4F5),
         borderRadius: BorderRadius.circular(FluxRadius.sm),
         border: Border(
           left: BorderSide(

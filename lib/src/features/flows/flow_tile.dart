@@ -85,7 +85,7 @@ class FlowTile extends StatelessWidget {
               );
     final base = flowTileColors(flow.trigger.kind);
     final grey = FluxColors.isDark(context)
-        ? const Color(0xFF3A3A44)
+        ? const Color(0xFF333336)
         : const Color(0xFF6E7080);
     final colors = [
       for (final c in base) Color.lerp(c, grey, flow.enabled ? 0 : .78)!,

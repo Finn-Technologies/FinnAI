@@ -95,7 +95,7 @@ class FinnMorphSurface extends StatelessWidget {
   /// over a quiet screen, and costs a flat fill.
   static Color glassOf(BuildContext context) => Color.alphaBlend(
         FluxColors.isDark(context)
-            ? const Color(0xD91E1E24)
+            ? const Color(0xD91A1A1C)
             : const Color(0xE0FFFFFF),
         FluxColors.canvasOf(context),
       );

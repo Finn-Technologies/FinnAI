@@ -67,7 +67,7 @@ extension _ComposerAttachment on _ChatComposerState {
                       : const Color(0xFF3A3A3C),
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: isDark ? const Color(0xFF101014) : Colors.white,
+                    color: isDark ? const Color(0xFF0B0B0C) : Colors.white,
                     width: 1.5,
                   ),
                 ),

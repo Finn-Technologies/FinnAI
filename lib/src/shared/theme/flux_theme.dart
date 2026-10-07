@@ -20,31 +20,37 @@ export 'package:finn_ai/src/shared/theme/flux_motion_tokens.dart';
 /// from the same constants so the numbers cannot drift from the palette.
 abstract final class FluxColors {
   // Light Palette
-  static const canvas = Color(0xFFF5F5F5);
-  static const ink = Color(0xFF121212);
-  static const muted = Color(0xFF686966);
-  static const line = Color(0xFFEAEAE7);
+  static const canvas = Color(0xFFF4F4F5);
+  static const ink = Color(0xFF0A0A0B);
+  static const muted = Color(0xFF6B6B70);
+  static const line = Color(0xFFE4E4E7);
 
   /// Hairline on the sidebar panel's right edge. Darker than [line]: the
   /// design draws the panel's boundary as a visible 1px rule, not a hint.
-  static const panelEdge = Color(0xFFDCDCDC);
-  static const surface = Color(0xFFF3F3F3);
+  static const panelEdge = Color(0xFFD9D9DD);
+  static const surface = Color(0xFFF4F4F5);
   static const card = Color(0xFFFFFFFF);
   static const blue = Color(0xFF15509E);
   static const lime = Color(0xFFD6FF7D);
   static const mint = Color(0xFF7DFFCD);
   static const green = Color(0xFF00FF2B);
 
-  // Dark palette, lifted off pure black: #000000 crushes on LCD and smears
-  // on OLED, so the canvas is #101014 and flat surfaces separate with fill
-  // plus a 1px hairline instead of a shadow (see composer.dart).
-  static const darkCanvas = Color(0xFF101014);
-  static const darkInk = Color(0xFFF5F5F7);
-  static const darkMuted = Color(0xFF9898A0);
-  static const darkLine = Color(0xFF34343E);
-  static const darkPanelEdge = Color(0xFF45454F);
-  static const darkSurface = Color(0xFF18181C);
-  static const darkCard = Color(0xFF26262E);
+  // Dark palette: one neutral ramp, no hue. The old greys all carried a
+  // blue-violet cast (#101014, #26262E, #2C2C35, #45454F), the look of a
+  // stock dark theme; neutral near-black with surfaces stepping up in even
+  // lightness reads calmer and more expensive. Lifted off pure black
+  // (#000000 crushes on LCD and smears on OLED); flat surfaces separate with
+  // fill plus a 1px hairline instead of a shadow (see composer.dart).
+  //
+  //   canvas #0B0B0C < surface #131315 < card #18181A < control #202023
+  //   < user bubble #454549; hairline #2C2C30, panel edge #38383C.
+  static const darkCanvas = Color(0xFF0B0B0C);
+  static const darkInk = Color(0xFFF5F5F5);
+  static const darkMuted = Color(0xFF8E8E93);
+  static const darkLine = Color(0xFF2C2C30);
+  static const darkPanelEdge = Color(0xFF38383C);
+  static const darkSurface = Color(0xFF131315);
+  static const darkCard = Color(0xFF18181A);
 
   // Destructive (unified red)
   static const destructive = Color(0xFFB3261E);
@@ -79,8 +85,8 @@ abstract final class FluxColors {
   // which composited to ~3.5:1 and measured 2.3-3.2:1 on the lighter surfaces.
   //
   //   secondaryInk #515250 — 7.40:1 on canvas, 7.86:1 on card
-  static const secondaryInk = Color(0xFF515250);
-  static const secondaryInkDark = Color(0xFF94949C);
+  static const secondaryInk = Color(0xFF4B4B50);
+  static const secondaryInkDark = Color(0xFFA1A1A6);
 
   // The former accent pair. Both members were re-purposed onto the AA-safe
   // semantic values above so the settings model pill, which tints its own
@@ -152,33 +158,36 @@ abstract final class FluxColors {
           ? darkInk.withValues(alpha: alpha * 0.30)
           : Colors.black.withValues(alpha: alpha);
 
-  // Bubble fills. bubbleUserDark is #64646E: white text clears 4.5:1 on it
-  // (5.37:1) and it holds 3:1 against both the canvas and the tile it sits
-  // on, so it survives panels that crushed the old slate into the background.
+  // Bubble fills. The dark user bubble was #64646E (3.25:1 on the canvas), a
+  // mid-grey slab that shouted over the conversation. #454549 is 2.06:1:
+  // clearly a bubble (a device test found 1.5:1 read as "dark grey on
+  // black"), with white text at 8.75:1, and it sits on the right.
   static const bubbleUserLight = Color(0xFFFFFFFF);
-  static const bubbleUserDark = Color(0xFF64646E);
-  static const bubbleAssistantLight = Color(0xFFF2F2F7);
-  static const bubbleAssistantDark = Color(0xFF26262E);
+  static const bubbleUserDark = Color(0xFF454549);
+  static const bubbleAssistantLight = Color(0xFFF4F4F5);
+  static const bubbleAssistantDark = Color(0xFF18181A);
 
   // Reveal pills that sit under a reply (sources, browser steps)
-  static const disclosureLight = Color(0xFFEAEAEE);
-  static const disclosureDark = Color(0xFF26262E);
+  static const disclosureLight = Color(0xFFEDEDEF);
+  static const disclosureDark = Color(0xFF202023);
 
   // Chat shell controls. controlDark is the lightest dark fill on purpose:
   // the flat composer pill separates from the chat background on fill plus
   // its hairline, with no shadow to lean on.
   static const controlLight = Color(0xFFFFFFFF);
-  static const controlDark = Color(0xFF2C2C35);
-  static const actionLight = Color(0xFF414141);
-  static const actionDark = Color(0xFFF5F5F7);
+  static const controlDark = Color(0xFF202023);
+  // True black and white for the primary action: the old #414141 charcoal
+  // read as disabled next to the ink it sat beside.
+  static const actionLight = Color(0xFF0A0A0B);
+  static const actionDark = Color(0xFFF5F5F5);
 
   // Flat tiles: sidebar chat cards and their circular shortcuts.
-  static const tileLight = Color(0xFFF5F5F5);
-  static const tileDark = Color(0xFF18181C);
+  static const tileLight = Color(0xFFF4F4F5);
+  static const tileDark = Color(0xFF0B0B0C);
 
   // Secondary copy on a tile, e.g. a chat card's timestamp. #848484 measured
   // 3.43:1 on the light tile fill; #646464 measures 5.43:1 on the same tile.
-  static const timestampLight = Color(0xFF646464);
+  static const timestampLight = Color(0xFF6B6B70);
 
   // Listening pill behind the composer (design: Chat - Voice). The dark pair
   // is a deep, desaturated version: the light pastels measure ~15:1 against
@@ -214,13 +223,17 @@ abstract final class FluxColors {
   // The ambient green wash under an empty chat. The light pair fades *up* from
   // transparent; on the dark canvas the same hue has to fade up from the
   // surface colour and at a fraction of the strength, or it reads as a glow.
+  //
+  // It was lime (#92FF86), a hue nowhere else in the brand; it is now the
+  // brand's own violet-blue, faint, so the empty screen is lit by Finn's
+  // colours rather than tinted green.
   static const List<Color> ambientWashLight = <Color>[
     Color(0x00FFFFFF),
-    Color(0x4092FF86),
+    Color(0x247E8BFF),
   ];
   static const List<Color> ambientWashDark = <Color>[
-    Color(0x0018181C),
-    Color(0x1492FF86),
+    Color(0x000B0B0C),
+    Color(0x1F5D5FEF),
   ];
 
   /// Stops of the empty-chat ambient wash, in the active theme.
@@ -228,8 +241,8 @@ abstract final class FluxColors {
       isDark(context) ? ambientWashDark : ambientWashLight;
 
   // Rows inside a reveal pill
-  static const disclosureRowLight = Color(0xFFF2F2F7);
-  static const disclosureRowDark = Color(0xFF18181C);
+  static const disclosureRowLight = Color(0xFFF4F4F5);
+  static const disclosureRowDark = Color(0xFF131315);
 
   // Dynamic Context Resolvers
 

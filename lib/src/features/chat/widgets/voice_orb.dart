@@ -200,7 +200,7 @@ class VoiceOrbPainter extends CustomPainter {
         ..shader = const RadialGradient(
           center: Alignment(0, -.2),
           radius: 1,
-          colors: [Color(0xFF23232C), Color(0xFF0B0B10)],
+          colors: [Color(0xFF252528), Color(0xFF0B0B0C)],
         ).createShader(sphere),
     );
 

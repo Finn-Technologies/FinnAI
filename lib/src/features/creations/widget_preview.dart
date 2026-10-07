@@ -76,7 +76,7 @@ class _HomeWidgetPreviewState extends State<HomeWidgetPreview> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(FluxRadius.card),
-        border: Border.all(color: const Color(0xFFEAEAE7)),
+        border: Border.all(color: const Color(0xFFE4E4E7)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
