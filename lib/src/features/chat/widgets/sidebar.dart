@@ -481,9 +481,21 @@ class _HistoryMasonry extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(child: Column(children: columns[0])),
+        // Stretched: a short chat ("Hi") used to shrink to its text and
+        // float centred in its column.
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: columns[0],
+          ),
+        ),
         const SizedBox(width: 10),
-        Expanded(child: Column(children: columns[1])),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: columns[1],
+          ),
+        ),
       ],
     );
   }

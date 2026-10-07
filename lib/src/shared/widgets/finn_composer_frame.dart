@@ -139,15 +139,18 @@ abstract final class FinnComposerText {
         color: FluxColors.inkOf(context).withValues(alpha: .55),
       );
 
+  /// A container, and nothing more, for screen readers: it used to carry a
+  /// label and the text-field flag without being one, so both merged into the
+  /// full-screen node above it, and TalkBack read the empty chat as one
+  /// screen-sized field whose label was the greeting. The field inside is the
+  /// one text field ("Ask anything").
   static Widget band({
     Key? key,
-    required String label,
     required FocusNode focusNode,
     required Widget field,
   }) =>
       Semantics(
-        label: label,
-        textField: true,
+        container: true,
         child: GestureDetector(
           key: key,
           behavior: HitTestBehavior.opaque,

@@ -1208,7 +1208,6 @@
   "@voiceGreeting": {
     "description": ""
   },
-  "chatMessageToFinnSemantic": "Mensaje para Finn",
   "chatStopGeneratingSemantic": "Detener la generación",
   "chatSendMessageSemantic": "Enviar mensaje",
   "chatOpenMenuTooltip": "Abrir menú",

@@ -367,7 +367,6 @@ class _ChatComposerState extends State<ChatComposer>
                 // the field (FinnComposerText.band).
                 child: FinnComposerText.band(
                   key: const ValueKey('composer-field-band'),
-                  label: l10n.chatMessageToFinnSemantic,
                   focusNode: widget.focusNode,
                   field: EnterToSend(
                     canSend: canSend,

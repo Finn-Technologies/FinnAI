@@ -7,6 +7,7 @@ import 'package:finn_ai/src/app/frame_log.dart';
 import 'package:finn_ai/flow_background.dart' show flowBackgroundMain;
 import 'package:finn_ai/src/app/bootstrap.dart';
 import 'package:finn_ai/src/engine/eval/benchmark.dart';
+import 'package:finn_ai/src/engine/eval/eval_runner.dart';
 import 'package:finn_ai/src/engine/eval/harness.dart';
 import 'package:finn_ai/src/features/search/search_turn.dart';
 import 'package:finn_ai/src/features/voice/tts/tts_probe.dart';

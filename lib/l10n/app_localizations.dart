@@ -2354,12 +2354,6 @@ abstract class AppLocalizations {
   /// **'What\'s up?'**
   String get voiceGreeting;
 
-  /// Composer field semantics
-  ///
-  /// In en, this message translates to:
-  /// **'Message to Finn'**
-  String get chatMessageToFinnSemantic;
-
   /// Stop button semantics
   ///
   /// In en, this message translates to:

@@ -75,10 +75,10 @@ extension FinnAcceleratorTurn on FinnAccelerator {
             conversationId,
             history,
             combinedContext,
-            // Part of the session's identity: the task instruction is a system
-            // block that lives in the KV cache for the session's whole life, so
-            // an intent switch has to start a fresh session rather than append
-            // a conflicting instruction over the resident one.
+            // Not part of the session's identity (see session_key.dart): an
+            // intent switch keeps the session so the history is not re-read,
+            // and the new instruction is appended below, before the user's
+            // turn, whenever it differs from the resident one.
             taskInstruction: agentPrompt
                 ? ''
                 : PromptIntentPolicy.taskInstruction(promptAnalysis),

@@ -48,7 +48,6 @@ extension FinnAcceleratorSessions on FinnAccelerator {
     final configuration = sessionConfigurationHash(
       stableHash: _prefixCacheKey(runtime).stableHash,
       systemContext: systemContext,
-      taskInstruction: taskInstruction,
       mode: agent ? 'agent' : 'chat',
     );
     final existing = runtime.sessions[conversationId];

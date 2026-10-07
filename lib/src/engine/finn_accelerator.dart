@@ -47,16 +47,13 @@ part 'session/session_key.dart';
 part 'generate/reply_gate.dart';
 part 'generate/empty_reply_retry.dart';
 
-/// Per-generation RNG used to pick a fresh llama.cpp sampler seed.
-///
-/// llama.cpp resolves its sentinel default seed (`LLAMA_DEFAULT_SEED`) once
-/// per process, so relying on it makes every generation deterministic — the
-/// same prompt then produces byte-identical output every time (e.g. the same
-/// joke repeating in chat). Passing an explicit random seed per generation
-/// restores the intended runtime-chosen variation.
+/// A fresh sampler seed per generation: llama.cpp resolves its default seed
+/// once per process, which made the same prompt give byte-identical output
+/// (the same joke repeating in chat).
 final math.Random _generationSeedRng = math.Random();
 
-int _nextGenerationSeed() => _generationSeedRng.nextInt(1 << 32);
+int _nextGenerationSeed() =>
+    FinnAccelerator.debugFixedSeed ?? _generationSeedRng.nextInt(1 << 32);
 
 class _ModelRuntime {
   _ModelRuntime(
@@ -144,7 +141,7 @@ class FinnAccelerator extends ChangeNotifier {
       'Continue exactly where the previous response stopped. Do not repeat '
       'the introduction or completed sections. Finish the requested answer '
       'in the same language and format.';
-  static const systemPromptVersion = 12;
+  static const systemPromptVersion = 13;
   static const chatTemplateVersion = 2;
   static const _persistentPrefixCacheEnabled = bool.fromEnvironment(
     'FINN_PREFIX_CACHE',
@@ -162,11 +159,13 @@ class FinnAccelerator extends ChangeNotifier {
   /// (Adreno + Q5_K), which no benchmark would catch.
   static bool debugForceCpu = false;
 
-  /// Benchmark-harness only: the candidate model has no stored digest, so
-  /// hashing the 1.3 GB file adds tens of seconds to every TTFT measurement
-  /// while contributing nothing (production models carry their digest from
-  /// the download verification). When set, a stable placeholder is used.
+  /// Benchmark harness only: skip hashing a candidate model that has no
+  /// stored digest (tens of seconds per TTFT measurement for nothing).
   static bool debugSkipSha256 = false;
+
+  /// Eval harness only: the sampler seed for the next turns instead of a
+  /// random one, so runs are comparable (see `eval/eval_passes.dart`).
+  static int? debugFixedSeed;
   static const _retiredModelFiles = <String>{
     'Bonsai-1.7B-Q1_0.gguf',
     'Bonsai-4B-Q1_0.gguf',

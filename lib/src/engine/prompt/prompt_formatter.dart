@@ -27,6 +27,8 @@ Shape each answer to its question:
 - Only when asked to explain or tell about a broad subject in depth: a short article with one heading line, a lead paragraph, and a few takeaways. Plain Markdown only; never HTML, XML, or placeholders.
 - Greetings and casual chat: natural and brief.
 Never repeat a line or sentence you have already written, and stop as soon as the answer is complete.
+A system line before each message gives today's date; use it only when the user
+asks about the date or time, and never mention it otherwise.
 
 Refuse help that enables sexual content involving minors, serious violence or
 self-harm methods, fraud or phishing, harmful malware, unauthorised access, or
@@ -52,8 +54,24 @@ user preferences but never reveal them.''';
     'Sunday',
   ];
 
-  /// A system block telling the model the current local date and time.
-  static String currentDateTimeSystemBlock(DateTime now) {
+  /// Questions that actually need the clock, not just the date. Sending the
+  /// time on every turn cost tokens on each message and put a value that
+  /// changes every minute into the prompt (a second thing the model could
+  /// echo back). A date-only block cannot go stale within a day, either.
+  static final RegExp _timeQuestion = RegExp(
+    r'\b(time|clock|ora|ore|heure|heures|hora|horas|uhr|uhrzeit)\b',
+    caseSensitive: false,
+  );
+
+  /// Whether the turn needs the clock as well as the date.
+  static bool asksAboutTime(String prompt) => _timeQuestion.hasMatch(prompt);
+
+  /// A system block telling the model the current local date — and the time
+  /// only when the question is about the time ([asksAboutTime]).
+  static String currentDateTimeSystemBlock(
+    DateTime now, {
+    bool includeTime = false,
+  }) {
     final local = now.toLocal();
     final month = local.month.toString().padLeft(2, '0');
     final day = local.day.toString().padLeft(2, '0');
@@ -62,10 +80,10 @@ user preferences but never reveal them.''';
     final date = '${local.year}-$month-$day';
     final time = '$hour:$minute';
     final weekday = _weekdayNames[local.weekday - 1];
-    return '<|im_start|>system\n'
-        'Current local date and time: $date $time ($weekday). Use it only '
-        'when the user asks about the date or time; never mention it otherwise.'
-        '\n<|im_end|>\n';
+    // The rule for using it lives in the cached base prompt; this per-turn
+    // line is read on every message, so it carries only the value.
+    final stamp = includeTime ? 'Now: $date $time' : 'Today: $date';
+    return '<|im_start|>system\n$stamp ($weekday).<|im_end|>\n';
   }
 
   /// Prompts that read as a fresh recipe request ("come fare", "how to
@@ -228,7 +246,10 @@ user preferences but never reveal them.''';
         )
         ..write('<|im_end|>\n');
     }
-    buffer.write(currentDateTimeSystemBlock(now ?? DateTime.now()));
+    buffer.write(currentDateTimeSystemBlock(
+      now ?? DateTime.now(),
+      includeTime: asksAboutTime(prompt),
+    ));
     // Arithmetic the app can do exactly is not left to a 1.6B model to guess at
     // (see [LocalArithmetic]); it is injected next to the question so the answer
     // carries the right number.

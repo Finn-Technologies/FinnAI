@@ -1305,9 +1305,6 @@ class AppLocalizationsEs extends AppLocalizations {
   String get voiceGreeting => '¿Qué tal?';
 
   @override
-  String get chatMessageToFinnSemantic => 'Mensaje para Finn';
-
-  @override
   String get chatStopGeneratingSemantic => 'Detener la generación';
 
   @override

@@ -518,43 +518,12 @@ class DeviceProfiler {
   /// homogeneous and leaves the thread counts alone.
   ///
   /// Read once: a CPU's cluster layout cannot change while the app runs.
-  /// The fast cluster's size. The scheduler's per-core `cpu_capacity` comes
-  /// first: peak frequency cannot tell the clusters apart where the vendor
-  /// caps every core alike (Galaxy Tab A8, Unisoc T618: eight cores at
-  /// 2.0 GHz, but capacity 1024 on its two A75s and 544 on six A55s), and
-  /// prefill then ran four threads with two of them on little cores.
   static Future<int?> _performanceCores(int cores) async {
     final cached = _cachedPerformanceCores;
     if (cached != null) return cached;
-    final fromCapacity = await _fastCluster(cores, _cpuFile('cpu_capacity'));
-    if (fromCapacity != null) return _cachedPerformanceCores = fromCapacity;
-    final fromFrequency = await _fastCluster(
-      cores,
-      _cpuFile('cpufreq/cpuinfo_max_freq'),
-    );
-    if (fromFrequency != null) _cachedPerformanceCores = fromFrequency;
-    return fromFrequency;
-  }
-
-  static Future<int?> Function(int cpu) _cpuFile(String name) => (cpu) async {
-        try {
-          final raw = await File(
-            '/sys/devices/system/cpu/cpu$cpu/$name',
-          ).readAsString();
-          return int.tryParse(raw.trim());
-        } catch (_) {
-          return null;
-        }
-      };
-
-  /// Cores rated above the slowest, or null when they cannot be told apart.
-  static Future<int?> _fastCluster(
-    int cores,
-    Future<int?> Function(int cpu) read,
-  ) async {
     final peaks = <int>[];
     for (var cpu = 0; cpu < cores; cpu++) {
-      final peak = await read(cpu);
+      final peak = await _peakFrequencyKhz(cpu);
       if (peak == null || peak <= 0) return null;
       peaks.add(peak);
     }
@@ -562,6 +531,22 @@ class DeviceProfiler {
     final slowest = peaks.reduce(math.min);
     if (peaks.every((peak) => peak == slowest)) return null;
     final performance = peaks.where((peak) => peak > slowest).length;
-    return performance < 1 ? null : performance;
+    if (performance < 1) return null;
+    return _cachedPerformanceCores = performance;
+  }
+
+  // Peak frequency, not the scheduler's `cpu_capacity`: on the Galaxy Tab A8
+  // (Unisoc T618, every core reported at 2.0 GHz) capacity does find the two
+  // A75s, but prefill on those two alone ran at 18.8 tok/s against 36 tok/s
+  // with the four threads the frequency reading leads to (2026-10-07).
+  static Future<int?> _peakFrequencyKhz(int cpu) async {
+    try {
+      final raw = await File(
+        '/sys/devices/system/cpu/cpu$cpu/cpufreq/cpuinfo_max_freq',
+      ).readAsString();
+      return int.tryParse(raw.trim());
+    } catch (_) {
+      return null;
+    }
   }
 }

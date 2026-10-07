@@ -70,6 +70,8 @@ Use this before grepping. Paths are relative to the repository root.
 | Where chat runs the search for send / continue / regenerate / edit | `lib/src/features/chat/shell/send.dart` (`_groundTurn`) |
 | Turning search results into prompt context | `lib/src/features/search/search_agent.dart` (`groundedContextForSources`, `searchAndFetch`) |
 | The search step the eval applies before the engine | `lib/main.dart` (`_groundEvalTurn`) → `engine/eval/harness.dart` (`EvalGrounder`) |
+| The on-device eval run (dart-defines, prewarm, baseline file) | `lib/src/engine/eval/eval_runner.dart` (`runEvalHarness`) |
+| Eval repeatability: per-turn fixed seeds, median over passes (`FINN_EVAL_PASSES`) | `lib/src/engine/eval/eval_passes.dart` (`evalTurnSeed`, `collapsePasses`) |
 
 ## Flows (automations)
 

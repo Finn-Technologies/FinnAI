@@ -264,7 +264,6 @@ class _CodeComposerState extends State<CodeComposer>
           );
 
     final fieldText = FinnComposerText.band(
-      label: l10n.codeComposerHint,
       focusNode: widget.focusNode,
       field: EnterToSend(
         canSend: canSend,

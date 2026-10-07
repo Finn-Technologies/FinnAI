@@ -230,6 +230,24 @@ class EvalPromptCatalog {
         AnswerCheck.containsAny(['physic'])
       ],
     ),
+    // A topic switch mid-chat: the poem changes the task instruction and the
+    // last turn changes it back. The session survives intent changes
+    // (session_key.dart), so the old instruction stays in the cache under the
+    // new one; this checks the model still answers from the history, and its
+    // follow-up first-token times show whether the history was re-read.
+    EvalCase(
+      id: 'recall.topic_switch',
+      suite: EvalSuite.recall,
+      prompt: 'My favourite city is Lisbon.',
+      browse: BrowseExpectation.mustNot,
+      followUps: [
+        'Write a two-line poem about rain.',
+        'Which city did I say is my favourite?',
+      ],
+      checks: [
+        AnswerCheck.containsAny(['Lisbon'])
+      ],
+    ),
 
     // --- browse: must not reach the web -----------------------------------
     EvalCase(

@@ -1658,10 +1658,6 @@
   "@voiceGreeting": {
     "description": ""
   },
-  "chatMessageToFinnSemantic": "Message to Finn",
-  "@chatMessageToFinnSemantic": {
-    "description": "Composer field semantics"
-  },
   "chatStopGeneratingSemantic": "Stop generating",
   "@chatStopGeneratingSemantic": {
     "description": "Stop button semantics"

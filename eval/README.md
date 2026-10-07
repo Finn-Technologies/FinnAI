@@ -11,6 +11,9 @@ evaluation harness reads.
 BASELINE_SLUG=lite ./tool/run_eval.sh --write-baseline --lite --image eval/images/number42.png
 ```
 
+`--passes 3` runs the suite three times and gates on each turn's median (a tie on a check
+counts as a failure). Every turn uses a fixed sampler seed derived from the case, so two runs of
+the same build sample the same tokens; before that, one build's score moved ~10% between runs.
 `--lite` forces the Lite device policy (2048 context, text-only load, projector on first
 image); `--image` adds the image case. A baseline name comes from `BASELINE_SLUG`
 (default: your git user name + `-device`). The app writes the baseline into its own files

@@ -11,6 +11,10 @@
 #   ./tool/run_eval.sh --prompts file.json   # add non-Latin cases from a file
 #   ./tool/run_eval.sh --lite                # force the Lite (4 GB) device policy
 #   ./tool/run_eval.sh --image eval/images/number42.png   # add the image case
+#   ./tool/run_eval.sh --passes 3            # gate on the median of 3 passes
+#
+# Turns use fixed sampler seeds (eval_passes.dart), so two runs of one build
+# are comparable; with two devices attached, pick one with ANDROID_SERIAL.
 #
 # The app must already have the model installed (Settings -> AI Models). A run
 # that starts before the model is resident reports the cold load in the first
@@ -35,6 +39,7 @@ WRITE_BASELINE=0
 SKIP_BUILD=0
 LITE=0
 IMAGE=""
+PASSES=1
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -45,7 +50,8 @@ while [[ $# -gt 0 ]]; do
     --skip-build) SKIP_BUILD=1; shift ;;
     --lite) LITE=1; shift ;;
     --image) IMAGE="$2"; shift 2 ;;
-    -h|--help) sed -n '2,25p' "$0"; exit 0 ;;
+    --passes) PASSES="$2"; shift 2 ;;
+    -h|--help) sed -n '2,30p' "$0"; exit 0 ;;
     *) echo "unknown flag: $1" >&2; exit 2 ;;
   esac
 done
@@ -58,6 +64,7 @@ adb get-state >/dev/null 2>&1 || {
 DEFINES=(--dart-define=FINN_EVALUATION=true)
 [[ -n "$SUITES" ]] && DEFINES+=(--dart-define=FINN_EVAL_SUITES="$SUITES")
 [[ "$MAX_CASES" -gt 0 ]] && DEFINES+=(--dart-define=FINN_EVAL_MAX_CASES="$MAX_CASES")
+[[ "$PASSES" -gt 1 ]] && DEFINES+=(--dart-define=FINN_EVAL_PASSES="$PASSES")
 
 if [[ "$WRITE_BASELINE" -eq 1 ]]; then
   BASELINE_NAME="baseline_${BASELINE_SLUG}.json"
