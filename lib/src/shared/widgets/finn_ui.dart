@@ -60,6 +60,18 @@ class FinnCircleButton extends StatelessWidget {
         dimmed: dimmed,
       );
 
+  /// A filled disc that is [dimmed] fades too: a bright send button with
+  /// only its arrow faded still read as ready in dark mode.
+  Color _fill(BuildContext context) {
+    final base = color ??
+        (dark ? FluxColors.actionOf(context) : FluxColors.controlOf(context));
+    if (!dimmed || !(dark || color != null)) return base;
+    return Color.alphaBlend(
+      base.withValues(alpha: base.a * .38),
+      FluxColors.controlOf(context),
+    );
+  }
+
   @override
   Widget build(BuildContext context) => Semantics(
         button: true,
@@ -71,10 +83,7 @@ class FinnCircleButton extends StatelessWidget {
           enabled: onTap != null,
           child: Material(
             key: surfaceKey,
-            color: color ??
-                (dark
-                    ? FluxColors.actionOf(context)
-                    : FluxColors.controlOf(context)),
+            color: _fill(context),
             shape: const CircleBorder(),
             child: SizedBox.square(
               key: hitKey,
