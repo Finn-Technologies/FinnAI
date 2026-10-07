@@ -391,10 +391,16 @@ class _FloatingArrowState extends State<_FloatingArrow>
     end: -6,
   ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOutSine));
 
+  // Under reduced motion the arrow is drawn still, and the controller must
+  // not run either: a ticker nobody listens to still asks for every frame.
   @override
-  void initState() {
-    super.initState();
-    _controller.repeat(reverse: true);
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _controller.stop();
+    } else if (!_controller.isAnimating) {
+      _controller.repeat(reverse: true);
+    }
   }
 
   @override

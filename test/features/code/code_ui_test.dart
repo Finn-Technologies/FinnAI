@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -295,11 +294,11 @@ void main() {
       }
     });
 
-    testWidgets('the reveal blurs what scrolls under it, ramping downward',
+    testWidgets('the reveal veils what scrolls under it without a blur',
         (tester) async {
-      // The band layout is load-bearing: Flutter cannot mask a backdrop blur, so
-      // the ramp is clipped bands that accumulate. Both halves are asserted, and
-      // the sigmas are equal on purpose — see FluxProgressiveBlur.
+      // It used to be eight stacked BackdropFilters, re-run on every frame the
+      // history scrolled beneath. The UI pass of 2026-10 replaced them with a
+      // gradient of the sidebar's own colour (no backdrop work at all).
       await useTallPhone(tester);
       final modes = AppModeController(directoryProvider: () async => temp);
       await tester.pumpWidget(
@@ -313,23 +312,14 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('brand-switcher')));
       await settle(tester);
 
-      final bands = tester
-          .widgetList<BackdropFilter>(find.byType(BackdropFilter))
-          .toList();
-      expect(bands.length, greaterThan(1),
-          reason: 'a ramp needs more than one');
-
-      // Every band blurs by the same amount and covers everything below its own
-      // top edge, so strength accumulates with depth. A per-band sigma that grew
-      // with depth would compound instead.
-      final sigmas = {
-        for (final band in bands) (band.filter as ImageFilter).toString(),
-      };
-      expect(sigmas.length, 1, reason: 'bands must not each differ: $sigmas');
-
-      // The band count is what makes it a ramp, and the panel is short, so the
-      // bands must not be so few that the steps show.
-      expect(bands.length, greaterThanOrEqualTo(6));
+      expect(find.byType(BackdropFilter), findsNothing);
+      final veil = tester.widget<DecoratedBox>(
+        find.byKey(const ValueKey('brand-switcher-veil')),
+      );
+      final gradient =
+          (veil.decoration as BoxDecoration).gradient! as LinearGradient;
+      // Stronger toward the bottom, where the history passes under.
+      expect(gradient.colors.last.a, greaterThan(gradient.colors.first.a));
     });
 
     testWidgets('reports its reveal height so the panel can make room',

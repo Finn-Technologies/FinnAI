@@ -58,7 +58,7 @@ Rect? globalRectOfContext(BuildContext context) {
 /// At [progress] 0 the panel is exactly [origin] — the button's own rectangle,
 /// corner radius and fill — and at 1 it is this widget's laid-out bounds. In
 /// between, the shape travels and grows on one curve, the fill turns from the
-/// button's colour to frosted glass, and [child] (always laid out at the final
+/// button's colour to the panel's, and [child] (always laid out at the final
 /// size) fades in once the shape has room for it. Closing runs the same path
 /// back into the button, so the panel visibly *is* the button, enlarged.
 ///
@@ -88,10 +88,17 @@ class FinnMorphSurface extends StatelessWidget {
   final double? originRadius;
   final double radius;
 
-  /// The glass fill: a translucent tint over a blur of what is behind.
-  static Color glassOf(BuildContext context) => FluxColors.isDark(context)
-      ? const Color(0xD91E1E24)
-      : const Color(0xE0FFFFFF);
+  /// The panel's fill: the frosted tint as it reads over the canvas, made
+  /// opaque. It used to be that tint over a 28-sigma backdrop blur, which
+  /// re-blurred the whole sheet's area on every frame of the morph (the
+  /// "+" sheet's dropped frames); the panel now looks as it did at rest
+  /// over a quiet screen, and costs a flat fill.
+  static Color glassOf(BuildContext context) => Color.alphaBlend(
+        FluxColors.isDark(context)
+            ? const Color(0xD91E1E24)
+            : const Color(0xE0FFFFFF),
+        FluxColors.canvasOf(context),
+      );
 
   /// The panel's 1px edge: a light rim on dark, a soft shade on light.
   static Color rimOf(BuildContext context) => FluxColors.isDark(context)
@@ -134,12 +141,7 @@ class FinnMorphSurface extends StatelessWidget {
           child: Stack(
             fit: StackFit.passthrough,
             children: [
-              Positioned.fill(
-                child: BackdropFilter(
-                  filter: ui.ImageFilter.blur(sigmaX: 28, sigmaY: 28),
-                  child: ColoredBox(color: fill),
-                ),
-              ),
+              Positioned.fill(child: ColoredBox(color: fill)),
               Opacity(
                 opacity: reveal,
                 child: Transform.scale(

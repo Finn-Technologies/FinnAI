@@ -5,7 +5,6 @@ import 'package:finn_ai/l10n/l10n_helper.dart';
 import 'package:finn_ai/src/shared/config/app_mode.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 import 'package:finn_ai/src/shared/widgets/flux_controls.dart';
-import 'package:finn_ai/src/shared/widgets/flux_surfaces.dart';
 
 /// How far the brand row's reveal has opened, 0 to 1, as a live animation value.
 ///
@@ -308,9 +307,27 @@ class _Reveal extends StatelessWidget {
                   width: double.infinity,
                   child: Stack(
                     children: [
-                      const Positioned.fill(
-                        child: FluxProgressiveBlur(
-                          child: SizedBox.expand(),
+                      // History scrolls up under the option; the sidebar's
+                      // own colour, ramping in downward, lets it recede
+                      // without a backdrop blur (which re-ran eight blur
+                      // passes on every scroll frame).
+                      Positioned.fill(
+                        child: IgnorePointer(
+                          child: DecoratedBox(
+                            key: const ValueKey('brand-switcher-veil'),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  FluxColors.controlOf(context)
+                                      .withValues(alpha: .82),
+                                  FluxColors.controlOf(context)
+                                      .withValues(alpha: .97),
+                                ],
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                       Positioned.fill(

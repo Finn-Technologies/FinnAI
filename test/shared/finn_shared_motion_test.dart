@@ -5,6 +5,7 @@ import 'package:finn_ai/src/features/code/ui/code_conversation.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 import 'package:finn_ai/src/shared/widgets/finn_composer_frame.dart';
 import 'package:finn_ai/src/shared/widgets/finn_greeting.dart';
+import 'package:finn_ai/src/shared/widgets/finn_sidebar_surface.dart';
 import 'package:finn_ai/src/shared/widgets/finn_ui.dart';
 
 Widget _host(Widget child, {bool reduceMotion = false}) => MaterialApp(
@@ -86,6 +87,42 @@ void main() {
       await tester.pumpWidget(_host(const SizedBox()));
       await tester.pump();
       expect(tester.binding.hasScheduledFrame, isFalse);
+    });
+  });
+
+  group('FinnSidebarSurface', () {
+    Widget surface({required bool open}) => MaterialApp(
+          home: FinnSidebarSurface(
+            home: const ColoredBox(color: Color(0xFFFFFFFF)),
+            // Something that animates forever while it is allowed to: a
+            // working session's pulse, a skeleton's sweep.
+            sidebar: const SizedBox(
+              width: 300,
+              child: Center(child: CircularProgressIndicator()),
+            ),
+            sidebarWidth: 300,
+            progress: open ? 1 : 0,
+            sidebarOpen: open,
+            toggleLeft: 16,
+            toggleTop: 60,
+            onToggle: () {},
+            onDragStart: (_) {},
+            onDragUpdate: (_) {},
+            onDragEnd: (_) {},
+          ),
+        );
+
+    testWidgets('a closed panel stops its tickers', (tester) async {
+      await tester.pumpWidget(surface(open: false));
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(tester.binding.hasScheduledFrame, isFalse);
+    });
+
+    testWidgets('an open panel runs them', (tester) async {
+      await tester.pumpWidget(surface(open: true));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(tester.binding.hasScheduledFrame, isTrue);
+      await tester.pumpWidget(const SizedBox());
     });
   });
 }

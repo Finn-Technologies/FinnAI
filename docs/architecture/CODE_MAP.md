@@ -48,7 +48,7 @@ Use this before grepping. Paths are relative to the repository root.
 | Sidebar, and its history cards (Siri-style masonry: time, title, preview, photo) | `lib/src/features/chat/widgets/sidebar.dart` (`_HistoryMasonry`), `sidebar_tiles.dart` |
 | The panel, its scrim, the menu/close morph and the open/close swipe (shared by FinnAI and FinnAI Code) | `lib/src/shared/widgets/finn_sidebar_surface.dart` (`FinnSidebarSurface`, `FinnSidebarToggleButton`), the chat drag logic in `lib/src/features/chat/shell/sidebar_surface.dart` |
 | The sidebar's circle destinations, buttons, and the history-grid card (a chat in FinnAI, a session in FinnAI Code) | `lib/src/shared/widgets/finn_sidebar_parts.dart` (`FinnSidebarHistoryTile`) |
-| The brand row and its reveal (the other app's name, blurred, inline) | `lib/src/shared/widgets/finn_brand_switcher.dart` (`FinnBrandSwitcher`, `BrandExpansion` — both sidebars share one expansion value so they resize on the same frame) |
+| The brand row and its reveal (the other app's name inline, over a gradient veil) | `lib/src/shared/widgets/finn_brand_switcher.dart` (`FinnBrandSwitcher`, `BrandExpansion` — both sidebars share one expansion value so they resize on the same frame) |
 | The soft top/bottom fade over a scrolling transcript | `lib/src/shared/widgets/finn_edge_fade.dart` |
 | Send / stop / regenerate / continue behaviour | `lib/src/features/chat/shell/send.dart` (`_send`, `_regenerateReply`, `_continueReply`), `shell/navigation.dart` (`_stopReply`) + `chat_generation_controller.dart` |
 | Streaming, cancellation, persistence of a turn | `lib/src/features/chat/chat_generation_controller.dart` |
@@ -208,7 +208,7 @@ A second app inside the app: its own sessions, settings and providers, in the sa
 | Shimmering placeholder rows while a list loads | `lib/src/shared/widgets/finn_skeleton.dart` |
 | The bottom-centre "+" that starts something new on list screens (Creations, Flows, You) | `lib/src/shared/widgets/finn_create_button.dart` |
 | The chat's "+" sheet (create cards, add to chat), grown out of the "+" button | `lib/src/features/chat/widgets/plus_sheet.dart` |
-| Floating glass sheets that grow out of the control that opened them (margins, corners, drag to dismiss) | `lib/src/shared/widgets/finn_morph_sheet.dart` (`FinnMorphSurface`, `FinnFloatingSheet`, `showFinnMorphSheet`, `globalRectOf`) |
+| Floating sheets (opaque, no backdrop blur) that grow out of the control that opened them (margins, corners, drag to dismiss) | `lib/src/shared/widgets/finn_morph_sheet.dart` (`FinnMorphSurface`, `FinnFloatingSheet`, `showFinnMorphSheet`, `globalRectOf`) |
 | A composer fusing into one panel while the keyboard is up (chat and Code) | `lib/src/shared/widgets/keyboard_fuse.dart` (`KeyboardFuse`) |
 | The composer row both apps share (50dp circles, the pill, the fused panel; the field's type and focus band) | `lib/src/shared/widgets/finn_composer_frame.dart` (`FinnComposerFrame`, `FinnComposerText`), used by `chat/widgets/composer.dart` and `code/ui/code_composer.dart` |
 | A shell's top row (toggle slot, title, new chat / new session) | `lib/src/shared/widgets/finn_shell_header.dart` (`FinnShellHeader`) |
@@ -216,7 +216,7 @@ A second app inside the app: its own sessions, settings and providers, in the sa
 | Message surfaces (the user's pill, the error card) and the Retry button (chat and Code) | `lib/src/shared/widgets/finn_bubble.dart` (`FinnBubbleBox`, `FinnRetryButton`) |
 | Shell measures (content width, gutters, header line, keyboard-stable scaling) | `lib/src/shared/layout/finn_layout.dart` (`contentMaxWidth`, `shellGutter`, `headerTop`, `shellScaleY`) |
 | The "thinking" orb and shimmering status text | `lib/src/shared/widgets/finn_thinking.dart` |
-| Flat raised surfaces (fill + 1px hairline, never a shadow), the pill text field, filter chips, the progressive backdrop blur | `lib/src/shared/widgets/flux_surfaces.dart` (`FluxSurfaces`, `FluxPillField`, `FluxChip`, `FluxProgressiveBlur`, `FluxGlass`) |
+| Flat raised surfaces (fill + 1px hairline, never a shadow), the pill text field, filter chips | `lib/src/shared/widgets/flux_surfaces.dart` (`FluxSurfaces`, `FluxPillField`, `FluxChip`, `FluxProgressiveBlur`, `FluxGlass`) |
 | Page header used by every sub-page | `lib/src/shared/widgets/finn_page_header.dart` |
 | Design primitives (the 50dp circle button used by every header and composer, row tile, switch, reveal animation) | `lib/src/shared/widgets/finn_ui.dart` |
 | Scroll physics and the section label (re-exported by `flux_controls.dart`) | `lib/src/shared/widgets/flux_scroll.dart` |

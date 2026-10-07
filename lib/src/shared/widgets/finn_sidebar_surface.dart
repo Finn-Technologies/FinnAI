@@ -34,7 +34,7 @@ class FinnSidebarSurface extends StatelessWidget {
     this.toggleDimension = FinnSidebarToggleButton.dimension,
   });
 
-  /// Size of the toggle: the app's 50dp, or FinnAI Code's compact 40dp.
+  /// Size of the toggle: the app's 50dp in both FinnAI and FinnAI Code.
   final double toggleDimension;
 
   /// True when the window is wide enough to keep the panel beside the home
@@ -109,13 +109,19 @@ class FinnSidebarSurface extends StatelessWidget {
             bottom: 0,
             child: Offstage(
               offstage: motion == 0 && !sidebarOpen,
-              child: IgnorePointer(
-                ignoring: !sidebarOpen,
-                child: ExcludeSemantics(
-                  excluding: !sidebarOpen,
-                  child: Opacity(
-                    opacity: (.35 + .65 * motion).clamp(0.0, 1.0),
-                    child: sidebar,
+              // A closed panel stops its tickers too (a working session's
+              // pulse, a skeleton's sweep): Offstage alone keeps them asking
+              // for frames nobody sees.
+              child: TickerMode(
+                enabled: motion > 0 || sidebarOpen,
+                child: IgnorePointer(
+                  ignoring: !sidebarOpen,
+                  child: ExcludeSemantics(
+                    excluding: !sidebarOpen,
+                    child: Opacity(
+                      opacity: (.35 + .65 * motion).clamp(0.0, 1.0),
+                      child: sidebar,
+                    ),
                   ),
                 ),
               ),

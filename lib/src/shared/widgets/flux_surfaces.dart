@@ -1,5 +1,4 @@
 import 'dart:math' as math;
-import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -67,85 +66,6 @@ class FluxGlass extends StatelessWidget {
           border: borderColor == null ? null : Border.all(color: borderColor!),
         ),
         child: child,
-      );
-}
-
-/// A panel that blurs what is behind it, ramping up from clear at the top edge
-/// to [maxSigma] at the bottom, with no fill of its own.
-///
-/// Flutter cannot mask a backdrop blur: `ShaderMask` pushes a shader-mask layer,
-/// and a `BackdropFilter` nested inside it filters *that layer's* contents, which
-/// are empty — so the obvious `ShaderMask` + `BackdropFilter` pair renders
-/// nothing at all.
-///
-/// So the ramp is built from clipped bands instead. Band *k* covers everything
-/// below its own top edge and carries a small sigma; painted top to bottom,
-/// each band also re-blurs the bands above it, so strength accumulates with
-/// depth and the panel goes from clear to [maxSigma] across its height.
-///
-/// Only what scrolls beneath is affected: over a flat fill there is nothing to
-/// blur, so this is for surfaces with moving content under them (the sidebar's
-/// history passing under the brand row).
-class FluxProgressiveBlur extends StatelessWidget {
-  const FluxProgressiveBlur({
-    super.key,
-    required this.child,
-    this.maxSigma = 8,
-    this.bands = 8,
-  });
-
-  /// The content drawn on top of the blur.
-  final Widget child;
-
-  /// The strongest blur at the bottom edge, in logical pixels.
-  ///
-  /// Deliberately small. The bands accumulate — each one re-blurs the bands
-  /// above it — so the sigma at the bottom is roughly [maxSigma], and the point
-  /// is depth, not obliteration: the history underneath must still read as
-  /// history. Anything past about 10 turns the cards into a grey smear.
-  final double maxSigma;
-
-  /// How many steps the ramp is cut into. More bands is a smoother ramp and
-  /// more layers; 8 over a 42dp panel is about one band per 5dp.
-  final int bands;
-
-  @override
-  Widget build(BuildContext context) {
-    final count = bands < 1 ? 1 : bands;
-    // Every band carries the same small sigma and they accumulate, so the
-    // strength at depth k is about k/count of [maxSigma] — a linear ramp that
-    // lands on [maxSigma] at the bottom edge.
-    //
-    // Giving each band a *growing* sigma instead (k * step) compounds, because
-    // every band also re-blurs the ones above it: the bottom came out at the
-    // square of the target and the cards underneath turned to a grey smear.
-    final sigma = maxSigma / count;
-    return ClipRect(
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          for (var k = 0; k < count; k++)
-            // Fractional so the boundaries land on an exact fraction of the
-            // height whatever the panel measures.
-            Positioned.fill(
-              top: k / count,
-              child: _BlurBand(sigma: sigma),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _BlurBand extends StatelessWidget {
-  const _BlurBand({required this.sigma});
-
-  final double sigma;
-
-  @override
-  Widget build(BuildContext context) => BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
-        child: const SizedBox.expand(),
       );
 }
 
