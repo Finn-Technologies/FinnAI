@@ -313,12 +313,6 @@ extension FinnAcceleratorTurn on FinnAccelerator {
               attachedDocContext: attachedDocContext,
             );
           }
-          // HEIC graceful fallback: if we had skipped HEICs, note it
-          if (skippedHeicPaths.isNotEmpty &&
-              effectiveMediaList.isEmpty &&
-              hasAttachedImage == false) {
-            // Already noted in attachedDocContext above
-          }
           _setStatus(
             InferencePhase.generating,
             'Thinking on this device',
@@ -340,6 +334,51 @@ extension FinnAcceleratorTurn on FinnAccelerator {
           var attemptId = 0;
           var retryBudget = 1;
           var visibleEmitted = 0;
+          // Ends a reply that has started repeating itself (see LoopGuard).
+          final loopGuard = LoopGuard();
+          void report(int generatedCount, GenerationFinishReason reason) {
+            final total = runWatch.elapsed;
+            final decodeMs = total.inMilliseconds -
+                (firstTokenAt?.inMilliseconds ?? total.inMilliseconds);
+            final decodeTokens = math.max(0, generatedCount - 1);
+            final tokensPerSecond =
+                decodeMs <= 0 ? 0.0 : decodeTokens * 1000 / decodeMs;
+            _lastGenerationReport = GenerationReport(
+              model: model,
+              intent: promptAnalysis.intent,
+              route: model.tier,
+              outputBudget: outputBudget,
+              finishReason: reason,
+              firstTokenLatency: firstTokenAt,
+              totalGenerationTime: total,
+              outputTokens: generatedCount,
+              tokensPerSecond: tokensPerSecond,
+            );
+            if (!PerfLogSampler.sample()) return;
+            debugPrint('FINN_PERF done total_ms=${total.inMilliseconds} '
+                'decode_ms=$decodeMs tokens=$generatedCount emitted='
+                '$emittedTokens tps=${tokensPerSecond.toStringAsFixed(2)}');
+          }
+
+          void finish() {
+            _generation = null;
+            if (identical(_activeOutput, output)) _activeOutput = null;
+            _lastSources = sources;
+            entry.primed = true;
+            entry.lastTaskInstruction = taskInstruction;
+            entry.messageCount = history.length + 2;
+            if (agentPrompt) {
+              entry.agentHistoryKey = AgentPrompt.key(history, prompt);
+            }
+            entry.lastUsed = ++runtime.useSequence;
+            _setStatus(
+              InferencePhase.idle,
+              'Generated locally',
+              key: FinnStatusKey.generatedLocally,
+            );
+            unawaited(output.close());
+          }
+
           StreamSubscription<GenerationEvent> attempt(
             String promptText, {
             required bool addSpecial,
@@ -395,6 +434,14 @@ extension FinnAcceleratorTurn on FinnAccelerator {
                     if (text.isNotEmpty) {
                       visibleEmitted++;
                       output.add(text);
+                      // A loop ends as a finished reply, not a stopped one.
+                      if (loopGuard.add(text)) {
+                        debugPrint('FINN_LOOP period=${loopGuard.period}');
+                        nativeFinished = true;
+                        report(emittedTokens, GenerationFinishReason.eos);
+                        unawaited(_generation?.cancel());
+                        finish();
+                      }
                     }
                   } else if (event
                       case DoneEvent(
@@ -450,31 +497,7 @@ extension FinnAcceleratorTurn on FinnAccelerator {
                     }
                     nativeFinished = true;
                     if (trailingText.isNotEmpty) output.add(trailingText);
-                    final total = runWatch.elapsed;
-                    final decodeMs = total.inMilliseconds -
-                        (firstTokenAt?.inMilliseconds ?? total.inMilliseconds);
-                    final decodeTokens = math.max(0, generatedCount - 1);
-                    final tokensPerSecond =
-                        decodeMs <= 0 ? 0.0 : decodeTokens * 1000 / decodeMs;
-                    _lastGenerationReport = GenerationReport(
-                      model: model,
-                      intent: promptAnalysis.intent,
-                      route: model.tier,
-                      outputBudget: outputBudget,
-                      finishReason: finishReasonFromStopReason(reason),
-                      firstTokenLatency: firstTokenAt,
-                      totalGenerationTime: total,
-                      outputTokens: generatedCount,
-                      tokensPerSecond: tokensPerSecond,
-                    );
-                    if (PerfLogSampler.sample()) {
-                      final totalMs = total.inMilliseconds;
-                      debugPrint(
-                        'FINN_PERF done total_ms=$totalMs decode_ms=$decodeMs '
-                        'tokens=$generatedCount emitted=$emittedTokens '
-                        'tps=${tokensPerSecond.toStringAsFixed(2)}',
-                      );
-                    }
+                    report(generatedCount, finishReasonFromStopReason(reason));
                   }
                 },
                 onError: (Object error, StackTrace stack) {
@@ -499,26 +522,9 @@ extension FinnAcceleratorTurn on FinnAccelerator {
                   unawaited(_recoverAfterError());
                 },
                 onDone: () {
-                  // A retried attempt owns the turn now; the first one just ended.
-                  if (id != attemptId) return;
-                  _generation = null;
-                  if (identical(_activeOutput, output)) {
-                    _activeOutput = null;
-                  }
-                  _lastSources = sources;
-                  entry.primed = true;
-                  entry.lastTaskInstruction = taskInstruction;
-                  entry.messageCount = history.length + 2;
-                  if (agentPrompt) {
-                    entry.agentHistoryKey = AgentPrompt.key(history, prompt);
-                  }
-                  entry.lastUsed = ++runtime.useSequence;
-                  _setStatus(
-                    InferencePhase.idle,
-                    'Generated locally',
-                    key: FinnStatusKey.generatedLocally,
-                  );
-                  unawaited(output.close());
+                  // A retry owns the turn now, or a loop already finished it.
+                  if (id != attemptId || loopGuard.tripped) return;
+                  finish();
                 },
                 cancelOnError: true,
               );

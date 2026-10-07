@@ -685,6 +685,15 @@ Also: `FluxPressScale` gained an `alignment` so the wordmark (much wider than it
 - Gate: format, seam, boundaries, analyze, all tests; new tests for changes, grants (including chained commands), the agent's session grant, and the orb (idle, leaving, reduced motion, goldens).
 - **Not verified:** the voice orb live (microphone permission is denied on the emulator, so voice mode does not open there; seen in goldens only); a physical phone; HarmonyOS; notifications (not built).
 
+**Smarter and faster with the same model — 2026-10-07 (part 5).** Measured with `./tool/run_eval.sh` on the Android emulator, three runs per side (details: `eval/RESULTS_2026-10-07_prompt_loop.md`; new emulator baseline `eval/baseline_emulator.json`).
+
+- *Why it failed:* most failing checks were length, not knowledge: the system prompt's article rule turned "What is the largest planet?" into a headline and sections, and nothing stopped a reply that looped (haiku 1536 tokens, a one-line translation 672).
+- *Changes:* answer-shaping rules in the cached system prompt (one-answer questions answered first, in one sentence; articles only on request; never repeat; stop when done); task instructions for translation, creative writing and quick questions; a loop guard that ends a repeating reply as a finished one (`generate/loop_guard.dart`).
+- *A real speed bug:* the native worker's generation loop never returned to its event loop, so a Stop (or the loop guard) did not reach it until the reply finished decoding to its budget, and the next turn queued behind it: ~8.5s of extra wait measured after each stop. It now yields every 8 tokens (`third_party/llama_cpp_dart/.../worker.dart`, marked `FinnAI:`).
+- *Result (emulator):* checks passed 65.6% → 78.1% mean (baseline 71.9% → 81.3%); multilingual 100% in 3 of 4 new runs; output tokens for the suite ~6,400 → ~3,500-5,600; decode 74.6 tok/s against 75.0 (no cost from the yield); first-token p50 unchanged (564 vs 554 ms).
+- Tried and reverted: a shorter quick-question instruction (it is re-read on each chat's first turn, ~2.7s on the Mi 11 Lite) lost the brevity gains.
+- **Not verified:** the phone (its baseline should be re-run on the Mi 11 Lite), the 3B tier, HarmonyOS.
+
 ---
 
 *Plan approved 2026-09-30. Phases 0-2 in progress; §10 records what is verified.*

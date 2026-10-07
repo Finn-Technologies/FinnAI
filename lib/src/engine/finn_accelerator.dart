@@ -20,6 +20,7 @@ import 'package:finn_ai/src/engine/metrics/ttft_metrics.dart';
 import 'package:finn_ai/src/engine/policy/residency_policy.dart';
 import 'package:finn_ai/src/engine/adaptive/adaptive.dart';
 import 'package:finn_ai/src/engine/finn_engine_types.dart';
+import 'package:finn_ai/src/engine/generate/loop_guard.dart';
 import 'package:finn_ai/src/engine/prompt/prompt_intent.dart';
 import 'package:finn_ai/src/engine/api/web_source.dart';
 
@@ -480,7 +481,6 @@ class FinnAccelerator extends ChangeNotifier {
   /// benchmarks, selected config, reason).
   /// The adaptive engine's current device profile.
   /// The cached adaptive benchmark profile (null before the first run).
-  /// The adaptive engine's current status.
   String get _baseSystemPrefix => PromptFormatter.baseSystemPrefix;
 
   /// Kept as a public alias of [PromptFormatter.finnSafetySystemPrompt] (the

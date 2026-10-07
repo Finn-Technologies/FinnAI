@@ -641,6 +641,9 @@ Future<void> _streamSampleAfterPrefill({
 
   try {
     while (true) {
+      // FinnAI: let the worker's event loop run so a CancelCommand is read
+      // (see _streamSessionGenerate).
+      if (generated % 8 == 0) await Future<void>.delayed(Duration.zero);
       if (state.cancelledRequests.remove(requestId)) {
         cancelled = true;
         break;
@@ -920,6 +923,7 @@ Future<void> _streamSessionGenerate({
 }) async {
   var cancelled = false;
   var perfCount = 0;
+  var yields = 0;
   await for (final event in session.generate(
     sampler: sampler,
     maxTokens: maxTokens,
@@ -938,6 +942,14 @@ Future<void> _streamSessionGenerate({
         'n_p_eval=${p.promptTokens} eval_ms=${p.evalMs.toStringAsFixed(1)} '
         'n_eval=${p.generatedTokens} reused=${p.reusedTokens}',
       );
+    }
+    // FinnAI: the generator yields through microtasks only, so without a
+    // real event-loop turn here a CancelCommand waits in the port until the
+    // whole reply is decoded: a stopped reply kept decoding to its token
+    // budget and the next turn queued behind it (~8.5s in the eval).
+    // Every 8th token: a turn costs a timer tick, and 8 tokens is ~0.1s.
+    if (event is TokenEvent && ++yields % 8 == 0) {
+      await Future<void>.delayed(Duration.zero);
     }
     if (state.cancelledRequests.remove(requestId)) {
       cancelled = true;

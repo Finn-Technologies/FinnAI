@@ -542,11 +542,8 @@ class PromptIntentPolicy {
         ? 'the language of the latest user message'
         : analysis.language.name;
     if (analysis.spoken) {
-      return 'Reply in $language unless asked otherwise. The user is speaking '
-          'to you and your answer will be read aloud, so answer in at most two '
-          'short, plain sentences: no markdown, lists, headings, labels, emoji '
-          'or code, and never repeat yourself. If they need more, give the key '
-          'part and offer to go on.';
+      return 'Reply in $language. It is read aloud: at most two short plain '
+          'sentences, no markdown, lists or code; offer more if needed.';
     }
     final common = 'Reply in $language unless asked otherwise. '
         'Be warm, natural, and conversational: match the user\'s tone and length '
@@ -567,7 +564,7 @@ class PromptIntentPolicy {
               'internal power when appropriate. Never add citation numbers like [1] without real web sources.'
           : 'Give practical, ordered steps, include prerequisites and relevant safety cautions, and do not omit the final step.',
       PromptIntent.translation =>
-        'Translate faithfully into the requested language. Preserve meaning, tone, names, and formatting; add no commentary unless asked.',
+        'Translate faithfully into the requested language. Preserve meaning, tone, names, and formatting. Reply with only the translation, once.',
       PromptIntent.comparison =>
         'Compare the same important criteria for each option, state material trade-offs, and end with a conditional recommendation.',
       PromptIntent.coding =>
@@ -577,11 +574,11 @@ class PromptIntentPolicy {
       PromptIntent.writing =>
         'Produce polished text for the requested audience, purpose, tone, and format without unnecessary preamble.',
       PromptIntent.creative =>
-        'Follow the requested genre, voice, constraints, and length while keeping the result coherent and original.',
+        'Follow the requested genre, voice, constraints, and length while keeping the result coherent and original. Write the piece once and stop when it is complete.',
       PromptIntent.quickQuestion =>
-        'Answer the exact question directly and factually. Adapt detail dynamically: '
-            'for broad overviews or historical subjects, provide structured highlights; '
-            'for quick or simple questions, keep the answer concise and direct without unnecessary headings. '
+        'Answer the exact question directly and factually, with the answer itself in the first sentence. '
+            'If it has a single answer (a name, number, formula, or date), one sentence is enough. '
+            'Give structured highlights only for a broad overview the user asked for. '
             'For a how or why question, explain the mechanism and important conditions. '
             'Do not invent relationships, features, names, timings, or implementation details. Correct a false premise plainly. '
             'If a named or niche subject is uncertain, say so and ask for identifying context rather than substituting a similar-sounding subject.',

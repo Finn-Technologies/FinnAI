@@ -35,6 +35,8 @@ Use this before grepping. Paths are relative to the repository root.
 | Intent classification / output budgets / search gating | `lib/src/engine/prompt/prompt_intent.dart` |
 | Which llama.cpp API surface the app sees | `lib/src/engine/backends/llama_shim.dart` (the only `llama_cpp_dart` importer) |
 | Latency instrumentation | `lib/src/engine/metrics/ttft_metrics.dart` |
+| Ending a reply that loops (repeated block → finished reply, `FINN_LOOP`) | `lib/src/engine/generate/loop_guard.dart`, wired in `generate/turn.dart` |
+| How fast a stop reaches the native worker (event-loop turn every 8 tokens) | `third_party/llama_cpp_dart/lib/src/isolate/worker.dart` (`_streamSessionGenerate`, `_streamSampleAfterPrefill`) |
 
 ## Chat
 
