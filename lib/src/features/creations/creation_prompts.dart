@@ -7,6 +7,85 @@ import 'package:finn_ai/src/features/creations/spec/spec_limits.dart';
 /// instead (`templates/slot_prompt.dart`). A deck is prose, so it stays a
 /// free-form spec the validator checks.
 abstract final class CreationPrompts {
+  /// Generates an original app/widget spec without selecting a preset.
+  static String buildFreeform({
+    required String brief,
+    required String kind,
+    required String variation,
+    String? repairIssues,
+  }) {
+    final buffer = StringBuffer()
+      ..writeln(
+        'You are designing an original $kind for Finn. '
+        'Reply with exactly one JSON object and nothing else.',
+      )
+      ..writeln()
+      ..writeln(_freeformSchema(kind))
+      ..writeln()
+      ..writeln(
+        'Originality rules: design this from the Brief itself. '
+        'Do not copy a remembered preset, tutorial example, or previous '
+        'creation. Do not automatically make a counter, checklist, shopping '
+        'list, or generic dashboard unless the Brief actually calls for it. '
+        'Choose a useful structure and interaction pattern that fits the '
+        'specific request. Variation key: $variation.',
+      );
+    if (repairIssues != null && repairIssues.trim().isNotEmpty) {
+      buffer
+        ..writeln()
+        ..writeln('The previous JSON was rejected. Fix these issues:')
+        ..writeln(repairIssues.trim());
+    }
+    buffer
+      ..writeln()
+      ..writeln('Brief: "$brief"')
+      ..writeln()
+      ..writeln('Return a fresh JSON object for this Brief only.');
+    return buffer.toString();
+  }
+
+  static String _freeformSchema(String kind) {
+    if (kind == 'widget') {
+      return '''
+Widget JSON:
+{"title":"...","accent":"mint|blue|lime|amber|rose|violet|sky","rows":[{"label":"...","value":"..."}],"footer":"...","kind":"display|counter|checklist|tracker","step":1,"goal":0}
+
+Rules:
+- title: short and specific.
+- 1 to 4 rows; every row has a useful label and value.
+- footer is optional short supporting text.
+- display is read-only; counter has one number and +/- behaviour; checklist has rows that can be ticked; tracker has rows whose numbers increase.
+- Use counter/checklist/tracker only when they fit the Brief.
+- step is 1..1000 for counter/tracker. goal is 0 or a positive counter goal.
+- accent must be one of the listed words.''';
+    }
+    return '''
+Mini-app JSON:
+{"title":"...","accent":"mint|blue|lime|amber|rose|violet|sky","nodes":[...]}
+
+Node types:
+- text, button, field, toggle, slider, list, progress, choice, image, row, column, spacer
+- text: {"type":"text","value":"...","style":"title|body|caption"}
+- button: {"type":"button","label":"...","action":ACTION}
+- field/toggle/slider/choice use a state "key"; list/progress use a "bind" key.
+- image uses either an emoji or an https URL.
+- row/column use "children".
+
+Actions:
+- set {"kind":"set","key":"name","expr":"amount + 1"}
+- toggle {"kind":"toggle","key":"name"}
+- increment {"kind":"increment","key":"name","by":1}
+- append {"kind":"append","key":"items","value":"{draft}","clear":"draft"}
+- reset {"kind":"reset"}
+
+Rules:
+- 1 to ${SpecLimits.maxNodes} nodes, maximum depth ${SpecLimits.maxNodeDepth}.
+- Anything displayed must have a state key that is written by a field, toggle, slider, choice, or action.
+- Use several node types when useful; do not fill the screen with repeated text.
+- Solve the Brief specifically instead of imitating a generic productivity app.
+- accent must be one of the listed words.''';
+  }
+
   /// The generation prompt for a presentation about [brief].
   static String build({required String brief, String? repairIssues}) {
     final buffer = StringBuffer()
