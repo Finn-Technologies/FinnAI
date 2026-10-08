@@ -317,6 +317,15 @@ extension FinnAcceleratorLoader on FinnAccelerator {
                 .first
                 .then((digest) => digest.toString()))
         : model.sha256Digest;
+
+    // Hashing can take seconds on mobile. A memory release/unload can happen
+    // while the digest is being computed, after the earlier epoch check above.
+    // Never publish a runtime created by a superseded load.
+    if (epoch != _runtimeEpoch) {
+      await liveEngine.dispose();
+      throw StateError('Model loading was superseded by a memory release.');
+    }
+
     final runtime = _ModelRuntime(
       model,
       liveEngine,
