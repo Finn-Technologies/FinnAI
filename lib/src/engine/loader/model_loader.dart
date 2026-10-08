@@ -283,9 +283,26 @@ extension FinnAcceleratorLoader on FinnAccelerator {
               selection.config,
               compactKv: compactKv,
             ).timeout(const Duration(seconds: 90));
-            await primaryEngine.dispose();
-            engine = accelerated;
-            config = selection.config;
+            try {
+              await primaryEngine.dispose();
+              engine = accelerated;
+              config = selection.config;
+            } catch (disposeError) {
+              // The CPU engine is still the known-good runtime. If disposing
+              // it fails, do not leak the newly spawned accelerated engine.
+              debugPrint(
+                'FINN_ADAPTIVE primary dispose failed; keeping CPU engine: '
+                '$disposeError',
+              );
+              try {
+                await accelerated.dispose();
+              } catch (acceleratedDisposeError) {
+                debugPrint(
+                  'FINN_ADAPTIVE accelerated cleanup failed: '
+                  '$acceleratedDisposeError',
+                );
+              }
+            }
             _lastKnownLlamaCppCommit = accelerated.llamaCppCommit;
             adaptive.attachLlamaCppCommit(_lastKnownLlamaCppCommit);
           } catch (e) {
