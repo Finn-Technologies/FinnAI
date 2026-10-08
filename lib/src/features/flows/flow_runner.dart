@@ -114,7 +114,7 @@ class FlowRunner {
         // Refuse before anything runs. A flow naming an action outside the
         // catalog must not get as far as setting an alarm on its way to
         // failing.
-        return _record(
+        return await _record(
           flow,
           FlowRunOutcome.failed,
           const [],
@@ -124,7 +124,7 @@ class FlowRunner {
       }
       final byUser = startedByUser(triggeredBy);
       if (!byUser && !await _conditionsHold(flow)) {
-        return _record(
+        return await _record(
           flow,
           FlowRunOutcome.skipped,
           const [],
