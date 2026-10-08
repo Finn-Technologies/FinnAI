@@ -17,7 +17,7 @@ class _ArtifactCard extends StatelessWidget {
   final VoidCallback onAddToHomeScreen;
   final VoidCallback onExport;
 
-  /// Edits the creation's slots. Null for a creation with no template.
+  /// Reopens the creation brief in the builder so it can be remade with Finn.
   final VoidCallback? onEdit;
 
   @override
