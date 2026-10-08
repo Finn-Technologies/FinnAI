@@ -6,7 +6,6 @@ class _Transcript extends StatelessWidget {
     required this.scrollController,
     required this.stage,
     required this.onChooseKind,
-    required this.onChooseTemplate,
     required this.onEdit,
     required this.onOpen,
     required this.onAddToHomeScreen,
@@ -17,7 +16,6 @@ class _Transcript extends StatelessWidget {
   final ScrollController scrollController;
   final CreationStage? stage;
   final ValueChanged<CreationKind> onChooseKind;
-  final ValueChanged<String?> onChooseTemplate;
   final ValueChanged<FinnCreation> onEdit;
   final ValueChanged<FinnCreation> onOpen;
   final ValueChanged<FinnCreation> onAddToHomeScreen;
@@ -39,14 +37,6 @@ class _Transcript extends StatelessWidget {
                   child: _KindQuestion(
                     answered: answered,
                     onChooseKind: onChooseKind,
-                  ),
-                ),
-              _TemplateQuestionTurn(:final kind, :final answered) =>
-                _AssistantBubble(
-                  child: _TemplateQuestion(
-                    kind: kind,
-                    answered: answered,
-                    onChoose: onChooseTemplate,
                   ),
                 ),
               _AssistantNoteTurn(:final text) => _AssistantBubble(
