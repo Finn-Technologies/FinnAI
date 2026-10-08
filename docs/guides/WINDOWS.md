@@ -34,6 +34,17 @@ flutter build windows --release
 ```
 The output lands in `build/windows/x64/runner/Release/`, containing `finn_ai.exe`, the Flutter engine runtime, all Windows plugin DLLs, and the native `llama.cpp` dynamic libraries beside the executable.
 
+### 3. Build the Windows Installer (.exe)
+The Inno Setup script `windows/installer.iss` packages the release executable, Flutter engine, plugins, and bundled native runtimes into a standalone modern Windows setup wizard:
+```powershell
+powershell -ExecutionPolicy Bypass -File tool/build_windows_installer.ps1
+```
+Or compile directly with Inno Setup 6:
+```powershell
+& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" windows/installer.iss
+```
+The resulting installer lands in `build/windows/installer/FinnAI-Setup-2.0.0-x64.exe`.
+
 ## Where things are on Windows
 
 | Component | Location / Mechanism |
