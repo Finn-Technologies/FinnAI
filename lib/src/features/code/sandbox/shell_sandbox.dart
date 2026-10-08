@@ -87,10 +87,15 @@ class ShellSandbox {
   /// "Permission denied", checked on the API 24 emulator), so FinnAI Code
   /// there runs commands only in the emulated container, or not at all.
   static bool get supported =>
-      !kIsWeb && (Platform.isAndroid || Platform.isLinux || Platform.isMacOS);
+      !kIsWeb &&
+      (Platform.isAndroid ||
+          Platform.isLinux ||
+          Platform.isMacOS ||
+          Platform.isWindows);
 
-  static String get defaultShellPath =>
-      Platform.isAndroid ? '/system/bin/sh' : '/bin/sh';
+  static String get defaultShellPath => Platform.isWindows
+      ? 'powershell.exe'
+      : (Platform.isAndroid ? '/system/bin/sh' : '/bin/sh');
 
   static Future<Process> _startProcess(
     String executable,

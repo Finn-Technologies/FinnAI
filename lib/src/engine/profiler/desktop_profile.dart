@@ -1,13 +1,15 @@
+import 'dart:ffi';
 import 'dart:io';
 
+import 'package:ffi/ffi.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'package:finn_ai/src/engine/profiler/device_profile.dart';
 
-/// What the profiler reads on desktop Linux, which answers no platform channel:
-/// the CPU from `/proc`, free storage from `df`, and where the bundled model
-/// runtime lives.
+/// What the profiler reads on desktop platforms (Linux and Windows), which
+/// answer no mobile platform channel: CPU topology, free storage, system RAM,
+/// and where the bundled model runtime lives.
 abstract final class DesktopProfile {
   /// A desktop is not a phone chip: four real cores and 6 GB is comfortably
   /// past what the Balanced plan (4096 context, flash attention, full-size
@@ -20,12 +22,33 @@ abstract final class DesktopProfile {
     return ProcessorClass.entry;
   }
 
-  /// The runtime a desktop bundle ships in `lib/` beside the executable, or
-  /// `null` when it is not there (a `flutter run` from source before
-  /// `tool/rebuild_llama_linux.sh`, or a system that provides its own).
   /// Free bytes on the volume that holds the app's data (where the model is
-  /// downloaded), or `null` when `df` is unavailable.
+  /// downloaded).
   static Future<int?> freeBytes() async {
+    if (Platform.isWindows) {
+      try {
+        final dir = await getApplicationSupportDirectory();
+        final kernel32 = DynamicLibrary.open('kernel32.dll');
+        final getDiskFreeSpaceEx = kernel32.lookupFunction<
+            Int32 Function(Pointer<Utf16>, Pointer<Uint64>, Pointer<Uint64>,
+                Pointer<Uint64>),
+            int Function(Pointer<Utf16>, Pointer<Uint64>, Pointer<Uint64>,
+                Pointer<Uint64>)>('GetDiskFreeSpaceExW');
+        final pathPtr = dir.path.toNativeUtf16(allocator: calloc);
+        final freeBytesAvailable = calloc<Uint64>();
+        try {
+          if (getDiskFreeSpaceEx(
+                  pathPtr, freeBytesAvailable, nullptr, nullptr) !=
+              0) {
+            return freeBytesAvailable.value;
+          }
+        } finally {
+          calloc.free(pathPtr);
+          calloc.free(freeBytesAvailable);
+        }
+      } catch (_) {}
+      return null;
+    }
     try {
       final dir = await getApplicationSupportDirectory();
       var probe = dir;
@@ -60,9 +83,12 @@ abstract final class DesktopProfile {
 
   static File? bundledLlamaLibrary() {
     try {
-      final lib = File(
-        '${File(Platform.resolvedExecutable).parent.path}/lib/libllama.so',
-      );
+      final exeDir = File(Platform.resolvedExecutable).parent.path;
+      if (Platform.isWindows) {
+        final lib = File('$exeDir${Platform.pathSeparator}llama.dll');
+        return lib.existsSync() ? lib : null;
+      }
+      final lib = File('$exeDir/lib/libllama.so');
       return lib.existsSync() ? lib : null;
     } catch (_) {
       return null;
@@ -70,6 +96,11 @@ abstract final class DesktopProfile {
   }
 
   static Future<String?> cpuName() async {
+    if (Platform.isWindows) {
+      final id = Platform.environment['PROCESSOR_IDENTIFIER'];
+      if (id != null && id.trim().isNotEmpty) return id.trim();
+      return null;
+    }
     try {
       final info = await File('/proc/cpuinfo').readAsString();
       final match = RegExp(
@@ -81,5 +112,35 @@ abstract final class DesktopProfile {
     } catch (_) {
       return null;
     }
+  }
+
+  /// Reads total and available physical RAM on Windows via GlobalMemoryStatusEx.
+  static int? windowsMemoryBytes(String field) {
+    if (!Platform.isWindows) return null;
+    try {
+      final kernel32 = DynamicLibrary.open('kernel32.dll');
+      final globalMemoryStatusEx = kernel32.lookupFunction<
+          Int32 Function(Pointer<Uint8>),
+          int Function(Pointer<Uint8>)>('GlobalMemoryStatusEx');
+      final buffer = calloc<Uint8>(64);
+      try {
+        // Set dwLength = sizeof(MEMORYSTATUSEX) = 64
+        buffer
+            .asTypedList(64)
+            .buffer
+            .asByteData()
+            .setUint32(0, 64, Endian.little);
+        if (globalMemoryStatusEx(buffer) != 0) {
+          final data = buffer.asTypedList(64).buffer.asByteData();
+          final totalPhys = data.getUint64(8, Endian.little);
+          final availPhys = data.getUint64(16, Endian.little);
+          if (field == 'MemTotal') return totalPhys;
+          if (field == 'MemAvailable') return availPhys;
+        }
+      } finally {
+        calloc.free(buffer);
+      }
+    } catch (_) {}
+    return null;
   }
 }

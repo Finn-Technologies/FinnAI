@@ -203,9 +203,9 @@ class DeviceProfiler {
       1,
       _asInt(native['cores']) ?? Platform.numberOfProcessors,
     );
-    // Desktop Linux answers no platform channel (OpenHarmony, which also
-    // reports Linux, does), so an empty reply is what identifies it here.
-    final desktop = Platform.isLinux && native.isEmpty;
+    // Desktop Linux and Windows answer no platform channel (OpenHarmony, which
+    // also reports Linux, does), so an empty reply is what identifies them.
+    final desktop = (Platform.isLinux || Platform.isWindows) && native.isEmpty;
     final desktopCpu = desktop ? await DesktopProfile.cpuName() : null;
     final bundledLib = desktop ? DesktopProfile.bundledLlamaLibrary() : null;
     return DeviceProfile(
@@ -493,6 +493,9 @@ class DeviceProfiler {
   static int? _asInt(Object? value) => value is int ? value : null;
 
   static Future<int?> _memoryBytes(String field) async {
+    if (Platform.isWindows) {
+      return DesktopProfile.windowsMemoryBytes(field);
+    }
     if (!Platform.isAndroid && !Platform.isLinux) return null;
     try {
       final contents = await File('/proc/meminfo').readAsString();

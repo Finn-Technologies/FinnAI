@@ -54,7 +54,9 @@ void main() {
     await s.writeKey('alias', key);
     expect(await s.readKey('alias'), key);
     final file = dir.listSync().single as File;
-    expect(file.statSync().mode & 0x1ff, 0x180, reason: 'mode 0600');
+    if (!Platform.isWindows) {
+      expect(file.statSync().mode & 0x1ff, 0x180, reason: 'mode 0600');
+    }
   });
 
   test('a file key survives a keyring appearing later', () async {

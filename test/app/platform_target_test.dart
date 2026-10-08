@@ -42,11 +42,9 @@ void main() {
 
   group('isOpenHarmony without an override', () {
     test('is false on a host with no OpenHarmony sandbox', () {
-      // The test runner is desktop macOS, where none of the sandbox mount points
-      // exist and Platform.operatingSystem is 'macos'.
       debugSetFinnPlatformOverride(null);
       expect(isOpenHarmony, isFalse);
-      expect(finnPlatform, FinnPlatform.macos);
+      expect(finnPlatform, isNot(FinnPlatform.openHarmony));
     });
 
     test('detection is cached, not recomputed per call', () {

@@ -10,7 +10,7 @@ extension FinnAcceleratorOptimizer on FinnAccelerator {
     // on every cold start (the selection cache is not restored on Android, so
     // needsBenchmark() always reported stale) while changing nothing.
     if (Platform.isAndroid) return;
-    if (!Platform.isLinux) return;
+    if (!Platform.isLinux && !Platform.isWindows) return;
     _benchmarkRunning = true;
     try {
       _setStatus(
@@ -156,7 +156,8 @@ extension FinnAcceleratorOptimizer on FinnAccelerator {
     required bool compactKv,
   }) async {
     return LlamaEngine.spawn(
-      libraryPath: profile.llamaLibraryPath ?? 'libllama.so',
+      libraryPath: profile.llamaLibraryPath ??
+          (Platform.isWindows ? 'llama.dll' : 'libllama.so'),
       backendDirectory: profile.nativeLibraryDir,
       // The benchmark engine solely probes language model throughput and device
       // performance; do not allocate the multimodal vision projector here.

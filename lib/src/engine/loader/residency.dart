@@ -2,9 +2,10 @@ part of '../finn_accelerator.dart';
 
 extension FinnAcceleratorResidency on FinnAccelerator {
   Future<void> prewarm() async {
-    final profile = (Platform.isAndroid || Platform.isLinux)
-        ? await DeviceProfiler.read()
-        : _deviceProfile;
+    final profile =
+        (Platform.isAndroid || Platform.isLinux || Platform.isWindows)
+            ? await DeviceProfiler.read()
+            : _deviceProfile;
     if (profile != null) {
       _deviceProfile = profile;
       if (_runtimes.isEmpty) _plan = DeviceProfiler.plan(profile);

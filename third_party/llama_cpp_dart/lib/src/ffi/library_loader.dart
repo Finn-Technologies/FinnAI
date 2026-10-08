@@ -19,6 +19,8 @@ final class LlamaLibrary {
   static String? _libraryDir;
   static DynamicLibrary? _llamaLib;
   static DynamicLibrary? _mtmdLib;
+  static DynamicLibrary? _ggmlLib;
+  static DynamicLibrary? _ggmlBaseLib;
 
   /// Lazily-resolved bindings. Throws if [load] has not been called.
   static LlamaBindings get bindings {
@@ -110,6 +112,30 @@ final class LlamaLibrary {
       } catch (_) {}
     }
 
+    final dir = backendDirectory ?? _dirOf(path);
+
+    // Pre-load base dependencies on Windows so LoadLibrary resolves sibling imports.
+    if (Platform.isWindows) {
+      for (final base in [
+        if (dir != null) '$dir\\ggml-base.dll',
+        'ggml-base.dll',
+      ]) {
+        try {
+          _ggmlBaseLib = DynamicLibrary.open(base);
+          break;
+        } catch (_) {}
+      }
+      for (final ggml in [
+        if (dir != null) '$dir\\ggml.dll',
+        'ggml.dll',
+      ]) {
+        try {
+          _ggmlLib = DynamicLibrary.open(ggml);
+          break;
+        } catch (_) {}
+      }
+    }
+
     DynamicLibrary? llama;
     final candidates = [
       path,
@@ -139,7 +165,6 @@ final class LlamaLibrary {
     // without multimodal can run without it. Symbols starting with
     // `mtmd_` are routed to this handle when the lookup runs.
     DynamicLibrary? mtmd;
-    final dir = backendDirectory ?? _dirOf(path);
     final mtmdName = _mtmdFileName();
     if (mtmdName != null) {
       final mtmdCandidates = [
@@ -220,6 +245,27 @@ final class LlamaLibrary {
       }
       return m.lookup<T>(name);
     }
+    final llama = _llamaLib;
+    if (llama != null) {
+      try {
+        return llama.lookup<T>(name);
+      } on ArgumentError {
+        // When llama.cpp is built as separate DLLs (Windows), ggml symbols
+        // live in ggml.dll and ggml-base.dll rather than llama.dll.
+      }
+    }
+    final g = _ggmlLib;
+    if (g != null) {
+      try {
+        return g.lookup<T>(name);
+      } on ArgumentError {}
+    }
+    final b = _ggmlBaseLib;
+    if (b != null) {
+      try {
+        return b.lookup<T>(name);
+      } on ArgumentError {}
+    }
     return _llamaLib!.lookup<T>(name);
   }
 
@@ -251,6 +297,8 @@ final class LlamaLibrary {
     final lib = DynamicLibrary.process();
     _llamaLib = lib;
     _mtmdLib = lib; // same process namespace; mtmd is statically linked too
+    _ggmlLib = lib;
+    _ggmlBaseLib = lib;
 
     final bindings = LlamaBindings.fromLookup(_routedLookup);
     bindings.llama_backend_init();
@@ -274,6 +322,8 @@ final class LlamaLibrary {
     _libraryDir = null;
     _llamaLib = null;
     _mtmdLib = null;
+    _ggmlLib = null;
+    _ggmlBaseLib = null;
   }
 
   /// Default file name for the llama library on the current platform.
@@ -287,7 +337,7 @@ final class LlamaLibrary {
   }
 
   static String? _dirOf(String path) {
-    final i = path.lastIndexOf(Platform.pathSeparator);
+    final i = path.lastIndexOf(RegExp(r'[\\/]'));
     if (i < 0) return null;
     return path.substring(0, i);
   }

@@ -151,7 +151,7 @@ extension FinnAcceleratorProgress on FinnAccelerator {
         lower.contains('not enough storage')) {
       return 'Not enough free storage to download this model.';
     }
-    if (!Platform.isAndroid && !Platform.isLinux) {
+    if (!Platform.isAndroid && !Platform.isLinux && !Platform.isWindows) {
       return 'Local inference is available in the mobile build.';
     }
     return 'The local model could not start on this device.';

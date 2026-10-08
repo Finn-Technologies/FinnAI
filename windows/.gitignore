@@ -1,0 +1,3 @@
+flutter/ephemeral
+# Prebuilt llama.cpp libraries are produced by tool/rebuild_llama_windows.ps1.
+native/*/
