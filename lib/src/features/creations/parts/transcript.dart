@@ -72,8 +72,7 @@ class _Transcript extends StatelessWidget {
                   onOpen: () => onOpen(creation),
                   onAddToHomeScreen: () => onAddToHomeScreen(creation),
                   onExport: () => onExport(creation),
-                  onEdit:
-                      creation.template == null ? null : () => onEdit(creation),
+                  onEdit: () => onEdit(creation),
                 ),
             },
           );
