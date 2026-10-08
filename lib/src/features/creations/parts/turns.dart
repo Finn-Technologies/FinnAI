@@ -12,16 +12,6 @@ class _KindQuestionTurn extends _Turn {
   final CreationKind? answered;
 }
 
-/// "Want a starting point?": optional template chips for an app or widget.
-class _TemplateQuestionTurn extends _Turn {
-  const _TemplateQuestionTurn({required this.kind, this.answered});
-
-  final CreationKind kind;
-
-  /// The template id the user picked, or null for "Let Finn choose".
-  final String? answered;
-}
-
 /// A short assistant line, used between turns.
 class _AssistantNoteTurn extends _Turn {
   const _AssistantNoteTurn(this.text);
