@@ -171,7 +171,12 @@ class _Header extends StatelessWidget {
     final muted = FluxColors.mutedOf(context);
     final verb = action.isShell
         ? l10n.codeVerbRun
-        : (action.isEdit ? l10n.codeVerbEdit : l10n.codeVerbWrite);
+        : switch (action.kind) {
+            CodeActionKind.editFile => l10n.codeVerbEdit,
+            CodeActionKind.readFile => l10n.codeVerbRead,
+            CodeActionKind.listDir => l10n.codeVerbList,
+            _ => l10n.codeVerbWrite,
+          };
     final target =
         action.isShell ? action.command.split('\n').first : action.path;
     final icon = action.isShell
@@ -280,6 +285,11 @@ class _Result extends StatelessWidget {
       case CodeActionStatus.failed:
         break;
     }
+    // A read or a listing carries no +/− counts.
+    if (action.kind == CodeActionKind.readFile ||
+        action.kind == CodeActionKind.listDir) {
+      return const SizedBox.shrink();
+    }
     if (action.isShell) {
       if (action.timedOut) {
         return Text(l10n.codeActionTimedOut,
@@ -378,6 +388,16 @@ class _Body extends StatelessWidget {
         truncated: action.truncated,
         // Not run yet, or still running: no "No output" verdict.
         tail: action.open,
+      ));
+    } else if (action.kind == CodeActionKind.readFile) {
+      children.add(CodeOutputBlock(
+        command: 'cat ${action.path}',
+        output: action.output.trimRight(),
+      ));
+    } else if (action.kind == CodeActionKind.listDir) {
+      children.add(CodeOutputBlock(
+        command: action.path.isEmpty ? 'ls' : 'ls ${action.path}',
+        output: action.output.trimRight(),
       ));
     } else {
       if (action.status == CodeActionStatus.failed &&

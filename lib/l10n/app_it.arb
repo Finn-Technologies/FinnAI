@@ -2338,6 +2338,8 @@
   "codeVerbRun": "Esegui",
   "codeVerbWrite": "Scrivi",
   "codeVerbEdit": "Modifica",
+  "codeVerbRead": "Leggi",
+  "codeVerbList": "Elenca",
   "codeNewFile": "nuovo file",
   "codeShowMoreLines": "Mostra altre {count} righe",
   "codeShowLess": "Mostra meno",

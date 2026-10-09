@@ -7340,6 +7340,18 @@ abstract class AppLocalizations {
   /// **'Write'**
   String get codeVerbWrite;
 
+  /// Tool row verb for a file read
+  ///
+  /// In en, this message translates to:
+  /// **'Read'**
+  String get codeVerbRead;
+
+  /// Tool row verb for a folder listing
+  ///
+  /// In en, this message translates to:
+  /// **'List'**
+  String get codeVerbList;
+
   /// Tool row verb for a file edit
   ///
   /// In en, this message translates to:

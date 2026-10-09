@@ -5511,6 +5511,14 @@
   "@codeVerbWrite": {
     "description": "Tool row verb for a file write"
   },
+  "codeVerbRead": "Read",
+  "@codeVerbRead": {
+    "description": "Tool row verb for a file read"
+  },
+  "codeVerbList": "List",
+  "@codeVerbList": {
+    "description": "Tool row verb for a folder listing"
+  },
   "codeVerbEdit": "Edit",
   "@codeVerbEdit": {
     "description": "Tool row verb for a file edit"

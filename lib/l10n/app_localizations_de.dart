@@ -4165,6 +4165,12 @@ class AppLocalizationsDe extends AppLocalizations {
   String get codeVerbWrite => 'Schreiben';
 
   @override
+  String get codeVerbRead => 'Lesen';
+
+  @override
+  String get codeVerbList => 'Auflisten';
+
+  @override
   String get codeVerbEdit => 'Bearbeiten';
 
   @override
