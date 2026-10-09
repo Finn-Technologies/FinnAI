@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
+
 import 'package:finn_ai/src/features/code/providers/code_gateway.dart';
 import 'package:finn_ai/src/features/code/providers/code_model.dart';
 import 'package:finn_ai/src/features/code/providers/code_provider.dart';
@@ -7,12 +9,37 @@ import 'package:finn_ai/src/features/code/providers/provider_client.dart';
 import 'package:finn_ai/src/inference/finn_inference.dart';
 import 'package:finn_ai/src/inference/prompt_intent.dart';
 
+/// The engine arguments one [LocalCodeGateway] request maps to. Split out so
+/// the wiring (agent prompt, coding sampler, grammar on/off, history) is
+/// testable without a loaded model.
+typedef LocalEngineArgs = ({
+  String prompt,
+  List<LocalChatTurn> history,
+  String system,
+  String conversationId,
+  IntentSamplerProfile sampler,
+  int maxTokens,
+  bool agentPrompt,
+});
+
 /// Answers with the model that lives on the phone. Nothing is sent anywhere.
 class LocalCodeGateway implements CodeModelGateway {
   LocalCodeGateway([FinnInference? inference])
       : _inference = inference ?? FinnInference.instance;
 
   final FinnInference _inference;
+
+  /// The sampler for the agentic loop: the coding settings, grammar off until
+  /// the on-device A/B (plan Task 11) shows a grammar helps. Phase-B tuning
+  /// lands here; both tiers share this until then.
+  static const IntentSamplerProfile agenticSampler = IntentSamplerProfile(
+    temperature: .30,
+    topK: 30,
+    topP: .90,
+    minP: .05,
+    repeatPenalty: 1.05,
+    penaltyLastN: 256,
+  );
 
   @override
   String get label => 'FinnAI';
@@ -23,38 +50,44 @@ class LocalCodeGateway implements CodeModelGateway {
   @override
   CodeBudget get budget => CodeBudget.onDevice;
 
+  /// The engine arguments [request] maps to. Code is answered as code: the
+  /// factual coding sampler and Code's own system prompt verbatim (no chat
+  /// persona, date, or private-context wrapper).
+  @visibleForTesting
+  LocalEngineArgs argsFor(CodeCompletion request) {
+    final turns = request.turns;
+    return (
+      prompt: turns.last.content,
+      history: [
+        for (final turn in turns.take(turns.length - 1))
+          LocalChatTurn(role: turn.role, content: turn.content),
+      ],
+      system: request.system,
+      conversationId: request.conversationId,
+      sampler: agenticSampler,
+      maxTokens: request.maxTokens,
+      agentPrompt: true,
+    );
+  }
+
   @override
   Stream<String> complete(CodeCompletion request) async* {
     if (request.start.isNotEmpty) yield request.start;
-    yield* _generate(request);
-  }
-
-  Stream<String> _generate(CodeCompletion request) {
-    final turns = request.turns;
-    final history = [
-      for (final turn in turns.take(turns.length - 1))
-        LocalChatTurn(role: turn.role, content: turn.content),
-    ];
-    return _inference.generateReplyQueued(
-      turns.last.content,
+    final args = argsFor(request);
+    yield* _inference.generateReplyQueued(
+      args.prompt,
       // One conversation per session, so the engine keeps the session's
       // prefix warm between the steps of a request.
-      conversationId: request.conversationId,
-      history: history,
-      systemContext: request.system,
-      // Code is answered as code: the factual sampler, the coding budget, and
-      // the English the protocol is written in.
+      conversationId: args.conversationId,
+      history: args.history,
+      systemContext: args.system,
       promptAnalysis: const PromptAnalysis(
         intent: PromptIntent.coding,
         language: PromptLanguage.english,
       ),
-      samplerProfile: PromptIntentPolicy.sampler(PromptIntent.coding),
-      maxOutputTokens: request.maxTokens,
-      // Code's own system prompt, verbatim: not the chat persona, the date
-      // or the private-context wrapper (the 1.6B model echoed the date as its
-      // summary).
-      agentPrompt: true,
-      agentStart: request.start,
+      samplerProfile: args.sampler,
+      maxOutputTokens: args.maxTokens,
+      agentPrompt: args.agentPrompt,
     );
   }
 
