@@ -117,10 +117,17 @@ right tool* and *knows when it's done* across the task ladder below. If none
 reach an acceptable bar, fall back to D1 and document the ceiling honestly. The
 harness shape is fixed regardless; only the local wire bytes change.
 
-## Per-tier model tuning (1.6B **and** 3B)
+## Per-tier model tuning (1.6B **and** 3B — hard requirement)
 
-Both tiers run Code (`ADR 0013`). Knobs, all through existing engine params and
-measured on-device per tier:
+Both tiers run Code (`ADR 0013`) and **both must work well**; this pass is not
+done until each tier performs the task ladder. This dev phone (`ebe7291`) runs
+the **3B** tier naturally. To exercise the **1.6B** on the same phone, build with
+the existing `--dart-define=FINN_FORCE_LITE=true` (the same flag `run_eval.sh
+--lite` uses) so `ModelTierPolicy` selects the standard tier; the app downloads
+the 1.6B artifacts once (~1.5 GB total). So one device covers both tiers:
+**normal build → 3B**, **force-lite build → 1.6B**.
+
+Knobs, all through existing engine params and measured on-device per tier:
 
 - **Sampler** for the agentic loop: coding intent is `temp .30 / topK 30 /
   topP .90` today. Tune for tool-choosing (likely a touch cooler + higher
@@ -192,15 +199,17 @@ Edit/write diffs keep using `previous`/`after` + `code_diff_view`.
 1. **Hermetic (no model, no shell)** — `code_fakes.dart` scripted gateway +
    temp filesystem: decode of each tool, repair path, bounds (step/repeat/stop),
    approvals + grants, persistence round-trip, UI rendering per tool kind.
-2. **On-device `ebe7291`, both tiers** — build + install; a task ladder with
-   pass/fail recorded honestly:
+2. **On-device `ebe7291`, both tiers — hard requirement.** Two builds:
+   - **3B (natural):** `flutter build apk --debug --no-pub` → install → drive Code.
+   - **1.6B:** `flutter build apk --debug --no-pub --dart-define=FINN_FORCE_LITE=true`
+     → install (downloads the 1.6B artifacts once) → drive Code.
+
+   A task ladder with pass/fail recorded honestly, per tier:
    - "Create `count.sh` that prints 1..5, then run it." (create → run → report)
    - "Read `data.txt` and append a line with the sum of its numbers."
    - "Create `a.py` and `b.py` per these two specs." (multi-file, one per reply)
    - "This script errors — fix it." (read → edit/rewrite → run → iterate)
-   which will vary depending on the tier the device selects (confirm via
-   `FINN_ENGINE`/model logs; if the device gets one tier, note the other is
-   unverified or arrange a second device/emulator tier).
+   Confirm the running tier from `FINN_ENGINE` logs for each build.
 
 ## Risks & fallbacks
 
@@ -210,13 +219,14 @@ Edit/write diffs keep using `previous`/`after` + `code_diff_view`.
   document the ceiling. No silent claims.
 - **Risk:** grammar hurts (locks the model into a wrong shape). Grammar is only
   kept if the device A/B shows it helps.
-- **Risk:** tuning overfits the dev device's tier. Both tiers recorded; if only
-  one is testable, say so.
+- **Risk:** tuning overfits one tier. Both tiers are measured independently via
+  the two builds above; each tier's settings are recorded separately.
 
 ## Success criteria
 
 - Hermetic suite green; analyze/format/boundaries/seam green.
-- On-device, at least the create→run and read→change tasks pass on the device's
-  tier, with the exact observed behaviour recorded (not inferred).
+- On-device, the create→run and read→change tasks pass on **both** tiers
+  (3B natural + 1.6B force-lite), with the exact observed behaviour recorded
+  (not inferred).
 - `small_model_aids.dart` gone; no net growth in agent-side heuristics.
 - Nothing leaves the device by default.
