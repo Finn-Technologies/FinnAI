@@ -1,12 +1,10 @@
-import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:finn_ai/src/features/code/agent/code_agent.dart';
 import 'package:finn_ai/src/features/code/agent/agent_tools.dart';
+import 'package:finn_ai/src/features/code/agent/code_agent.dart';
 import 'package:finn_ai/src/features/code/agent/code_tool_runner.dart';
-import 'package:finn_ai/src/features/code/providers/code_gateway.dart';
 import 'package:finn_ai/src/features/code/sessions/code_session.dart';
 import 'package:finn_ai/src/features/code/sessions/code_session_store.dart';
 import 'package:finn_ai/src/features/code/settings/code_settings_store.dart';
@@ -196,7 +194,8 @@ void main() {
     expect(shell.action!.status, CodeActionStatus.skipped);
   });
 
-  test('allow in session runs a repeat command without asking again', () async {
+  test('allow in session runs a repeat command without asking again',
+      () async {
     final actions = FakeRunner();
     final gateway = FakeGateway([
       '```sh\nls\n```',
@@ -231,26 +230,21 @@ void main() {
     expect(actions.ran.where((a) => a.isShell), isEmpty);
   });
 
-  test('cloud model: edits are offered, decode accepts an edit call', () async {
-    // decode gating is per-step, but the loop must route an edit to the runner.
-    final actions = FakeRunner(
-      results: [
-        CodeAction.edit('a.txt', 'blk')
-            .copyWith(status: CodeActionStatus.done, after: 'changed'),
-      ],
-    );
-    final gateway = FakeGateway([
-      '```edit a.txt\n<<<<<<< SEARCH\na\n=======\nb\n>>>>>>> REPLACE\n```',
-      '```answer\nEdited.\n```',
-    ]);
-    final agent = agentFor(gateway, actions);
-    // The agent decides allowEdit from a local=false gateway; FakeGateway is
-    // local, so drive decode directly to prove routing when edits are allowed.
-    final reply = AgentProtocol.decode(
+  test('decode routes an edit call only when edits are allowed', () {
+    final allowed = AgentProtocol.decode(
       '```edit a.txt\n<<<<<<< SEARCH\na\n=======\nb\n>>>>>>> REPLACE\n```',
       allowShell: true,
       allowEdit: true,
     );
-    expect(reply.call!.tool, AgentTool.edit);
+    expect(allowed.call!.tool, AgentTool.edit);
+    expect(allowed.call!.path, 'a.txt');
+
+    final off = AgentProtocol.decode(
+      '```edit a.txt\n<<<<<<< SEARCH\na\n=======\nb\n>>>>>>> REPLACE\n```',
+      allowShell: true,
+      allowEdit: false,
+    );
+    expect(off.hasCall, isFalse);
+    expect(off.malformed, isTrue);
   });
 }

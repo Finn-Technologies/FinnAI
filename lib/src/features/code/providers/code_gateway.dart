@@ -40,9 +40,8 @@ class CodeCompletion {
   final String conversationId;
   final int maxTokens;
 
-  /// The first words of the reply, already decided (see
-  /// [AgentProtocol.forcedStart]). The model continues from them; the stream
-  /// begins with them. Honoured by the on-device gateway only.
+  /// Reserved for a forced reply start. Unused by the harness (it decides no
+  /// words for the model); kept so `complete` stays a stable shape.
   final String start;
 }
 

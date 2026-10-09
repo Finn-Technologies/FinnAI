@@ -207,7 +207,7 @@ abstract final class AgentPrompt {
       if (action != null && !action.open) {
         turns.add(CodeTurn.assistant(_actionBlock(action)));
         final observation = observationFor(
-          _resultOf(action),
+          toolResultOf(action),
           tool: _toolOf(action.kind),
           maxChars: observationChars,
         );
@@ -236,7 +236,7 @@ abstract final class AgentPrompt {
         CodeActionKind.listDir => AgentTool.list,
       };
 
-  static ToolResult _resultOf(CodeAction action) => ToolResult(
+  static ToolResult toolResultOf(CodeAction action) => ToolResult(
         ok: action.status == CodeActionStatus.done,
         path: action.path,
         text: action.output,
@@ -247,6 +247,12 @@ abstract final class AgentPrompt {
         deniedDetail: action.deniedDetail,
         previous: action.previous,
         after: action.isEdit ? action.after : action.content,
+      );
+
+  /// The observation a stored [action] becomes, for replay and for the UI.
+  static String observationForAction(CodeAction action) => observationFor(
+        toolResultOf(action),
+        tool: _toolOf(action.kind),
       );
 
   static String _actionBlock(CodeAction action) => switch (action.kind) {

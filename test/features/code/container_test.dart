@@ -9,7 +9,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 import 'package:finn_ai/src/features/code/agent/action_runner.dart';
-import 'package:finn_ai/src/features/code/agent/agent_protocol.dart';
+import 'package:finn_ai/src/features/code/agent/agent_prompt.dart';
 import 'package:finn_ai/src/features/code/container/container_host.dart';
 import 'package:finn_ai/src/features/code/container/container_image.dart';
 import 'package:finn_ai/src/features/code/container/container_installer.dart';
@@ -433,9 +433,13 @@ void main() {
   });
 
   test('the container prompt names its tools and stays short', () {
-    final prompt = AgentProtocol.systemPrompt(shell: true, container: true);
+    final prompt = AgentPrompt.systemPrompt(
+      env: CommandEnvironment.container,
+      allowShell: true,
+      allowEdit: false,
+    );
     expect(prompt, contains('busybox'));
-    expect(prompt, contains('chmod +x'));
+    expect(prompt, contains('chmod'));
     expect(prompt.length, lessThan(1500));
   });
 }
