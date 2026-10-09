@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:finn_ai/src/features/code/agent/action_runner.dart';
 import 'package:finn_ai/src/features/code/agent/agent_tools.dart';
 import 'package:finn_ai/src/features/code/agent/agent_prompt.dart';
+import 'package:finn_ai/src/features/code/sandbox/command_policy.dart';
 
 void main() {
   group('AgentPrompt.systemPrompt', () {
@@ -122,6 +123,97 @@ void main() {
         expect(reply.hasCall || reply.answer, isTrue,
             reason: 'example assistant turn did not decode: ${turn.content}');
       }
+    });
+  });
+
+  group('AgentPrompt.observationFor', () {
+    String obs(ToolResult r, AgentTool tool, {int? maxChars}) =>
+        AgentPrompt.observationFor(r, tool: tool, maxChars: maxChars ?? 1600);
+
+    test('write reports the path and byte count', () {
+      final message = obs(
+        const ToolResult(ok: true, path: 'a.txt', after: 'hi'),
+        AgentTool.write,
+      );
+      expect(message, contains('Wrote a.txt'));
+      expect(message, contains('2 characters'));
+    });
+
+    test('write that failed says it could not write and why', () {
+      final message = obs(
+        const ToolResult(ok: false, path: 'a.txt', text: 'disk full'),
+        AgentTool.write,
+      );
+      expect(message, contains('Could not write a.txt'));
+      expect(message, contains('disk full'));
+    });
+
+    test('read returns the file contents', () {
+      final message = obs(
+        const ToolResult(ok: true, path: 'd.txt', text: 'file contents'),
+        AgentTool.read,
+      );
+      expect(message, contains('file contents'));
+    });
+
+    test('read of a missing file says it could not read', () {
+      final message = obs(
+        const ToolResult(ok: false, path: 'd.txt', text: 'No such file'),
+        AgentTool.read,
+      );
+      expect(message, contains('Could not read d.txt'));
+    });
+
+    test('bash reports exit code and stdout', () {
+      final message = obs(
+        const ToolResult(ok: true, exitCode: 0, text: 'hello'),
+        AgentTool.bash,
+      );
+      expect(message, contains('exit code 0'));
+      expect(message, contains('hello'));
+    });
+
+    test('bash non-zero exit is reported as the result', () {
+      final message = obs(
+        const ToolResult(ok: false, exitCode: 1, text: 'boom'),
+        AgentTool.bash,
+      );
+      expect(message, contains('exit code 1'));
+      expect(message, contains('boom'));
+    });
+
+    test('bash timeout is called out', () {
+      final message = obs(
+        const ToolResult(ok: false, timedOut: true, text: 'partial'),
+        AgentTool.bash,
+      );
+      expect(message.toLowerCase(), contains('timed out'));
+    });
+
+    test('denied command names the policy reason', () {
+      final message = obs(
+        const ToolResult(
+          ok: false,
+          denied: PolicyReason.outsideWorkspace,
+          deniedDetail: '../x',
+        ),
+        AgentTool.bash,
+      );
+      expect(message.toLowerCase(), contains('outside the project'));
+    });
+
+    test('long command output is clipped head and tail', () {
+      final message = obs(
+        ToolResult(
+          ok: true,
+          exitCode: 0,
+          text: List.filled(10000, 'x').join(),
+        ),
+        AgentTool.bash,
+        maxChars: 200,
+      );
+      expect(message.length, lessThan(400));
+      expect(message, contains('omitted'));
     });
   });
 }

@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import 'package:finn_ai/src/features/code/sandbox/command_policy.dart';
+
 /// One thing the agent can do in a step. Kept deliberately tiny: a 1.6B model
 /// picks reliably among few options, and every tool maps onto a primitive that
 /// already exists (`CodeWorkspace`, `CodeActionRunner`).
@@ -67,6 +69,42 @@ class AgentReply {
   final String notice;
 
   bool get hasCall => call != null;
+}
+
+/// What a tool did, ready to be turned into the next message the model sees.
+@immutable
+class ToolResult {
+  const ToolResult({
+    this.ok = true,
+    this.path = '',
+    this.text = '',
+    this.exitCode,
+    this.truncated = false,
+    this.timedOut = false,
+    this.denied,
+    this.deniedDetail = '',
+    this.previous,
+    this.after = '',
+  });
+
+  final bool ok;
+
+  /// The file or folder this result is about, where one applies.
+  final String path;
+
+  /// Read/list content, command stdout, or the error text of a failed file op.
+  final String text;
+  final int? exitCode;
+  final bool truncated;
+  final bool timedOut;
+
+  /// Set when the policy refused the action before it ran.
+  final PolicyReason? denied;
+  final String deniedDetail;
+
+  /// The file before a write/edit, and after it.
+  final String? previous;
+  final String after;
 }
 
 /// Reads the one action out of a model reply.
