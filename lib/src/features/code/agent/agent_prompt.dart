@@ -2,6 +2,7 @@ import 'package:finn_ai/src/features/code/agent/action_runner.dart';
 import 'package:finn_ai/src/features/code/agent/agent_tools.dart';
 import 'package:finn_ai/src/features/code/providers/code_gateway.dart';
 import 'package:finn_ai/src/features/code/sandbox/command_policy.dart';
+import 'package:finn_ai/src/features/code/sessions/code_session.dart';
 
 /// Everything the model is shown as instructions: the system prompt, a worked
 /// example for the small model, and (later tasks) the observation text fed back
@@ -172,5 +173,95 @@ abstract final class AgentPrompt {
     final omitted = text.length - head - tail;
     return '${text.substring(0, head)}\n… $omitted characters omitted …\n'
         '${text.substring(text.length - tail)}';
+  }
+
+  // ------------------------------------------------------------ the replay
+
+  static const String taskReminder =
+      'Reply with exactly one action block. When the task is fully done, reply '
+      'with ```answer and a short summary instead.';
+  static const String resultReminder =
+      'If the task is finished, reply with ```answer and a short summary. '
+      'Otherwise reply with the next action.';
+
+  /// The conversation the model sees for [messages]: each request, each of the
+  /// agent's own actions with its result, and a repair note after a malformed
+  /// reply. Append-only from one step to the next, which is what lets the
+  /// engine keep reusing its cached prefix. [remind] adds the small model's
+  /// nudge to each turn the model must answer.
+  static List<CodeTurn> buildTurns(
+    List<CodeMessage> messages, {
+    required bool remind,
+    int observationChars = 1600,
+  }) {
+    final turns = <CodeTurn>[];
+    for (final message in messages) {
+      if (message.isUser) {
+        final body = message.context.isEmpty
+            ? message.text
+            : '${message.text}\n\n${message.context}';
+        turns.add(CodeTurn.user(remind ? '$body\n\n$taskReminder' : body));
+        continue;
+      }
+      final action = message.action;
+      if (action != null && !action.open) {
+        turns.add(CodeTurn.assistant(_actionBlock(action)));
+        final observation = observationFor(
+          _resultOf(action),
+          tool: _toolOf(action.kind),
+          maxChars: observationChars,
+        );
+        turns.add(CodeTurn.user(
+            remind ? '$observation\n\n$resultReminder' : observation));
+      } else if (message.errorCode == CodeErrorCode.cutOff) {
+        turns.add(CodeTurn.assistant(
+            message.text.isEmpty ? '…' : message.text.trim()));
+        turns.add(const CodeTurn.user(AgentProtocol.cutOffNotice));
+      } else if (message.errorCode == CodeErrorCode.malformed) {
+        turns.add(CodeTurn.assistant(
+            message.text.isEmpty ? '…' : message.text.trim()));
+        turns.add(const CodeTurn.user(AgentProtocol.malformedNotice));
+      } else if (message.text.trim().isNotEmpty) {
+        turns.add(CodeTurn.assistant(message.text.trim()));
+      }
+    }
+    return turns;
+  }
+
+  static AgentTool _toolOf(CodeActionKind kind) => switch (kind) {
+        CodeActionKind.shell => AgentTool.bash,
+        CodeActionKind.writeFile => AgentTool.write,
+        CodeActionKind.editFile => AgentTool.edit,
+        CodeActionKind.readFile => AgentTool.read,
+        CodeActionKind.listDir => AgentTool.list,
+      };
+
+  static ToolResult _resultOf(CodeAction action) => ToolResult(
+        ok: action.status == CodeActionStatus.done,
+        path: action.path,
+        text: action.output,
+        exitCode: action.exitCode,
+        truncated: action.truncated,
+        timedOut: action.timedOut,
+        denied: action.deniedReason,
+        deniedDetail: action.deniedDetail,
+        previous: action.previous,
+        after: action.isEdit ? action.after : action.content,
+      );
+
+  static String _actionBlock(CodeAction action) => switch (action.kind) {
+        CodeActionKind.shell => '```sh\n${action.command}\n```',
+        CodeActionKind.writeFile =>
+          _fence('write ${action.path}', action.content),
+        CodeActionKind.editFile =>
+          _fence('edit ${action.path}', action.content),
+        CodeActionKind.readFile => '```read ${action.path}\n```',
+        CodeActionKind.listDir =>
+          action.path.isEmpty ? '```list\n```' : '```list ${action.path}\n```',
+      };
+
+  static String _fence(String header, String content) {
+    final fence = content.contains('```') ? '````' : '```';
+    return '$fence$header\n$content\n$fence';
   }
 }

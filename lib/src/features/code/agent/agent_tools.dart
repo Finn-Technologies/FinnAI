@@ -40,6 +40,11 @@ class AgentCall {
 
   bool get isShell => tool == AgentTool.bash;
   bool get isEdit => tool == AgentTool.edit;
+
+  /// Same call, ignoring its result. The loop uses this to notice a model
+  /// repeating itself.
+  String get signature =>
+      isShell ? 'sh:$command' : '${tool.name}:$path:$content';
 }
 
 /// What one model reply decoded to.
@@ -129,10 +134,10 @@ abstract final class AgentProtocol {
   static const Set<String> _editTags = {'edit', 'patch'};
   static const Set<String> _answerTags = {'answer', 'done', 'finished'};
 
-  static const String _malformedNotice =
+  static const String malformedNotice =
       'That action block was not usable, so nothing ran. A file block needs a '
       'name: ```write notes.txt.';
-  static const String _cutOffNotice =
+  static const String cutOffNotice =
       'Your reply was cut off before the action ended, so nothing ran. Send a '
       'shorter action.';
   static const String _shellOffNotice =
@@ -154,12 +159,13 @@ abstract final class AgentProtocol {
   }) {
     final lines = clean(raw).split('\n');
     final prose = StringBuffer();
-    var action = _ScanState();
+    var malformed = false;
+    var notice = '';
     var i = 0;
     while (i < lines.length) {
       final open = _openingFence(lines[i]);
       if (open == null) {
-        if (!action.settled) prose.writeln(lines[i]);
+        if (!malformed) prose.writeln(lines[i]);
         i++;
         continue;
       }
@@ -175,7 +181,7 @@ abstract final class AgentProtocol {
       }
       final tag = _tag(open.info);
 
-      if (tag == TagKind.answer && action.settled == false) {
+      if (tag == TagKind.answer && !malformed) {
         final summary = [
           prose.toString().trim(),
           body.join('\n').trim(),
@@ -188,25 +194,28 @@ abstract final class AgentProtocol {
         // Not an action tag: ordinary code, part of the prose (before any
         // action). After an action it is a guess at a result and is dropped.
         if (!_isActionTag(tag)) {
-          if (!action.settled) {
+          if (!malformed) {
             prose.writeln(lines[i]);
             for (final line in body) {
               prose.writeln(line);
             }
             if (closed) prose.writeln(lines[j]);
           }
-        } else if (!action.settled) {
+        } else if (!malformed) {
           // A block tagged as an action but unusable.
-          action = closed
-              ? const _ScanState.malformed(AgentProtocol._malformedNotice)
-              : const _ScanState.malformed(AgentProtocol._cutOffNotice);
+          malformed = true;
+          notice = closed
+              ? AgentProtocol.malformedNotice
+              : AgentProtocol.cutOffNotice;
         }
-      } else if (!action.settled) {
+      } else if (!malformed) {
         final blocked = _blockedReason(call, allowShell, allowEdit);
         if (blocked != null) {
-          action = _ScanState.malformed(blocked);
+          malformed = true;
+          notice = blocked;
         } else if (!closed) {
-          action = const _ScanState.malformed(AgentProtocol._cutOffNotice);
+          malformed = true;
+          notice = AgentProtocol.cutOffNotice;
         } else {
           return AgentReply(
             call: call,
@@ -217,8 +226,8 @@ abstract final class AgentProtocol {
       i = closed ? j + 1 : lines.length;
     }
 
-    if (action.malformed) {
-      return AgentReply(malformed: true, notice: action.notice);
+    if (malformed) {
+      return AgentReply(malformed: true, notice: notice);
     }
     final text = prose.toString().trim();
     return AgentReply(prose: text, answer: true);
@@ -304,17 +313,3 @@ abstract final class AgentProtocol {
 }
 
 enum TagKind { none, shell, file, edit, read, list, answer }
-
-/// Scanning state for [AgentProtocol.decode].
-@immutable
-class _ScanState {
-  const _ScanState({this.malformed = false, this.notice = ''});
-  const _ScanState.malformed(this.notice) : malformed = true;
-
-  final bool malformed;
-  final String notice;
-
-  /// True once a fence has produced a call/answer or been judged; later text
-  /// is a guess at an unseen result and is ignored.
-  bool get settled => malformed;
-}
