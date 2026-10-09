@@ -49,16 +49,25 @@ class _FinnPageState extends State<FinnPage> {
       widget.controller ?? ScrollController();
   final ValueNotifier<double> _offset = ValueNotifier<double>(0);
 
+  void _onScroll() {
+    if (_controller.hasClients) _offset.value = _controller.offset;
+  }
+
   @override
   void initState() {
     super.initState();
-    _controller.addListener(() {
-      if (_controller.hasClients) _offset.value = _controller.offset;
-    });
+    _controller.addListener(_onScroll);
   }
 
   @override
   void dispose() {
+    // The listener has to come off before either side goes away. It used not
+    // to be removed at all: the closure captured the state, so a page popped
+    // while its controller lived on (a caller-owned controller) kept writing
+    // into a disposed ValueNotifier — and a page that owned its controller
+    // left the listener attached to a disposed one, which throws "used after
+    // dispose" the next time it scrolls.
+    _controller.removeListener(_onScroll);
     if (widget.controller == null) _controller.dispose();
     _offset.dispose();
     super.dispose();

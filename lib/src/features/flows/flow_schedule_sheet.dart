@@ -99,35 +99,44 @@ class _ScheduleBodyState extends State<_ScheduleBody> {
         ),
         const SizedBox(height: 18),
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          // Every cell used to be a fixed 44dp box spaced between. Seven of
+          // them is 308px, and a 360dp screen's sheet content box is 300px,
+          // so Sunday ran 8px past the edge and the row threw. Flexible cells
+          // keep the design's circles and let the row shrink instead.
           children: [
             for (var day = 1; day <= 7; day++)
-              Semantics(
-                button: true,
-                selected: _days.contains(day),
-                label: names[day - 1],
-                onTap: () => _toggleDay(day),
-                excludeSemantics: true,
-                child: Material(
-                  color: _days.contains(day)
-                      ? FluxColors.actionOf(context)
-                      : FluxColors.controlOf(context),
-                  shape: const CircleBorder(),
-                  child: InkWell(
-                    key: Key('flow-day-$day'),
-                    customBorder: const CircleBorder(),
+              Expanded(
+                child: Center(
+                  child: Semantics(
+                    button: true,
+                    selected: _days.contains(day),
+                    label: names[day - 1],
                     onTap: () => _toggleDay(day),
-                    child: SizedBox.square(
-                      dimension: 44,
-                      child: Center(
-                        child: Text(
-                          initials[day - 1],
-                          style:
-                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    excludeSemantics: true,
+                    child: Material(
+                      color: _days.contains(day)
+                          ? FluxColors.actionOf(context)
+                          : FluxColors.controlOf(context),
+                      shape: const CircleBorder(),
+                      child: InkWell(
+                        key: Key('flow-day-$day'),
+                        customBorder: const CircleBorder(),
+                        onTap: () => _toggleDay(day),
+                        child: SizedBox.square(
+                          dimension: 44,
+                          child: Center(
+                            child: Text(
+                              initials[day - 1],
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(
                                     color: _days.contains(day)
                                         ? FluxColors.actionInkOf(context)
                                         : null,
                                   ),
+                            ),
+                          ),
                         ),
                       ),
                     ),

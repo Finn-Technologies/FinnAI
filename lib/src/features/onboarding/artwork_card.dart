@@ -60,6 +60,12 @@ class OnboardingArtworkCard extends StatelessWidget {
                 bottom: twoLineTitle ? 21 : 30,
                 child: Text(
                   title,
+                  // The card clips, and the title is laid out from the bottom
+                  // with no height of its own, so the line count has to be
+                  // capped here: an uncapped title wraps upward out of a card
+                  // that shrank on a landscape screen and loses its ascenders.
+                  maxLines: twoLineTitle ? 2 : 3,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontFamily: 'Geist',
                     fontSize: 24,

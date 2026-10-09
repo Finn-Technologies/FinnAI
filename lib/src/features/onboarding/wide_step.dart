@@ -25,6 +25,18 @@ double welcomeGlowInset(BoxConstraints constraints) =>
 double welcomeGlowRadius(BoxConstraints constraints) =>
     wideStepFits(constraints) ? FinnWindowFrame.cornerRadius : 25;
 
+/// The one vertical scale every first-run surface applies to the phone
+/// design's geometry.
+///
+/// The welcome card and the step it grows into scaled by the same
+/// `avail / 912` factor but clamped it differently (.4 vs .6), so on a short
+/// landscape screen the morph began from a 42px card and landed on a 72px
+/// one — the design's "grow into the step" read as a jump in size. Both now
+/// clamp here; the morph keeps the smaller floor because it is drawn over
+/// the black and has nothing to protect.
+double stepScale(double avail, {bool morph = false}) =>
+    (avail / 912).clamp(morph ? .4 : .6, 1.0);
+
 /// One onboarding step laid out for a wide window.
 ///
 /// The step's artwork fills a rounded pane on the left, with the same radius on

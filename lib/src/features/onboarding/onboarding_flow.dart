@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:finn_ai/src/app/app_mode_host.dart';
 import 'package:finn_ai/src/features/onboarding/artwork_card.dart';
 import 'package:finn_ai/src/features/onboarding/context_choose_page.dart';
+import 'package:finn_ai/src/features/onboarding/step_progress_bar.dart';
 import 'package:finn_ai/src/features/onboarding/step_transition.dart';
 import 'package:finn_ai/src/features/onboarding/welcome_morph.dart';
 import 'package:finn_ai/src/features/onboarding/wide_step.dart';
@@ -57,7 +58,9 @@ class _OnboardingFlowState extends State<OnboardingFlow>
 
   late final AnimationController _welcome = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 700),
+    // The welcome card growing into the step's card: the app's morph, so it
+    // takes the morph tokens rather than its own 700.
+    duration: FluxMotion.morphDuration,
   );
   final _modelInstallerKey = GlobalKey<_AutomaticModelPageState>();
   bool _modelInstallRequested = false;
@@ -86,9 +89,10 @@ class _OnboardingFlowState extends State<OnboardingFlow>
       _pageController
           .animateToPage(
             page,
-            duration:
-                reduced ? Duration.zero : const Duration(milliseconds: 520),
-            curve: Curves.easeInOutCubic,
+            // The step change is this flow's page transition, so it takes the
+            // app's page duration rather than a fourth bespoke number.
+            duration: reduced ? Duration.zero : FluxMotion.pageDuration,
+            curve: FluxMotion.pageCurve,
           )
           .whenComplete(() => _span.value = null);
     }
@@ -117,8 +121,8 @@ class _OnboardingFlowState extends State<OnboardingFlow>
   }
 
   PageRouteBuilder<void> _blurRoute(Widget child) => PageRouteBuilder(
-        transitionDuration: const Duration(milliseconds: 350),
-        reverseTransitionDuration: const Duration(milliseconds: 280),
+        transitionDuration: FluxMotion.pageDuration,
+        reverseTransitionDuration: FluxMotion.pageReverseDuration,
         pageBuilder: (_, animation, __) => child,
         transitionsBuilder: (context, animation, _, page) {
           if (MediaQuery.disableAnimationsOf(context)) return page;
@@ -296,13 +300,29 @@ class _StepPage extends StatelessWidget {
           );
         }
         final avail = constraints.maxHeight - topInset - bottomReserve;
-        final sy = (avail / 912).clamp(.6, 1.0);
+        final sy = stepScale(avail);
         final cardWidth = math.max(
           0.0,
           math.min(380.0, constraints.maxWidth - 40),
         );
         final hint = footerHint;
-        final hintHeight = hint == null ? 0.0 : 20.0;
+        // The hint is one line of 13px Geist, so it is measured with the text
+        // scaler rather than reserved as a constant: at 2x the line box is
+        // 31px in a 20px row and `Align` centres the overflow straight down
+        // over the control row.
+        final hintStyle = TextStyle(
+          fontFamily: 'Geist',
+          fontSize: 13,
+          height: 1.2,
+          color: FluxColors.secondaryInkOf(context),
+        );
+        final hintHeight = hint == null
+            ? 0.0
+            : math.max(
+                20.0,
+                hintStyle.height! *
+                    MediaQuery.textScalerOf(context).scale(hintStyle.fontSize!),
+              );
         const controlsHeight = 60.0;
         const gap = 20.0;
         // Card yields first: losing artwork is cosmetic, losing the answer
@@ -314,15 +334,33 @@ class _StepPage extends StatelessWidget {
             controlsHeight +
             hintHeight;
         final budget = math.max(0.0, constraints.maxHeight - chrome);
-        final minCard = 120.0 * sy;
+        final body = this.body;
+        final hasBody = body != null;
+        // The body keeps its floor first and the card only ever gets what is
+        // left of it. The other way round let the two fixed floors sum past
+        // the budget — 8px of overflow and a clipped control row on a
+        // landscape phone — because max(a, x) + max(b, x) is not bounded by
+        // x. A floor that does not fit is dropped, never honoured.
+        final bodyFloor = hasBody ? math.min(bodyMaxFloor, budget) : 0.0;
+        final cardRoom = math.max(0.0, budget - bodyFloor);
+        // And the card's own floor is what its title needs rather than a bare
+        // 120: the title is laid out from the card's bottom with no height
+        // limit of its own, so a shorter card clips its ascenders.
+        final minCard = math.max(
+          120.0 * sy,
+          _minArtworkCardHeight(twoLineTitle),
+        );
+        // What is left for the card once the body has had what it asked for,
+        // which is the card's natural size in every layout that fits.
+        final leftover = math.max(0.0, math.min(budget - bodyHeight, cardRoom));
         final cardHeight = math.max(
           0.0,
           math.min(
-              cardWidth * 660 / 380, math.max(minCard, budget - bodyHeight)),
+            cardWidth * 660 / 380,
+            math.max(math.min(minCard, cardRoom), leftover),
+          ),
         );
-        final bodyMax =
-            math.max(bodyMaxFloor, math.max(0.0, budget - cardHeight));
-        final body = this.body;
+        final bodyMax = hasBody ? math.max(0.0, budget - cardHeight) : 0.0;
         // Drawn under the welcome morph: its card stands in for this one.
         final reveal = StepReveal.maybeOf(context);
         Widget enter(Widget child, double start) =>
@@ -375,12 +413,7 @@ class _StepPage extends StatelessWidget {
                         hint,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontFamily: 'Geist',
-                          fontSize: 13,
-                          height: 1.2,
-                          color: FluxColors.secondaryInkOf(context),
-                        ),
+                        style: hintStyle,
                       ),
                     ),
                   ),
@@ -441,7 +474,7 @@ class _StepControls extends StatelessWidget {
                 // scales down rather than pushing the circles off the row.
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
-                  child: _StepProgressBar(quarters: progress),
+                  child: StepProgressBar(quarters: progress),
                 ),
               ),
             ),
@@ -517,62 +550,20 @@ class _CircleControl extends StatelessWidget {
   }
 }
 
-/// Step progress: the filled span, an 8px gap, then the remaining track.
-class _StepProgressBar extends StatelessWidget {
-  const _StepProgressBar({required this.quarters});
-
-  /// Filled quarters of the 200px track, 1..4.
-  final int quarters;
-
-  static const double _track = 200;
-  static const double _gap = 8;
-
-  /// What the bar last showed. A step's bar grows on from the previous
-  /// step's instead of from empty, so the bar reads as one bar filling up
-  /// while the steps fade through each other.
-  static double _shown = 0;
-
-  @override
-  Widget build(BuildContext context) {
-    // The design carves the gap out of the fill so each step lands on a
-    // quarter of the track: 46 / 96 / 146 px for steps one to three. The bar
-    // fills up to that point as each step appears, so the flow reads as
-    // progress rather than as a bar that is simply replaced.
-    final target = (_track * quarters / 4 - 4).clamp(0.0, _track);
-    final reduced = MediaQuery.disableAnimationsOf(context);
-    return TweenAnimationBuilder<double>(
-      tween: Tween<double>(begin: _shown, end: target),
-      duration: reduced ? Duration.zero : const Duration(milliseconds: 520),
-      curve: Curves.easeOutCubic,
-      builder: (context, filled, _) {
-        _shown = filled;
-        final rest =
-            (_track - filled - (filled > 0 && filled < _track ? _gap : 0))
-                .clamp(0.0, _track);
-        Widget bar(Color color) => ClipRRect(
-              borderRadius: BorderRadius.circular(FluxRadius.pill),
-              child: ColoredBox(color: color),
-            );
-        return SizedBox(
-          width: _track,
-          height: 6,
-          child: Row(
-            // Stretch so the bars fill the track's height: a childless
-            // ColoredBox collapses to nothing under loose cross-axis
-            // constraints.
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (filled > 0)
-                SizedBox(width: filled, child: bar(FluxColors.inkOf(context))),
-              if (filled > 0 && rest > 0) const SizedBox(width: _gap),
-              if (rest > 0)
-                SizedBox(width: rest, child: bar(FluxColors.tileOf(context))),
-            ],
-          ),
-        );
-      },
-    );
-  }
+/// The smallest card that still shows its title.
+///
+/// [OnboardingArtworkCard] lays the title out from the card's bottom with no
+/// height of its own, so a card shorter than the title simply clips its
+/// ascenders. Measured from the style the card draws: 24px Geist on a 1.2
+/// line height, up to two lines, the inset below the text and a little air
+/// above it.
+double _minArtworkCardHeight(bool twoLineTitle) {
+  final bottom = twoLineTitle ? 21.0 : 30.0;
+  const size = 24.0;
+  const lineHeight = 1.2;
+  const maxLines = 2;
+  const air = 8.0;
+  return bottom + maxLines * size * lineHeight + air;
 }
 
 /// Privacy: what leaves the device, and the link to the full policy.
@@ -631,7 +622,7 @@ class _PrivacyBodyState extends State<_PrivacyBody> {
           TextSpan(text: l10n.onboardingPrivacyLead, style: _bodyStyle(ink)),
           TextSpan(
             text: '\n${l10n.onboardingPrivacyBody}',
-            style: _bodyStyle(ink.withValues(alpha: .5)),
+            style: _bodyStyle(FluxColors.secondaryInkOf(context)),
           ),
           TextSpan(
             text: l10n.onboardingPrivacyLink,
@@ -714,7 +705,11 @@ class _AutomaticModelPageState extends State<_AutomaticModelPage> {
     setState(() {
       _started = true;
       _error = null;
-      _install.progress = .02;
+      // A retry of a failed download must not reset the ring to 2%: the
+      // engine still holds the partial bytes, so the download resumes from
+      // where it broke. Seeding the ring backwards made it look like the
+      // retry had lost ground.
+      if (_install.receivedBytes <= 0) _install.progress = .02;
     });
     _inference.useAutomaticSelection();
     // Resolved before the first await so no BuildContext is used across an
@@ -808,7 +803,10 @@ class _DownloadStatus extends StatelessWidget {
     final l10n = L10n.of(context);
     final inference = FinnInference.instance;
     final ink = FluxColors.inkOf(context);
-    final muted = ink.withValues(alpha: .5);
+    // 50%-alpha ink composited to 3.74:1 on the white card — under the AA
+    // 4.5:1 the token file asserts for body copy, and measured as invisible
+    // outdoors. `secondaryInkOf` is the token that exists for exactly this.
+    final muted = FluxColors.secondaryInkOf(context);
 
     if (error != null) {
       // The design's "Download paused": progress is kept, and it resumes.
@@ -1024,7 +1022,7 @@ class _SoftwareUpgradeScreenState extends State<SoftwareUpgradeScreen> {
     setState(() {
       _started = true;
       _error = null;
-      _install.progress = .02;
+      if (_install.receivedBytes <= 0) _install.progress = .02;
     });
     _inference.useAutomaticSelection();
     // Resolved before the first await so no BuildContext is used across an
@@ -1342,7 +1340,7 @@ class _FinishPage extends StatelessWidget {
             TextSpan(text: l10n.onboardingReadyLead, style: _bodyStyle(ink)),
             TextSpan(
               text: '\n${l10n.onboardingReadyBody}',
-              style: _bodyStyle(ink.withValues(alpha: .5)),
+              style: _bodyStyle(FluxColors.secondaryInkOf(context)),
             ),
           ],
         ),

@@ -186,6 +186,7 @@ A second app inside the app: its own sessions, settings and providers, in the sa
 |---|---|
 | Startup sequence, splash, routing decision | `lib/src/app/bootstrap.dart` |
 | Onboarding pages, install progress, upgrade screen | `lib/src/features/onboarding/onboarding_flow.dart` |
+| The step progress bar every onboarding step draws under the controls | `lib/src/features/onboarding/step_progress_bar.dart` (`StepProgressBar`) |
 | Settings hub and its pages (model, voice, access, data, about) | `lib/src/features/settings/settings_*.dart` |
 | Global "delete all data" orchestration | `lib/src/app/app_state_store.dart` |
 | You: what FinnAI remembers (store, pages) | `lib/src/features/you/{you_memory_store,you_page,you_category_page,you_privacy_page}.dart` |
@@ -209,6 +210,7 @@ A second app inside the app: its own sessions, settings and providers, in the sa
 | Motion tokens (durations, curves, the control→surface morph) | `lib/src/shared/theme/flux_motion_tokens.dart` (`FluxMotion`, re-exported by `flux_theme.dart`) |
 | Space reserved below bottom-anchored UI (composer, nav bar height) | `lib/src/shared/theme/flux_theme.dart` (`FluxBottomInset.bottomOf`) |
 | Buttons, pills (primary and `secondary`), glass surfaces | `lib/src/shared/widgets/flux_controls.dart` |
+| The collapsible pill that reveals detail beneath it (reply sources, browser steps) | `lib/src/shared/widgets/flux_disclosure.dart` (`FluxDisclosure`, `FluxDisclosureRow`), re-exported by `flux_controls.dart` |
 | The icon set (`FluxIcons`, Hugeicons Solid), `FluxIcon`, and the design-asset → icon map | `lib/src/shared/widgets/flux_icons.dart` |
 | Paths of the design's exported SVGs | `lib/src/shared/widgets/figma_assets.dart` |
 | Shimmering placeholder rows while a list loads | `lib/src/shared/widgets/finn_skeleton.dart` |

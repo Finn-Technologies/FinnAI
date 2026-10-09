@@ -55,23 +55,27 @@ class YouPrivacyPage extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(15),
             decoration: BoxDecoration(
-              color: const Color(0xFFEADDFF),
+              // Token-driven, not the M3 "primary container" pastel: with no
+              // dark variant that pair put a 16:1 lavender slab on the black
+              // canvas, and its own #4F378B copy stayed in the light palette.
+              color: FluxColors.disclosureOf(context),
               borderRadius: BorderRadius.circular(FluxRadius.card),
+              border: Border.all(color: FluxColors.lineOf(context)),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const FluxIcon(
+                FluxIcon(
                   icon: FluxIcons.lock,
                   size: 22,
-                  color: Color(0xFF4F378B),
+                  color: FluxColors.inkOf(context),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     l10n.youPrivacyNote,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: const Color(0xFF4F378B),
+                          color: FluxColors.secondaryInkOf(context),
                         ),
                   ),
                 ),

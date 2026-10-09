@@ -38,6 +38,16 @@ abstract final class FluxMotion {
   static const Duration emphasisDuration = Duration(milliseconds: 400);
   static const Curve springCurve = ElasticOutCurve(.85);
 
+  /// The voice panel giving the chat back: the transcript and the composer
+  /// crossfade as voice recedes, in both directions. Named because two files
+  /// carried the same 650ms by hand and had to be kept in step.
+  static const Duration recedeDuration = Duration(milliseconds: 650);
+
+  /// The breathing of the "Finn is generating" row, while there is still
+  /// nothing to read. One loop; long on purpose, because a short loop reads
+  /// as a spinner.
+  static const Duration presencePulse = Duration(milliseconds: 1700);
+
   /// Press feedback. Shared by every tappable surface so a thumb gets the same
   /// answer everywhere.
   static const Duration pressIn = Duration(milliseconds: 120);

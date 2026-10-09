@@ -186,6 +186,18 @@ class _HomeShellState extends State<HomeShell>
   /// wherever the animation already was rather than snapping to an end.
   double _sidebarDragBase = 0;
   bool _preparing = false;
+
+  /// Set when the user pressed stop while [_send] was still preparing.
+  ///
+  /// Everything between "the turn is committed to the store" and "the native
+  /// generation starts" runs without an active generation job — store init
+  /// with its 12s timeout, the device-action lookup, the model-download
+  /// dialog and the upfront web search. Pressing stop in that window had
+  /// nowhere to act: `_generation.stop()` is a no-op with no job, so the
+  /// button reverted to send, the "Finn is typing" row vanished, and then
+  /// the reply streamed in a few seconds later anyway — a stop that looked
+  /// like it worked.
+  bool _sendCancelled = false;
   bool _dismissedSearchNotice = false;
 
   /// True when this turn's one search got no answer, so the notice shows.

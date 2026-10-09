@@ -121,8 +121,10 @@ class _WelcomeMorphPageState extends State<WelcomeMorphPage> {
     } else {
       widget.progress.animateBack(
         0,
-        duration: const Duration(milliseconds: 360),
-        curve: Curves.easeOutCubic,
+        // The morph giving its surface back: `morphReverseDuration` and
+        // `morphReverseCurve` are the tokens for exactly that.
+        duration: FluxMotion.morphReverseDuration,
+        curve: FluxMotion.morphReverseCurve,
       );
     }
   }
@@ -152,7 +154,7 @@ class _WelcomeMorphPageState extends State<WelcomeMorphPage> {
     // Only the sky bleeds; content stays inside the safe area.
     final padding = MediaQuery.paddingOf(context);
     final avail = constraints.maxHeight - padding.top - padding.bottom;
-    final sy = (avail / 912).clamp(.4, 1.0);
+    final sy = stepScale(avail, morph: true);
     final wide = wideStepFits(constraints);
     final glowInset = welcomeGlowInset(constraints);
     final start = Rect.fromLTRB(

@@ -6,6 +6,7 @@ extension _HomeShellNavigation on _HomeShellState {
     HapticFeedback.mediumImpact();
     if (_preparing) {
       setState(() => _preparing = false);
+      _sendCancelled = true;
       debugPrint('FINN_SEND cancelled during preparing');
     }
     unawaited(_voice.interrupt());

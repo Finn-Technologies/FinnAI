@@ -167,21 +167,31 @@ class _FinnSearchPageState extends State<FinnSearchPage> {
                       ),
                       const SizedBox(width: 10),
                       Expanded(
-                        child: TextField(
-                          controller: _query,
-                          autofocus: true,
-                          textInputAction: TextInputAction.search,
-                          style: Theme.of(context).textTheme.bodyMedium,
-                          decoration: InputDecoration(
-                            hintText: l10n.searchHint,
-                            filled: true,
-                            fillColor: FluxColors.controlOf(context),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                            ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(100),
-                              borderSide: BorderSide.none,
+                        child: ConstrainedBox(
+                          // The field used to carry only horizontal padding,
+                          // so `InputDecorator` sized it to the text alone: a
+                          // ~20px lozenge beside a 50dp circle, sharing no
+                          // baseline and far under the app's 48dp tap floor.
+                          // Every other pill in the app takes its height the
+                          // same way.
+                          constraints: const BoxConstraints(minHeight: 50),
+                          child: TextField(
+                            controller: _query,
+                            autofocus: true,
+                            textInputAction: TextInputAction.search,
+                            style: Theme.of(context).textTheme.bodyMedium,
+                            decoration: InputDecoration(
+                              hintText: l10n.searchHint,
+                              filled: true,
+                              fillColor: FluxColors.controlOf(context),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 14,
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(100),
+                                borderSide: BorderSide.none,
+                              ),
                             ),
                           ),
                         ),

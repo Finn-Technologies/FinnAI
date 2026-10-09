@@ -14,6 +14,30 @@ class _ArticlePhotoSlideshowState extends State<_ArticlePhotoSlideshow> {
   int _currentPage = 0;
 
   @override
+  void didUpdateWidget(covariant _ArticlePhotoSlideshow oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // A turn's photos are replaced wholesale when the reply is re-grounded or
+    // regenerated. Neither the controller nor the page index followed, so the
+    // slideshow kept showing the old page — and the counter happily read
+    // "3/1" against an image that was no longer there.
+    if (_sameImages(oldWidget.imageUrls, widget.imageUrls)) return;
+    if (_currentPage != 0) setState(() => _currentPage = 0);
+    if (_controller.hasClients && _controller.page != 0) {
+      _controller.jumpToPage(0);
+    }
+  }
+
+  /// Order-sensitive comparison. Written out rather than using `listEquals`
+  /// from `foundation`, which the `home_shell` part library does not import.
+  static bool _sameImages(List<String> a, List<String> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+
+  @override
   void dispose() {
     _controller.dispose();
     super.dispose();
@@ -83,13 +107,18 @@ class _ArticlePhotoSlideshowState extends State<_ArticlePhotoSlideshow> {
                     borderRadius: BorderRadius.circular(FluxRadius.pill),
                   ),
                   child: Text(
-                    '${_currentPage + 1}/$count',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.2,
-                    ),
+                    // Clamped, so a stale page index can never out-number
+                    // the pages actually on screen.
+                    '${math.min(_currentPage, count - 1) + 1}/$count',
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                          color: Colors.white,
+                          fontSize: math.max(
+                            FluxColors.minTextSize,
+                            11.5,
+                          ),
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.2,
+                        ),
                   ),
                 ),
               ),
@@ -132,10 +161,19 @@ class _SourceList extends StatelessWidget {
     return snippet == 'No excerpt available.' ? '' : snippet;
   }
 
+  /// The host with one leading `www.` removed, and nothing else.
+  ///
+  /// The label and the favicon used to strip it differently — the label with
+  /// an anchored pattern, the favicon with an unanchored one — so a host like
+  /// `mywww.example.com` produced a disc labelled "m" next to a host reading
+  /// `myexample.com`. One helper keeps them in step.
+  static String _hostOf(WebSource source) =>
+      source.url.host.replaceFirst(RegExp(r'^www\.'), '');
+
   @override
   Widget build(BuildContext context) {
     final firstHost = sources.isNotEmpty
-        ? sources.first.url.host.replaceFirst(RegExp(r'^www\.'), '')
+        ? _hostOf(sources.first)
         : L10n.of(context).chatSources;
     final extraCount = sources.length - 1;
 
@@ -184,7 +222,7 @@ class _SourceFavicon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final host = source.url.host.replaceFirst('www.', '');
+    final host = source.url.host.replaceFirst(RegExp(r'^www\.'), '');
     final letter = host.isEmpty ? '?' : host[0].toUpperCase();
     final color = _palette[host.hashCode.abs() % _palette.length];
 
@@ -197,7 +235,11 @@ class _SourceFavicon extends StatelessWidget {
         letter,
         style: TextStyle(
           color: Colors.white,
-          fontSize: size * 0.55,
+          // Floored at the app's minimum readable size. `size * .55` put the
+          // letter at 8.8px in the collapsed pill and 9.9px in the rows:
+          // below the floor the design's own tokens set, and measured as
+          // unreadable on a phone.
+          fontSize: math.max(FluxColors.minTextSize, size * .55),
           fontWeight: FontWeight.w600,
           height: 1,
         ),

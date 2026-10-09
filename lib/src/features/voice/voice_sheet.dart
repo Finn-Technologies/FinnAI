@@ -42,7 +42,9 @@ Future<void> openVoiceSheet({
     context: context,
     barrierDismissible: true,
     barrierLabel: L10n.of(context).voiceCloseSemantic,
-    barrierColor: Colors.black.withValues(alpha: 0.4),
+    // `scrimOf`: a black scrim is invisible on the app's black canvas, and
+    // this sheet is mostly opened in dark mode.
+    barrierColor: FluxColors.scrimOf(context, alpha: .4),
     transitionDuration: const Duration(milliseconds: 280),
     transitionBuilder: (context, animation, _, child) {
       final curved = CurvedAnimation(
