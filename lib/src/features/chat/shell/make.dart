@@ -41,11 +41,7 @@ extension _HomeShellMake on _HomeShellState {
     return reply;
   }
 
-  void _makeReply(
-    ConversationMessage reply,
-    String text, {
-    MessageCard? card,
-  }) {
+  void _makeReply(ConversationMessage reply, String text, {MessageCard? card}) {
     final conversation = _conversations.active;
     if (conversation == null) return;
     _conversations.updateMessageInConversation(
@@ -80,18 +76,16 @@ extension _HomeShellMake on _HomeShellState {
     try {
       await controller.load();
       controller.addListener(progress);
-      final result = await controller.create(request.brief, request.kind);
+      final creation = await controller.create(request.brief, request.kind);
       if (!mounted) return;
-      if (result == null) {
+      if (creation == null) {
         _makeReply(reply, l10n.creationsFailed);
         return;
       }
       _makeReply(
         reply,
-        result.usedFallback
-            ? '${l10n.creationsFallbackNote}\n\n${l10n.chatCreationReady}'
-            : l10n.chatCreationReady,
-        card: MessageCard.creation(result.creation.id),
+        l10n.chatCreationReady,
+        card: MessageCard.creation(creation.id),
       );
     } on Object catch (error) {
       debugPrint('FINN_MAKE creation failed: ${error.runtimeType}');

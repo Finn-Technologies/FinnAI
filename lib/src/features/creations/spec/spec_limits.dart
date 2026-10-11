@@ -56,15 +56,4 @@ abstract final class SpecLimits {
   /// string as the value, which the parser then rejected.
   static const String accentNames =
       'mint, blue, lime, amber, rose, violet, sky';
-
-  /// The same accents as a list, for template slots.
-  static const List<String> accentList = [
-    'mint',
-    'blue',
-    'lime',
-    'amber',
-    'rose',
-    'violet',
-    'sky',
-  ];
 }

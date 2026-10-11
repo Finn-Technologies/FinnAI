@@ -25,10 +25,7 @@ import 'package:finn_ai/src/features/creations/widget_preview.dart';
 import 'package:finn_ai/src/features/creations/spec/deck_spec.dart';
 import 'package:finn_ai/src/features/creations/spec/mini_app_spec.dart';
 import 'package:finn_ai/src/features/creations/spec/widget_spec.dart';
-import 'package:finn_ai/src/features/creations/templates/creation_template.dart';
-import 'package:finn_ai/src/features/creations/templates/template_catalog.dart';
 import 'package:finn_ai/src/shared/widgets/finn_create_button.dart';
-import 'package:finn_ai/src/shared/slots/slots.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 import 'package:finn_ai/src/shared/widgets/ambient_background.dart';
 import 'package:finn_ai/src/shared/widgets/finn_overlays.dart';
@@ -47,7 +44,6 @@ part 'parts/composer.dart';
 part 'parts/sheets.dart';
 part 'parts/chrome.dart';
 part 'parts/labels.dart';
-part 'parts/template_ui.dart';
 part 'parts/actions.dart';
 part 'parts/widget_detail.dart';
 
@@ -78,7 +74,6 @@ class _CreationsPageState extends State<CreationsPage> {
   _Mode _mode = _Mode.gallery;
   final List<_Turn> _turns = [];
   CreationKind? _pendingKind;
-  String? _pendingTemplateId;
   String? _pendingPrompt;
   bool _modeChosen = false;
 
@@ -175,7 +170,6 @@ class _CreationsPageState extends State<CreationsPage> {
         ..clear()
         ..add(const _KindQuestionTurn());
       _pendingKind = null;
-      _pendingTemplateId = null;
       _pendingPrompt = null;
     });
     _focusNode.requestFocus();
@@ -211,7 +205,7 @@ class _CreationsPageState extends State<CreationsPage> {
       if (_mode == _Mode.gallery) _mode = _Mode.builder;
       _turns.add(_UserTurn(text));
     });
-    unawaited(_run(text, kind, _pendingTemplateId));
+    unawaited(_run(text, kind));
   }
 
   void _chooseKind(CreationKind kind) {
@@ -229,13 +223,7 @@ class _CreationsPageState extends State<CreationsPage> {
       } else {
         _turns.add(_KindQuestionTurn(answered: kind));
       }
-      _pendingTemplateId = null;
       if (pending == null) {
-        // A starting point is offered only for kinds that have templates, and
-        // only while the brief has not been typed yet.
-        if (CreationTemplates.forKind(kind).isNotEmpty) {
-          _turns.add(_TemplateQuestionTurn(kind: kind));
-        }
         _turns.add(
           _AssistantNoteTurn(
             L10n.of(context).creationsDescribeKind(_kindLabel(context, kind)),
@@ -250,41 +238,21 @@ class _CreationsPageState extends State<CreationsPage> {
       _scrollToEnd();
       return;
     }
-    unawaited(_run(pending, kind, null));
+    unawaited(_run(pending, kind));
   }
 
-  void _chooseTemplate(String? id) {
-    setState(() {
-      _pendingTemplateId = id;
-      final index =
-          _turns.lastIndexWhere((turn) => turn is _TemplateQuestionTurn);
-      if (index >= 0) {
-        final previous = _turns[index] as _TemplateQuestionTurn;
-        _turns[index] =
-            _TemplateQuestionTurn(kind: previous.kind, answered: id);
-      }
-    });
-    _focusNode.requestFocus();
-  }
-
-  Future<void> _run(
-    String prompt,
-    CreationKind kind,
-    String? templateId,
-  ) async {
+  Future<void> _run(String prompt, CreationKind kind) async {
     const progress = _ProgressTurn();
     setState(() => _turns.add(progress));
     _scrollToEnd();
 
-    final result =
-        await _controller.create(prompt, kind, templateId: templateId);
+    final creation = await _controller.create(prompt, kind);
     if (!mounted) return;
     setState(() {
       _turns.remove(progress);
       _pendingKind = null;
-      _pendingTemplateId = null;
       _pendingPrompt = null;
-      if (result == null) {
+      if (creation == null) {
         // A stopped job is a deliberate user action, not a failure, so it gets
         // its own quiet turn rather than an error.
         _turns.add(
@@ -293,12 +261,7 @@ class _CreationsPageState extends State<CreationsPage> {
               : _ErrorTurn(L10n.of(context).creationsFailed),
         );
       } else {
-        _turns.add(
-          _ArtifactTurn(
-            creation: result.creation,
-            usedFallback: result.usedFallback,
-          ),
-        );
+        _turns.add(_ArtifactTurn(creation: creation));
       }
     });
     _scrollToEnd();
@@ -335,12 +298,15 @@ class _CreationsPageState extends State<CreationsPage> {
               );
               final pageTitle = _mode == _Mode.builder && _pendingKind != null
                   ? switch (_pendingKind!) {
-                      CreationKind.widget =>
-                        L10n.of(context).creationsBuilderTitleWidget,
-                      CreationKind.app =>
-                        L10n.of(context).creationsBuilderTitleApp,
-                      CreationKind.presentation =>
-                        L10n.of(context).creationsBuilderTitleDeck,
+                      CreationKind.widget => L10n.of(
+                          context,
+                        ).creationsBuilderTitleWidget,
+                      CreationKind.app => L10n.of(
+                          context,
+                        ).creationsBuilderTitleApp,
+                      CreationKind.presentation => L10n.of(
+                          context,
+                        ).creationsBuilderTitleDeck,
                     }
                   : L10n.of(context).creationsTitle;
               return Stack(
@@ -451,17 +417,17 @@ class _CreationsPageState extends State<CreationsPage> {
                               : _Composer(
                                   hint: _turns.isNotEmpty &&
                                           _turns.last is _ArtifactTurn
-                                      ? L10n.of(context)
-                                          .creationsBuilderChangeHint
+                                      ? L10n.of(
+                                          context,
+                                        ).creationsBuilderChangeHint
                                       : L10n.of(context).creationsBuilderHint,
                                   controller: _promptController,
                                   focusNode: _focusNode,
                                   busy: _controller.generating,
                                   blocked: _controller.loading,
                                   onSubmit: _send,
-                                  onStop: () => unawaited(
-                                    _controller.cancelGeneration(),
-                                  ),
+                                  onStop: () =>
+                                      unawaited(_controller.cancelGeneration()),
                                   onChooseKind: () => unawaited(_pickKind()),
                                 ),
                         ),
@@ -533,13 +499,13 @@ class _CreationsPageState extends State<CreationsPage> {
         scrollController: _transcriptScroll,
         stage: _controller.stage,
         onChooseKind: _chooseKind,
-        onChooseTemplate: _chooseTemplate,
-        onEdit: _editCreation,
         onOpen: _open,
         onAddToHomeScreen: _addToHomeScreen,
         onExport: (creation) => unawaited(
           _exportDeck(
-              creation, (creation.artifact as PresentationArtifact).spec),
+            creation,
+            (creation.artifact as PresentationArtifact).spec,
+          ),
         ),
       );
     }

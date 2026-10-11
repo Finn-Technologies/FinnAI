@@ -1,62 +1,132 @@
+import 'package:finn_ai/src/features/creations/creation_model.dart';
 import 'package:finn_ai/src/features/creations/spec/deck_theme.dart';
 import 'package:finn_ai/src/features/creations/spec/spec_limits.dart';
 
-/// Builds the JSON-only prompt that drives presentation generation.
+/// Builds the prompts that make the model design a creation itself.
 ///
-/// Apps and widgets do not use this: the model fills a template's slots
-/// instead (`templates/slot_prompt.dart`). A deck is prose, so it stays a
-/// free-form spec the validator checks.
+/// The model is the author: it decides what a mini app contains, how its
+/// buttons behave, what a widget shows and what each slide says. The prompt
+/// only describes the closed vocabulary it must write in, so the result can
+/// be validated and run. Nothing here picks a layout or a set of fields for it.
 abstract final class CreationPrompts {
-  /// The generation prompt for a presentation about [brief].
-  static String build({required String brief, String? repairIssues}) {
+  /// The prompt asking for one complete creation of [kind] about [brief].
+  static String build({
+    required CreationKind kind,
+    required String brief,
+    String? repairIssues,
+  }) {
     final buffer = StringBuffer()
       ..writeln(
-        'You design small presentations that run inside Finn. '
+        'You design small, working ${_noun(kind)}s that run inside Finn. '
         'Reply with one JSON object and nothing else.',
       )
       ..writeln()
-      ..write(_deckInstruction)
+      ..writeln(_instruction(kind))
       ..writeln();
     if (repairIssues != null && repairIssues.trim().isNotEmpty) {
       buffer
-        ..writeln('That JSON was rejected for these reasons:')
+        ..writeln('Your previous JSON was rejected for these reasons:')
         ..writeln(repairIssues.trim())
+        ..writeln('Fix every one of them and return the whole object again.')
         ..writeln();
     }
-    // The Brief comes last, after the Example. A 1.6B model continues from
-    // whatever it read most recently, so ending on the shape reference made it
-    // emit the reference's own content. Closing on the Brief, with the ban on
-    // reusing the Example made explicit, keeps the output about the request.
     buffer
       ..writeln(
-        'Now design the presentation described by this Brief. '
-        'Do not reuse anything from the Example above — not its title, '
-        'wording or slides. The Example only shows the JSON structure.',
+        'Design the ${_noun(kind)} described by this brief. Decide its '
+        'content, its behaviour and its wording yourself, so it fits the '
+        'brief exactly. Do not copy the example; it only shows the format.',
       )
       ..writeln()
       ..writeln('Brief: "$brief"')
       ..writeln()
       ..writeln(
-        repairIssues != null && repairIssues.trim().isNotEmpty
-            ? 'Return the corrected JSON object for this Brief only, '
-                'and nothing else.'
-            : 'Return the JSON object for this Brief only, and nothing else.',
+        'Return the JSON object for this brief only, and nothing else.',
       );
     return buffer.toString();
   }
 
+  static String _noun(CreationKind kind) => switch (kind) {
+        CreationKind.app => 'mini app',
+        CreationKind.widget => 'home-screen widget',
+        CreationKind.presentation => 'presentation',
+      };
+
+  static String _instruction(CreationKind kind) => switch (kind) {
+        CreationKind.app => _appInstruction,
+        CreationKind.widget => _widgetInstruction,
+        CreationKind.presentation => _deckInstruction,
+      };
+
+  static String get _appInstruction => '''
+A mini app is a small screen made of nodes. You write every node yourself.
+
+JSON shape:
+{"title":"short name","accent":"mint","nodes":[{"type":"text","value":"Hello","style":"title"}]}
+
+Node types (use only these, with exactly these fields):
+- text: {"type":"text","value":"words, may use {key}","style":"title|body|caption"}
+- button: {"type":"button","label":"text","action":ACTION}
+- field: {"type":"field","key":"name","hint":"placeholder"}
+- toggle: {"type":"toggle","key":"name","label":"text"}
+- slider: {"type":"slider","key":"name","min":0,"max":10}
+- choice: {"type":"choice","key":"name","options":["one","two"]}
+- list: {"type":"list","bind":"name","empty":"text shown when empty"}
+- progress: {"type":"progress","bind":"name","max":10}
+- image: {"type":"image","emoji":"one emoji"}
+- row: {"type":"row","children":[NODES]}
+- column: {"type":"column","children":[NODES]}
+- spacer: {"type":"spacer","size":12}
+
+Actions (what a button does to the app's state):
+- set: {"kind":"set","key":"name","expr":"count + 1"}
+- toggle: {"kind":"toggle","key":"name"}
+- increment: {"kind":"increment","key":"name","by":1}
+- append: {"kind":"append","key":"items","value":"{draft}","clear":"draft"}
+- reset: {"kind":"reset"}
+
+Rules:
+- State lives in named keys. A key is letters, digits or _, starting with a letter.
+- A text node shows a key with {key}. An expr may use only integers, + - * / % and parentheses, plus key names.
+- Every key that a text, list, progress or expr reads must be written by a field, toggle, slider, choice, button or append.
+- Make the app do the job the brief describes. Use keys and buttons that really model it, so pressing buttons changes what is shown.
+- At most ${SpecLimits.maxNodes} nodes in total, nested at most ${SpecLimits.maxNodeDepth} levels.
+- The "title" is at most ${SpecLimits.maxTitleChars} characters. Text is at most ${SpecLimits.maxTextChars} characters, labels at most ${SpecLimits.maxLabelChars}.
+- "accent" is exactly one of: ${SpecLimits.accentNames}.
+- Never use "{" or "}" in a value except to show a key, e.g. "{count}".
+- Put the words, numbers and options the brief needs; do not leave placeholders like "Item 1".
+''';
+
+  static String get _widgetInstruction => '''
+A home-screen widget shows a few lines and may be tapped. You write its content.
+
+JSON shape:
+{"title":"short name","accent":"blue","kind":"display","rows":[{"label":"Goal","value":"8"}],"footer":"short line"}
+
+"kind" is exactly one of:
+- display: shows its rows only.
+- counter: one number with minus and plus. Use exactly one row whose value is a whole number. Add "goal":N for a target and "step":N for how much a tap adds.
+- checklist: rows that tick on and off when tapped. Each row is one thing to do.
+- tracker: rows that each count up when tapped. Every row's value is a whole number. Add "step":N for how much a tap adds.
+
+Rules:
+- At most ${SpecLimits.maxWidgetRows} rows.
+- The "title" is at most ${SpecLimits.maxTitleChars} characters. A label is at most ${SpecLimits.maxLabelChars} characters, a value at most ${SpecLimits.maxWidgetValueChars}.
+- "accent" is exactly one of: ${SpecLimits.accentNames}.
+- Write the actual items, numbers and words the brief needs.
+''';
+
   static String get _deckInstruction => '''
+A presentation is a short slide deck. You write every slide.
+
 JSON shape:
 {"title":"short name","summary":"one sentence","theme":"midnight","slides":[{"title":"Slide title","layout":"bullets","bullets":["point one","point two"],"notes":"speaker note"}]}
 
 Rules:
-- "theme" is exactly one of these words, on its own: ${DeckTheme.names}. Pick the one that suits the topic.
-- "layout" is exactly one of these words, on its own: ${DeckLayout.names}. Use "title" for the first slide, "section" to start a new part, "quote" for one memorable sentence (put it as the only bullet) and "bullets" for everything else.
+- "theme" is exactly one of: ${DeckTheme.names}. Pick the one that suits the topic.
+- "layout" is exactly one of: ${DeckLayout.names}. Use "title" for the first slide, "section" to start a new part, "quote" for one memorable sentence (as the only bullet), and "bullets" for everything else.
 - Between 4 and ${SpecLimits.maxSlides} slides.
-- At most ${SpecLimits.maxBulletsPerSlide} bullets per slide, each at most ${SpecLimits.maxBulletChars} characters.
+- The "title" is at most ${SpecLimits.maxTitleChars} characters. At most ${SpecLimits.maxBulletsPerSlide} bullets per slide, each at most ${SpecLimits.maxBulletChars} characters.
 - The first slide introduces the topic. The last slide closes it.
-- Bullets are short phrases, not sentences.
-
-Example (structure only — never reuse its content):
-{"title":"Quarterly Review","summary":"A short review deck.","theme":"paper","slides":[{"title":"Quarterly Review","layout":"title","bullets":["Revenue and churn","What changed"],"notes":"Welcome everyone."},{"title":"What Changed","layout":"bullets","bullets":["Revenue up 12%","Churn down to 3%"],"notes":"Lead with growth."}]}''';
+- Bullets are short phrases, not sentences. Write real content for the brief.
+''';
 }

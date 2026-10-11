@@ -4,21 +4,15 @@ part of '../creations_page.dart';
 class _ArtifactCard extends StatelessWidget {
   const _ArtifactCard({
     required this.creation,
-    required this.usedFallback,
     required this.onOpen,
     required this.onAddToHomeScreen,
     required this.onExport,
-    this.onEdit,
   });
 
   final FinnCreation creation;
-  final bool usedFallback;
   final VoidCallback onOpen;
   final VoidCallback onAddToHomeScreen;
   final VoidCallback onExport;
-
-  /// Edits the creation's slots. Null for a creation with no template.
-  final VoidCallback? onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -66,31 +60,8 @@ class _ArtifactCard extends StatelessWidget {
                 ),
               ),
             ),
-            if (usedFallback) ...[
-              const SizedBox(height: 10),
-              FinnCaption(l10n.creationsFallbackNote),
-            ],
             const SizedBox(height: 14),
-            Row(
-              children: [
-                Expanded(
-                  child: FinnButton(
-                    label: l10n.commonOpen,
-                    onTap: onOpen,
-                  ),
-                ),
-                if (onEdit != null) ...[
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: FinnButton(
-                      label: l10n.creationsEdit,
-                      secondary: true,
-                      onTap: onEdit,
-                    ),
-                  ),
-                ],
-              ],
-            ),
+            FinnButton(label: l10n.commonOpen, onTap: onOpen),
             const SizedBox(height: 10),
             FinnButton(
               label: creation.kind == CreationKind.presentation

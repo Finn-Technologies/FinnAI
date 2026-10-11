@@ -25,8 +25,8 @@ that can compute a value is `SafeExpression`, a recursive-descent parser over in
 (`+ - * / %`, parentheses, literals, state keys). There is no `eval`, no `dart:mirrors`, no
 `dart_eval`. An expression the parser cannot read is a *validation error*, not a runtime hazard.
 
-> The component vocabulary below is what templates are *built from* and what the validator still
-> enforces. The model no longer writes it directly.
+> The component vocabulary below is the model's own language. It writes it directly; the validator
+> only decides whether what it wrote can run.
 
 ### Mini-app vocabulary
 
@@ -54,50 +54,36 @@ there is no path by which a spec can inject arbitrary styling.
 
 ---
 
-## 2. Generation pipeline (template-first, ADR 0003)
+## 2. Generation pipeline
 
-Apps and widgets are **templates**, not free-form specs. A `CreationTemplate`
-(`templates/`) owns layout, wiring and style and exposes a few typed **slots**
-(`title`, `goal`, `items`, `accent`, …). The model's whole job is to fill those slots; it never
-writes a component tree, so a reply can be wrong in *content* but never in *structure*.
+The model is the author. One bounded engine call writes the whole artifact in the closed vocabulary
+above, and the validator decides whether it can run. Each kind has its own JSON shape, stated in
+`creation_prompts.dart`:
+
+| Kind | What the model writes |
+|---|---|
+| App | `title`, one `accent`, and a tree of nodes wired with actions (`nodes`) |
+| Widget | `title`, `accent`, a `kind` (display, counter, checklist, tracker), its `rows`, and `step`/`goal` where the kind uses them |
+| Presentation | `title`, `summary`, one `theme`, and `slides` with a `layout` each |
 
 `creation_generator.dart`, driven from `creations_controller.dart`:
 
-1. **Choosing** — `CreationTemplates.pick(kind, brief)` picks the template from multilingual
-   whole-word keywords (deterministic; the model is not asked). The user may override it with a chip
-   in the builder.
-2. **Designing/Writing** — `SlotPrompt.build` shows the model a flat JSON object of a few short
-   values and what each means, with the limits taken from the slot definitions themselves (one
-   source of truth). One bounded engine call at `temperature ≈ 0.15`.
-3. **Parsing** — `json_salvage.dart` strips `<think>` blocks and fences, skips browser tool calls,
-   and salvages a reply truncated mid-object.
-4. **Sanitising** — `SlotSanitizer` never throws and never returns an invalid value: a missing,
-   mistyped or out-of-range slot takes its fallback; text loses control characters and `{}` (so a
-   value cannot inject a `{key}` placeholder); lists are deduped and capped. A reply with *no*
-   usable slot counts as "nothing".
-5. **Retrying** — nothing usable earns one more try with a one-line note.
-6. **Fallback** — still nothing ⇒ the **same template filled from the brief** (title from the
-   brief, defaults elsewhere), flagged `usedFallback`. The old generic counter is gone: a failed
-   "shopping list" is still a shopping list.
-
-Presentations stay free-form (a deck is prose). The model writes slides plus a `theme` and
-per-slide `layout` from closed lists; the validator decides; one repair round; then a small
-starter outline.
-
-### Templates
-
-| Kind | Templates | What the model fills |
-|---|---|---|
-| App | `counter` (goal + progress), `checklist`, `list` (type to add), `scoreboard` | title, unit/goal/emoji, items, names, accent |
-| Widget | `stat` (one big number), `rows` (up to four `Label: value` lines), `counter_widget` (− / + and a goal), `checklist_widget` (tap to tick), `tracker_widget` (tap a row to add a step) | title, label/value, rows, goal/step, footer, accent |
-| Deck | (themes + layouts) `paper`, `midnight`, `mint`, `sunset`, `mono` × `title`, `bullets`, `section`, `quote` | slides |
-
-A template-made creation stores `template: {id, slots}` beside its artifact, so **Edit** rebuilds it
-from edited slots with no model call (`CreationsController.editSlots`). Creations made before
-templates have none and stay view-only.
-
-Tests prove every template is valid by construction: each builds and validates from its fallbacks,
-its prompt examples, and 300 rounds of hostile input, and every built app's buttons are pressed.
+1. **Prompting** — `CreationPrompts.build` states the kind's shape, every limit taken from
+   `SpecLimits`, and the closed lists the model may choose from (node types, actions, widget kinds,
+   deck themes and layouts). The brief closes the prompt, after the format and any repair note,
+   because a small model continues from what it read most recently.
+2. **Writing** — one engine call at `temperature ≈ 0.7`: creative enough that two different briefs do
+   not collapse to the same most-likely output.
+3. **Parsing** — `json_salvage.dart` strips `<think>` blocks and fences, skips browser tool calls, and
+   salvages a reply truncated mid-object.
+4. **Validating** — `SpecValidator` runs on the decoded JSON before any spec object is constructed. It
+   returns every problem, not just the first: unknown node types, keys that are read but never
+   written, out-of-range numbers, over-long text, and expressions `SafeExpression` cannot parse.
+5. **Repairing** — any issues earn one more call that quotes them back and asks for the whole object
+   again (stage `repairing`). A second failure throws `CreationUnusable`; the page shows a localized
+   "try again", and **nothing generic is substituted**. That is the one deliberate cost of letting the
+   model author the creation: a 1.6B model sometimes needs the second try, and when it still does not
+   get there the honest answer is a retry, not a stock counter.
 
 ### Stages and cancellation
 
@@ -116,6 +102,10 @@ closing the screen mid-load is normal.
 `{heading, body}` sections, so it becomes a `LegacyDocumentArtifact` — it keeps rendering, and it
 keeps the `kind` it was filed under so the gallery filter does not silently move it. `_quarantine`
 stays reserved for genuinely corrupt JSON.
+
+Records written during the template era carried an extra `template: {id, slots}` key beside the
+artifact. It is ignored on load: the artifact is already the finished creation, so those creations
+keep rendering with no migration.
 
 ---
 
@@ -204,8 +194,8 @@ then hands the file to the system share sheet.
 ## 6. Testing notes
 
 - Spec/validator/expression/pipeline/pptx tests are plain unit tests; the generator takes an
-  injectable `CreationCompletion` so every path (valid, repair, fallback) is reachable without a
-  native engine.
+  injectable `CreationCompletion` so every path (valid, repair, and a second failure) is reachable
+  without a native engine.
 - **`test/features/creations/creations_page_test.dart` runs on `LiveTestWidgetsFlutterBinding`.**
   The page loads its store from disk on open, and real file I/O never completes under the default
   binding's fake clock. Any future widget test for this page must do the same, or inject a

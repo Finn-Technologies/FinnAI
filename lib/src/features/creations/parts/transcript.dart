@@ -6,8 +6,6 @@ class _Transcript extends StatelessWidget {
     required this.scrollController,
     required this.stage,
     required this.onChooseKind,
-    required this.onChooseTemplate,
-    required this.onEdit,
     required this.onOpen,
     required this.onAddToHomeScreen,
     required this.onExport,
@@ -17,8 +15,6 @@ class _Transcript extends StatelessWidget {
   final ScrollController scrollController;
   final CreationStage? stage;
   final ValueChanged<CreationKind> onChooseKind;
-  final ValueChanged<String?> onChooseTemplate;
-  final ValueChanged<FinnCreation> onEdit;
   final ValueChanged<FinnCreation> onOpen;
   final ValueChanged<FinnCreation> onAddToHomeScreen;
   final ValueChanged<FinnCreation> onExport;
@@ -41,27 +37,16 @@ class _Transcript extends StatelessWidget {
                     onChooseKind: onChooseKind,
                   ),
                 ),
-              _TemplateQuestionTurn(:final kind, :final answered) =>
-                _AssistantBubble(
-                  child: _TemplateQuestion(
-                    kind: kind,
-                    answered: answered,
-                    onChoose: onChooseTemplate,
-                  ),
-                ),
               _AssistantNoteTurn(:final text) => _AssistantBubble(
-                  child: Text(
-                    text,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
+                  child:
+                      Text(text, style: Theme.of(context).textTheme.bodyMedium),
                 ),
               _UserTurn(:final text) => Align(
                   alignment: Alignment.centerRight,
                   child: _UserBubble(text: text),
                 ),
-              _ProgressTurn() => _AssistantBubble(
-                  child: _StageLine(stage: stage),
-                ),
+              _ProgressTurn() =>
+                _AssistantBubble(child: _StageLine(stage: stage)),
               _ErrorTurn(:final message) => _ErrorNotice(
                   message: message,
                   onDismiss: null,
@@ -75,15 +60,11 @@ class _Transcript extends StatelessWidget {
                         ),
                   ),
                 ),
-              _ArtifactTurn(:final creation, :final usedFallback) =>
-                _ArtifactCard(
+              _ArtifactTurn(:final creation) => _ArtifactCard(
                   creation: creation,
-                  usedFallback: usedFallback,
                   onOpen: () => onOpen(creation),
                   onAddToHomeScreen: () => onAddToHomeScreen(creation),
                   onExport: () => onExport(creation),
-                  onEdit:
-                      creation.template == null ? null : () => onEdit(creation),
                 ),
             },
           );
@@ -272,19 +253,14 @@ class _StageLine extends StatelessWidget {
                     stage == CreationStage.repairing && i == current
                         ? l10n.creationsStageRepairing
                         : steps[i].$2,
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodySmall
-                        ?.copyWith(color: ink),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: ink),
                   ),
                 ),
                 const SizedBox(width: 10),
                 if (i < current)
-                  FluxIcon(
-                    icon: FluxIcons.check,
-                    size: 18,
-                    color: ink,
-                  )
+                  FluxIcon(icon: FluxIcons.check, size: 18, color: ink)
                 else
                   const _Spinner(),
               ],

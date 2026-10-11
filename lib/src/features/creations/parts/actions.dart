@@ -35,42 +35,6 @@ extension _CreationsPageActions on _CreationsPageState {
     }
   }
 
-  Future<void> _editCreation(FinnCreation creation) async {
-    if (creation.template == null) return;
-    await showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      useSafeArea: true,
-      builder: (_) => _SlotEditorSheet(
-        creation: creation,
-        onSave: (slots) async {
-          final updated = await _controller.editSlots(creation, slots);
-          if (updated == null) return;
-          // A widget already on the home screen shows the edit too.
-          if (updated.artifact case WidgetArtifact(:final spec)) {
-            unawaited(
-              _homeScreen.updateWidget(creationId: updated.id, spec: spec),
-            );
-          }
-          if (!mounted) return;
-          // The transcript card shows the edited creation, not the old one.
-          setState(() {
-            for (var i = 0; i < _turns.length; i++) {
-              final turn = _turns[i];
-              if (turn is _ArtifactTurn && turn.creation.id == creation.id) {
-                _turns[i] = _ArtifactTurn(
-                  creation: updated,
-                  usedFallback: turn.usedFallback,
-                );
-              }
-            }
-          });
-        },
-      ),
-    );
-  }
-
   Future<void> _showWidgetPreview(FinnCreation creation, HomeWidgetSpec spec) {
     return Navigator.of(context).push(
       FinnPageRoute<void>(
@@ -163,13 +127,9 @@ extension _CreationsPageActions on _CreationsPageState {
     );
   }
 
-  /// Opens the creation for changes: its slots when it has a template, else a
-  /// fresh brief seeded with the original words.
+  /// Opens the builder seeded with the original brief, so the model designs
+  /// the creation again with the changes the user types.
   Future<void> _editWithFinn(FinnCreation creation) async {
-    if (creation.template != null) {
-      await _editCreation(creation);
-      return;
-    }
     _startBuilder();
     _chooseKind(creation.kind);
     _promptController.text = creation.prompt;
@@ -183,10 +143,7 @@ extension _CreationsPageActions on _CreationsPageState {
     try {
       final directory = await getTemporaryDirectory();
       final file = File('${directory.path}/${creation.id}.json');
-      await file.writeAsString(
-        jsonEncode(creation.toJson()),
-        flush: true,
-      );
+      await file.writeAsString(jsonEncode(creation.toJson()), flush: true);
       final shared = await _homeScreen.shareFile(
         path: file.path,
         mimeType: 'application/json',

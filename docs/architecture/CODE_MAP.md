@@ -110,21 +110,17 @@ See `docs/architecture/CREATIONS.md` for the spec DSL, the generation pipeline a
 | The creation screen (gallery cards, builder transcript, widget detail) | `lib/src/features/creations/creations_page.dart` + `parts/` |
 | What a mini app may contain (the node vocabulary) | `lib/src/features/creations/spec/mini_app_spec.dart` |
 | The size caps enforced on every spec | `lib/src/features/creations/spec/spec_limits.dart` |
-| Which template a brief gets, and the template list | `lib/src/features/creations/templates/template_catalog.dart` |
-| A template's layout and slots (apps / widgets) | `lib/src/features/creations/templates/app_templates.dart`, `widget_templates.dart` |
-| Slot limits and sanitising | `lib/src/shared/slots/slots.dart` |
-| What the model is told to produce (slots / decks) | `lib/src/features/creations/templates/slot_prompt.dart`, `creation_prompts.dart` (decks) |
+| What the model is told to write (apps / widgets / decks) | `lib/src/features/creations/creation_prompts.dart` |
+| Slot limits and sanitising (shared with flows) | `lib/src/shared/slots/slots.dart` |
 | Deck themes and layouts | `lib/src/features/creations/spec/deck_theme.dart`, `deck/slide_card.dart`, `deck/pptx_writer.dart` |
-| Template chips and the slot editor UI | `lib/src/features/creations/parts/template_ui.dart` |
-| Pick → fill → retry → fallback behaviour | `lib/src/features/creations/creation_generator.dart` (+ `spec/spec_validator.dart` for decks) |
-| The starter deck used when a deck cannot be generated | `lib/src/features/creations/creation_fallbacks.dart` |
+| Generate → validate → repair behaviour | `lib/src/features/creations/creation_generator.dart` (+ `spec/spec_validator.dart`) |
 | Recovering malformed or truncated model JSON | `lib/src/features/creations/json_salvage.dart` |
 | Sandboxed app expressions (the security boundary) | `lib/src/features/creations/spec/safe_expression.dart` |
 | Running a mini app (state, rendering, host screen) | `lib/src/features/creations/runtime/` |
 | The slide deck viewer / `.pptx` export | `lib/src/features/creations/deck/` |
 | Colours for tiles and specs | `lib/src/features/creations/creation_palette.dart` |
 | Stored creations, versions and migration | `lib/src/features/creations/creation_store.dart` + `creation_model.dart` |
-| Widget kinds (counter, checklist, tracker) and their spec | `lib/src/features/creations/spec/widget_spec.dart`, `templates/widget_templates.dart` |
+| Widget kinds (counter, checklist, tracker) and their spec | `lib/src/features/creations/spec/widget_spec.dart` |
 | Home-screen widget pinning, launcher shortcuts and file sharing (Dart side) | `lib/src/features/creations/home_screen_service.dart` |
 | Home-screen widget rendering and taps with the app closed (Kotlin side) | `android/…/FinnHomeWidgetProvider.kt`, `FinnHomeWidgetRenderer.kt`, `FinnHomeWidgetStore.kt`, `FinnHomeWidgetActions.kt` |
 | A widget as it looks in the app | `lib/src/features/creations/widget_preview.dart` |

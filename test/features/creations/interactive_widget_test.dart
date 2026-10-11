@@ -1,10 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:finn_ai/src/features/creations/creation_model.dart';
 import 'package:finn_ai/src/features/creations/spec/spec_validator.dart';
 import 'package:finn_ai/src/features/creations/spec/widget_spec.dart';
-import 'package:finn_ai/src/features/creations/templates/template_catalog.dart';
-import 'package:finn_ai/src/shared/slots/slots.dart';
 
 Map<String, Object?> _spec({
   String? kind,
@@ -62,10 +59,7 @@ void main() {
     });
 
     test('a counter has exactly one numeric row', () {
-      expect(
-        SpecValidator.validateHomeWidget(_spec(kind: 'counter')),
-        isEmpty,
-      );
+      expect(SpecValidator.validateHomeWidget(_spec(kind: 'counter')), isEmpty);
       expect(
         SpecValidator.validateHomeWidget(
           _spec(
@@ -107,55 +101,66 @@ void main() {
     });
   });
 
-  group('widget templates', () {
-    HomeWidgetSpec built(String id, [Map<String, Object?> raw = const {}]) {
-      final template = CreationTemplates.byId(id)!;
-      final values = SlotSanitizer.sanitize(template.slots, raw);
-      return (template.build(values) as WidgetArtifact).spec;
-    }
+  group('model-written widget specs', () {
+    HomeWidgetSpec built(Map<String, Object?> raw) =>
+        HomeWidgetSpec.fromJson(raw);
 
-    test('the interactive ones build the kind they promise', () {
-      expect(built('counter_widget').kind, HomeWidgetKind.counter);
-      expect(built('checklist_widget').kind, HomeWidgetKind.checklist);
-      expect(built('tracker_widget').kind, HomeWidgetKind.tracker);
-      expect(built('stat').kind, HomeWidgetKind.display);
+    test('a display widget is just its rows', () {
+      final spec = built(_spec());
+      expect(spec.kind, HomeWidgetKind.display);
+      expect(spec.rows.single.label, 'Cups');
     });
 
     test('a counter carries its goal and step', () {
-      final spec = built('counter_widget', {'goal': 8, 'step': 2, 'value': 1});
+      final spec = built(_spec(kind: 'counter', goal: 8, step: 2));
+      expect(spec.kind, HomeWidgetKind.counter);
       expect(spec.goal, 8);
       expect(spec.step, 2);
-      expect(spec.rows.single.number, 1);
+      expect(spec.rows.single.number, 2);
     });
 
-    test('a checklist has the items as rows', () {
-      final spec = built('checklist_widget', {
-        'items': ['Stretch', 'Vitamins', 'Plan'],
-      });
-      expect(spec.rows.map((r) => r.label), ['Stretch', 'Vitamins', 'Plan']);
-    });
-
-    test('a tracker starts every row at zero', () {
-      final spec = built('tracker_widget', {
-        'items': ['Run', 'Read'],
-      });
-      expect(spec.rows.map((r) => r.number), [0, 0]);
-    });
-
-    test('a vague brief gets something you can touch', () {
-      expect(
-        CreationTemplates.pick(CreationKind.widget, 'a widget for my home').id,
-        'counter_widget',
+    test('a checklist puts the model items on its rows', () {
+      final spec = built(
+        _spec(
+          kind: 'checklist',
+          rows: [
+            {'label': 'Stretch', 'value': ''},
+            {'label': 'Vitamins', 'value': ''},
+            {'label': 'Plan', 'value': ''},
+          ],
+        ),
       );
+      expect(spec.kind, HomeWidgetKind.checklist);
+      expect(spec.rows.map((r) => r.label), ['Stretch', 'Vitamins', 'Plan']);
+      expect(SpecValidator.validateHomeWidget(spec.toJson()), isEmpty);
     });
 
-    test('the brief picks the right interactive widget', () {
-      String pick(String brief) =>
-          CreationTemplates.pick(CreationKind.widget, brief).id;
-      expect(pick('count my glasses of water'), 'counter_widget');
-      expect(pick('a morning routine checklist'), 'checklist_widget');
-      expect(pick('habit tracker'), 'tracker_widget');
-      expect(pick('countdown to my birthday'), 'stat');
+    test('a tracker with a number on every row validates', () {
+      final spec = built(
+        _spec(
+          kind: 'tracker',
+          rows: [
+            {'label': 'Run', 'value': '0'},
+            {'label': 'Read', 'value': '0'},
+          ],
+        ),
+      );
+      expect(spec.kind, HomeWidgetKind.tracker);
+      expect(spec.rows.map((r) => r.number), [0, 0]);
+      expect(SpecValidator.validateHomeWidget(spec.toJson()), isEmpty);
+    });
+
+    test('every kind the model may write validates from its own spec', () {
+      for (final kind in HomeWidgetKind.values) {
+        final raw = kind == HomeWidgetKind.counter
+            ? _spec(kind: kind.name, goal: 8)
+            : _spec(kind: kind.name);
+        expect(
+          SpecValidator.validateHomeWidget(raw),
+          isEmpty,
+          reason: kind.name,
+        );
+      }
     });
   });
 }

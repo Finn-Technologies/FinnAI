@@ -4,15 +4,14 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:finn_ai/src/features/creations/creation_fallbacks.dart';
-import 'package:finn_ai/src/features/creations/templates/template_catalog.dart';
-import 'package:finn_ai/src/shared/slots/slots.dart';
 import 'package:finn_ai/src/features/creations/creation_generator.dart';
 import 'package:finn_ai/src/features/creations/creation_model.dart';
 import 'package:finn_ai/src/features/creations/creation_store.dart';
 import 'package:finn_ai/src/features/creations/creations_controller.dart';
 import 'package:finn_ai/src/features/creations/json_salvage.dart';
+import 'package:finn_ai/src/features/creations/spec/deck_spec.dart';
 import 'package:finn_ai/src/features/creations/spec/mini_app_spec.dart';
+import 'package:finn_ai/src/features/creations/spec/widget_spec.dart';
 
 /// Records the stages a generation reported, so the progress bubble is covered.
 class FakeCreationGenerator implements CreationGenerator {
@@ -27,7 +26,6 @@ class FakeCreationGenerator implements CreationGenerator {
     required String prompt,
     required CreationKind kind,
     required void Function(CreationStage stage) onStage,
-    String? templateId,
   }) async {
     calls++;
     onStage(CreationStage.designing);
@@ -39,7 +37,6 @@ class FakeCreationGenerator implements CreationGenerator {
       title: 'Pocket Planner',
       summary: 'A focused ${kind.label.toLowerCase()} for $prompt.',
       artifact: _artifactFor(kind),
-      usedFallback: false,
     );
   }
 }
@@ -48,11 +45,23 @@ class FakeCreationGenerator implements CreationGenerator {
 /// would classify every fake creation as an app.
 CreationArtifact _artifactFor(CreationKind kind) => switch (kind) {
       CreationKind.app => const MiniAppArtifact(_pocketPlannerSpec),
-      CreationKind.widget => CreationTemplates.byId('stat')!.build(
-          SlotSanitizer.sanitize(
-              CreationTemplates.byId('stat')!.slots, const <String, Object?>{}),
+      CreationKind.widget => const WidgetArtifact(
+          HomeWidgetSpec(
+            title: 'Water Tracker',
+            accent: MiniAppAccent.sky,
+            rows: [HomeWidgetRow(label: 'Glasses', value: '4')],
+          ),
         ),
-      CreationKind.presentation => CreationFallbacks.starterDeck(),
+      CreationKind.presentation => const PresentationArtifact(
+          DeckSpec(
+            title: 'Launch',
+            slides: [
+              DeckSlide(
+                  title: 'Launch', bullets: ['What ships', 'What changes']),
+              DeckSlide(title: 'The Plan', bullets: ['Stage it', 'Ship it']),
+            ],
+          ),
+        ),
     };
 
 const _pocketPlannerSpec = MiniAppSpec(
@@ -97,28 +106,31 @@ void main() {
   });
 
   group('storage', () {
-    test('creation model round-trips through the versioned JSON store',
-        () async {
-      final createdAt = DateTime(2026, 7, 27, 12, 30);
-      await store.save([_creation(createdAt: createdAt)]);
+    test(
+      'creation model round-trips through the versioned JSON store',
+      () async {
+        final createdAt = DateTime(2026, 7, 27, 12, 30);
+        await store.save([_creation(createdAt: createdAt)]);
 
-      final restored = await store.load();
+        final restored = await store.load();
 
-      expect(restored, hasLength(1));
-      expect(restored.single.id, 'one');
-      expect(restored.single.kind, CreationKind.app);
-      expect(restored.single.createdAt, createdAt);
-      expect(restored.single.artifact, isA<MiniAppArtifact>());
-      final spec = (restored.single.artifact as MiniAppArtifact).spec;
-      expect(spec.title, 'Pocket Planner');
-      expect(spec.nodes, hasLength(2));
-    });
+        expect(restored, hasLength(1));
+        expect(restored.single.id, 'one');
+        expect(restored.single.kind, CreationKind.app);
+        expect(restored.single.createdAt, createdAt);
+        expect(restored.single.artifact, isA<MiniAppArtifact>());
+        final spec = (restored.single.artifact as MiniAppArtifact).spec;
+        expect(spec.title, 'Pocket Planner');
+        expect(spec.nodes, hasLength(2));
+      },
+    );
 
     test('writes the current schema version', () async {
       await store.save([_creation()]);
       final raw = jsonDecode(
-        await File('${temporaryDirectory.path}/creations/creations.json')
-            .readAsString(),
+        await File(
+          '${temporaryDirectory.path}/creations/creations.json',
+        ).readAsString(),
       );
       expect(raw['version'], CreationStore.currentVersion);
     });
@@ -185,10 +197,7 @@ void main() {
         await File('${directory.path}/creations.json').readAsString(),
       );
       expect(raw['version'], CreationStore.currentVersion);
-      expect(
-        (raw['creations'] as List).single['artifact']['type'],
-        'document',
-      );
+      expect((raw['creations'] as List).single['artifact']['type'], 'document');
     });
 
     test('damaged storage is quarantined instead of overwritten', () async {
@@ -233,6 +242,55 @@ void main() {
       expect(restored.single.id, 'healthy');
     });
 
+    test('a record saved by the old template system still loads', () async {
+      final directory = Directory('${temporaryDirectory.path}/creations');
+      await directory.create(recursive: true);
+      await File('${directory.path}/creations.json').writeAsString(
+        jsonEncode({
+          'version': 2,
+          'creations': [
+            {
+              'id': 'old-1',
+              'prompt': 'count my water',
+              'title': 'Water tracker',
+              'summary': 'A counter.',
+              'artifact': {
+                'type': 'app',
+                'spec': {
+                  'title': 'Water tracker',
+                  'accent': 'sky',
+                  'nodes': [
+                    {'type': 'text', 'value': 'Glasses: {glasses}'},
+                    {
+                      'type': 'button',
+                      'label': 'Add',
+                      'action': {
+                        'kind': 'increment',
+                        'key': 'glasses',
+                        'by': 1,
+                      },
+                    },
+                  ],
+                },
+              },
+              'createdAt': '2026-07-27T12:30:00.000Z',
+              // The old shape carried a template record beside the artifact.
+              'template': {
+                'id': 'counter',
+                'slots': {'goal': 8},
+              },
+            },
+          ],
+        }),
+      );
+
+      final restored = await store.load();
+
+      expect(restored, hasLength(1));
+      expect(restored.single.title, 'Water tracker');
+      expect(restored.single.artifact, isA<MiniAppArtifact>());
+    });
+
     test('deleteStorage clears every persisted creation', () async {
       await store.save([_creation()]);
 
@@ -259,8 +317,10 @@ void main() {
       );
       await controller.load();
 
-      final app =
-          await controller.create('a private planner', CreationKind.app);
+      final app = await controller.create(
+        'a private planner',
+        CreationKind.app,
+      );
       final widget = await controller.create(
         'a weather glance',
         CreationKind.widget,
@@ -268,12 +328,12 @@ void main() {
 
       expect(app, isNotNull);
       expect(generator.calls, 2);
-      expect(app!.usedFallback, isFalse);
+      expect(app!.kind, CreationKind.app);
       expect(controller.creations, hasLength(2));
       expect(controller.creations.first.title, 'Pocket Planner');
-      expect(widget!.creation.kind, CreationKind.widget);
+      expect(widget!.kind, CreationKind.widget);
       controller.setFilter(CreationKind.app);
-      expect(controller.visible.map((item) => item.id), [app.creation.id]);
+      expect(controller.visible.map((item) => item.id), [app.id]);
 
       final restored = CreationsController(store, FakeCreationGenerator());
       await restored.load();
@@ -327,8 +387,10 @@ void main() {
           return temporaryDirectory;
         },
       );
-      final controller =
-          CreationsController(slowStore, FakeCreationGenerator());
+      final controller = CreationsController(
+        slowStore,
+        FakeCreationGenerator(),
+      );
 
       final loading = controller.load();
       controller.dispose();
@@ -337,22 +399,24 @@ void main() {
       await expectLater(loading, completes);
     });
 
-    test('generation failure is surfaced without fabricating a record',
-        () async {
-      final controller = CreationsController(
-        store,
-        FakeCreationGenerator(fail: true),
-      );
-      await controller.load();
+    test(
+      'generation failure is surfaced without fabricating a record',
+      () async {
+        final controller = CreationsController(
+          store,
+          FakeCreationGenerator(fail: true),
+        );
+        await controller.load();
 
-      final result = await controller.create('anything', CreationKind.app);
+        final result = await controller.create('anything', CreationKind.app);
 
-      expect(result, isNull);
-      expect(controller.creations, isEmpty);
-      expect(controller.generating, isFalse);
-      expect(controller.failure, CreationFailure.create);
-      expect(controller.wasCancelled, isFalse);
-    });
+        expect(result, isNull);
+        expect(controller.creations, isEmpty);
+        expect(controller.generating, isFalse);
+        expect(controller.failure, CreationFailure.create);
+        expect(controller.wasCancelled, isFalse);
+      },
+    );
 
     test('an empty brief is ignored', () async {
       final generator = FakeCreationGenerator();
@@ -364,17 +428,14 @@ void main() {
     });
 
     test('a failed save rolls the list back', () async {
-      final controller = CreationsController(
-        store,
-        FakeCreationGenerator(),
-      );
+      final controller = CreationsController(store, FakeCreationGenerator());
       await controller.load();
       await controller.create('a planner', CreationKind.app);
 
       // Pointing the store at an unwritable path makes the follow-up save fail.
-      await Directory('${temporaryDirectory.path}/creations').delete(
-        recursive: true,
-      );
+      await Directory(
+        '${temporaryDirectory.path}/creations',
+      ).delete(recursive: true);
       await File(
         '${temporaryDirectory.path}/creations',
       ).writeAsString('not a directory');

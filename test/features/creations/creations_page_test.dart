@@ -13,24 +13,16 @@ import 'package:finn_ai/src/features/creations/creations_page.dart';
 import 'package:finn_ai/src/features/creations/spec/deck_spec.dart';
 import 'package:finn_ai/src/features/creations/spec/mini_app_spec.dart';
 import 'package:finn_ai/src/features/creations/spec/widget_spec.dart';
-import 'package:finn_ai/src/features/creations/templates/template_catalog.dart';
-import 'package:finn_ai/src/shared/slots/slots.dart';
 import 'package:finn_ai/src/shared/theme/flux_theme.dart';
 
 /// A generator the test drives directly, so progress and completion states can
 /// be asserted without an engine.
 class FakeGenerator implements CreationGenerator {
-  FakeGenerator({
-    required this.artifact,
-    this.usedFallback = false,
-    this.template,
-  });
+  FakeGenerator({required this.artifact});
 
   CreationArtifact artifact;
-  bool usedFallback;
-  TemplateRef? template;
-  String? lastTemplateId;
   int calls = 0;
+  String? lastPrompt;
   final List<CreationStage> stages = [];
   Completer<void>? gate;
 
@@ -39,10 +31,9 @@ class FakeGenerator implements CreationGenerator {
     required String prompt,
     required CreationKind kind,
     required void Function(CreationStage stage) onStage,
-    String? templateId,
   }) async {
     calls++;
-    lastTemplateId = templateId;
+    lastPrompt = prompt;
     onStage(CreationStage.designing);
     stages.add(CreationStage.designing);
     if (gate != null) await gate!.future;
@@ -51,9 +42,21 @@ class FakeGenerator implements CreationGenerator {
       title: 'Habit Tracker',
       summary: 'Track a daily habit.',
       artifact: artifact,
-      usedFallback: usedFallback,
-      template: template,
     );
+  }
+}
+
+/// A generator that always fails, standing in for a model that produced
+/// nothing usable even after its repair round.
+class _FailingGenerator implements CreationGenerator {
+  @override
+  Future<CreationOutcome> generate({
+    required String prompt,
+    required CreationKind kind,
+    required void Function(CreationStage stage) onStage,
+  }) async {
+    onStage(CreationStage.designing);
+    throw const CreationUnusable('nothing usable');
   }
 }
 
@@ -63,7 +66,10 @@ const _appArtifact = MiniAppArtifact(
     accent: MiniAppAccent.mint,
     nodes: [
       TextNode(value: 'Done: {count}', role: MiniAppTextRole.title),
-      ButtonNode(label: 'Add', action: IncrementAction(key: 'count', by: 1)),
+      ButtonNode(
+        label: 'Add',
+        action: IncrementAction(key: 'count', by: 1),
+      ),
     ],
   ),
 );
@@ -274,25 +280,26 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('notes when a starter template was substituted', (
-      tester,
-    ) async {
-      final generator = FakeGenerator(
-        artifact: _appArtifact,
-        usedFallback: true,
-      );
-      final controller = await pumpPage(tester, generator: generator);
+    testWidgets(
+      'a failed generation shows a try-again message, not a stand-in',
+      (tester) async {
+        final controller = await pumpPage(
+          tester,
+          generator: _FailingGenerator(),
+        );
 
-      await chooseKind(tester, 'App');
-      await send(tester, 'something impossible');
-      await waitForGeneration(tester, controller);
+        await chooseKind(tester, 'App');
+        await send(tester, 'something impossible');
+        await waitForGeneration(tester, controller);
 
-      expect(
-        find.textContaining('working starter'),
-        findsOneWidget,
-      );
-      expect(tester.takeException(), isNull);
-    });
+        expect(
+          find.text('Finn could not finish that creation. Please try again.'),
+          findsOneWidget,
+        );
+        expect(find.text('Open'), findsNothing);
+        expect(tester.takeException(), isNull);
+      },
+    );
   });
 
   group('gallery', () {
@@ -467,53 +474,22 @@ void main() {
     });
   });
 
-  group('templates', () {
-    testWidgets('choosing an app offers its templates, and Finn by default', (
+  group('no templates', () {
+    testWidgets('choosing a kind goes straight to describing the brief', (
       tester,
     ) async {
       await pumpPage(tester, generator: FakeGenerator(artifact: _appArtifact));
       await chooseKind(tester, 'App');
 
-      expect(find.text('Let Finn choose'), findsOneWidget);
-      for (final name in ['Counter', 'Checklist', 'List', 'Scoreboard']) {
-        expect(find.text(name), findsOneWidget, reason: name);
-      }
-      expect(find.text('Big number'), findsNothing);
+      // No "want a starting point?" chips: the model designs it.
+      expect(find.text('Let Finn choose'), findsNothing);
+      expect(find.text('Counter'), findsNothing);
+      expect(find.text('Scoreboard'), findsNothing);
+      expect(find.text('Tell me what your App should do.'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('a widget offers widget templates only', (tester) async {
-      await pumpPage(tester,
-          generator: FakeGenerator(artifact: _widgetArtifact));
-      await chooseKind(tester, 'Widget');
-
-      expect(find.text('Big number'), findsOneWidget);
-      expect(find.text('Lines'), findsOneWidget);
-      expect(find.text('Scoreboard'), findsNothing);
-    });
-
-    testWidgets('a presentation has no template question', (tester) async {
-      await pumpPage(tester, generator: FakeGenerator(artifact: _deckArtifact));
-      await chooseKind(tester, 'Presentation');
-
-      expect(find.text('Let Finn choose'), findsNothing);
-      expect(find.text('Tell me what your Presentation should do.'),
-          findsOneWidget);
-    });
-
-    testWidgets('the chosen template reaches the generator', (tester) async {
-      final generator = FakeGenerator(artifact: _appArtifact);
-      final controller = await pumpPage(tester, generator: generator);
-
-      await chooseKind(tester, 'App');
-      await tapText(tester, 'Scoreboard');
-      await send(tester, 'keep score of game night');
-      await waitForGeneration(tester, controller);
-
-      expect(generator.lastTemplateId, 'scoreboard');
-    });
-
-    testWidgets('no choice leaves the decision to the app', (tester) async {
+    testWidgets('the brief reaches the generator unchanged', (tester) async {
       final generator = FakeGenerator(artifact: _appArtifact);
       final controller = await pumpPage(tester, generator: generator);
 
@@ -521,67 +497,11 @@ void main() {
       await send(tester, 'keep score of game night');
       await waitForGeneration(tester, controller);
 
-      expect(generator.lastTemplateId, isNull);
+      expect(generator.lastPrompt, 'keep score of game night');
+      expect(generator.calls, 1);
     });
 
-    testWidgets('the template chips are at least 48dp tall', (tester) async {
-      await pumpPage(tester, generator: FakeGenerator(artifact: _appArtifact));
-      await chooseKind(tester, 'App');
-
-      for (final name in ['Let Finn choose', 'Counter', 'Scoreboard']) {
-        final chip = find.ancestor(
-          of: find.text(name),
-          matching: find.byType(InkWell),
-        );
-        expect(tester.getSize(chip.first).height, greaterThanOrEqualTo(48),
-            reason: name);
-      }
-    });
-
-    testWidgets('a template-made creation can be edited without the model', (
-      tester,
-    ) async {
-      final counter = CreationTemplates.byId('counter')!;
-      final values = SlotSanitizer.sanitize(counter.slots, {
-        'title': 'Water tracker',
-        'goal': 8,
-      });
-      final generator = FakeGenerator(
-        artifact: counter.build(values),
-        template: TemplateRef(id: 'counter', slots: values.toJson()),
-      );
-      final controller = await pumpPage(tester, generator: generator);
-
-      await chooseKind(tester, 'App');
-      await send(tester, 'count my water');
-      await waitForGeneration(tester, controller);
-      expect(find.text('Edit'), findsOneWidget);
-
-      await tapText(tester, 'Edit');
-      await tester.pump(const Duration(milliseconds: 300));
-      expect(find.text('Edit details · Counter'), findsOneWidget);
-
-      await tester.enterText(
-          find.widgetWithText(TextField, 'Name'), 'Tea cups');
-      await tester.enterText(find.widgetWithText(TextField, 'Goal'), '3');
-      await tester.tap(find.text('Save'));
-      for (var i = 0; i < 40; i++) {
-        await tester.runAsync(
-          () => Future<void>.delayed(const Duration(milliseconds: 25)),
-        );
-        await tester.pump();
-      }
-
-      final saved = controller.creations.single;
-      expect(saved.title, 'Tea cups');
-      expect(saved.template?.slots['goal'], 3);
-      expect(generator.calls, 1, reason: 'editing must not call the model');
-      expect(find.text('Tea cups'), findsWidgets);
-    });
-
-    testWidgets('a creation with no template has no Edit button', (
-      tester,
-    ) async {
+    testWidgets('a generated creation offers Open, never Edit', (tester) async {
       final generator = FakeGenerator(artifact: _appArtifact);
       final controller = await pumpPage(tester, generator: generator);
 
