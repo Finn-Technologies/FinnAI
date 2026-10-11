@@ -82,6 +82,27 @@ FinnAI/
 
 ---
 
+## Quick Start & Development
+
+### 1. Install Dependencies
+```bash
+flutter pub get
+```
+
+### 2. Run Static Analysis & Tests
+```bash
+flutter analyze
+flutter test
+```
+
+### 3. Run Automated Release Verification
+```bash
+./tool/verify_release.sh
+```
+
+
+---
+
 ## Building a release
 
 Configure signing in `android/key.properties`, then:
