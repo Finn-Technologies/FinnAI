@@ -5,11 +5,9 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 import 'package:finn_ai/src/features/code/agent/action_runner.dart';
-import 'package:finn_ai/src/features/code/agent/agent_protocol.dart';
+import 'package:finn_ai/src/features/code/agent/agent_prompt.dart';
 import 'package:finn_ai/src/features/code/linux/linux_installer.dart';
 import 'package:finn_ai/src/features/code/linux/linux_sandbox.dart';
-import 'package:finn_ai/src/features/code/agent/small_model_aids.dart';
-import 'package:finn_ai/src/features/code/sessions/code_session.dart';
 
 void main() {
   test('the sandbox mounts only the project and the kernel views', () {
@@ -53,7 +51,11 @@ void main() {
   });
 
   test('the Linux prompt names how to install, and stays short', () {
-    final prompt = AgentProtocol.systemPrompt(shell: true, linux: true);
+    final prompt = AgentPrompt.systemPrompt(
+      env: CommandEnvironment.linux,
+      allowShell: true,
+      allowEdit: false,
+    );
     expect(prompt, contains('apk add'));
     expect(prompt, contains('internet'));
     expect(prompt.length, lessThan(1500));
@@ -91,16 +93,6 @@ void main() {
         await Process.run('/bin/sh', [shim.path, '-E', 'echo', 'root ok']);
     expect(result.stdout.toString().trim(), 'root ok');
     await temp.delete(recursive: true);
-  });
-
-  test('a missing tool says which package to install', () {
-    final action = const CodeAction.shell('node fib.js').copyWith(
-      status: CodeActionStatus.failed,
-      exitCode: 127,
-      output: '/bin/sh: node: not found\n',
-    );
-    expect(
-        SmallModelAids.hintFor(action), 'Install it first: apk add nodejs npm');
   });
 
   test('a download with the wrong checksum is refused', () async {

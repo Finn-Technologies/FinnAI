@@ -2337,6 +2337,8 @@
   "codeAttachFailed": "{names} konnte nicht hinzugefügt werden",
   "codeVerbRun": "Ausführen",
   "codeVerbWrite": "Schreiben",
+  "codeVerbRead": "Lesen",
+  "codeVerbList": "Auflisten",
   "codeVerbEdit": "Bearbeiten",
   "codeNewFile": "neue Datei",
   "codeShowMoreLines": "{count} weitere Zeilen zeigen",

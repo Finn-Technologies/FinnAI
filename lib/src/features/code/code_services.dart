@@ -1,5 +1,6 @@
 import 'package:finn_ai/src/features/code/agent/action_runner.dart';
 import 'package:finn_ai/src/features/code/agent/code_agent.dart';
+import 'package:finn_ai/src/features/code/agent/code_tool_runner.dart';
 import 'package:finn_ai/src/features/code/container/container_installer.dart';
 import 'package:finn_ai/src/features/code/container/container_shell.dart';
 import 'package:finn_ai/src/features/code/linux/linux_installer.dart';
@@ -53,7 +54,10 @@ class CodeServices {
     agent = CodeAgent(
       sessions: this.sessions,
       settings: this.settings,
-      runner: this.runner,
+      runner: WorkspaceCodeToolRunner(
+        sessions: this.sessions,
+        actions: this.runner,
+      ),
       gatewayFactory: gatewayFactory ?? _gateway,
     );
   }

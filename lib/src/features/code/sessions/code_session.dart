@@ -9,6 +9,12 @@ enum CodeActionKind {
   /// Search/replace blocks applied to an existing file (cloud models only:
   /// `docs/decisions/0010-finnai-code.md`).
   editFile,
+
+  /// A file read back to the model (its `output` is the contents).
+  readFile,
+
+  /// A folder listing (`output` is the entries).
+  listDir,
 }
 
 /// Where an action is in its life.

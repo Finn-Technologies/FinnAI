@@ -18,6 +18,7 @@ import 'package:finn_ai/src/features/code/settings/code_provider_page.dart';
 import 'package:finn_ai/src/features/code/settings/code_providers_page.dart';
 import 'package:finn_ai/src/features/code/settings/code_settings_page.dart';
 import 'package:finn_ai/src/features/code/settings/code_settings_store.dart';
+import 'package:finn_ai/src/features/code/ui/code_blocks.dart';
 import 'package:finn_ai/src/features/code/ui/code_tool_row.dart';
 import 'package:finn_ai/src/features/code/ui/code_models_page.dart';
 import 'package:finn_ai/src/shared/config/app_mode.dart';
@@ -547,6 +548,42 @@ void main() {
         await tester.tap(find.byKey(const ValueKey('big')));
         await settle(tester);
         expect(find.text('line 0'), findsOneWidget);
+      });
+
+      testWidgets('read and list rows show their verb and output',
+          (tester) async {
+        await useTallPhone(tester);
+        await tester.pumpWidget(MaterialApp(
+          theme: FluxTheme.dark,
+          home: Scaffold(
+            body: ListView(
+              children: const [
+                CodeToolRow(
+                  action: CodeAction(
+                    kind: CodeActionKind.readFile,
+                    status: CodeActionStatus.done,
+                    path: 'data.txt',
+                    output: 'hello world',
+                  ),
+                ),
+                CodeToolRow(
+                  action: CodeAction(
+                    kind: CodeActionKind.listDir,
+                    status: CodeActionStatus.done,
+                    output: 'a.txt\nb.txt',
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ));
+        await settle(tester);
+
+        expect(find.text('Read'), findsOneWidget);
+        expect(find.text('List'), findsOneWidget);
+        expect(find.text('hello world'), findsOneWidget);
+        expect(find.text('a.txt\nb.txt'), findsOneWidget);
+        expect(find.byType(CodeOutputBlock), findsNWidgets(2));
       });
 
       testWidgets('the send glyph matches the chat composer', (tester) async {

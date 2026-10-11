@@ -3,7 +3,8 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:finn_ai/src/features/code/agent/action_runner.dart';
-import 'package:finn_ai/src/features/code/agent/agent_protocol.dart';
+import 'package:finn_ai/src/features/code/agent/agent_prompt.dart';
+import 'package:finn_ai/src/features/code/agent/agent_tools.dart';
 import 'package:finn_ai/src/features/code/agent/code_mentions.dart';
 import 'package:finn_ai/src/features/code/agent/edit_blocks.dart';
 import 'package:finn_ai/src/features/code/sandbox/workspace.dart';
@@ -45,9 +46,10 @@ void main() {
     });
 
     test('the protocol reads an edit block as an edit action', () {
-      final reply = AgentProtocol.parse('```edit run.sh\n$_edit\n```');
-      expect(reply.action!.isEdit, isTrue);
-      expect(reply.action!.path, 'run.sh');
+      final reply = AgentProtocol.decode('```edit run.sh\n$_edit\n```',
+          allowShell: true, allowEdit: true);
+      expect(reply.call!.isEdit, isTrue);
+      expect(reply.call!.path, 'run.sh');
     });
   });
 
@@ -80,16 +82,15 @@ void main() {
       final second =
           await runner.run(id, const CodeAction.write('a.sh', 'x\n'));
       expect(second.previous, 'echo hello\n');
-      expect(AgentProtocol.observation(second, maxChars: 700),
-          contains('To run it: sh a.sh'));
+      expect(AgentPrompt.observationForAction(second), contains('Wrote a.sh'));
     });
 
     test('rewriting a file with the same text says nothing changed', () async {
       await runner.run(id, const CodeAction.write('a.txt', 'same'));
       final again =
           await runner.run(id, const CodeAction.write('a.txt', 'same'));
-      expect(AgentProtocol.observation(again, maxChars: 700),
-          contains('Nothing changed'));
+      expect(
+          AgentPrompt.observationForAction(again), contains('Nothing changed'));
     });
 
     test('an edit changes only its part and keeps both sides', () async {

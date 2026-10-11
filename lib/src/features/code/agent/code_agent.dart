@@ -4,11 +4,12 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 import 'package:finn_ai/src/features/code/agent/action_runner.dart';
-import 'package:finn_ai/src/features/code/agent/agent_protocol.dart';
+import 'package:finn_ai/src/features/code/agent/agent_prompt.dart';
+import 'package:finn_ai/src/features/code/agent/agent_tools.dart';
 import 'package:finn_ai/src/features/code/agent/code_mentions.dart';
+import 'package:finn_ai/src/features/code/agent/code_tool_runner.dart';
 import 'package:finn_ai/src/features/code/agent/live_output.dart';
 import 'package:finn_ai/src/features/code/agent/session_grants.dart';
-import 'package:finn_ai/src/features/code/agent/small_model_aids.dart';
 import 'package:finn_ai/src/features/code/providers/code_gateway.dart';
 import 'package:finn_ai/src/features/code/providers/provider_errors.dart';
 import 'package:finn_ai/src/features/code/sessions/code_session.dart';
@@ -18,14 +19,8 @@ import 'package:finn_ai/src/features/code/settings/code_settings_store.dart';
 /// What the agent is doing right now.
 enum CodeAgentPhase {
   idle,
-
-  /// Waiting on the model.
   thinking,
-
-  /// An action is shown and waits for the user's tap.
   awaitingApproval,
-
-  /// A command is running.
   running,
 }
 
@@ -34,11 +29,11 @@ typedef CodeGatewayFactory = Future<CodeModelGateway> Function();
 
 /// Runs a request: sends the conversation to the model, carries out the one
 /// action it answers with, shows the result to it, and repeats until the model
-/// answers in plain text, the step limit is reached, or the user stops it.
+/// answers with `answer`, the step/repeat limit is hit, or the user stops it.
 ///
-/// One request at a time. The loop is bounded three ways, because a small
-/// model left alone will loop: a step limit, a stop on the same action three
-/// times running, and the user's stop button.
+/// One request at a time. Bounded three ways because a small model left alone
+/// will loop: a step limit, a stop on the same action three times running, and
+/// the user's stop button. Two consecutive malformed replies also end it.
 class CodeAgent extends ChangeNotifier {
   CodeAgent({
     required this.sessions,
@@ -50,14 +45,10 @@ class CodeAgent extends ChangeNotifier {
 
   final CodeSessionStore sessions;
   final CodeSettingsStore settings;
-  final CodeActionRunner runner;
+  final CodeToolRunner runner;
   final CodeGatewayFactory gatewayFactory;
 
-  /// Approvals widened to a session (see [CodeSessionGrants]).
   final CodeSessionGrants grants = CodeSessionGrants();
-
-  /// Tokens arrive far faster than a screen can use them; the transcript is
-  /// updated at most this often while a reply streams.
   final Duration streamUpdateInterval;
 
   CodeAgentPhase _phase = CodeAgentPhase.idle;
@@ -72,14 +63,9 @@ class CodeAgent extends ChangeNotifier {
 
   CodeAgentPhase get phase => _phase;
   bool get busy => _phase != CodeAgentPhase.idle;
-
-  /// The session a request is running in, while one is.
   String? get runningSessionId => _sessionId;
-
-  /// The message whose action waits for a tap.
   String? get pendingMessageId => _pendingMessageId;
 
-  /// Repeating the same action this many times in one request ends it.
   static const int repeatLimit = 3;
 
   void _setPhase(CodeAgentPhase phase) {
@@ -93,16 +79,6 @@ class CodeAgent extends ChangeNotifier {
 
   // ---------------------------------------------------------------- API
 
-  /// Adds [text] to the active session (starting one if there is none) and
-  /// runs the request. Completes when the request ends.
-  ///
-  /// [attachments] are files the user picked: they are copied into the
-  /// session's project folder first, and the request names them, so the
-  /// agent knows to look. Returns the names of any that could not be added.
-  ///
-  /// Files named with `@path` are read now and shown to the model with the
-  /// request, up to [mentionChars] in all (the on-device model's window is
-  /// small; a cloud model's is not).
   Future<List<String>> send(
     String text, {
     List<File> attachments = const [],
@@ -111,7 +87,6 @@ class CodeAgent extends ChangeNotifier {
     var trimmed = text.trim();
     if ((trimmed.isEmpty && attachments.isEmpty) || busy) return const [];
     final session = sessions.active ?? sessions.create();
-    // Named after what was asked, not after the attachment note.
     if (session.title.isEmpty && trimmed.isNotEmpty) {
       sessions.rename(session.id, CodeSessionStore.titleFrom(trimmed));
     }
@@ -151,8 +126,6 @@ class CodeAgent extends ChangeNotifier {
     return failed;
   }
 
-  /// Carries on from where the session stopped: after a step limit, an error,
-  /// or a stop. Does nothing when the session already ends with an answer.
   Future<void> resume() async {
     final session = sessions.active;
     if (session == null || busy || session.messages.isEmpty) return;
@@ -161,24 +134,20 @@ class CodeAgent extends ChangeNotifier {
       await _run(session.id);
       return;
     }
-    // Continue from the last handled action, or retry the failed reply.
     final action = last.action;
     final retryable = last.failed || (action != null && !action.open);
     if (!retryable) return;
     await _run(session.id);
   }
 
-  /// The user's tap on "Run" (or "Allow").
   void approve(String messageId) => _decide(messageId, true);
 
-  /// "Allow in this session": approves, and stops asking for the same kind.
   void approveForSession(String messageId) {
     final action = _message(_sessionId ?? '', messageId)?.action;
     if (action != null) grants.grant(_sessionId!, action);
     _decide(messageId, true);
   }
 
-  /// The user's tap on "Skip".
   void skip(String messageId) => _decide(messageId, false);
 
   void _decide(String messageId, bool allowed) {
@@ -187,19 +156,13 @@ class CodeAgent extends ChangeNotifier {
     if (approval != null && !approval.isCompleted) approval.complete(allowed);
   }
 
-  /// Stops the request now: the reply being written, a command waiting for a
-  /// tap, or the next step.
   Future<void> stop() async {
     if (!busy) return;
     _epoch++;
-    // Taken first: ending the stream lets the loop finish, and its cleanup
-    // clears these fields before this method gets to use them.
     final gateway = _gateway;
     final subscription = _subscription;
     final approval = _approval;
     if (approval != null && !approval.isCompleted) approval.complete(false);
-    // A reply being streamed ends here: its subscription is cancelled, so
-    // nothing else would ever complete the wait on it.
     final stream = _streamDone;
     if (stream != null && !stream.isCompleted) stream.complete(null);
     await subscription?.cancel();
@@ -219,9 +182,12 @@ class CodeAgent extends ChangeNotifier {
     try {
       final gateway = _gateway = await gatewayFactory();
       final limit = settings.settings.maxSteps ?? gateway.budget.maxSteps;
+      final small = gateway.budget.examples;
+      final allowEdit = !gateway.isLocal;
+      final allowShell = runner.allowShell;
+      final env = runner.environment;
       final recent = <String>[];
-      CodeAction? lastResult;
-      var cutOffs = 0;
+      var malformedStreak = 0;
       var acted = false;
 
       for (var step = 0; step < limit; step++) {
@@ -241,79 +207,61 @@ class CodeAgent extends ChangeNotifier {
         );
         _setPhase(CodeAgentPhase.thinking);
 
-        final raw = await _stream(gateway, sessionId, messageId, epoch);
+        final raw = await _stream(gateway, sessionId, messageId, epoch,
+            small: small,
+            allowShell: allowShell,
+            allowEdit: allowEdit,
+            env: env);
         if (epoch != _epoch) {
           _abandon(sessionId, messageId);
           return;
         }
         if (raw == null) return; // _stream recorded the error.
 
-        var parsed = AgentProtocol.parse(raw);
-        if (gateway.budget.examples) {
-          final messages =
-              sessions.byId(sessionId)?.messages ?? const <CodeMessage>[];
-          final request = messages.reversed
-                  .where((message) => message.isUser)
-                  .firstOrNull
-                  ?.text ??
-              '';
-          parsed = SmallModelAids.repair(parsed, request: request);
-        }
-        // A reply whose action cannot be used (cut off, or a file block with
-        // no name) is not an answer: the model is told what was wrong and
-        // tries again. Twice in a row ends the request.
-        if (parsed.cutOff || parsed.malformed) {
-          cutOffs++;
+        final reply = AgentProtocol.decode(
+          raw,
+          allowShell: allowShell,
+          allowEdit: allowEdit,
+        );
+
+        if (reply.malformed) {
+          malformedStreak++;
           _finishMessage(
             sessionId,
             messageId,
-            text: parsed.prose,
-            errorCode:
-                parsed.cutOff ? CodeErrorCode.cutOff : CodeErrorCode.malformed,
+            text: reply.prose,
+            errorCode: reply.notice == AgentProtocol.cutOffNotice
+                ? CodeErrorCode.cutOff
+                : CodeErrorCode.malformed,
           );
-          if (cutOffs >= 2) return;
+          if (malformedStreak >= 2) return;
           continue;
         }
-        cutOffs = 0;
+        malformedStreak = 0;
 
-        final action = parsed.action;
-        if (action == null && parsed.prose.isEmpty && acted) {
-          // The work was done and the model had nothing to add. The action
-          // cards say what happened; an "empty reply" error would not be fair.
-          sessions.removeMessage(sessionId, messageId);
-          return;
-        }
-        if (action == null) {
+        if (reply.answer) {
+          if (reply.prose.isEmpty && acted) {
+            sessions.removeMessage(sessionId, messageId);
+            return;
+          }
           _finishMessage(
             sessionId,
             messageId,
-            text: parsed.prose,
-            errorCode: parsed.prose.isEmpty ? CodeErrorCode.empty : null,
+            text: reply.prose,
+            errorCode: reply.prose.isEmpty ? CodeErrorCode.empty : null,
           );
           return;
         }
 
-        recent.add(action.signature);
-        // The same action a third time in one request is a loop, whether it
-        // comes back to back or alternates with another (chmod, sudo chmod,
-        // chmod…, seen on the device).
+        final call = reply.call!;
+        recent.add(call.signature);
         final repeating =
-            recent.where((signature) => signature == action.signature).length >=
-                repeatLimit;
-
+            recent.where((s) => s == call.signature).length >= repeatLimit;
         _finishMessage(sessionId, messageId,
-            text: parsed.prose, action: action);
-        final handled = await _handle(sessionId, messageId, action, epoch);
+            text: reply.prose, action: _codeActionFor(call));
+        final handled = await _handle(sessionId, messageId, call, epoch);
         if (epoch != _epoch || handled == null) return;
         acted = true;
-        // The same command worked the same way again: the work is done and
-        // the model is only failing to say so. End quietly, not as a loop.
-        if (_sameSuccessAsBefore(handled, lastResult)) return;
-        if (gateway.budget.examples &&
-            SmallModelAids.finished(sessions.byId(sessionId)?.messages ?? [])) {
-          return;
-        }
-        lastResult = handled;
         if (repeating) {
           _appendError(sessionId, CodeErrorCode.repeating);
           return;
@@ -323,8 +271,6 @@ class CodeAgent extends ChangeNotifier {
     } catch (error) {
       _appendError(sessionId, _codeFor(error), detail: _detailFor(error));
     } finally {
-      // Only one request runs at a time, so whichever way this one ended
-      // (finished, failed, stopped) the agent is free again.
       _sessionId = null;
       _pendingMessageId = null;
       _approval = null;
@@ -336,57 +282,41 @@ class CodeAgent extends ChangeNotifier {
     }
   }
 
-  /// Streams the model's reply into message [messageId]. Returns the full
-  /// text, or null if the request failed (the failure is recorded).
   Future<String?> _stream(
     CodeModelGateway gateway,
     String sessionId,
     String messageId,
-    int epoch,
-  ) async {
+    int epoch, {
+    required bool small,
+    required bool allowShell,
+    required bool allowEdit,
+    required CommandEnvironment env,
+  }) async {
     final session = sessions.byId(sessionId)!;
-    final small = gateway.budget.examples;
-    final turns = AgentProtocol.turnsFor(
-      [
-        for (final message in session.messages)
-          if (message.id != messageId) message,
-      ],
-      budget: gateway.budget,
+    final history = [
+      for (final message in session.messages)
+        if (message.id != messageId) message,
+    ];
+    final turns = AgentPrompt.buildTurns(
+      history,
       remind: small,
-      shell: runner.canRunCommands,
+      observationChars: gateway.budget.observationChars,
     );
-    // The model answers the last message, which must be the user's.
+    if (small) {
+      turns.insertAll(0, AgentPrompt.exampleTurns(allowShell: allowShell));
+    }
     if (turns.isEmpty || turns.last.role != 'user') {
       turns.add(const CodeTurn.user('Continue.'));
     }
-    if (small) {
-      // A small model gets a worked example first: see
-      // [AgentProtocol.exampleTurns].
-      turns.insertAll(
-        0,
-        AgentProtocol.exampleTurns(shell: runner.canRunCommands),
-      );
-    }
     final completion = CodeCompletion(
-      system: AgentProtocol.systemPrompt(
-        shell: runner.canRunCommands,
-        container: runner.environment == CommandEnvironment.container,
-        linux: runner.environment == CommandEnvironment.linux,
-        edits: !small,
+      system: AgentPrompt.systemPrompt(
+        env: env,
+        allowShell: allowShell,
+        allowEdit: allowEdit,
       ),
       turns: turns,
       conversationId: 'code-$sessionId',
       maxTokens: gateway.isLocal ? 1024 : 4096,
-      start: small
-          ? SmallModelAids.forcedStart(
-                [
-                  for (final message in session.messages)
-                    if (message.id != messageId) message,
-                ],
-                shell: runner.canRunCommands,
-              ) ??
-              ''
-          : '',
     );
 
     final buffer = StringBuffer();
@@ -410,34 +340,31 @@ class CodeAgent extends ChangeNotifier {
       if (!done.isCompleted) done.complete(value);
     }
 
+    bool acted(String text) {
+      // Only a complete action stops the read early. A prose answer can't be
+      // recognised mid-stream (a partial ```wri is not yet a tag), so it ends
+      // with the stream instead.
+      return AgentProtocol.decode(text,
+          allowShell: allowShell, allowEdit: allowEdit)
+          .hasCall;
+    }
+
     final stream = gateway.complete(completion);
     _subscription = stream.listen(
       (fragment) {
         if (epoch != _epoch) return;
         buffer.write(fragment);
         pending ??= Timer(streamUpdateInterval, show);
-        // Stop reading once the action is complete: whatever follows is the
-        // model inventing the result.
-        // Likewise when the model has written a lot and none of it is for the
-        // user (reasoning tags over and over): waiting out the whole budget
-        // would only make the person wait.
+        // Stop reading once one complete action is present, or the model has
+        // written a lot and none of it is for the user (reasoning on repeat).
         if (buffer.length > 48 &&
             AgentProtocol.clean(buffer.toString()).trim().isEmpty) {
-          unawaited(_subscription?.cancel());
-          unawaited(gateway
-              .cancel()
-              .timeout(const Duration(seconds: 3), onTimeout: () {})
-              .catchError((Object _) {}));
+          _cancelStream();
           finish(buffer.toString());
           return;
         }
-        if (fragment.contains('`') &&
-            AgentProtocol.hasCompleteAction(buffer.toString())) {
-          unawaited(_subscription?.cancel());
-          unawaited(gateway
-              .cancel()
-              .timeout(const Duration(seconds: 3), onTimeout: () {})
-              .catchError((Object _) {}));
+        if (fragment.contains('`') && acted(buffer.toString())) {
+          _cancelStream();
           finish(buffer.toString());
         }
       },
@@ -468,17 +395,23 @@ class CodeAgent extends ChangeNotifier {
     return raw;
   }
 
-  /// Decides whether [action] needs a tap, waits for it, runs it, and records
-  /// what happened. Returns the finished action, or null if the request was
-  /// stopped while waiting.
-  Future<CodeAction?> _handle(
+  void _cancelStream() {
+    unawaited(_subscription?.cancel());
+    unawaited(_gateway
+        ?.cancel()
+        .timeout(const Duration(seconds: 3), onTimeout: () {})
+        .catchError((Object _) {}));
+  }
+
+  Future<ToolResult?> _handle(
     String sessionId,
     String messageId,
-    CodeAction action,
+    AgentCall call,
     int epoch,
   ) async {
-    if (codeNeedsApproval(settings.settings.permissionMode, action) &&
-        !grants.covers(sessionId, action)) {
+    final proposed = _codeActionFor(call);
+    if (codeNeedsApproval(settings.settings.permissionMode, proposed) &&
+        !grants.covers(sessionId, proposed)) {
       _pendingMessageId = messageId;
       _approval = Completer<bool>();
       _setPhase(CodeAgentPhase.awaitingApproval);
@@ -487,43 +420,72 @@ class CodeAgent extends ChangeNotifier {
       _approval = null;
       if (epoch != _epoch) {
         _setAction(sessionId, messageId,
-            action.copyWith(status: CodeActionStatus.skipped));
+            proposed.copyWith(status: CodeActionStatus.skipped));
         return null;
       }
       if (!allowed) {
-        final skipped = action.copyWith(status: CodeActionStatus.skipped);
-        _setAction(sessionId, messageId, skipped);
-        return skipped;
+        _setAction(sessionId, messageId,
+            proposed.copyWith(status: CodeActionStatus.skipped));
+        return null;
       }
     }
     _setPhase(CodeAgentPhase.running);
     _setAction(sessionId, messageId,
-        action.copyWith(status: CodeActionStatus.running));
-    // Output is shown as it arrives: an install can take a minute.
+        proposed.copyWith(status: CodeActionStatus.running));
     final live = LiveOutput((text) {
       final current = _message(sessionId, messageId)?.action;
       if (current == null || current.status != CodeActionStatus.running) return;
       _setAction(sessionId, messageId, current.copyWith(output: text));
     });
-    final finished = await runner.run(sessionId, action, onOutput: live.add);
+    final result = await runner.run(sessionId, call, onOutput: live.add);
     live.close();
+    final finished = _finished(proposed, result);
     if (epoch != _epoch) {
       _setAction(sessionId, messageId, finished);
       return null;
     }
     _setAction(sessionId, messageId, finished);
-    return finished;
+    return result;
   }
 
-  static bool _sameSuccessAsBefore(CodeAction now, CodeAction? before) =>
-      before != null &&
-      now.isShell &&
-      now.status == CodeActionStatus.done &&
-      before.status == CodeActionStatus.done &&
-      now.signature == before.signature &&
-      now.output == before.output;
-
   // ------------------------------------------------------------ helpers
+
+  static CodeAction _codeActionFor(AgentCall call) => switch (call.tool) {
+        AgentTool.read =>
+          CodeAction(kind: CodeActionKind.readFile, path: call.path),
+        AgentTool.list =>
+          CodeAction(kind: CodeActionKind.listDir, path: call.path),
+        AgentTool.write => CodeAction(
+            kind: CodeActionKind.writeFile,
+            path: call.path,
+            content: call.content),
+        AgentTool.edit => CodeAction(
+            kind: CodeActionKind.editFile,
+            path: call.path,
+            content: call.content),
+        AgentTool.bash => CodeAction.shell(call.command),
+      };
+
+  static CodeAction _finished(CodeAction base, ToolResult result) {
+    final status = result.denied != null
+        ? CodeActionStatus.denied
+        : (result.ok ? CodeActionStatus.done : CodeActionStatus.failed);
+    return CodeAction(
+      kind: base.kind,
+      status: status,
+      command: base.command,
+      path: base.path,
+      content: base.content,
+      output: result.text,
+      exitCode: result.exitCode,
+      truncated: result.truncated,
+      timedOut: result.timedOut,
+      deniedReason: result.denied,
+      deniedDetail: result.deniedDetail,
+      previous: result.previous,
+      after: base.isEdit ? result.after : base.after,
+    );
+  }
 
   CodeMessage? _message(String sessionId, String messageId) {
     final session = sessions.byId(sessionId);
@@ -563,8 +525,6 @@ class CodeAgent extends ChangeNotifier {
     sessions.replaceMessage(sessionId, message.copyWith(action: action));
   }
 
-  /// A reply stopped before it said anything is removed; one that said
-  /// something keeps what it said.
   void _abandon(String sessionId, String messageId) {
     final message = _message(sessionId, messageId);
     if (message != null &&
