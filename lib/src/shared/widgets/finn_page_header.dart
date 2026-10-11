@@ -27,8 +27,13 @@ class FinnPageHeaderMetrics {
   /// (a desktop window) gets tighter vertical offsets, see
   /// [FinnLayout.scaleY]; leave it out for the phone layout.
   factory FinnPageHeaderMetrics.forHeight(double height, [double width = 0]) {
-    final scaleY =
-        FinnLayout.scaleY(height, width, base: 844, min: .7, max: 1.3);
+    // One scale source for every header in the app. This used to pass
+    // `base: 844` while the shell header and the sidebar passed the default
+    // 912, so the same window put the page's back row 7% lower than the chat's
+    // header row: the two surfaces a user moves between sat six pixels apart
+    // on a 844-tall phone and drifted further on a tall window. `max` and
+    // `wideCap` match the sidebar's call for the same reason.
+    final scaleY = FinnLayout.scaleY(height, width, max: 1.3, wideCap: .85);
     final headerTop = 71 * scaleY;
     return FinnPageHeaderMetrics._(
       scaleY: scaleY,

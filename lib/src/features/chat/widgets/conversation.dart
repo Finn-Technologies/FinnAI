@@ -80,6 +80,16 @@ class _Conversation extends StatefulWidget {
 class _ConversationState extends State<_Conversation> {
   Timer? _scrollSettleTimer;
 
+  /// Message ids that have already played their entrance.
+  ///
+  /// The transcript is a `ListView.builder` with a `cacheExtent`, so a row
+  /// that scrolls out of the cache is disposed and its state is re-created
+  /// when it comes back — which re-ran `FluxEntrance`'s `initState` and
+  /// replayed the whole arrival animation on every scroll. Remembering the
+  /// ids here, in the state that outlives the rows, makes each message's
+  /// entrance one-shot per transcript.
+  final _revealed = <String>{};
+
   /// (conversationId, messageCount, jobId, responseLength, state, preparing)
   /// — the layout-relevant generation inputs. A change that only moves the
   /// response length is a token event: the streaming bubble repaints itself
@@ -171,10 +181,22 @@ class _ConversationState extends State<_Conversation> {
     }
   }
 
+  /// Plays a row's entrance once per transcript.
+  ///
+  /// The first time a message id is seen it gets its [FluxEntrance]; every
+  /// time after that — a row the list recycled and rebuilt — it does not, so
+  /// scrolling a long conversation back and forth no longer replays every
+  /// arrival.
+  Widget _enterOnce(String id, Alignment alignment, Widget child) {
+    if (!_revealed.add(id)) return child;
+    return FluxEntrance(alignment: alignment, child: child);
+  }
+
   @override
   void dispose() {
     widget.generation.removeListener(_generationChanged);
     _scrollSettleTimer?.cancel();
+    _revealed.clear();
     super.dispose();
   }
 
@@ -305,12 +327,13 @@ class _ConversationState extends State<_Conversation> {
             return Padding(
               key: ValueKey('chat-message-${message.id}'),
               padding: const EdgeInsets.only(bottom: 14),
-              child: FluxEntrance(
+              child: _enterOnce(
+                message.id,
                 // A message grows out of the side it belongs to.
-                alignment: message.role == ConversationRole.user
+                message.role == ConversationRole.user
                     ? Alignment.bottomRight
                     : Alignment.bottomLeft,
-                child: message.role == ConversationRole.user
+                message.role == ConversationRole.user
                     ? Align(
                         alignment: Alignment.centerRight,
                         child: _Bubble(
@@ -421,7 +444,7 @@ class _VoiceHidden extends StatelessWidget {
         opacity: hidden ? 0 : 1,
         duration: MediaQuery.disableAnimationsOf(context)
             ? Duration.zero
-            : const Duration(milliseconds: 650),
+            : FluxMotion.recedeDuration,
         curve: Curves.easeOutCubic,
         child: child,
       );
@@ -468,7 +491,7 @@ class _Recede extends StatelessWidget {
         tween: Tween(end: active ? 1.0 : 0.0),
         duration: MediaQuery.disableAnimationsOf(context)
             ? Duration.zero
-            : const Duration(milliseconds: 650),
+            : FluxMotion.recedeDuration,
         curve: Curves.easeOutCubic,
         child: child,
         builder: (context, t, child) => t == 0

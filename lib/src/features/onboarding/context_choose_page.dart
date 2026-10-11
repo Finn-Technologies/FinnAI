@@ -40,60 +40,72 @@ class ContextChoosePage extends StatelessWidget {
   ) =>
       Padding(
         padding: const EdgeInsets.only(bottom: 10),
-        child: Container(
-          height: 74,
-          padding: const EdgeInsets.symmetric(
-            horizontal: 15,
-            vertical: 12,
-          ),
-          decoration: BoxDecoration(
-            color: FluxColors.tileOf(context),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: FluxColors.controlOf(context),
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: FluxIcon(
-                    icon: _icons[key]!,
-                    size: 22,
-                    color: FluxColors.actionOf(context),
+        // The tile is as tall as its content, with the design's 74dp as a
+        // floor. A fixed height held 50px of copy, and the two Text lines
+        // inside it (16 x 1.25 + 14 x 1.2 = 36.8px) grew straight out of the
+        // rounded tile at the 1.5x Android hands you by default. Sizing from
+        // the content needs no line-height arithmetic to keep in step with
+        // the text theme.
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 74),
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 15,
+              vertical: 12,
+            ),
+            decoration: BoxDecoration(
+              color: FluxColors.tileOf(context),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: FluxColors.controlOf(context),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: FluxIcon(
+                      icon: _icons[key]!,
+                      size: 22,
+                      color: FluxColors.actionOf(context),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 15),
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      titles[key]!.$1,
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                    Text(
-                      titles[key]!.$2,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: FluxColors.actionOf(context),
-                          ),
-                    ),
-                  ],
+                const SizedBox(width: 15),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        titles[key]!.$1,
+                        // A long localised label wraps rather than painting out
+                        // of the rounded tile.
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      Text(
+                        titles[key]!.$2,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: FluxColors.actionOf(context),
+                            ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              FinnSwitch(
-                value: consent.categoryOn(key),
-                label: titles[key]!.$1,
-                onChanged: (v) => consent.setCategory(key, v),
-              ),
-            ],
+                FinnSwitch(
+                  value: consent.categoryOn(key),
+                  label: titles[key]!.$1,
+                  onChanged: (v) => consent.setCategory(key, v),
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -142,7 +154,10 @@ class ContextChoosePage extends StatelessWidget {
     // never sits on the glass, on small and large screens alike.
     const lift = 12.0;
     return ColoredBox(
-      color: FluxColors.controlOf(context),
+      // The card fill, not the control fill: the consent step behind this one
+      // paints itself with cardOf, and on the black canvas the lighter control
+      // fill made the whole screen visibly lighten between the two steps.
+      color: FluxColors.cardOf(context),
       child: ListenableBuilder(
         listenable: consent,
         builder: (context, _) => Column(

@@ -134,30 +134,42 @@ class _YouPageState extends State<YouPage> {
               FinnReveal(
                 index: 1,
                 child: Material(
-                  color: const Color(0xFFEADDFF),
+                  // The banner used a Material 3 "primary container" pastel
+                  // (#EADDFF) with no dark variant: on the black canvas that
+                  // is a 16:1 slab, and the title — `bodyMedium`, whose colour
+                  // comes from the text theme and is near-white in dark — sat
+                  // at 1.18:1 on it. The white disc and its near-white glyph
+                  // vanished with it. The card fill plus a hairline is the
+                  // app's own surface for this, and the tokens resolve for the
+                  // active theme.
+                  color: FluxColors.cardOf(context),
                   borderRadius: BorderRadius.circular(FluxRadius.card),
                   child: InkWell(
                     borderRadius: BorderRadius.circular(FluxRadius.card),
                     onTap: () => _push(const YouReviewPage()),
-                    child: Padding(
+                    child: Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 15,
                         vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(FluxRadius.card),
+                        border: Border.all(color: FluxColors.lineOf(context)),
                       ),
                       child: Row(
                         children: [
                           Container(
                             width: 44,
                             height: 44,
-                            decoration: const BoxDecoration(
-                              color: Colors.white,
+                            decoration: BoxDecoration(
+                              color: FluxColors.disclosureOf(context),
                               shape: BoxShape.circle,
                             ),
                             child: Center(
                               child: FluxIcon(
                                 icon: FluxIcons.magic,
                                 size: 22,
-                                color: FluxColors.actionOf(context),
+                                color: FluxColors.inkOf(context),
                               ),
                             ),
                           ),
@@ -168,7 +180,12 @@ class _YouPageState extends State<YouPage> {
                               children: [
                                 Text(
                                   l10n.youReviewTitle(pending),
-                                  style: Theme.of(context).textTheme.bodyMedium,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodyMedium
+                                      ?.copyWith(
+                                        color: FluxColors.inkOf(context),
+                                      ),
                                 ),
                                 Text(
                                   l10n.youReviewSub,
@@ -176,7 +193,8 @@ class _YouPageState extends State<YouPage> {
                                       .textTheme
                                       .bodySmall
                                       ?.copyWith(
-                                        color: const Color(0xFF4F378B),
+                                        color:
+                                            FluxColors.secondaryInkOf(context),
                                       ),
                                 ),
                               ],

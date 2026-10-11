@@ -27,6 +27,7 @@ extension _HomeShellSend on _HomeShellState {
 
     setState(() {
       _preparing = true;
+      _sendCancelled = false;
     });
     debugPrint('FINN_SEND preparing started');
     try {
@@ -46,7 +47,7 @@ extension _HomeShellSend on _HomeShellState {
           },
         );
         await initialization;
-        if (!mounted) return;
+        if (!mounted || _sendCancelled) return;
         _storesReady = true;
       }
       final systemContext = [
@@ -60,12 +61,14 @@ extension _HomeShellSend on _HomeShellState {
       // "Make me an app" and "when I plug in my charger…" build the thing and
       // show it as a card, instead of becoming a chat answer about it.
       if (attached == null && await _handleMakeRequest(value)) return;
+      if (_sendCancelled) return;
 
       // A device command is answered from the catalog, not the model: it is
       // instant, it works before the model is installed, and it cannot be
       // talked into a different action.
       if (attached == null) {
         final deviceAction = await _deviceActions.resolve(value);
+        if (_sendCancelled) return;
         if (deviceAction != null) {
           if (!mounted) return;
           await _handleDeviceAction(deviceAction, value);
@@ -116,7 +119,7 @@ extension _HomeShellSend on _HomeShellState {
           return;
         }
       }
-      if (!mounted) return;
+      if (!mounted || _sendCancelled) return;
 
       final effectivePrompt = value.isNotEmpty
           ? value
@@ -175,6 +178,16 @@ extension _HomeShellSend on _HomeShellState {
         effectivePrompt,
         hasAttachment: attached != null,
       );
+      // Stop during the search: the turn is not going to happen, so undo the
+      // user message the store already holds rather than leaving it in the
+      // transcript with no reply attached to it.
+      if (_sendCancelled) {
+        _conversations.removeMessageInConversation(
+          conversation.id,
+          conversation.messages.lastOrNull?.id ?? '',
+        );
+        return;
+      }
 
       // Pass imagePath for persistence (store), but also ensure the history
       // carries bytes when present so the engine can use imageBytes without file I/O.

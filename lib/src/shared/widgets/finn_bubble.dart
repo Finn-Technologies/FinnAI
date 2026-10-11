@@ -38,21 +38,31 @@ class FinnBubbleBox extends StatelessWidget {
       );
 
   @override
-  Widget build(BuildContext context) => Container(
-        constraints: BoxConstraints(
-          maxWidth: math.min(MediaQuery.sizeOf(context).width * .82, 620),
+  Widget build(BuildContext context) => LayoutBuilder(
+        builder: (context, constraints) => Container(
+          // The bubble must not exceed the column it sits in. It used to size
+          // itself from `MediaQuery.sizeOf`, which is the whole window: on a
+          // docked window 900-989px wide the chat column is narrower than the
+          // 620px cap, so a long user message slid under the docked sidebar
+          // panel and was clipped by its edge.
+          constraints: BoxConstraints(
+            maxWidth: math.min(
+              constraints.maxWidth,
+              math.min(MediaQuery.sizeOf(context).width * .82, 620),
+            ),
+          ),
+          padding: user
+              ? const EdgeInsets.symmetric(horizontal: 20, vertical: 15)
+              : const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: user
+                ? FluxColors.bubbleUserOf(context)
+                : FluxColors.cardOf(context),
+            borderRadius: radiusFor(user: user),
+            border: Border.all(color: FluxColors.lineOf(context), width: 1),
+          ),
+          child: child,
         ),
-        padding: user
-            ? const EdgeInsets.symmetric(horizontal: 20, vertical: 15)
-            : const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: user
-              ? FluxColors.bubbleUserOf(context)
-              : FluxColors.cardOf(context),
-          borderRadius: radiusFor(user: user),
-          border: Border.all(color: FluxColors.lineOf(context), width: 1),
-        ),
-        child: child,
       );
 }
 

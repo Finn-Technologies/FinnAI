@@ -296,7 +296,11 @@ class _ReportDialogState extends State<ReportDialog> {
               child: SingleChildScrollView(
                 child: Text(
                   widget.assistantResponse,
-                  style: textTheme.bodySmall?.copyWith(fontSize: 11),
+                  // Not 11px. `FluxColors.minTextSize` documents 12px as the
+                  // smallest the app renders, and the body role it overrides
+                  // is already 14: this file was the one place re-introducing
+                  // the 10/11px copy the audit measured as unreadable.
+                  style: textTheme.bodySmall,
                 ),
               ),
             ),
@@ -348,7 +352,6 @@ class _ReportDialogState extends State<ReportDialog> {
             Text(
               L10n.of(context).reportContinueHint,
               style: textTheme.labelSmall?.copyWith(
-                fontSize: 10,
                 color: FluxColors.mutedOf(context),
               ),
             ),

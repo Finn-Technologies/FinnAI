@@ -32,7 +32,11 @@ class StepTransition extends StatelessWidget {
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
         animation: Listenable.merge([controller, span]),
-        child: child,
+        // The child gets its own layer, so the transform and the fade below
+        // composite an already-rasterised step instead of re-rasterising the
+        // whole page — artwork bitmap included — on every one of the ~31
+        // frames the transition runs for.
+        child: RepaintBoundary(child: child),
         builder: (context, child) {
           if (!controller.hasClients ||
               !controller.position.hasContentDimensions) {

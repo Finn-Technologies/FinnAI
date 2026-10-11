@@ -175,29 +175,47 @@ class FlowTile extends StatelessWidget {
                           ],
                         ),
                         const Spacer(),
-                        Text(
-                          flow.name,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontFamily: 'Geist',
-                            fontSize: 17,
-                            height: 1.15,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: -0.35,
-                            color: ink,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          line,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontFamily: 'Geist',
-                            fontSize: 12.5,
-                            height: 1.2,
-                            color: Color(0xF2FFFFFF),
+                        // The copy is the only part of a tile that can
+                        // outgrow it: a name and a status line that each wrap
+                        // twice already cost more than the 125dp the design
+                        // leaves inside the padding, and Android's font
+                        // slider walks the user straight past that. Scale the
+                        // block down to whatever is left instead of letting
+                        // it run past the rounded corner — and clamp the
+                        // status line to one so the name gets the room.
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.bottomLeft,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                flow.name,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontFamily: 'Geist',
+                                  fontSize: 17,
+                                  height: 1.15,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: -0.35,
+                                  color: ink,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                line,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontFamily: 'Geist',
+                                  fontSize: 12.5,
+                                  height: 1.2,
+                                  color: Color(0xF2FFFFFF),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],

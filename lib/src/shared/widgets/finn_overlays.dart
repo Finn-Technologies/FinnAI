@@ -105,7 +105,10 @@ Future<bool?> showFinnConfirm(
       context: context,
       barrierDismissible: true,
       barrierLabel: title,
-      barrierColor: const Color(0x8C000000),
+      // A literal black scrim is invisible over the app's black canvas: the
+      // modal then reads as a panel floating on the page rather than as one.
+      // `scrimOf` lightens behind the modal in dark, for exactly that reason.
+      barrierColor: FluxColors.scrimOf(context, alpha: .55),
       transitionDuration: FluxMotion.modalDuration,
       transitionBuilder: (context, animation, _, child) {
         final curved = CurvedAnimation(
@@ -383,7 +386,7 @@ Future<void> showFinnMenu(
       context: context,
       barrierDismissible: true,
       barrierLabel: L10n.of(context).commonDismiss,
-      barrierColor: const Color(0x1A000000),
+      barrierColor: FluxColors.scrimOf(context, alpha: .1),
       transitionDuration: const Duration(milliseconds: 380),
       // The menu grows out of the control that opened it (see
       // [FinnMorphSurface]); a long-pressed card is too big to grow from, so
@@ -509,7 +512,7 @@ Future<String?> showFinnPrompt(
     context: context,
     barrierDismissible: true,
     barrierLabel: title,
-    barrierColor: const Color(0x8C000000),
+    barrierColor: FluxColors.scrimOf(context, alpha: .55),
     transitionDuration: FluxMotion.modalDuration,
     transitionBuilder: (context, animation, _, child) {
       final curved = CurvedAnimation(

@@ -27,12 +27,6 @@ class _Bubble extends StatelessWidget {
         // messages in both bubbles.
         final style = FinnBubbleBox.textStyle(context, user: user);
         final hasImage = imagePath != null && imagePath!.isNotEmpty;
-        bool imageExists = false;
-        try {
-          imageExists = hasImage && File(imagePath!).existsSync();
-        } catch (_) {
-          imageExists = false;
-        }
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
@@ -42,64 +36,9 @@ class _Bubble extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 6),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(FluxRadius.sm),
-                  child: imageExists
-                      ? Image.file(
-                          File(imagePath!),
-                          width: 200,
-                          height: 140,
-                          cacheWidth: 400,
-                          filterQuality: FilterQuality.low,
-                          gaplessPlayback: true,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
-                              Container(
-                            width: 160,
-                            padding: const EdgeInsets.all(8),
-                            color: FluxColors.cardOf(context),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const FluxIcon(
-                                  icon: FluxIcons.image,
-                                  size: 16,
-                                ),
-                                const SizedBox(width: 4),
-                                Expanded(
-                                  child: Text(
-                                    imagePath!
-                                        .split(Platform.pathSeparator)
-                                        .last,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.bodySmall,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        )
-                      : Container(
-                          width: 160,
-                          padding: const EdgeInsets.all(8),
-                          color: FluxColors.cardOf(context),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const FluxIcon(icon: FluxIcons.image, size: 16),
-                              const SizedBox(width: 4),
-                              Expanded(
-                                child: Text(
-                                  imagePath!.split(Platform.pathSeparator).last,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: Theme.of(context).textTheme.bodySmall,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                  child: _AttachmentPreview(
+                    path: imagePath!,
+                  ),
                 ),
               ),
             ],
@@ -110,6 +49,86 @@ class _Bubble extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+}
+
+/// The image a message attached: the photo when it decodes, a named chip when
+/// it does not.
+///
+/// Both faces are the same size. They used not to be — the error fallback was
+/// 160px wide beside a 200px photo — so a bubble whose image failed to decode
+/// snapped to a different width than the identical message next to it.
+///
+/// It also decides whether the file exists *once*, in `initState`, rather than
+/// calling `File.existsSync()` on the UI thread for every rendered bubble on
+/// every build: that synchronous `stat` is what made the keyboard dismiss
+/// before a new message appeared in a long conversation.
+class _AttachmentPreview extends StatefulWidget {
+  const _AttachmentPreview({required this.path});
+
+  final String path;
+
+  @override
+  State<_AttachmentPreview> createState() => _AttachmentPreviewState();
+}
+
+class _AttachmentPreviewState extends State<_AttachmentPreview> {
+  static const double _width = 200;
+  static const double _height = 140;
+
+  late bool _exists = _probe(widget.path);
+
+  static bool _probe(String path) {
+    try {
+      return File(path).existsSync();
+    } catch (_) {
+      return false;
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _AttachmentPreview oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.path == widget.path) return;
+    final exists = _probe(widget.path);
+    if (exists != _exists) setState(() => _exists = exists);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final name = widget.path.split(Platform.pathSeparator).last;
+    Widget chip() => Container(
+          width: _width,
+          height: _height,
+          padding: const EdgeInsets.all(8),
+          color: FluxColors.cardOf(context),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const FluxIcon(icon: FluxIcons.image, size: 16),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
+            ],
+          ),
+        );
+    if (!_exists) return chip();
+    return Image.file(
+      File(widget.path),
+      width: _width,
+      height: _height,
+      cacheWidth: 400,
+      filterQuality: FilterQuality.low,
+      gaplessPlayback: true,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) => chip(),
     );
   }
 }
@@ -303,7 +322,7 @@ class _StreamingReplyState extends State<_StreamingReply>
     with SingleTickerProviderStateMixin {
   late final AnimationController _pulse = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 1700),
+    duration: FluxMotion.presencePulse,
   );
 
   late String _text = widget.generation.activeJob?.responseText ?? widget.text;

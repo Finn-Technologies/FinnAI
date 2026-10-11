@@ -33,7 +33,12 @@ class _FinnSkeletonListState extends State<FinnSkeletonList>
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (MediaQuery.disableAnimationsOf(context)) {
-      _sweep.stop();
+      // Rewind as well as stop: stopping alone froze the band wherever the
+      // sweep happened to be, which reads as a broken placeholder rather than
+      // as the still frame it is meant to be.
+      _sweep
+        ..stop()
+        ..value = _sweep.lowerBound;
     } else if (!_sweep.isAnimating) {
       _sweep.repeat();
     }

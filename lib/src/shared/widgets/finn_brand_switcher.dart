@@ -61,16 +61,29 @@ class BrandExpansion extends ChangeNotifier {
     _running = controller;
 
     controller.addListener(listener);
-    controller.addStatusListener((_) {
+    // Only a *terminal* status ends the animation. Acting on every status used
+    // to dispose the controller the moment `forward()` or `reverse()` began:
+    // `_startSimulation` sets `AnimationStatus.forward` and calls
+    // `_checkStatusChanged()` synchronously
+    // (packages/flutter/lib/src/animation/animation_controller.dart:868), so the
+    // listener fired, disposed the still-ticking controller and snapped the
+    // reveal straight to its end. The next tap then looked ignored.
+    void statusChanged(AnimationStatus status) {
+      if (status != AnimationStatus.completed &&
+          status != AnimationStatus.dismissed) {
+        return;
+      }
       controller.removeListener(listener);
-      // Snap to the exact end: a curve's value at t=1 is 1, but leaving the last
-      // frame's float in place would leave the sidebar a fraction of a pixel
-      // short of its own height forever.
+      // Snap to the exact end: a curve's value at t=1 is 1, but leaving the
+      // last frame's float in place would leave the sidebar a fraction of a
+      // pixel short of its own height forever.
       _progress = open ? 1 : 0;
-      notifyListeners();
       if (identical(_running, controller)) _running = null;
       controller.dispose();
-    });
+      notifyListeners();
+    }
+
+    controller.addStatusListener(statusChanged);
     if (open) {
       controller.forward();
     } else {
