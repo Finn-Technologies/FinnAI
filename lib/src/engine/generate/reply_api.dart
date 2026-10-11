@@ -73,6 +73,7 @@ extension FinnAcceleratorReplies on FinnAccelerator {
       history: history,
       systemContext: systemContext,
       groundedContext: groundedContext,
+      sources: sources,
       promptAnalysis: promptAnalysis,
       trace: trace,
       samplerProfile: samplerProfile,

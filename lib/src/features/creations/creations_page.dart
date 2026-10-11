@@ -499,6 +499,7 @@ class _CreationsPageState extends State<CreationsPage> {
         scrollController: _transcriptScroll,
         stage: _controller.stage,
         onChooseKind: _chooseKind,
+        onEdit: _editWithFinn,
         onOpen: _open,
         onAddToHomeScreen: _addToHomeScreen,
         onExport: (creation) => unawaited(

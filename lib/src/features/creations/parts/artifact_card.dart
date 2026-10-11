@@ -7,6 +7,7 @@ class _ArtifactCard extends StatelessWidget {
     required this.onOpen,
     required this.onAddToHomeScreen,
     required this.onExport,
+    required this.onEdit,
   });
 
   final FinnCreation creation;
@@ -14,6 +15,9 @@ class _ArtifactCard extends StatelessWidget {
   final VoidCallback onAddToHomeScreen;
   final VoidCallback onExport;
 
+  /// Reopens the builder seeded with the original brief, so the model
+  /// designs the creation again with the user's changes.
+  final VoidCallback onEdit;
   @override
   Widget build(BuildContext context) {
     final l10n = L10n.of(context);
@@ -61,7 +65,21 @@ class _ArtifactCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 14),
-            FinnButton(label: l10n.commonOpen, onTap: onOpen),
+            Row(
+              children: [
+                Expanded(
+                  child: FinnButton(label: l10n.commonOpen, onTap: onOpen),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: FinnButton(
+                    label: l10n.creationsEdit,
+                    secondary: true,
+                    onTap: onEdit,
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 10),
             FinnButton(
               label: creation.kind == CreationKind.presentation

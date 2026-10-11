@@ -24,6 +24,9 @@ extension FinnAcceleratorModelFiles on FinnAccelerator {
   }
 
   Future<void> _unloadModel(FinnModelTier tier) async {
+    // Direct tier unloads must invalidate an in-flight load too. Otherwise an
+    // old load can finish after this unload and resurrect a removed runtime.
+    _runtimeEpoch++;
     final runtime = _runtimes.remove(tier);
     if (runtime == null) return;
     for (final entry in runtime.sessions.values) {

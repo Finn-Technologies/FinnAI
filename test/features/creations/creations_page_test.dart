@@ -501,7 +501,9 @@ void main() {
       expect(generator.calls, 1);
     });
 
-    testWidgets('a generated creation offers Open, never Edit', (tester) async {
+    testWidgets('a generated creation offers Open and Edit for remake', (
+      tester,
+    ) async {
       final generator = FakeGenerator(artifact: _appArtifact);
       final controller = await pumpPage(tester, generator: generator);
 
@@ -510,7 +512,15 @@ void main() {
       await waitForGeneration(tester, controller);
 
       expect(find.text('Open'), findsOneWidget);
-      expect(find.text('Edit'), findsNothing);
+      expect(find.text('Edit'), findsOneWidget);
+
+      // Remake reopens the builder seeded with the original brief.
+      await tapText(tester, 'Edit');
+      expect(find.byType(TextField), findsOneWidget);
+      expect(
+        (tester.widget(find.byType(TextField)) as TextField).controller?.text,
+        'a habit tracker',
+      );
     });
   });
 
