@@ -138,8 +138,7 @@ A second app inside the app: its own sessions, settings and providers, in the sa
 | Switching between FinnAI and FinnAI Code (the brand row, the remembered choice) | `lib/src/shared/widgets/finn_brand_switcher.dart`, `lib/src/shared/config/app_mode.dart`, `lib/src/app/app_mode_host.dart` |
 | The Code screen (sidebar, header, transcript, composer, navigation) | `lib/src/features/code/code_shell.dart`, `lib/src/features/code/ui/` |
 | A session's row in the Code sidebar (state dot, files, +/− lines; Pinned / Today / Earlier) | `lib/src/features/code/ui/code_session_row.dart`, sections in `code_sidebar.dart` (`_sessionList`) |
-| What the model is told, and how its reply is read (the action protocol) | `lib/src/features/code/agent/agent_protocol.dart` |
-| On-device model aids: format repair, guided reply starts, failure hints | `lib/src/features/code/agent/small_model_aids.dart` |
+| What the model is told, and how its reply is read (the action protocol) | `lib/src/features/code/agent/agent_prompt.dart`, `lib/src/features/code/agent/agent_tools.dart` |
 | Search/replace edits (cloud models) | `lib/src/features/code/agent/edit_blocks.dart` |
 | Which model tier a device gets (RAM, chipset list, CPU score) | `lib/src/engine/profiler/model_tier_policy.dart` |
 | Storing, switching and cleaning up the selected tier | `lib/src/engine/install/model_tier.dart` |
