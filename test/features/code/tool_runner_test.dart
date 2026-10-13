@@ -58,7 +58,8 @@ void main() {
     expect(result.text, contains('b.txt'));
   });
 
-  test('write maps to a writeFile action and carries the new content', () async {
+  test('write maps to a writeFile action and carries the new content',
+      () async {
     final fake = FakeRunner();
     final runner = WorkspaceCodeToolRunner(sessions: store, actions: fake);
     final result =

@@ -345,7 +345,7 @@ class CodeAgent extends ChangeNotifier {
       // recognised mid-stream (a partial ```wri is not yet a tag), so it ends
       // with the stream instead.
       return AgentProtocol.decode(text,
-          allowShell: allowShell, allowEdit: allowEdit)
+              allowShell: allowShell, allowEdit: allowEdit)
           .hasCall;
     }
 

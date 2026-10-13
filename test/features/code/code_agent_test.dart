@@ -51,10 +51,8 @@ void main() {
     expect(condition(), isTrue, reason: 'condition was never met');
   }
 
-  String? errorCode() => messages()
-      .map((m) => m.errorCode)
-      .whereType<String>()
-      .firstOrNull;
+  String? errorCode() =>
+      messages().map((m) => m.errorCode).whereType<String>().firstOrNull;
 
   test('a plain answer is stored and ends the request', () async {
     final agent = agentFor(FakeGateway(['All set.']));
@@ -194,8 +192,7 @@ void main() {
     expect(shell.action!.status, CodeActionStatus.skipped);
   });
 
-  test('allow in session runs a repeat command without asking again',
-      () async {
+  test('allow in session runs a repeat command without asking again', () async {
     final actions = FakeRunner();
     final gateway = FakeGateway([
       '```sh\nls\n```',
